@@ -1,0 +1,25 @@
+.DS_Store
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Clojure / JVM build output
+target/
+classes/
+
+# Clojure tooling
+.cpcache/
+.clj-kondo/.cache/
+.nrepl-port
+.lein-repl-history
