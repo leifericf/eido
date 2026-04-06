@@ -312,6 +312,22 @@
       (is (= 0 (pixel-alpha img 50 50))
           "alpha should be 0 (fully transparent)"))))
 
+(deftest render-antialias-off-test
+  (testing "antialias false produces different output than antialias true"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :circle :cx 50 :cy 50 :r 40
+                         :fill {:r 0 :g 0 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0 :transforms []}]}
+          img-aa   (render/render ir {:antialias true})
+          img-noaa (render/render ir {:antialias false})
+          differs? (some (fn [[x y]]
+                           (not= (.getRGB img-aa x y)
+                                 (.getRGB img-noaa x y)))
+                         (for [x (range 100) y (range 100)] [x y]))]
+      (is differs? "some pixels should differ between aliased and antialiased"))))
+
 (deftest render-opts-backward-compat-test
   (testing "render without opts still works"
     (let [ir {:ir/size [100 100]

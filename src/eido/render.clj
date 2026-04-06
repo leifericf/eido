@@ -111,7 +111,9 @@
          ^Graphics2D g (.createGraphics img)]
      (.setRenderingHint g
                         RenderingHints/KEY_ANTIALIASING
-                        RenderingHints/VALUE_ANTIALIAS_ON)
+                        (if (get opts :antialias true)
+                          RenderingHints/VALUE_ANTIALIAS_ON
+                          RenderingHints/VALUE_ANTIALIAS_OFF))
      (when (not= scale 1)
        (.scale g (double scale) (double scale)))
      ;; Fill background (unless transparent requested)
