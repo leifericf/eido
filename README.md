@@ -906,8 +906,4 @@ clj -X:test
 
 ## Status
 
-v0.12.0 — Expanded shape primitives (ellipse, arc, line), stroke styling (cap, join, dash),
-rounded rectangles, shear transforms, HSB colors, path contours, clipping, and scene helpers.
-Headed toward v1.0 alpha.
-
-**This is an experiment and a work in progress. The API is not stable and may change without notice.**
+v1.0.0-alpha1 — The API is still evolving and may change without notice.
