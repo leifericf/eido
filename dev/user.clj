@@ -94,6 +94,49 @@
        :scene (remove-watch (:atom w) (:key w)))
      (swap! watches dissoc watch-key))))
 
+;; --- play ---
+
+(defonce ^:private playback (atom nil))
+
+(defn play
+  "Plays a sequence of scenes as an animation in the preview window.
+  fps: frames per second. Opts: :loop (default true).
+  Stops any previously playing animation."
+  ([scenes fps] (play scenes fps {}))
+  ([scenes fps opts]
+   (when-let [old @playback]
+     (reset! (:running old) false))
+   (let [scene-vec (vec scenes)
+         n         (count scene-vec)
+         delay-ms  (quot 1000 fps)
+         loop?     (get opts :loop true)
+         running   (atom true)
+         thread    (Thread.
+                     (fn []
+                       (loop [i 0]
+                         (when @running
+                           (try
+                             (show (nth scene-vec i))
+                             (catch Exception e
+                               (println (str "play: " (.getMessage e)))))
+                           (Thread/sleep delay-ms)
+                           (let [next-i (inc i)]
+                             (cond
+                               (< next-i n) (recur next-i)
+                               loop?        (recur 0)))))))]
+     (.setDaemon thread true)
+     (.start thread)
+     (reset! playback {:running running :thread thread})
+     :playing)))
+
+(defn stop
+  "Stops the currently playing animation."
+  []
+  (when-let [p @playback]
+    (reset! (:running p) false)
+    (reset! playback nil)
+    :stopped))
+
 ;; --- tap> ---
 
 (defonce ^:private tap-fn (atom nil))
