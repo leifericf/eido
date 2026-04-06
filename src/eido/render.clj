@@ -58,38 +58,46 @@
     (apply-stroke g shape stroke-color stroke-width)))
 
 (defn render
-  "Renders compiled IR into a BufferedImage."
-  [ir]
-  (let [[w h]  (:ir/size ir)
-        img    (BufferedImage. w h BufferedImage/TYPE_INT_ARGB)
-        ^Graphics2D g (.createGraphics img)]
-    (.setRenderingHint g
-                       RenderingHints/KEY_ANTIALIASING
-                       RenderingHints/VALUE_ANTIALIAS_ON)
-    ;; Fill background
-    (.setComposite g (AlphaComposite/getInstance
-                       AlphaComposite/SRC_OVER 1.0))
-    (.setColor g (color/->awt-color (:ir/background ir)))
-    (.fillRect g 0 0 w h)
-    ;; Render ops in order
-    (doseq [op (:ir/ops ir)]
-      (let [saved (.getTransform g)]
-        (.setComposite g (AlphaComposite/getInstance
-                           AlphaComposite/SRC_OVER
-                           (float (:opacity op))))
-        (doseq [[t & args] (:transforms op)]
-          (case t
-            :translate (.translate g
-                                   (double (first args))
-                                   (double (second args)))
-            :rotate    (.rotate g (double (first args)))
-            :scale     (.scale g
-                               (double (first args))
-                               (double (second args)))))
-        (render-op g op)
-        (.setTransform g saved)))
-    (.dispose g)
-    img))
+  "Renders compiled IR into a BufferedImage.
+  Opts: :scale (number, default 1), :transparent-background (boolean)."
+  ([ir] (render ir {}))
+  ([ir opts]
+   (let [scale  (get opts :scale 1)
+         [w h]  (:ir/size ir)
+         sw     (int (* w scale))
+         sh     (int (* h scale))
+         img    (BufferedImage. sw sh BufferedImage/TYPE_INT_ARGB)
+         ^Graphics2D g (.createGraphics img)]
+     (.setRenderingHint g
+                        RenderingHints/KEY_ANTIALIASING
+                        RenderingHints/VALUE_ANTIALIAS_ON)
+     (when (not= scale 1)
+       (.scale g (double scale) (double scale)))
+     ;; Fill background (unless transparent requested)
+     (when-not (:transparent-background opts)
+       (.setComposite g (AlphaComposite/getInstance
+                          AlphaComposite/SRC_OVER 1.0))
+       (.setColor g (color/->awt-color (:ir/background ir)))
+       (.fillRect g 0 0 w h))
+     ;; Render ops in order
+     (doseq [op (:ir/ops ir)]
+       (let [saved (.getTransform g)]
+         (.setComposite g (AlphaComposite/getInstance
+                            AlphaComposite/SRC_OVER
+                            (float (:opacity op))))
+         (doseq [[t & args] (:transforms op)]
+           (case t
+             :translate (.translate g
+                                    (double (first args))
+                                    (double (second args)))
+             :rotate    (.rotate g (double (first args)))
+             :scale     (.scale g
+                                (double (first args))
+                                (double (second args)))))
+         (render-op g op)
+         (.setTransform g saved)))
+     (.dispose g)
+     img)))
 
 (comment
   (render {:ir/size [200 200]

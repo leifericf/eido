@@ -246,3 +246,45 @@
           img (render/render ir)]
       (is (= [128 128 128] (pixel-rgb img 50 50))
           "background should be intact"))))
+
+;; --- v0.6 render options tests ---
+
+(deftest render-scale-test
+  (testing "scale 2 produces 2x dimensions"
+    (let [ir {:ir/size [100 50]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops []}
+          img (render/render ir {:scale 2})]
+      (is (= 200 (.getWidth img)))
+      (is (= 100 (.getHeight img))))))
+
+(deftest render-scale-pixel-test
+  (testing "scaled rect fills correct area"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 50 :h 50
+                         :fill {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0 :transforms []}]}
+          img (render/render ir {:scale 2})]
+      (is (= [255 0 0] (pixel-rgb img 50 50))
+          "center of scaled rect should be red")
+      (is (= [255 255 255] (pixel-rgb img 150 150))
+          "outside scaled rect should be background"))))
+
+(deftest render-transparent-bg-test
+  (testing "transparent background skips bg fill"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops []}
+          img (render/render ir {:transparent-background true})]
+      (is (= 0 (pixel-alpha img 50 50))
+          "alpha should be 0 (fully transparent)"))))
+
+(deftest render-opts-backward-compat-test
+  (testing "render without opts still works"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 128 :g 128 :b 128 :a 1.0}
+              :ir/ops []}
+          img (render/render ir)]
+      (is (= [128 128 128] (pixel-rgb img 50 50))))))
