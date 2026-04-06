@@ -53,10 +53,16 @@
   "Recursively compiles a node tree into a flat sequence of IR ops."
   [node ctx]
   (if (= :group (:node/type node))
-    (let [child-ctx (update ctx :style (partial group-style node))]
+    (let [child-ctx (-> ctx
+                        (update :style (partial group-style node))
+                        (update :opacity * (get node :node/opacity 1.0)))]
       (into [] (mapcat #(compile-tree % child-ctx))
             (:group/children node)))
-    [(compile-node (inherit-style node (:style ctx)))]))
+    (let [effective-opacity (* (:opacity ctx)
+                               (get node :node/opacity 1.0))
+          styled-node (-> (inherit-style node (:style ctx))
+                          (assoc :node/opacity effective-opacity))]
+      [(compile-node styled-node)])))
 
 (defn compile
   "Compiles a scene map into an intermediate representation."

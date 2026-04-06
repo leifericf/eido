@@ -200,3 +200,52 @@
                        :rect/size [10 10]}]}]}]}
           op (first (:ir/ops (compile/compile scene)))]
       (is (= {:r 255 :g 0 :b 0 :a 1.0} (:fill op))))))
+
+;; --- v0.2 opacity inheritance tests ---
+
+(deftest compile-opacity-multiplicative-test
+  (testing "group opacity multiplies with child opacity"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :node/opacity 0.5
+                   :group/children
+                   [{:node/type :shape/rect
+                     :rect/xy [0 0]
+                     :rect/size [50 50]
+                     :node/opacity 0.5}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= 0.25 (:opacity op))))))
+
+(deftest compile-opacity-inherit-default-test
+  (testing "child without opacity inherits group opacity"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :node/opacity 0.5
+                   :group/children
+                   [{:node/type :shape/rect
+                     :rect/xy [0 0]
+                     :rect/size [50 50]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= 0.5 (:opacity op))))))
+
+(deftest compile-opacity-three-levels-test
+  (testing "opacity accumulates through three levels"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :node/opacity 0.5
+                   :group/children
+                   [{:node/type :group
+                     :node/opacity 0.5
+                     :group/children
+                     [{:node/type :shape/rect
+                       :rect/xy [0 0]
+                       :rect/size [10 10]
+                       :node/opacity 0.5}]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= 0.125 (:opacity op))))))
