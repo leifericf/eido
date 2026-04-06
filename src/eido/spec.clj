@@ -43,6 +43,10 @@
                 :hex (s/and string?
                             #(re-matches #"#?([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})" %)))))
 
+(s/def :color/name
+  (s/and vector?
+         (s/cat :tag #{:color/name} :name string?)))
+
 (s/def ::color
   (s/or :rgb :color/rgb
         :rgba :color/rgba
@@ -50,7 +54,8 @@
         :hsla :color/hsla
         :hsb :color/hsb
         :hsba :color/hsba
-        :hex :color/hex))
+        :hex :color/hex
+        :name :color/name))
 
 ;; --- transforms ---
 

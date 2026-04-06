@@ -205,3 +205,26 @@
     (let [result (color/lerp [:color/rgba 0 0 0 0.0] [:color/rgba 0 0 0 1.0] 0.5)]
       (is (= :color/rgba (first result)))
       (is (= 0.5 (nth result 4))))))
+
+;; --- named colors ---
+
+(deftest resolve-color-name-test
+  (testing "resolves CSS named colors"
+    (is (= {:r 255 :g 0 :b 0 :a 1.0}
+           (color/resolve-color [:color/name "red"])))
+    (is (= {:r 255 :g 127 :b 80 :a 1.0}
+           (color/resolve-color [:color/name "coral"])))
+    (is (= {:r 100 :g 149 :b 237 :a 1.0}
+           (color/resolve-color [:color/name "cornflowerblue"])))))
+
+(deftest resolve-color-name-case-insensitive-test
+  (testing "named colors are case insensitive"
+    (is (= (color/resolve-color [:color/name "red"])
+           (color/resolve-color [:color/name "Red"])))
+    (is (= (color/resolve-color [:color/name "cornflowerblue"])
+           (color/resolve-color [:color/name "CornflowerBlue"])))))
+
+(deftest resolve-color-name-unknown-test
+  (testing "unknown name throws ex-info"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown color name"
+          (color/resolve-color [:color/name "notacolor"])))))
