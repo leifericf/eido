@@ -138,3 +138,65 @@
                    :group/children []}]}
           ops (:ir/ops (compile/compile scene))]
       (is (= 0 (count ops))))))
+
+;; --- v0.2 style inheritance tests ---
+
+(deftest compile-style-inherit-fill-test
+  (testing "child inherits fill from parent group"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :style/fill {:color [:color/rgb 255 0 0]}
+                   :group/children
+                   [{:node/type :shape/rect
+                     :rect/xy [0 0]
+                     :rect/size [50 50]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= {:r 255 :g 0 :b 0 :a 1.0} (:fill op))))))
+
+(deftest compile-style-override-fill-test
+  (testing "child overrides parent fill"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :style/fill {:color [:color/rgb 255 0 0]}
+                   :group/children
+                   [{:node/type :shape/rect
+                     :rect/xy [0 0]
+                     :rect/size [50 50]
+                     :style/fill {:color [:color/rgb 0 0 255]}}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= {:r 0 :g 0 :b 255 :a 1.0} (:fill op))))))
+
+(deftest compile-style-inherit-stroke-test
+  (testing "child inherits stroke from parent group"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :style/stroke {:color [:color/rgb 0 255 0] :width 3}
+                   :group/children
+                   [{:node/type :shape/circle
+                     :circle/center [50 50]
+                     :circle/radius 20}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= {:r 0 :g 255 :b 0 :a 1.0} (:stroke-color op)))
+      (is (= 3 (:stroke-width op))))))
+
+(deftest compile-style-nested-inherit-test
+  (testing "grandchild inherits fill through parent"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :style/fill {:color [:color/rgb 255 0 0]}
+                   :group/children
+                   [{:node/type :group
+                     :group/children
+                     [{:node/type :shape/rect
+                       :rect/xy [0 0]
+                       :rect/size [10 10]}]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= {:r 255 :g 0 :b 0 :a 1.0} (:fill op))))))

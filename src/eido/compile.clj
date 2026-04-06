@@ -33,12 +33,30 @@
 (def ^:private default-ctx
   {:style {} :transforms [] :opacity 1.0})
 
+(defn- inherit-style
+  "Merges inherited style onto a node. Child keys win."
+  [node inherited]
+  (cond-> node
+    (and (:style/fill inherited) (not (:style/fill node)))
+    (assoc :style/fill (:style/fill inherited))
+    (and (:style/stroke inherited) (not (:style/stroke node)))
+    (assoc :style/stroke (:style/stroke inherited))))
+
+(defn- group-style
+  "Extracts style keys from a group node, merging with inherited."
+  [node inherited]
+  (cond-> inherited
+    (:style/fill node)   (assoc :style/fill (:style/fill node))
+    (:style/stroke node) (assoc :style/stroke (:style/stroke node))))
+
 (defn- compile-tree
   "Recursively compiles a node tree into a flat sequence of IR ops."
   [node ctx]
   (if (= :group (:node/type node))
-    (into [] (mapcat #(compile-tree % ctx)) (:group/children node))
-    [(compile-node node)]))
+    (let [child-ctx (update ctx :style (partial group-style node))]
+      (into [] (mapcat #(compile-tree % child-ctx))
+            (:group/children node)))
+    [(compile-node (inherit-style node (:style ctx)))]))
 
 (defn compile
   "Compiles a scene map into an intermediate representation."
