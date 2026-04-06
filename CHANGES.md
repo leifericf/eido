@@ -2,16 +2,18 @@
 
 ## Unreleased
 
-- Add inline example images throughout README
-- Add gallery with advanced animated grid patterns (spiral, sine field, breathing wave)
-- Add dancing bars and tentacles animations to gallery
-- Add 7 advanced gallery examples (galaxy, pendulum wave, op art, Lissajous, cellular automaton, kaleidoscope, tree)
-- Add fractal examples (blooming tree, Sierpinski triangle, Koch snowflake)
+- Fix SVG renderer dropping color alpha channel — `rgba()` now emitted when alpha < 1.0
+- Fix animated SVG SMIL timing so frames actually alternate instead of all appearing simultaneously
 
 ## v0.11.0 — Frames
 
 - Add `eido.animate/frames` higher-order function for building frame sequences without boilerplate
 - Update all README animation examples to use `anim/frames`
+- Add inline example images throughout README
+- Add gallery with advanced animated grid patterns (spiral, sine field, breathing wave)
+- Add dancing bars and tentacles animations to gallery
+- Add 7 advanced gallery examples (galaxy, pendulum wave, op art, Lissajous, cellular automaton, kaleidoscope, tree)
+- Add fractal examples (blooming tree, Sierpinski triangle, Koch snowflake)
 
 ## v0.10.0 — Polish
 

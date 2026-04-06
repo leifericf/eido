@@ -273,4 +273,18 @@
   (testing "single frame produces valid SVG"
     (let [out (svg/render-animated [(first sample-irs)] 10)]
       (is (re-find #"<svg" out))
-      (is (re-find #"</svg>" out)))))
+      (is (re-find #"</svg>" out))))
+
+  (testing "uses total duration, not per-frame duration"
+    (let [out (svg/render-animated sample-irs 10)]
+      ;; 2 frames at 10fps = 0.2s total
+      (is (re-find #"dur=\"0\.2s\"" out))
+      ;; Should NOT have per-frame dur of 0.1s
+      (is (not (re-find #"dur=\"0\.1s\"" out)))))
+
+  (testing "keyTimes partition frames correctly"
+    (let [out (svg/render-animated sample-irs 10)]
+      ;; Frame 0: visible then hidden at 0.5 (1/2)
+      (is (re-find #"values=\"visible;hidden\".*keyTimes=\"0;0\.5\"" out))
+      ;; Frame 1: hidden then visible at 0.5 (1/2)
+      (is (re-find #"values=\"hidden;visible\".*keyTimes=\"0;0\.5\"" out)))))

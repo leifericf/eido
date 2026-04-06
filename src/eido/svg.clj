@@ -98,6 +98,32 @@
                   (conj "</svg>"))]
      (str/join "\n" lines))))
 
+(defn- frame-key-times
+  "Builds SMIL keyTimes and values for frame i of n.
+  Frame i is visible during [i/n, (i+1)/n), hidden otherwise."
+  [i n]
+  (let [t-start (/ (double i) n)
+        t-end   (/ (double (inc i)) n)]
+    (cond
+      ;; Single frame: always visible
+      (= n 1)
+      {:values "visible" :key-times "0"}
+
+      ;; First frame: visible then hidden
+      (zero? i)
+      {:values   "visible;hidden"
+       :key-times (str "0;" (fmt t-end))}
+
+      ;; Last frame: hidden then visible
+      (= i (dec n))
+      {:values   "hidden;visible"
+       :key-times (str "0;" (fmt t-start))}
+
+      ;; Middle frame: hidden, visible, hidden
+      :else
+      {:values   "hidden;visible;hidden"
+       :key-times (str "0;" (fmt t-start) ";" (fmt t-end))})))
+
 (defn- frame-group
   "Wraps IR ops in a <g> with SMIL visibility animation."
   [ir i n fps transparent-bg?]
@@ -105,16 +131,13 @@
         [w h]      (:ir/size ir)
         frame-dur  (/ 1.0 fps)
         total-dur  (fmt (* n frame-dur))
-        begin      (fmt (* i frame-dur))
-        dur        (fmt frame-dur)
+        {:keys [values key-times]} (frame-key-times i n)
         animate    (str "    <animate attributeName=\"visibility\""
-                        " values=\"visible;hidden\""
-                        " begin=\"" begin "s\""
-                        " dur=\"" dur "s\""
+                        " values=\"" values "\""
+                        " dur=\"" total-dur "s\""
                         " repeatCount=\"indefinite\""
-                        " keyTimes=\"0;1\""
-                        " calcMode=\"discrete\""
-                        " fill=\"freeze\"/>")
+                        " keyTimes=\"" key-times "\""
+                        " calcMode=\"discrete\"/>")
         bg-line    (when (and bg (not transparent-bg?))
                      (str "    <rect x=\"0\" y=\"0\" width=\"" w
                           "\" height=\"" h "\" fill=\"" (color->css bg) "\"/>"))
