@@ -93,3 +93,58 @@
           "rect fill unchanged")
       (is (= [200 0 0] (pixel-rgb img 400 300))
           "circle fill unchanged"))))
+
+;; --- v0.3 integration tests ---
+
+(def path-scene
+  {:image/size [200 200]
+   :image/background [:color/rgb 255 255 255]
+   :image/nodes
+   [{:node/type :shape/path
+     :path/commands [[:move-to [50 150]]
+                     [:line-to [100 30]]
+                     [:line-to [150 150]]
+                     [:close]]
+     :style/fill {:color [:color/rgb 0 200 0]}
+     :style/stroke {:color [:color/rgb 0 0 0] :width 2}}]})
+
+(deftest path-integration-test
+  (testing "path renders end-to-end from scene EDN"
+    (let [img (eido/render path-scene)]
+      (is (= 200 (.getWidth img)))
+      (is (= 200 (.getHeight img)))
+      (is (= [0 200 0] (pixel-rgb img 100 120))
+          "inside triangle should be green fill")
+      (is (= [255 255 255] (pixel-rgb img 10 10))
+          "outside triangle should be background"))))
+
+(def mixed-path-scene
+  {:image/size [300 300]
+   :image/background [:color/rgb 255 255 255]
+   :image/nodes
+   [{:node/type :group
+     :node/transform [[:transform/translate 150 150]]
+     :style/fill {:color [:color/rgb 255 0 0]}
+     :node/opacity 0.8
+     :group/children
+     [{:node/type :shape/circle
+       :circle/center [0 0]
+       :circle/radius 60}
+      {:node/type :shape/path
+       :path/commands [[:move-to [-40 40]]
+                       [:line-to [0 -40]]
+                       [:line-to [40 40]]
+                       [:close]]
+       :style/fill {:color [:color/rgb 0 0 255]}
+       :node/opacity 0.5}]}]})
+
+(deftest mixed-path-integration-test
+  (testing "path composes with other shapes in groups"
+    (let [img (eido/render mixed-path-scene)]
+      (is (= [255 255 255] (pixel-rgb img 5 5))
+          "corner should be background")
+      ;; Circle at (150,150) with inherited red fill
+      ;; Path triangle overlaid with blue at 0.4 effective opacity (0.8 * 0.5)
+      (let [[r _ b] (pixel-rgb img 150 155)]
+        (is (pos? r) "red from circle should be visible")
+        (is (pos? b) "blue from path should be blended in")))))

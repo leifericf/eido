@@ -38,4 +38,23 @@
        :style/fill {:color [:color/rgb 0 100 200]}
        :style/stroke {:color [:color/rgb 0 0 0] :width 2}}]}
     "/tmp/eido-test.png")
+
+  ;; v0.3 — path example: star-like shape with curves
+  (render {:image/size [400 400]
+           :image/background [:color/rgb 30 30 40]
+           :image/nodes
+           [{:node/type :shape/path
+             :path/commands [[:move-to [200 50]]
+                             [:line-to [240 160]]
+                             [:line-to [350 160]]
+                             [:line-to [260 220]]
+                             [:line-to [300 340]]
+                             [:line-to [200 270]]
+                             [:line-to [100 340]]
+                             [:line-to [140 220]]
+                             [:line-to [50 160]]
+                             [:line-to [160 160]]
+                             [:close]]
+             :style/fill {:color [:color/rgb 255 200 50]}
+             :style/stroke {:color [:color/rgb 200 150 0] :width 2}}]})
   )
