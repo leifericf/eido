@@ -157,3 +157,102 @@
     (is (s/valid? :node/opacity 0.5)))
   (testing "rejects out of range"
     (is (not (s/valid? :node/opacity 1.5)))))
+
+;; --- node specs ---
+
+(deftest node-rect-test
+  (testing "accepts valid rect"
+    (is (s/valid? :eido.spec/node
+          {:node/type :shape/rect
+           :rect/xy [10 20]
+           :rect/size [100 50]})))
+  (testing "rejects rect missing :rect/xy"
+    (is (not (s/valid? :eido.spec/node
+               {:node/type :shape/rect
+                :rect/size [100 50]})))))
+
+(deftest node-circle-test
+  (testing "accepts valid circle"
+    (is (s/valid? :eido.spec/node
+          {:node/type :shape/circle
+           :circle/center [50 50]
+           :circle/radius 20})))
+  (testing "rejects negative radius"
+    (is (not (s/valid? :eido.spec/node
+               {:node/type :shape/circle
+                :circle/center [50 50]
+                :circle/radius -5})))))
+
+(deftest node-path-test
+  (testing "accepts valid path"
+    (is (s/valid? :eido.spec/node
+          {:node/type :shape/path
+           :path/commands [[:move-to [0 0]]
+                           [:line-to [100 100]]
+                           [:close]]}))))
+
+(deftest node-group-test
+  (testing "accepts group with children"
+    (is (s/valid? :eido.spec/node
+          {:node/type :group
+           :group/children
+           [{:node/type :shape/rect
+             :rect/xy [0 0]
+             :rect/size [10 10]}]})))
+  (testing "rejects group with invalid child"
+    (is (not (s/valid? :eido.spec/node
+               {:node/type :group
+                :group/children
+                [{:node/type :shape/rect}]})))))
+
+(deftest node-unknown-type-test
+  (testing "rejects unknown node type"
+    (is (not (s/valid? :eido.spec/node
+               {:node/type :shape/polygon})))))
+
+(deftest node-optional-keys-test
+  (testing "accepts optional style, opacity, transform"
+    (is (s/valid? :eido.spec/node
+          {:node/type :shape/rect
+           :rect/xy [0 0]
+           :rect/size [50 50]
+           :style/fill {:color [:color/rgb 255 0 0]}
+           :style/stroke {:color [:color/rgb 0 0 0] :width 2}
+           :node/opacity 0.8
+           :node/transform [[:transform/translate 10 20]]})))
+  (testing "rejects bad opacity on otherwise valid node"
+    (is (not (s/valid? :eido.spec/node
+               {:node/type :shape/rect
+                :rect/xy [0 0]
+                :rect/size [50 50]
+                :node/opacity 2.0})))))
+
+;; --- scene spec ---
+
+(deftest scene-valid-test
+  (testing "accepts valid scene"
+    (is (s/valid? :eido.spec/scene
+          {:image/size [800 600]
+           :image/background [:color/rgb 255 255 255]
+           :image/nodes
+           [{:node/type :shape/circle
+             :circle/center [400 300]
+             :circle/radius 100}]}))))
+
+(deftest scene-missing-keys-test
+  (testing "rejects missing :image/size"
+    (is (not (s/valid? :eido.spec/scene
+               {:image/background [:color/rgb 0 0 0]
+                :image/nodes []}))))
+  (testing "rejects missing :image/nodes"
+    (is (not (s/valid? :eido.spec/scene
+               {:image/size [100 100]
+                :image/background [:color/rgb 0 0 0]})))))
+
+(deftest scene-invalid-node-test
+  (testing "rejects scene with invalid node"
+    (is (not (s/valid? :eido.spec/scene
+               {:image/size [100 100]
+                :image/background [:color/rgb 0 0 0]
+                :image/nodes
+                [{:node/type :shape/rect}]})))))

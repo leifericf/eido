@@ -89,3 +89,47 @@
 (s/def ::width ::pos-number)
 (s/def :style/stroke (s/keys :req-un [::color ::width]))
 (s/def :node/opacity ::unit-val)
+
+;; --- nodes ---
+
+(s/def :rect/xy ::point)
+(s/def :rect/size ::pos-size)
+(s/def :circle/center ::point)
+(s/def :circle/radius ::pos-number)
+(s/def :group/children (s/coll-of ::node :kind vector?))
+
+(defmulti node-type :node/type)
+
+(defmethod node-type :shape/rect [_]
+  (s/keys :req [:node/type :rect/xy :rect/size]
+          :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+
+(defmethod node-type :shape/circle [_]
+  (s/keys :req [:node/type :circle/center :circle/radius]
+          :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+
+(defmethod node-type :shape/path [_]
+  (s/keys :req [:node/type :path/commands]
+          :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+
+(defmethod node-type :group [_]
+  (s/keys :req [:node/type :group/children]
+          :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+
+(defmethod node-type :default [_]
+  (s/with-gen
+    (s/and (s/keys :req [:node/type])
+           #(contains? #{:shape/rect :shape/circle :shape/path :group}
+                       (:node/type %)))
+    #(s/gen #{:shape/rect})))
+
+(s/def ::node (s/multi-spec node-type :node/type))
+
+;; --- scene ---
+
+(s/def :image/size ::pos-size)
+(s/def :image/background ::color)
+(s/def :image/nodes (s/coll-of ::node :kind vector?))
+
+(s/def ::scene
+  (s/keys :req [:image/size :image/background :image/nodes]))
