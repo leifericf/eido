@@ -10,6 +10,7 @@
     [java.awt.image BufferedImage]
     [java.io File]
     [javax.imageio ImageIO ImageWriteParam]
+    [javax.imageio.metadata IIOMetadataNode]
     [javax.imageio.stream FileImageOutputStream]))
 
 (defn read-scene
@@ -23,9 +24,11 @@
                       e)))))
 
 (defn render
-  "Renders a scene EDN map to a BufferedImage."
-  [scene]
-  (-> scene compile/compile render/render))
+  "Renders a scene EDN map to a BufferedImage.
+  Opts: :scale, :transparent-background."
+  ([scene] (render scene {}))
+  ([scene opts]
+   (render/render (compile/compile scene) opts)))
 
 (defn render-file
   "Reads an EDN scene file and renders it to a BufferedImage."
@@ -73,26 +76,57 @@
   path)
 
 (defn render-to-svg
-  "Renders a scene to an SVG XML string."
-  [scene]
-  (-> scene compile/compile svg/render))
+  "Renders a scene to an SVG XML string.
+  Opts: :transparent-background."
+  ([scene] (render-to-svg scene {}))
+  ([scene opts]
+   (svg/render (compile/compile scene)
+               (select-keys opts [:transparent-background]))))
+
+(defn- write-png-with-dpi
+  "Writes PNG with DPI metadata."
+  [^BufferedImage img ^String path dpi]
+  (let [writer (.next (ImageIO/getImageWritersByFormatName "png"))
+        param  (.getDefaultWriteParam writer)
+        meta   (.getDefaultImageMetadata writer
+                 (javax.imageio.ImageTypeSpecifier/createFromRenderedImage img)
+                 param)
+        ppm    (int (Math/round (/ (double dpi) 0.0254)))
+        phys   (doto (IIOMetadataNode. "pHYs")
+                 (.setAttribute "pixelsPerUnitXAxis" (str ppm))
+                 (.setAttribute "pixelsPerUnitYAxis" (str ppm))
+                 (.setAttribute "unitSpecifier" "meter"))
+        root   (let [r (IIOMetadataNode. "javax_imageio_png_1.0")]
+                 (.appendChild r phys)
+                 r)]
+    (.mergeTree meta "javax_imageio_png_1.0" root)
+    (with-open [out (FileImageOutputStream. (File. path))]
+      (.setOutput writer out)
+      (.write writer nil
+              (javax.imageio.IIOImage. img nil meta)
+              param)
+      (.dispose writer)))
+  path)
 
 (defn render-to-file
   "Renders a scene and writes to file. Format detected from extension.
-  Opts: :format (override), :quality (0.0-1.0, JPEG only, default 0.75)."
+  Opts: :format, :quality (JPEG), :scale, :transparent-background, :dpi (PNG)."
   ([scene path]
    (render-to-file scene path {}))
   ([scene path opts]
-   (let [format (or (:format opts) (detect-format path))]
+   (let [format      (or (:format opts) (detect-format path))
+         render-opts (select-keys opts [:scale :transparent-background])]
      (if (= format "svg")
-       (spit path (render-to-svg scene))
-       (let [img (render scene)]
+       (spit path (render-to-svg scene (select-keys opts [:transparent-background])))
+       (let [img (render scene render-opts)]
          (case format
            "jpeg" (write-jpeg (ensure-rgb img) path
                               (get opts :quality 0.75))
            "bmp"  (ImageIO/write (ensure-rgb img) "bmp" (File. ^String path))
-           ("png" "gif")
-           (ImageIO/write img format (File. ^String path))
+           "png"  (if (:dpi opts)
+                    (write-png-with-dpi img path (:dpi opts))
+                    (ImageIO/write img "png" (File. ^String path)))
+           "gif"  (ImageIO/write img "gif" (File. ^String path))
 
            (throw (ex-info "Unsupported export format"
                            {:path path :format format})))))

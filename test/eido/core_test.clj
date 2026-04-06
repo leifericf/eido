@@ -131,6 +131,54 @@
         (is (re-find #"<svg" content))
         (.delete f)))))
 
+(deftest render-scale-integration-test
+  (testing "scale option produces larger image"
+    (let [img (eido/render sample-scene {:scale 2})]
+      (is (= 1600 (.getWidth img)))
+      (is (= 1200 (.getHeight img))))))
+
+(deftest render-transparent-integration-test
+  (testing "transparent background produces transparent pixels"
+    (let [img (eido/render
+                {:image/size [100 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes []}
+                {:transparent-background true})
+          argb (.getRGB img 50 50)
+          alpha (bit-and (bit-shift-right argb 24) 0xFF)]
+      (is (= 0 alpha)))))
+
+(deftest render-to-file-dpi-test
+  (testing "PNG with DPI metadata writes successfully"
+    (let [path (str (File/createTempFile "eido-dpi" ".png"))]
+      (eido/render-to-file sample-scene path {:dpi 300})
+      (let [f (File. ^String path)]
+        (is (.exists f))
+        (is (pos? (.length f)))
+        (let [img (ImageIO/read f)]
+          (is (= 800 (.getWidth img))))
+        (.delete f)))))
+
+(deftest render-to-file-svg-transparent-test
+  (testing "SVG with transparent-background omits background rect"
+    (let [path (str (File/createTempFile "eido-test" ".svg"))]
+      (eido/render-to-file
+        {:image/size [100 100]
+         :image/background [:color/rgb 255 255 255]
+         :image/nodes
+         [{:node/type :shape/circle
+           :circle/center [50 50]
+           :circle/radius 20
+           :style/fill {:color [:color/rgb 255 0 0]}}]}
+        path {:transparent-background true})
+      (let [content (slurp path)]
+        (is (re-find #"<circle" content))
+        ;; Should have only one element (the circle), no bg rect
+        (is (= 1 (count (re-seq #"<circle" content))))
+        ;; The bg rect would have width="100" height="100" — should not appear
+        (is (not (re-find #"width=\"100\" height=\"100\" fill=\"rgb" content))))
+      (.delete (File. ^String path)))))
+
 ;; --- v0.2 integration tests ---
 
 (def composition-scene
