@@ -132,6 +132,17 @@
                            {:path path :format format})))))
      path)))
 
+(defn render-batch
+  "Renders a sequence of export jobs to files. Each job is a map with
+  :scene, :path, and optional :opts. Returns a vector of written paths.
+  With a generator fn and count, calls (f i) for each index."
+  ([jobs]
+   (mapv (fn [{:keys [scene path opts]}]
+           (render-to-file scene path (or opts {})))
+         jobs))
+  ([generate-fn n]
+   (render-batch (map generate-fn (range n)))))
+
 (comment
   (render {:image/size [800 600]
            :image/background [:color/rgb 255 255 255]

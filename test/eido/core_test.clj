@@ -159,6 +159,42 @@
           (is (= 800 (.getWidth img))))
         (.delete f)))))
 
+(deftest render-batch-test
+  (testing "renders multiple jobs to files"
+    (let [scene {:image/size [50 50]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes []}
+          p1 (str (File/createTempFile "batch1" ".png"))
+          p2 (str (File/createTempFile "batch2" ".png"))
+          result (eido/render-batch [{:scene scene :path p1}
+                                     {:scene scene :path p2}])]
+      (is (= [p1 p2] result))
+      (is (.exists (File. ^String p1)))
+      (is (.exists (File. ^String p2)))
+      (.delete (File. ^String p1))
+      (.delete (File. ^String p2)))))
+
+(deftest render-batch-empty-test
+  (testing "empty jobs returns empty vector"
+    (is (= [] (eido/render-batch [])))))
+
+(deftest render-batch-generator-test
+  (testing "generator fn produces files"
+    (let [paths (atom [])
+          result (eido/render-batch
+                   (fn [i]
+                     (let [p (str (File/createTempFile (str "gen" i) ".png"))]
+                       (swap! paths conj p)
+                       {:scene {:image/size [10 10]
+                                :image/background [:color/rgb 0 0 0]
+                                :image/nodes []}
+                        :path p}))
+                   3)]
+      (is (= 3 (count result)))
+      (doseq [p @paths]
+        (is (.exists (File. ^String p)))
+        (.delete (File. ^String p))))))
+
 (deftest render-to-file-svg-transparent-test
   (testing "SVG with transparent-background omits background rect"
     (let [path (str (File/createTempFile "eido-test" ".svg"))]
