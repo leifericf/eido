@@ -234,10 +234,35 @@ Multiple output formats with options:
 
 Supported formats: PNG, JPEG, GIF, BMP, SVG.
 
+## Validation
+
+Scenes are validated automatically before rendering. Invalid scenes produce clear errors with paths:
+
+```clojure
+;; Check a scene without rendering — returns nil if valid, or error vector
+(eido/validate {:image/size [800 600]
+                :image/background [:color/rgb 255 255 255]
+                :image/nodes [{:node/type :shape/rect}]})
+;; => [{:path [:image/nodes 0],
+;;      :pred "missing required key :rect/xy",
+;;      :message "at [:image/nodes 0]: missing required key :rect/xy, got: {:node/type :shape/rect}",
+;;      :value {:node/type :shape/rect}}
+;;     ...]
+
+;; Rendering an invalid scene throws ex-info with :errors in ex-data
+(try
+  (eido/render {:bad "scene"})
+  (catch Exception e
+    (ex-data e)))  ;; => {:errors [{:path ..., :message ..., ...}]}
+```
+
+Validates: required keys, value ranges (RGB 0-255, alpha/opacity 0-1, positive dimensions), node types, path commands, color formats, and recursive group structure.
+
 ## API
 
 | Function | Description |
 |---|---|
+| `eido.core/validate` | Validate scene, returns nil or error vector |
 | `eido.core/render` | Scene map to BufferedImage (opts: :scale, :transparent-background) |
 | `eido.core/render-to-file` | Scene to file (opts: :format, :quality, :scale, :dpi, :transparent-background) |
 | `eido.core/render-to-svg` | Scene to SVG string (opts: :transparent-background) |
@@ -267,7 +292,7 @@ clj -X:test
 
 ## Status
 
-v0.6.0 — Core language, REPL workflow, color system, and multi-format export complete.
-Headed toward validation, animation, and additional backends.
+v0.7.0 — Core language, workflow, color, export, and validation complete.
+Headed toward animation and additional backends.
 
 **This is an experiment and a work in progress. The API is not stable and may change without notice.**
