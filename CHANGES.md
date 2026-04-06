@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## v0.12.0 — Shapes & Styles
+
+- Add `:shape/ellipse` primitive with independent x/y radii (`:ellipse/center`, `:ellipse/rx`, `:ellipse/ry`)
+- Add `:shape/arc` primitive for partial ellipses (`:arc/start`, `:arc/extent`, `:arc/mode` — `:open`/`:chord`/`:pie`)
+- Add `:shape/line` primitive for direct line segments (`:line/from`, `:line/to`)
+- Add `:rect/corner-radius` for rounded rectangles
+- Add `:quad-to` path command for quadratic bezier curves
+- Add `:path/fill-rule` (`:even-odd`/`:non-zero`) for path contours and holes
+- Add stroke `:cap` (`:butt`/`:round`/`:square`), `:join` (`:miter`/`:round`/`:bevel`), and `:dash` pattern support
+- Add `:transform/shear-x` and `:transform/shear-y` for skew transforms
+- Add `:color/hsb` and `:color/hsba` color spaces (hue/saturation/brightness)
+- Add `:group/clip` for masking groups to a shape (rect, circle, ellipse, or path)
+- Add `:antialias` render option for deliberately aliased output
+- Add `eido.scene/polygon`, `eido.scene/triangle`, and `eido.scene/smooth-path` helpers
 - Fix SVG renderer dropping color alpha channel — `rgba()` now emitted when alpha < 1.0
 - Fix animated SVG SMIL timing so frames actually alternate instead of all appearing simultaneously
 
