@@ -112,6 +112,25 @@
         (is (some? img))
         (.delete f)))))
 
+(deftest render-to-svg-test
+  (testing "renders scene to SVG string"
+    (let [svg (eido/render-to-svg sample-scene)]
+      (is (string? svg))
+      (is (re-find #"<svg" svg))
+      (is (re-find #"<circle" svg))
+      (is (re-find #"<rect" svg))
+      (is (re-find #"</svg>" svg)))))
+
+(deftest render-to-file-svg-test
+  (testing "writes SVG file via render-to-file"
+    (let [path (str (File/createTempFile "eido-test" ".svg"))]
+      (eido/render-to-file sample-scene path)
+      (let [f (File. ^String path)
+            content (slurp f)]
+        (is (.exists f))
+        (is (re-find #"<svg" content))
+        (.delete f)))))
+
 ;; --- v0.2 integration tests ---
 
 (def composition-scene

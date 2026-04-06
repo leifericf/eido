@@ -3,7 +3,8 @@
     [clojure.edn :as edn]
     [clojure.string :as str]
     [eido.compile :as compile]
-    [eido.render :as render])
+    [eido.render :as render]
+    [eido.svg :as svg])
   (:import
     [java.awt Color Graphics2D]
     [java.awt.image BufferedImage]
@@ -71,23 +72,30 @@
       (.dispose writer)))
   path)
 
+(defn render-to-svg
+  "Renders a scene to an SVG XML string."
+  [scene]
+  (-> scene compile/compile svg/render))
+
 (defn render-to-file
   "Renders a scene and writes to file. Format detected from extension.
   Opts: :format (override), :quality (0.0-1.0, JPEG only, default 0.75)."
   ([scene path]
    (render-to-file scene path {}))
   ([scene path opts]
-   (let [format (or (:format opts) (detect-format path))
-         img    (render scene)]
-     (case format
-       "jpeg" (write-jpeg (ensure-rgb img) path
-                          (get opts :quality 0.75))
-       "bmp"  (ImageIO/write (ensure-rgb img) "bmp" (File. ^String path))
-       ("png" "gif")
-       (ImageIO/write img format (File. ^String path))
+   (let [format (or (:format opts) (detect-format path))]
+     (if (= format "svg")
+       (spit path (render-to-svg scene))
+       (let [img (render scene)]
+         (case format
+           "jpeg" (write-jpeg (ensure-rgb img) path
+                              (get opts :quality 0.75))
+           "bmp"  (ImageIO/write (ensure-rgb img) "bmp" (File. ^String path))
+           ("png" "gif")
+           (ImageIO/write img format (File. ^String path))
 
-       (throw (ex-info "Unsupported export format"
-                       {:path path :format format})))
+           (throw (ex-info "Unsupported export format"
+                           {:path path :format format})))))
      path)))
 
 (comment
