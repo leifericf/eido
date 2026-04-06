@@ -28,3 +28,38 @@
   (testing "handles fractional alpha"
     (let [c (color/->awt-color {:r 0 :g 0 :b 0 :a 0.5})]
       (is (< (Math/abs (- 128 (.getAlpha c))) 2)))))
+
+;; --- v0.5 HSL tests ---
+
+(deftest resolve-color-hsl-primaries-test
+  (testing "resolves primary colors from HSL"
+    (is (= {:r 255 :g 0 :b 0 :a 1.0}
+           (color/resolve-color [:color/hsl 0 1.0 0.5])))
+    (is (= {:r 0 :g 255 :b 0 :a 1.0}
+           (color/resolve-color [:color/hsl 120 1.0 0.5])))
+    (is (= {:r 0 :g 0 :b 255 :a 1.0}
+           (color/resolve-color [:color/hsl 240 1.0 0.5])))))
+
+(deftest resolve-color-hsl-achromatic-test
+  (testing "achromatic HSL (s=0) produces grays"
+    (is (= {:r 0 :g 0 :b 0 :a 1.0}
+           (color/resolve-color [:color/hsl 0 0 0])))
+    (is (= {:r 255 :g 255 :b 255 :a 1.0}
+           (color/resolve-color [:color/hsl 0 0 1.0])))
+    (is (= {:r 128 :g 128 :b 128 :a 1.0}
+           (color/resolve-color [:color/hsl 0 0 0.5])))))
+
+(deftest resolve-color-hsl-yellow-test
+  (testing "HSL 60 degrees produces yellow"
+    (is (= {:r 255 :g 255 :b 0 :a 1.0}
+           (color/resolve-color [:color/hsl 60 1.0 0.5])))))
+
+(deftest resolve-color-hsl-wrapping-test
+  (testing "hue 360 wraps to 0"
+    (is (= (color/resolve-color [:color/hsl 0 1.0 0.5])
+           (color/resolve-color [:color/hsl 360 1.0 0.5])))))
+
+(deftest resolve-color-hsla-test
+  (testing "HSLA includes alpha"
+    (is (= {:r 255 :g 0 :b 0 :a 0.5}
+           (color/resolve-color [:color/hsla 0 1.0 0.5 0.5])))))
