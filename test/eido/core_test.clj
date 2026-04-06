@@ -541,3 +541,71 @@
                               :image/size [100 100]
                               :image/background [:color/rgb 0 0 0]
                               :image/nodes []})))))
+
+;; --- unified render tests ---
+
+(deftest unified-render-image-test
+  (testing "scene without opts returns BufferedImage"
+    (let [img (eido/render sample-scene)]
+      (is (instance? BufferedImage img))
+      (is (= 800 (.getWidth img)))))
+  (testing "scene with :scale returns scaled BufferedImage"
+    (let [img (eido/render sample-scene {:scale 2})]
+      (is (= 1600 (.getWidth img))))))
+
+(deftest unified-render-to-file-test
+  (testing "scene with :output writes file"
+    (let [path (str (File/createTempFile "eido-uni" ".png"))]
+      (eido/render sample-scene {:output path})
+      (let [f (File. ^String path)]
+        (is (.exists f))
+        (is (pos? (.length f)))
+        (.delete f))))
+  (testing "scene with :output .svg writes SVG"
+    (let [path (str (File/createTempFile "eido-uni" ".svg"))]
+      (eido/render sample-scene {:output path})
+      (let [content (slurp path)]
+        (is (re-find #"<svg" content)))
+      (.delete (File. ^String path)))))
+
+(deftest unified-render-svg-string-test
+  (testing "scene with :format :svg returns SVG string"
+    (let [svg (eido/render sample-scene {:format :svg})]
+      (is (string? svg))
+      (is (re-find #"<svg" svg)))))
+
+(deftest unified-render-gif-test
+  (testing "frames with :output .gif writes animated GIF"
+    (let [path (str (File/createTempFile "eido-uni" ".gif"))]
+      (eido/render simple-frames {:output path :fps 10})
+      (let [f (File. ^String path)]
+        (is (.exists f))
+        (is (pos? (.length f)))
+        (.delete f)))))
+
+(deftest unified-render-animated-svg-test
+  (testing "frames with :output .svg writes animated SVG"
+    (let [path (str (File/createTempFile "eido-uni" ".svg"))]
+      (eido/render simple-frames {:output path :fps 10})
+      (let [content (slurp path)]
+        (is (re-find #"<svg" content))
+        (is (re-find #"<animate" content)))
+      (.delete (File. ^String path))))
+  (testing "frames with :format :svg returns animated SVG string"
+    (let [svg (eido/render simple-frames {:format :svg :fps 10})]
+      (is (string? svg))
+      (is (re-find #"<animate" svg)))))
+
+(deftest unified-render-frames-test
+  (testing "frames with :output dir/ writes PNG sequence"
+    (let [dir (str (File/createTempFile "eido-uni" "") ".d/")]
+      (.mkdirs (File. dir))
+      (let [paths (eido/render simple-frames {:output dir :fps 10})]
+        (is (= 3 (count paths)))
+        (doseq [p paths] (.delete (File. ^String p)))
+        (.delete (File. dir))))))
+
+(deftest unified-render-requires-fps-test
+  (testing "animation without :fps throws"
+    (is (thrown? clojure.lang.ExceptionInfo
+          (eido/render simple-frames {:output "/tmp/test.gif"})))))

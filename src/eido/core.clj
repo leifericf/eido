@@ -32,17 +32,16 @@
   [scene]
   (validate/validate scene))
 
-(defn render
-  "Renders a scene EDN map to a BufferedImage.
-  Opts: :scale, :transparent-background."
-  ([scene] (render scene {}))
+(defn- render-image
+  "Renders a single scene to a BufferedImage."
+  ([scene] (render-image scene {}))
   ([scene opts]
    (render/render (compile/compile scene) opts)))
 
 (defn render-file
   "Reads an EDN scene file and renders it to a BufferedImage."
   [path]
-  (render (read-scene path)))
+  (render-image (read-scene path)))
 
 (def ^:private format-aliases
   {"jpg" "jpeg"})
@@ -146,7 +145,7 @@
          render-opts (select-keys opts [:scale :transparent-background])]
      (if (= format "svg")
        (spit path (render-to-svg scene (select-keys opts [:scale :transparent-background])))
-       (let [img (render scene render-opts)]
+       (let [img (render-image scene render-opts)]
          (case format
            "jpeg" (write-jpeg (ensure-rgb img) path
                               (get opts :quality 0.75))
@@ -184,7 +183,7 @@
              (let [scene (nth scene-vec i)
                    fname (str prefix (pad-index i pad-width) ".png")
                    path  (str dir "/" fname)
-                   img   (render scene render-opts)]
+                   img   (render-image scene render-opts)]
                (ImageIO/write img "png" (File. ^String path))
                path))
            (range n)))))
@@ -196,7 +195,7 @@
   ([scenes path fps] (render-to-gif scenes path fps {}))
   ([scenes path fps opts]
    (let [render-opts (select-keys opts [:scale :transparent-background])
-         images      (mapv #(render % render-opts) scenes)
+         images      (mapv #(render-image % render-opts) scenes)
          delay-ms    (quot 1000 fps)
          loop?       (get opts :loop true)]
      (gif/write-animated-gif images path delay-ms loop?))))
@@ -211,6 +210,61 @@
          jobs))
   ([generate-fn n]
    (render-batch (map generate-fn (range n)))))
+
+(defn- animation?
+  "Returns true if input is a sequence of scenes (not a single scene map)."
+  [input]
+  (and (sequential? input) (not (map? input))))
+
+(defn- detect-animation-format
+  "Detects the output format for an animation from the output path."
+  [output]
+  (cond
+    (str/ends-with? output "/")    :frames
+    (str/ends-with? output ".gif") :gif
+    (str/ends-with? output ".svg") :svg
+    :else (throw (ex-info "Cannot detect animation format from path"
+                          {:output output}))))
+
+(defn render
+  "Renders a scene or animation.
+
+  Single scene:
+    (render scene)                         → BufferedImage
+    (render scene {:output \"out.png\"})   → writes file, returns path
+    (render scene {:format :svg})          → SVG string
+
+  Animation (sequence of scenes):
+    (render frames {:output \"a.gif\" :fps 30})   → animated GIF
+    (render frames {:output \"a.svg\" :fps 30})   → animated SVG file
+    (render frames {:output \"dir/\" :fps 30})    → PNG sequence
+    (render frames {:format :svg :fps 30})        → animated SVG string
+
+  Common opts: :scale, :transparent-background, :quality (JPEG), :dpi (PNG),
+               :loop (GIF, default true), :prefix (frame sequence)."
+  ([input] (render input {}))
+  ([input opts]
+   (let [output (:output opts)
+         format (:format opts)
+         render-opts (dissoc opts :output :fps :loop :format :prefix)]
+     (if (animation? input)
+       (let [fps (or (:fps opts)
+                     (throw (ex-info "Animation requires :fps" {})))]
+         (if output
+           (case (detect-animation-format output)
+             :gif    (render-to-gif input output fps
+                       (merge render-opts (select-keys opts [:loop])))
+             :svg    (render-to-animated-svg input output fps render-opts)
+             :frames (render-animation input output
+                       (merge render-opts (select-keys opts [:prefix]))))
+           (if (= :svg format)
+             (render-to-animated-svg-str input fps render-opts)
+             (mapv #(render-image % render-opts) input))))
+       (cond
+         output         (render-to-file input output
+                          (merge render-opts (when format {:format (name format)})))
+         (= :svg format) (render-to-svg input render-opts)
+         :else           (render-image input render-opts))))))
 
 (comment
   (render {:image/size [800 600]
