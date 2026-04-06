@@ -6,9 +6,9 @@ Eido is a declarative, EDN-based language for creating 2D images.
 Describe the image as data, not drawing instructions.
 
 <p align="center">
+  <img src="images/tentacles.gif" width="250" alt="Rainbow tentacles" />
   <img src="images/spiral-grid.gif" width="250" alt="Spiral rainbow grid" />
-  <img src="images/sine-field.gif" width="250" alt="Sine wave interference" />
-  <img src="images/breathing-grid.gif" width="250" alt="Breathing diagonal wave" />
+  <img src="images/dancing-bars.gif" width="250" alt="Dancing rainbow bars" />
 </p>
 
 ## Quick Start
@@ -445,6 +445,81 @@ A diagonal wave where cells expand and contract with staggered timing, hue shift
 ```
 
 <img src="images/breathing-grid.gif" width="300" alt="Breathing diagonal wave" />
+
+### Dancing Bars
+
+Vertical bars with height, position, and color driven by overlapping sine waves.
+
+```clojure
+(def frames
+  (for [i (range 50)]
+    (let [t (anim/progress i 50)]
+      {:image/size [400 400]
+       :image/background [:color/rgb 10 10 18]
+       :image/nodes
+       (vec (for [col (range 30)]
+              (let [x-norm (/ col 29.0)
+                    wave1 (Math/sin (+ (* x-norm 4 Math/PI) (* t 2 Math/PI)))
+                    wave2 (Math/sin (+ (* x-norm 6 Math/PI) (* t 2 Math/PI 1.7)))
+                    combined (/ (+ wave1 wave2) 2.0)
+                    height (+ 40 (* 140 (/ (+ combined 1.0) 2.0)))
+                    y-center (+ 200 (* 60 (Math/sin (+ (* x-norm 3 Math/PI)
+                                                        (* t 2 Math/PI 0.5)))))
+                    width (+ 4 (* 6 (/ (+ combined 1.0) 2.0)))
+                    hue (mod (+ (* x-norm 360) (* t 200)) 360)
+                    c (color/resolve-color [:color/hsl hue 0.85
+                                            (+ 0.35 (* 0.3 (/ (+ combined 1.0) 2.0)))])]
+                {:node/type :shape/rect
+                 :rect/xy [(- (* (+ 0.5 col) (/ 400.0 30)) (/ width 2))
+                            (- y-center (/ height 2))]
+                 :rect/size [width height]
+                 :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+
+(eido/render-to-gif frames "dancing-bars.gif" 24)
+```
+
+<img src="images/dancing-bars.gif" width="300" alt="Dancing rainbow bars" />
+
+### Tentacles
+
+Eight arms spiral outward from the center, wobbling and shifting color along their length.
+
+```clojure
+(def frames
+  (for [i (range 60)]
+    (let [t (anim/progress i 60)]
+      {:image/size [400 400]
+       :image/background [:color/rgb 10 10 18]
+       :image/nodes
+       (vec (for [arm (range 8)]
+              (let [base-angle (+ (* arm (/ (* 2 Math/PI) 8)) (* t Math/PI 0.3))
+                    hue (* arm 45)]
+                {:node/type :group
+                 :group/children
+                 (vec (for [seg (range 25)]
+                        (let [seg-t (/ seg 24.0)
+                              r (* seg-t 180)
+                              wobble (* 30 seg-t
+                                       (Math/sin (+ (* seg-t 8) (* t 2 Math/PI)
+                                                    (* arm 0.7))))
+                              angle (+ base-angle
+                                       (* seg-t 0.8
+                                          (Math/sin (+ (* t 2 Math/PI) arm))))
+                              x (+ 200 (* (+ r wobble) (Math/cos angle)))
+                              y (+ 200 (* (+ r wobble) (Math/sin angle)))
+                              size (max 1 (- 10 (* seg-t 8)))
+                              seg-hue (mod (+ hue (* seg-t 90) (* t 120)) 360)
+                              c (color/resolve-color [:color/hsl seg-hue 0.85 0.55])]
+                          {:node/type :shape/circle
+                           :circle/center [x y]
+                           :circle/radius size
+                           :node/opacity (- 1.0 (* seg-t 0.6))
+                           :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))})))
+
+(eido/render-to-gif frames "tentacles.gif" 24)
+```
+
+<img src="images/tentacles.gif" width="300" alt="Rainbow tentacles" />
 
 ## API
 
