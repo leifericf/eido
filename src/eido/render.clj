@@ -39,6 +39,12 @@
     (apply-fill g shape fill)
     (apply-stroke g shape stroke-color stroke-width)))
 
+(defmethod render-op :line
+  [^Graphics2D g {:keys [x1 y1 x2 y2 stroke-color stroke-width]}]
+  (let [shape (java.awt.geom.Line2D$Double. (double x1) (double y1)
+                                             (double x2) (double y2))]
+    (apply-stroke g shape stroke-color stroke-width)))
+
 (defmethod render-op :ellipse
   [^Graphics2D g {:keys [cx cy rx ry fill stroke-color stroke-width]}]
   (let [shape (Ellipse2D$Double. (double (- cx rx)) (double (- cy ry))

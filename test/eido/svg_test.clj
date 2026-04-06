@@ -48,6 +48,19 @@
       (is (re-find #"<circle cx=\"50\" cy=\"60\" r=\"25\"" out))
       (is (re-find #"fill=\"rgb\(0,255,0\)\"" out)))))
 
+(deftest svg-line-test
+  (testing "renders line op"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :line :x1 10 :y1 20 :x2 90 :y2 80
+                         :fill nil
+                         :stroke-color {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-width 2
+                         :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"<line x1=\"10\" y1=\"20\" x2=\"90\" y2=\"80\"" out))
+      (is (re-find #"stroke=\"rgb\(255,0,0\)\"" out)))))
+
 (deftest svg-ellipse-test
   (testing "renders ellipse op"
     (let [ir {:ir/size [100 100]

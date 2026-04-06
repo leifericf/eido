@@ -72,6 +72,12 @@
        "\" r=\"" r
        "\" " (style-attrs op) "/>"))
 
+(defmethod op->svg :line
+  [{:keys [x1 y1 x2 y2] :as op}]
+  (str "<line x1=\"" x1 "\" y1=\"" y1
+       "\" x2=\"" x2 "\" y2=\"" y2
+       "\" " (style-attrs op) "/>"))
+
 (defmethod op->svg :ellipse
   [{:keys [cx cy rx ry] :as op}]
   (str "<ellipse cx=\"" cx "\" cy=\"" cy

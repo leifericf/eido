@@ -136,6 +136,21 @@
       (is (= [255 255 255] (pixel-rgb img 5 5))
           "corner should be background"))))
 
+;; --- line rendering tests ---
+
+(deftest render-line-test
+  (testing "renders a stroked line"
+    (let [ir {:ir/size [200 200]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :line :x1 0 :y1 100 :x2 200 :y2 100
+                         :fill nil
+                         :stroke-color {:r 0 :g 0 :b 0 :a 1.0}
+                         :stroke-width 4
+                         :opacity 1.0 :transforms []}]}
+          img (render/render ir)]
+      (is (= [0 0 0] (pixel-rgb img 100 100))
+          "pixel on the line should be stroke color"))))
+
 ;; --- v0.2 transform rendering tests ---
 
 (deftest render-translate-test

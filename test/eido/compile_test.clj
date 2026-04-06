@@ -409,6 +409,25 @@
       (is (= 40 (:ry op)))
       (is (= {:r 0 :g 255 :b 0 :a 1.0} (:fill op))))))
 
+;; --- line tests ---
+
+(deftest compile-line-test
+  (testing "compiles a line node into IR op"
+    (let [scene {:image/size [200 200]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :shape/line
+                   :line/from [10 20]
+                   :line/to [190 180]
+                   :style/stroke {:color [:color/rgb 255 0 0] :width 2}}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= :line (:op op)))
+      (is (= 10 (:x1 op)))
+      (is (= 20 (:y1 op)))
+      (is (= 190 (:x2 op)))
+      (is (= 180 (:y2 op)))
+      (is (= {:r 255 :g 0 :b 0 :a 1.0} (:stroke-color op))))))
+
 ;; --- flat fill color vector tests ---
 
 (deftest compile-flat-fill-test

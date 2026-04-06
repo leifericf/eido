@@ -224,6 +224,17 @@
                 :ellipse/rx -5
                 :ellipse/ry 40})))))
 
+(deftest node-line-test
+  (testing "accepts valid line"
+    (is (s/valid? :eido.spec/node
+          {:node/type :shape/line
+           :line/from [10 20]
+           :line/to [100 200]})))
+  (testing "rejects line missing :line/to"
+    (is (not (s/valid? :eido.spec/node
+               {:node/type :shape/line
+                :line/from [10 20]})))))
+
 (deftest node-unknown-type-test
   (testing "rejects unknown node type"
     (is (not (s/valid? :eido.spec/node
