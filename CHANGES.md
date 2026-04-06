@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v1.0.0-alpha1
+
+- Add installation instructions to README (git dependency via deps.edn)
+
 ## v0.12.0 — Shapes & Styles
 
 - Add `:shape/ellipse` primitive with independent x/y radii (`:ellipse/center`, `:ellipse/rx`, `:ellipse/ry`)

@@ -31,9 +31,19 @@ The approach is inspired by Christian Johansen's [Replicant](https://github.com/
 
 If it cannot be represented as plain data, it probably should not be in the library.
 
+## Installation
+
+Add eido as a git dependency in your `deps.edn`:
+
+```clojure
+io.github.leifericf/eido {:git/tag "v1.0.0-alpha1" :git/sha "<SHA>"}
+```
+
 ## Quick Start
 
 Requires Clojure 1.12+ and Java 11+.
+
+Clone the repo to try the examples:
 
 ```sh
 git clone git@github.com:leifericf/eido.git
