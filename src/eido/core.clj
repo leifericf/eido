@@ -3,6 +3,7 @@
     [clojure.edn :as edn]
     [clojure.string :as str]
     [eido.compile :as compile]
+    [eido.gif :as gif]
     [eido.render :as render]
     [eido.svg :as svg]
     [eido.validate :as validate])
@@ -168,6 +169,18 @@
                (ImageIO/write img "png" (File. ^String path))
                path))
            (range n)))))
+
+(defn render-to-gif
+  "Renders a sequence of scenes to an animated GIF.
+  fps: frames per second.
+  Opts: :scale, :transparent-background, :loop (default true)."
+  ([scenes path fps] (render-to-gif scenes path fps {}))
+  ([scenes path fps opts]
+   (let [render-opts (select-keys opts [:scale :transparent-background])
+         images      (mapv #(render % render-opts) scenes)
+         delay-ms    (quot 1000 fps)
+         loop?       (get opts :loop true)]
+     (gif/write-animated-gif images path delay-ms loop?))))
 
 (defn render-batch
   "Renders a sequence of export jobs to files. Each job is a map with

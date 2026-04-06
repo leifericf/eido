@@ -445,3 +445,29 @@
         (is (= 100 (.getHeight img)))
         (doseq [p paths] (.delete (File. ^String p)))
         (.delete (File. dir))))))
+
+;; --- render-to-gif ---
+
+(deftest render-to-gif-test
+  (testing "writes a valid animated GIF"
+    (let [path (str (File/createTempFile "eido-gif" ".gif"))]
+      (eido/render-to-gif simple-frames path 30)
+      (is (.exists (File. path)))
+      (is (pos? (.length (File. path))))
+      (.delete (File. path))))
+
+  (testing "GIF is readable with correct dimensions"
+    (let [path (str (File/createTempFile "eido-gif" ".gif"))]
+      (eido/render-to-gif simple-frames path 10)
+      (let [img (ImageIO/read (File. path))]
+        (is (= 100 (.getWidth img)))
+        (is (= 100 (.getHeight img))))
+      (.delete (File. path))))
+
+  (testing "supports render opts"
+    (let [path (str (File/createTempFile "eido-gif" ".gif"))]
+      (eido/render-to-gif simple-frames path 30 {:scale 2})
+      (let [img (ImageIO/read (File. path))]
+        (is (= 200 (.getWidth img)))
+        (is (= 200 (.getHeight img))))
+      (.delete (File. path)))))
