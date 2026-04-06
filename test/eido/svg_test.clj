@@ -125,6 +125,19 @@
           out (svg/render ir)]
       (is (re-find #"C 10 20 30 40 50 60" out)))))
 
+(deftest svg-path-fill-rule-test
+  (testing "renders fill-rule attribute"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :path
+                         :commands [[:move-to 0 0] [:close]]
+                         :fill-rule :even-odd
+                         :fill {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"fill-rule=\"evenodd\"" out)))))
+
 (deftest svg-path-quad-to-test
   (testing "renders quad-to as Q command"
     (let [ir {:ir/size [100 100]

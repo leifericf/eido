@@ -127,9 +127,13 @@
        "\" " (style-attrs op) "/>"))
 
 (defmethod op->svg :path
-  [{:keys [commands] :as op}]
-  (str "<path d=\"" (commands->d commands)
-       "\" " (style-attrs op) "/>"))
+  [{:keys [commands fill-rule] :as op}]
+  (str "<path d=\"" (commands->d commands) "\""
+       (when fill-rule
+         (str " fill-rule=\"" (case fill-rule
+                                :even-odd "evenodd"
+                                :non-zero "nonzero") "\""))
+       " " (style-attrs op) "/>"))
 
 (defn render
   "Renders IR to an SVG XML string."

@@ -238,7 +238,17 @@
           {:node/type :shape/path
            :path/commands [[:move-to [0 0]]
                            [:line-to [100 100]]
-                           [:close]]}))))
+                           [:close]]})))
+  (testing "accepts path with fill-rule"
+    (is (s/valid? :eido.spec/node
+          {:node/type :shape/path
+           :path/commands [[:move-to [0 0]] [:close]]
+           :path/fill-rule :even-odd})))
+  (testing "rejects invalid fill-rule"
+    (is (not (s/valid? :eido.spec/node
+               {:node/type :shape/path
+                :path/commands [[:move-to [0 0]] [:close]]
+                :path/fill-rule :invalid})))))
 
 (deftest node-group-test
   (testing "accepts group with children"

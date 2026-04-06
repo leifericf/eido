@@ -103,6 +103,7 @@
         :close :cmd/close))
 
 (s/def :path/commands (s/coll-of ::path-command :kind vector?))
+(s/def :path/fill-rule #{:even-odd :non-zero})
 
 ;; --- styles ---
 
@@ -161,7 +162,7 @@
 
 (defmethod node-type :shape/path [_]
   (s/keys :req [:node/type :path/commands]
-          :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+          :opt [:path/fill-rule :style/fill :style/stroke :node/opacity :node/transform]))
 
 (defmethod node-type :group [_]
   (s/keys :req [:node/type :group/children]

@@ -375,6 +375,25 @@
       (is (= 3 (:stroke-width op)))
       (is (= 0.7 (:opacity op))))))
 
+(deftest compile-path-fill-rule-test
+  (testing "compiles fill-rule"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [0 0]] [:close]]
+                   :path/fill-rule :even-odd}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= :even-odd (:fill-rule op)))))
+  (testing "nil fill-rule when not specified"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [0 0]] [:close]]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (nil? (:fill-rule op))))))
+
 (deftest compile-path-quad-to-test
   (testing "compiles quad-to with flattened control point"
     (let [scene {:image/size [200 200]

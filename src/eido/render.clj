@@ -107,8 +107,10 @@
     p))
 
 (defmethod render-op :path
-  [^Graphics2D g {:keys [commands fill] :as op}]
+  [^Graphics2D g {:keys [commands fill fill-rule] :as op}]
   (let [shape (build-path commands)]
+    (when (= :even-odd fill-rule)
+      (.setWindingRule shape GeneralPath/WIND_EVEN_ODD))
     (apply-fill g shape fill)
     (apply-stroke g shape op)))
 

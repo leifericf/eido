@@ -84,8 +84,9 @@
 
 (defmethod compile-node :shape/path
   [node]
-  (merge {:op       :path
-          :commands (mapv compile-command (:path/commands node))}
+  (merge {:op        :path
+          :commands  (mapv compile-command (:path/commands node))
+          :fill-rule (:path/fill-rule node)}
          (compile-style node)))
 
 (def ^:private default-ctx
