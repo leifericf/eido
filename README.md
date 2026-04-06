@@ -78,7 +78,7 @@ Or preview interactively in a window:
 
 ## Shapes
 
-Three primitives are available: rectangles, circles, and paths.
+Primitives: rectangles, circles, ellipses, arcs, lines, and paths.
 
 ```clojure
 ;; Rectangle
@@ -87,17 +87,46 @@ Three primitives are available: rectangles, circles, and paths.
  :rect/size [200 100]
  :style/fill [:color/rgb 0 128 255]}
 
+;; Rounded rectangle
+{:node/type :shape/rect
+ :rect/xy [50 50]
+ :rect/size [200 100]
+ :rect/corner-radius 16
+ :style/fill [:color/rgb 0 128 255]}
+
 ;; Circle
 {:node/type :shape/circle
  :circle/center [200 200]
  :circle/radius 80
  :style/stroke {:color [:color/rgb 0 0 0] :width 2}}
 
+;; Ellipse
+{:node/type :shape/ellipse
+ :ellipse/center [200 200]
+ :ellipse/rx 120
+ :ellipse/ry 60
+ :style/fill [:color/rgb 200 50 50]}
+
+;; Arc (partial ellipse)
+{:node/type :shape/arc
+ :arc/center [200 200]
+ :arc/rx 80 :arc/ry 80
+ :arc/start 0 :arc/extent 270
+ :arc/mode :pie                 ;; :open, :chord, or :pie
+ :style/fill [:color/rgb 255 200 50]}
+
+;; Line
+{:node/type :shape/line
+ :line/from [50 50]
+ :line/to [350 250]
+ :style/stroke {:color [:color/rgb 0 0 0] :width 2}}
+
 ;; Path (arbitrary shapes via move/line/curve/close)
 {:node/type :shape/path
  :path/commands [[:move-to [100 200]]
                  [:line-to [200 50]]
-                 [:line-to [300 200]]
+                 [:curve-to [250 0] [300 100] [300 200]]  ;; cubic bezier
+                 [:quad-to [250 250] [200 200]]            ;; quadratic bezier
                  [:close]]
  :style/fill [:color/rgb 255 200 50]}
 ```
@@ -130,6 +159,69 @@ Styles inherit from parent to child. Opacity multiplies through the tree.
 
 <img src="images/composition.png" width="200" alt="Red circle with blue rectangle, opacity blending" />
 
+## Stroke Styling
+
+Strokes support line cap, line join, and dash patterns:
+
+```clojure
+;; Rounded line caps and bevel joins
+{:style/stroke {:color [:color/rgb 0 0 0] :width 4
+                :cap :round          ;; :butt, :round, or :square
+                :join :bevel}}       ;; :miter, :round, or :bevel
+
+;; Dashed stroke
+{:style/stroke {:color [:color/rgb 0 0 0] :width 2
+                :dash [10 5]}}       ;; [dash-length gap-length ...]
+```
+
+<img src="images/stroke-styles.png" width="400" alt="Stroke cap, join, and dash styles" />
+
+## Clipping
+
+Groups can be clipped to a shape, restricting children to a region:
+
+```clojure
+{:node/type :group
+ :group/clip {:node/type :shape/circle
+              :circle/center [200 200]
+              :circle/radius 80}
+ :group/children
+ [{:node/type :shape/rect
+   :rect/xy [120 120]
+   :rect/size [160 160]
+   :style/fill [:color/rgb 255 0 0]}]}
+;; Only the parts of the rectangle inside the circle are visible.
+```
+
+<img src="images/clipping.png" width="200" alt="Colorful grid clipped to a circle" />
+
+## Path Contours
+
+Paths support a fill rule for creating holes. Use `:path/fill-rule :even-odd` with multiple closed sub-paths:
+
+```clojure
+;; Donut: outer circle with inner hole
+{:node/type :shape/path
+ :path/fill-rule :even-odd
+ :path/commands [;; Outer circle (approximated with curves)
+                 [:move-to [200 120]]
+                 [:curve-to [244 120] [280 156] [280 200]]
+                 [:curve-to [280 244] [244 280] [200 280]]
+                 [:curve-to [156 280] [120 244] [120 200]]
+                 [:curve-to [120 156] [156 120] [200 120]]
+                 [:close]
+                 ;; Inner hole
+                 [:move-to [200 160]]
+                 [:curve-to [222 160] [240 178] [240 200]]
+                 [:curve-to [240 222] [222 240] [200 240]]
+                 [:curve-to [178 240] [160 222] [160 200]]
+                 [:curve-to [160 178] [178 160] [200 160]]
+                 [:close]]
+ :style/fill [:color/rgb 200 50 50]}
+```
+
+<img src="images/contours.png" width="200" alt="Donut shape with even-odd fill rule" />
+
 ## Colors
 
 Multiple color formats are supported:
@@ -139,6 +231,8 @@ Multiple color formats are supported:
 [:color/rgba 255 0 0 0.5]       ;; RGB with alpha (0-1)
 [:color/hsl 0 1.0 0.5]          ;; HSL: hue (0-360), saturation (0-1), lightness (0-1)
 [:color/hsla 120 0.8 0.5 0.7]   ;; HSL with alpha
+[:color/hsb 0 1.0 1.0]          ;; HSB/HSV: hue (0-360), saturation (0-1), brightness (0-1)
+[:color/hsba 120 0.8 0.5 0.7]   ;; HSB with alpha
 [:color/hex "#FF0000"]           ;; Hex (6-digit, 8-digit, 3-digit, 4-digit)
 ```
 
@@ -203,6 +297,30 @@ The `eido.scene` namespace provides helpers for common patterns:
 ```
 
 <img src="images/radial-pattern.png" width="200" alt="Rotated squares around a circle" />
+
+```clojure
+;; Polygon from points
+(scene/polygon [[100 200] [200 50] [300 200]])
+;; => {:node/type :shape/path, :path/commands [[:move-to ...] ...]}
+
+;; Convenience triangle
+(scene/triangle [100 200] [200 50] [300 200])
+
+;; Smooth curve through points (Catmull-Rom → cubic bezier)
+(scene/smooth-path [[50 200] [150 50] [250 200] [350 50]])
+```
+
+## Transforms
+
+All nodes support translate, rotate, scale, and shear transforms:
+
+```clojure
+{:node/transform [[:transform/translate 100 50]
+                  [:transform/rotate 0.785]       ;; radians
+                  [:transform/scale 1.5 1.5]
+                  [:transform/shear-x 0.3]        ;; skew along x
+                  [:transform/shear-y 0.2]]}      ;; skew along y
+```
 
 ## File Workflow
 
@@ -751,6 +869,9 @@ A Koch snowflake that gains detail with each frame, the boundary growing ever mo
 | `eido.scene/grid` | Generate nodes in a grid |
 | `eido.scene/distribute` | Distribute nodes along a line |
 | `eido.scene/radial` | Distribute nodes around a circle |
+| `eido.scene/polygon` | Create closed path from points |
+| `eido.scene/triangle` | Create triangle path from 3 points |
+| `eido.scene/smooth-path` | Smooth curve through points (Catmull-Rom) |
 | `user/show` | Preview scene in a window (dev) |
 | `user/watch-file` | Auto-reload file on save (dev) |
 | `user/watch-scene` | Auto-reload atom on change (dev) |
@@ -775,7 +896,8 @@ clj -X:test
 
 ## Status
 
-v0.11.0 — Core language complete. Added `anim/frames` for streamlined animation authoring.
+v0.12.0 — Expanded shape primitives (ellipse, arc, line), stroke styling (cap, join, dash),
+rounded rectangles, shear transforms, HSB colors, path contours, clipping, and scene helpers.
 Headed toward v1.0 alpha.
 
 **This is an experiment and a work in progress. The API is not stable and may change without notice.**
