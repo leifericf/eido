@@ -72,6 +72,12 @@
        "\" r=\"" r
        "\" " (style-attrs op) "/>"))
 
+(defmethod op->svg :ellipse
+  [{:keys [cx cy rx ry] :as op}]
+  (str "<ellipse cx=\"" cx "\" cy=\"" cy
+       "\" rx=\"" rx "\" ry=\"" ry
+       "\" " (style-attrs op) "/>"))
+
 (defmethod op->svg :path
   [{:keys [commands] :as op}]
   (str "<path d=\"" (commands->d commands)

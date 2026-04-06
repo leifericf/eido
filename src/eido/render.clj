@@ -39,6 +39,13 @@
     (apply-fill g shape fill)
     (apply-stroke g shape stroke-color stroke-width)))
 
+(defmethod render-op :ellipse
+  [^Graphics2D g {:keys [cx cy rx ry fill stroke-color stroke-width]}]
+  (let [shape (Ellipse2D$Double. (double (- cx rx)) (double (- cy ry))
+                                 (double (* 2.0 rx)) (double (* 2.0 ry)))]
+    (apply-fill g shape fill)
+    (apply-stroke g shape stroke-color stroke-width)))
+
 (defn- build-path
   "Builds a GeneralPath from a sequence of IR path commands."
   ^GeneralPath [commands]

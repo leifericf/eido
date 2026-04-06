@@ -120,6 +120,22 @@
                        (.getRGB img2 x y))))
           "all pixels must be identical across renders"))))
 
+;; --- ellipse rendering tests ---
+
+(deftest render-ellipse-fill-test
+  (testing "renders filled ellipse at correct position"
+    (let [ir {:ir/size [200 200]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :ellipse :cx 100 :cy 100 :rx 80 :ry 30
+                         :fill {:r 0 :g 0 :b 255 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0 :transforms []}]}
+          img (render/render ir)]
+      (is (= [0 0 255] (pixel-rgb img 100 100))
+          "center of ellipse should be blue")
+      (is (= [255 255 255] (pixel-rgb img 5 5))
+          "corner should be background"))))
+
 ;; --- v0.2 transform rendering tests ---
 
 (deftest render-translate-test

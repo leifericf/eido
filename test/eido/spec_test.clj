@@ -205,6 +205,25 @@
                 :group/children
                 [{:node/type :shape/rect}]})))))
 
+(deftest node-ellipse-test
+  (testing "accepts valid ellipse"
+    (is (s/valid? :eido.spec/node
+          {:node/type :shape/ellipse
+           :ellipse/center [100 200]
+           :ellipse/rx 80
+           :ellipse/ry 40})))
+  (testing "rejects ellipse missing :ellipse/rx"
+    (is (not (s/valid? :eido.spec/node
+               {:node/type :shape/ellipse
+                :ellipse/center [100 200]
+                :ellipse/ry 40}))))
+  (testing "rejects negative radii"
+    (is (not (s/valid? :eido.spec/node
+               {:node/type :shape/ellipse
+                :ellipse/center [100 200]
+                :ellipse/rx -5
+                :ellipse/ry 40})))))
+
 (deftest node-unknown-type-test
   (testing "rejects unknown node type"
     (is (not (s/valid? :eido.spec/node

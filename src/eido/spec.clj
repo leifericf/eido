@@ -97,6 +97,9 @@
 (s/def :rect/size ::pos-size)
 (s/def :circle/center ::point)
 (s/def :circle/radius ::pos-number)
+(s/def :ellipse/center ::point)
+(s/def :ellipse/rx ::pos-number)
+(s/def :ellipse/ry ::pos-number)
 (s/def :group/children (s/coll-of ::node :kind vector?))
 
 (defmulti node-type :node/type)
@@ -107,6 +110,10 @@
 
 (defmethod node-type :shape/circle [_]
   (s/keys :req [:node/type :circle/center :circle/radius]
+          :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+
+(defmethod node-type :shape/ellipse [_]
+  (s/keys :req [:node/type :ellipse/center :ellipse/rx :ellipse/ry]
           :opt [:style/fill :style/stroke :node/opacity :node/transform]))
 
 (defmethod node-type :shape/path [_]
@@ -120,7 +127,7 @@
 (defmethod node-type :default [_]
   (s/with-gen
     (s/and (s/keys :req [:node/type])
-           #(contains? #{:shape/rect :shape/circle :shape/path :group}
+           #(contains? #{:shape/rect :shape/circle :shape/ellipse :shape/path :group}
                        (:node/type %)))
     #(s/gen #{:shape/rect})))
 

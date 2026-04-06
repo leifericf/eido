@@ -38,6 +38,13 @@
     (merge {:op :circle :cx cx :cy cy :r (:circle/radius node)}
            (compile-style node))))
 
+(defmethod compile-node :shape/ellipse
+  [node]
+  (let [[cx cy] (:ellipse/center node)]
+    (merge {:op :ellipse :cx cx :cy cy
+            :rx (:ellipse/rx node) :ry (:ellipse/ry node)}
+           (compile-style node))))
+
 (defn- compile-command
   "Flattens a scene path command into an IR command.
   Scene: [:move-to [x y]] -> IR: [:move-to x y]"

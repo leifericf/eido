@@ -388,6 +388,29 @@
 
 ;; --- flat fill color vector tests ---
 
+;; --- ellipse tests ---
+
+(deftest compile-ellipse-test
+  (testing "compiles an ellipse node into IR op"
+    (let [scene {:image/size [400 400]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/ellipse
+                   :ellipse/center [200 200]
+                   :ellipse/rx 80
+                   :ellipse/ry 40
+                   :style/fill {:color [:color/rgb 0 255 0]}}]}
+          ir (compile/compile scene)
+          op (first (:ir/ops ir))]
+      (is (= :ellipse (:op op)))
+      (is (= 200 (:cx op)))
+      (is (= 200 (:cy op)))
+      (is (= 80 (:rx op)))
+      (is (= 40 (:ry op)))
+      (is (= {:r 0 :g 255 :b 0 :a 1.0} (:fill op))))))
+
+;; --- flat fill color vector tests ---
+
 (deftest compile-flat-fill-test
   (testing "bare color vector as :style/fill"
     (let [scene {:image/size [100 100]

@@ -48,6 +48,18 @@
       (is (re-find #"<circle cx=\"50\" cy=\"60\" r=\"25\"" out))
       (is (re-find #"fill=\"rgb\(0,255,0\)\"" out)))))
 
+(deftest svg-ellipse-test
+  (testing "renders ellipse op"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :ellipse :cx 50 :cy 60 :rx 40 :ry 20
+                         :fill {:r 0 :g 255 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"<ellipse cx=\"50\" cy=\"60\" rx=\"40\" ry=\"20\"" out))
+      (is (re-find #"fill=\"rgb\(0,255,0\)\"" out)))))
+
 (deftest svg-path-test
   (testing "renders path op with d attribute"
     (let [ir {:ir/size [100 100]
