@@ -86,11 +86,11 @@
 
 (defn render-to-svg
   "Renders a scene to an SVG XML string.
-  Opts: :transparent-background."
+  Opts: :scale, :transparent-background."
   ([scene] (render-to-svg scene {}))
   ([scene opts]
    (svg/render (compile/compile scene)
-               (select-keys opts [:transparent-background]))))
+               (select-keys opts [:scale :transparent-background]))))
 
 (defn- write-png-with-dpi
   "Writes PNG with DPI metadata."
@@ -126,7 +126,7 @@
    (let [format      (or (:format opts) (detect-format path))
          render-opts (select-keys opts [:scale :transparent-background])]
      (if (= format "svg")
-       (spit path (render-to-svg scene (select-keys opts [:transparent-background])))
+       (spit path (render-to-svg scene (select-keys opts [:scale :transparent-background])))
        (let [img (render scene render-opts)]
          (case format
            "jpeg" (write-jpeg (ensure-rgb img) path

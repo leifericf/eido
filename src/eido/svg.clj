@@ -79,11 +79,14 @@
   "Renders IR to an SVG XML string."
   ([ir] (render ir {}))
   ([ir opts]
-   (let [[w h] (:ir/size ir)
-         bg    (:ir/background ir)
-         lines (cond-> [(str "<svg xmlns=\"http://www.w3.org/2000/svg\""
-                             " width=\"" w "\" height=\"" h "\""
-                             " viewBox=\"0 0 " w " " h "\">")]
+   (let [[w h]  (:ir/size ir)
+         scale  (get opts :scale 1)
+         sw     (int (* w scale))
+         sh     (int (* h scale))
+         bg     (:ir/background ir)
+         lines  (cond-> [(str "<svg xmlns=\"http://www.w3.org/2000/svg\""
+                              " width=\"" sw "\" height=\"" sh "\""
+                              " viewBox=\"0 0 " w " " h "\">")]
                   (and bg (not (:transparent-background opts)))
                   (conj (str "  <rect x=\"0\" y=\"0\" width=\"" w
                              "\" height=\"" h "\" fill=\"" (color->css bg) "\"/>"))

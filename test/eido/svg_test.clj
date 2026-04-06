@@ -164,3 +164,27 @@
       (is (re-find #"<svg" out))
       (is (re-find #"<rect x=\"0\" y=\"0\"" out))
       (is (re-find #"</svg>" out)))))
+
+(deftest svg-scale-test
+  (testing "scale multiplies width and height but keeps viewBox"
+    (let [ir {:ir/size [200 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops []}
+          out (svg/render ir {:scale 2})]
+      (is (re-find #"width=\"400\"" out))
+      (is (re-find #"height=\"200\"" out))
+      (is (re-find #"viewBox=\"0 0 200 100\"" out))))
+
+  (testing "scale 1 is same as no scale"
+    (let [ir {:ir/size [200 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops []}]
+      (is (= (svg/render ir) (svg/render ir {:scale 1})))))
+
+  (testing "fractional scale"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops []}
+          out (svg/render ir {:scale 1.5})]
+      (is (re-find #"width=\"150\"" out))
+      (is (re-find #"height=\"150\"" out)))))
