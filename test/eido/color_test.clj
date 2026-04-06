@@ -110,3 +110,25 @@
   (testing "invalid hex throws ex-info"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid hex"
           (color/resolve-color [:color/hex "#12345"])))))
+
+;; --- v0.5 round-trip tests ---
+
+(defn- approx-color=
+  "Checks that two color maps are equal within tolerance per channel."
+  [c1 c2 tolerance]
+  (and (< (Math/abs (- (double (:r c1)) (double (:r c2)))) tolerance)
+       (< (Math/abs (- (double (:g c1)) (double (:g c2)))) tolerance)
+       (< (Math/abs (- (double (:b c1)) (double (:b c2)))) tolerance)))
+
+(deftest rgb-hsl-roundtrip-test
+  (testing "RGB -> HSL -> RGB round-trip preserves values within +/- 1"
+    (doseq [[label color] [["red"    {:r 255 :g 0   :b 0   :a 1.0}]
+                            ["green"  {:r 0   :g 255 :b 0   :a 1.0}]
+                            ["blue"   {:r 0   :g 0   :b 255 :a 1.0}]
+                            ["white"  {:r 255 :g 255 :b 255 :a 1.0}]
+                            ["black"  {:r 0   :g 0   :b 0   :a 1.0}]
+                            ["mid"    {:r 100 :g 150 :b 200 :a 1.0}]]]
+      (let [[h s l] (color/rgb->hsl (:r color) (:g color) (:b color))
+            roundtripped (color/resolve-color [:color/hsl h s l])]
+        (is (approx-color= color roundtripped 1.5)
+            (str label " round-trip failed: " color " -> " [h s l] " -> " roundtripped))))))

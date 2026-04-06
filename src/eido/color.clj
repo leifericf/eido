@@ -27,6 +27,26 @@
          (Math/round (* (hue->rgb p q h') 255.0))
          (Math/round (* (hue->rgb p q (- h' (/ 1.0 3))) 255.0))]))))
 
+(defn rgb->hsl
+  "Converts RGB (0-255 each) to [h s l] where h: 0-360, s: 0-1, l: 0-1."
+  [r g b]
+  (let [r' (/ (double r) 255.0)
+        g' (/ (double g) 255.0)
+        b' (/ (double b) 255.0)
+        cmax (max r' g' b')
+        cmin (min r' g' b')
+        delta (- cmax cmin)
+        l (/ (+ cmax cmin) 2.0)]
+    (if (zero? delta)
+      [0 0.0 l]
+      (let [s (/ delta (- 1.0 (Math/abs (- (* 2.0 l) 1.0))))
+            h (cond
+                (== cmax r') (* 60.0 (mod (/ (- g' b') delta) 6))
+                (== cmax g') (* 60.0 (+ (/ (- b' r') delta) 2.0))
+                :else        (* 60.0 (+ (/ (- r' g') delta) 4.0)))
+            h (mod h 360)]
+        [h s l]))))
+
 (defn- parse-hex
   "Parses a hex color string to {:r :g :b :a}."
   [hex-str]
