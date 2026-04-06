@@ -94,6 +94,34 @@
        :scene (remove-watch (:atom w) (:key w)))
      (swap! watches dissoc watch-key))))
 
+;; --- tap> ---
+
+(defonce ^:private tap-fn (atom nil))
+
+(defn install-tap!
+  "Registers a tap listener that renders tapped scene maps.
+  A value is treated as a scene if it has :image/size and :image/nodes."
+  []
+  (when-let [old @tap-fn]
+    (remove-tap old))
+  (let [f (fn [v]
+            (when (and (map? v) (:image/size v) (:image/nodes v))
+              (try
+                (show v)
+                (catch Exception e
+                  (println (str "tap: " (.getMessage e)))))))]
+    (reset! tap-fn f)
+    (add-tap f)
+    :installed))
+
+(defn remove-tap!
+  "Removes the Eido tap listener."
+  []
+  (when-let [f @tap-fn]
+    (remove-tap f)
+    (reset! tap-fn nil)
+    :removed))
+
 (comment
   (show {:image/size [800 600]
          :image/background [:color/rgb 255 255 255]
@@ -123,4 +151,15 @@
       :circle/radius 80
       :style/fill {:color [:color/rgb 0 128 255]}}])
   (unwatch)
+
+  ;; tap> integration
+  (install-tap!)
+  (tap> {:image/size [200 200]
+         :image/background [:color/rgb 0 0 0]
+         :image/nodes
+         [{:node/type :shape/circle
+           :circle/center [100 100]
+           :circle/radius 60
+           :style/fill {:color [:color/rgb 255 200 50]}}]})
+  (remove-tap!)
   )
