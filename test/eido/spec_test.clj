@@ -156,7 +156,19 @@
   (testing "accepts stroke with color and width"
     (is (s/valid? :style/stroke {:color [:color/rgb 0 0 0] :width 2})))
   (testing "rejects stroke without width"
-    (is (not (s/valid? :style/stroke {:color [:color/rgb 0 0 0]})))))
+    (is (not (s/valid? :style/stroke {:color [:color/rgb 0 0 0]}))))
+  (testing "accepts stroke with cap and join"
+    (is (s/valid? :style/stroke {:color [:color/rgb 0 0 0] :width 2
+                                  :cap :round :join :bevel})))
+  (testing "rejects invalid cap"
+    (is (not (s/valid? :style/stroke {:color [:color/rgb 0 0 0] :width 2
+                                       :cap :invalid}))))
+  (testing "accepts stroke with dash pattern"
+    (is (s/valid? :style/stroke {:color [:color/rgb 0 0 0] :width 2
+                                  :dash [5 3]})))
+  (testing "rejects empty dash vector"
+    (is (not (s/valid? :style/stroke {:color [:color/rgb 0 0 0] :width 2
+                                       :dash []})))))
 
 (deftest opacity-test
   (testing "accepts valid opacity"

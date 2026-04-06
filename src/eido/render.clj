@@ -18,39 +18,57 @@
     (.setColor g (->awt-color fill))
     (.fill g shape)))
 
-(defn- apply-stroke [^Graphics2D g shape stroke-color stroke-width]
+(def ^:private cap-map
+  {:butt   BasicStroke/CAP_BUTT
+   :round  BasicStroke/CAP_ROUND
+   :square BasicStroke/CAP_SQUARE})
+
+(def ^:private join-map
+  {:miter BasicStroke/JOIN_MITER
+   :round BasicStroke/JOIN_ROUND
+   :bevel BasicStroke/JOIN_BEVEL})
+
+(defn- apply-stroke [^Graphics2D g shape {:keys [stroke-color stroke-width
+                                                  stroke-cap stroke-join
+                                                  stroke-dash]}]
   (when stroke-color
     (.setColor g (->awt-color stroke-color))
-    (.setStroke g (BasicStroke. (float (or stroke-width 1))))
+    (let [w     (float (or stroke-width 1))
+          cap   (get cap-map stroke-cap BasicStroke/CAP_SQUARE)
+          join  (get join-map stroke-join BasicStroke/JOIN_MITER)
+          dash  (when stroke-dash (float-array stroke-dash))]
+      (.setStroke g (if dash
+                      (BasicStroke. w cap join (float 10.0) dash (float 0.0))
+                      (BasicStroke. w cap join))))
     (.draw g shape)))
 
 (defmethod render-op :rect
-  [^Graphics2D g {:keys [x y w h fill stroke-color stroke-width]}]
+  [^Graphics2D g {:keys [x y w h fill] :as op}]
   (let [shape (Rectangle2D$Double. (double x) (double y)
                                    (double w) (double h))]
     (apply-fill g shape fill)
-    (apply-stroke g shape stroke-color stroke-width)))
+    (apply-stroke g shape op)))
 
 (defmethod render-op :circle
-  [^Graphics2D g {:keys [cx cy r fill stroke-color stroke-width]}]
+  [^Graphics2D g {:keys [cx cy r fill] :as op}]
   (let [d (* 2.0 r)
         shape (Ellipse2D$Double. (double (- cx r)) (double (- cy r))
                                 d d)]
     (apply-fill g shape fill)
-    (apply-stroke g shape stroke-color stroke-width)))
+    (apply-stroke g shape op)))
 
 (defmethod render-op :line
-  [^Graphics2D g {:keys [x1 y1 x2 y2 stroke-color stroke-width]}]
+  [^Graphics2D g {:keys [x1 y1 x2 y2] :as op}]
   (let [shape (java.awt.geom.Line2D$Double. (double x1) (double y1)
                                              (double x2) (double y2))]
-    (apply-stroke g shape stroke-color stroke-width)))
+    (apply-stroke g shape op)))
 
 (defmethod render-op :ellipse
-  [^Graphics2D g {:keys [cx cy rx ry fill stroke-color stroke-width]}]
+  [^Graphics2D g {:keys [cx cy rx ry fill] :as op}]
   (let [shape (Ellipse2D$Double. (double (- cx rx)) (double (- cy ry))
                                  (double (* 2.0 rx)) (double (* 2.0 ry)))]
     (apply-fill g shape fill)
-    (apply-stroke g shape stroke-color stroke-width)))
+    (apply-stroke g shape op)))
 
 (defn- build-path
   "Builds a GeneralPath from a sequence of IR path commands."
@@ -71,10 +89,10 @@
     p))
 
 (defmethod render-op :path
-  [^Graphics2D g {:keys [commands fill stroke-color stroke-width]}]
+  [^Graphics2D g {:keys [commands fill] :as op}]
   (let [shape (build-path commands)]
     (apply-fill g shape fill)
-    (apply-stroke g shape stroke-color stroke-width)))
+    (apply-stroke g shape op)))
 
 (defn render
   "Renders compiled IR into a BufferedImage.

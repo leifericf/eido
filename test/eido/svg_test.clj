@@ -168,6 +168,33 @@
       (is (re-find #"stroke=\"rgb\(255,0,0\)\"" out))
       (is (re-find #"stroke-width=\"3\"" out)))))
 
+(deftest svg-stroke-cap-join-test
+  (testing "renders stroke-linecap and stroke-linejoin"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 10 :h 10
+                         :fill nil
+                         :stroke-color {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-width 3
+                         :stroke-cap :round :stroke-join :bevel
+                         :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"stroke-linecap=\"round\"" out))
+      (is (re-find #"stroke-linejoin=\"bevel\"" out)))))
+
+(deftest svg-stroke-dash-test
+  (testing "renders stroke-dasharray"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 10 :h 10
+                         :fill nil
+                         :stroke-color {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-width 2
+                         :stroke-dash [5 3]
+                         :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"stroke-dasharray=\"5 3\"" out)))))
+
 (deftest svg-opacity-test
   (testing "renders opacity when not 1.0"
     (let [ir {:ir/size [100 100]

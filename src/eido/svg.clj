@@ -45,13 +45,20 @@
 
 (defn- style-attrs
   "Builds SVG style attribute string for an op."
-  [{:keys [fill stroke-color stroke-width opacity transforms]}]
+  [{:keys [fill stroke-color stroke-width stroke-cap stroke-join
+           stroke-dash opacity transforms]}]
   (str (if fill
          (str "fill=\"" (color->css fill) "\"")
          "fill=\"none\"")
        (when stroke-color
          (str " stroke=\"" (color->css stroke-color) "\""
               " stroke-width=\"" stroke-width "\""))
+       (when stroke-cap
+         (str " stroke-linecap=\"" (name stroke-cap) "\""))
+       (when stroke-join
+         (str " stroke-linejoin=\"" (name stroke-join) "\""))
+       (when stroke-dash
+         (str " stroke-dasharray=\"" (str/join " " stroke-dash) "\""))
        (when (and opacity (not= opacity 1.0))
          (str " opacity=\"" opacity "\""))
        (when-let [t (transforms->svg transforms)]

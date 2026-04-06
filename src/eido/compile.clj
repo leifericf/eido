@@ -16,10 +16,13 @@
   "Extracts fill and stroke from a node, resolving colors."
   [node]
   (let [stroke (:style/stroke node)]
-    {:fill         (resolve-fill (:style/fill node))
-     :stroke-color (some-> stroke :color color/resolve-color)
-     :stroke-width (when stroke (:width stroke))
-     :opacity      (get node :node/opacity 1.0)}))
+    (cond-> {:fill         (resolve-fill (:style/fill node))
+             :stroke-color (some-> stroke :color color/resolve-color)
+             :stroke-width (when stroke (:width stroke))
+             :opacity      (get node :node/opacity 1.0)}
+      (:cap stroke)  (assoc :stroke-cap (:cap stroke))
+      (:join stroke) (assoc :stroke-join (:join stroke))
+      (:dash stroke) (assoc :stroke-dash (:dash stroke)))))
 
 (defmulti compile-node
   "Compiles a scene node into a flat IR op map."

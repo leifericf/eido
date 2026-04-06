@@ -92,7 +92,11 @@
 (s/def :style/fill (s/or :color-vec ::color
                          :color-map (s/keys :req-un [::color])))
 (s/def ::width ::pos-number)
-(s/def :style/stroke (s/keys :req-un [::color ::width]))
+(s/def ::cap #{:butt :round :square})
+(s/def ::join #{:miter :round :bevel})
+(s/def ::dash (s/and vector? (s/coll-of pos? :min-count 1)))
+(s/def :style/stroke (s/keys :req-un [::color ::width]
+                              :opt-un [::cap ::join ::dash]))
 (s/def :node/opacity ::unit-val)
 
 ;; --- nodes ---

@@ -424,6 +424,35 @@
       (is (= 40 (:ry op)))
       (is (= {:r 0 :g 255 :b 0 :a 1.0} (:fill op))))))
 
+;; --- stroke cap/join/dash tests ---
+
+(deftest compile-stroke-cap-join-test
+  (testing "compiles stroke cap and join"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [0 0]
+                   :rect/size [50 50]
+                   :style/stroke {:color [:color/rgb 255 0 0] :width 3
+                                  :cap :round :join :bevel}}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= :round (:stroke-cap op)))
+      (is (= :bevel (:stroke-join op))))))
+
+(deftest compile-stroke-dash-test
+  (testing "compiles stroke dash pattern"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [0 0]
+                   :rect/size [50 50]
+                   :style/stroke {:color [:color/rgb 255 0 0] :width 2
+                                  :dash [5 3]}}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= [5 3] (:stroke-dash op))))))
+
 ;; --- line tests ---
 
 (deftest compile-line-test
