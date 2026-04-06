@@ -320,3 +320,86 @@
                    :rect/size [50 50]}]}
           op (first (:ir/ops (compile/compile scene)))]
       (is (= [] (:transforms op))))))
+
+;; --- v0.3 path tests ---
+
+(deftest compile-path-triangle-test
+  (testing "compiles a triangle path with flattened commands"
+    (let [scene {:image/size [200 200]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [50 150]]
+                                   [:line-to [100 50]]
+                                   [:line-to [150 150]]
+                                   [:close]]
+                   :style/fill {:color [:color/rgb 255 0 0]}}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= :path (:op op)))
+      (is (= [[:move-to 50 150]
+              [:line-to 100 50]
+              [:line-to 150 150]
+              [:close]]
+             (:commands op)))
+      (is (= {:r 255 :g 0 :b 0 :a 1.0} (:fill op))))))
+
+(deftest compile-path-curve-test
+  (testing "compiles curve-to with flattened control points"
+    (let [scene {:image/size [200 200]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [10 10]]
+                                   [:curve-to [20 80] [80 80] [90 10]]
+                                   [:close]]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= [[:move-to 10 10]
+              [:curve-to 20 80 80 80 90 10]
+              [:close]]
+             (:commands op))))))
+
+(deftest compile-path-style-test
+  (testing "path compiles with full style and opacity"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [0 0]]
+                                   [:line-to [100 100]]]
+                   :style/fill {:color [:color/rgb 0 255 0]}
+                   :style/stroke {:color [:color/rgb 255 0 0] :width 3}
+                   :node/opacity 0.7}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= {:r 0 :g 255 :b 0 :a 1.0} (:fill op)))
+      (is (= {:r 255 :g 0 :b 0 :a 1.0} (:stroke-color op)))
+      (is (= 3 (:stroke-width op)))
+      (is (= 0.7 (:opacity op))))))
+
+(deftest compile-path-empty-commands-test
+  (testing "empty commands list compiles to empty IR commands"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands []}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= :path (:op op)))
+      (is (= [] (:commands op))))))
+
+(deftest compile-path-inherits-style-test
+  (testing "path inside group inherits fill from parent"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :style/fill {:color [:color/rgb 0 0 255]}
+                   :node/opacity 0.5
+                   :group/children
+                   [{:node/type :shape/path
+                     :path/commands [[:move-to [0 0]]
+                                     [:line-to [50 50]]
+                                     [:line-to [0 50]]
+                                     [:close]]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= {:r 0 :g 0 :b 255 :a 1.0} (:fill op)))
+      (is (= 0.5 (:opacity op))))))

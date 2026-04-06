@@ -30,6 +30,25 @@
     (merge {:op :circle :cx cx :cy cy :r (:circle/radius node)}
            (compile-style node))))
 
+(defn- compile-command
+  "Flattens a scene path command into an IR command.
+  Scene: [:move-to [x y]] -> IR: [:move-to x y]"
+  [[cmd & args]]
+  (case cmd
+    :move-to  (let [[x y] (first args)] [:move-to x y])
+    :line-to  (let [[x y] (first args)] [:line-to x y])
+    :curve-to (let [[cx1 cy1] (first args)
+                    [cx2 cy2] (second args)
+                    [x y]     (nth args 2)]
+                [:curve-to cx1 cy1 cx2 cy2 x y])
+    :close    [:close]))
+
+(defmethod compile-node :shape/path
+  [node]
+  (merge {:op       :path
+          :commands (mapv compile-command (:path/commands node))}
+         (compile-style node)))
+
 (def ^:private default-ctx
   {:style {} :transforms [] :opacity 1.0})
 
