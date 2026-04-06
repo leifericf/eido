@@ -6,11 +6,9 @@ Eido is a declarative, EDN-based language for creating 2D images.
 Describe the image as data, not drawing instructions.
 
 <p align="center">
-  <img src="images/hero.png" width="300" alt="Radial color pattern" />
-  <img src="images/grid.png" width="300" alt="Color gradient grid" />
-</p>
-<p align="center">
-  <img src="images/animation.gif" width="300" alt="Animated radial pattern" />
+  <img src="images/hero.png" width="250" alt="Radial color pattern" />
+  <img src="images/grid.png" width="250" alt="Color gradient grid" />
+  <img src="images/animation.gif" width="250" alt="Animated radial pattern" />
 </p>
 
 ## Quick Start
@@ -43,6 +41,8 @@ Render your first image:
      :style/fill {:color [:color/rgb 200 50 50]}}]}
   "circle.png")
 ```
+
+<img src="images/quick-start.png" width="200" alt="Red circle on light background" />
 
 Or preview interactively in a window:
 
@@ -82,6 +82,8 @@ Three primitives are available: rectangles, circles, and paths.
  :style/fill {:color [:color/rgb 255 200 50]}}
 ```
 
+<img src="images/shapes.png" width="400" alt="Rectangle, circle, and path" />
+
 ## Composition
 
 Groups compose shapes with shared style, opacity, and transforms.
@@ -105,6 +107,8 @@ Styles inherit from parent to child. Opacity multiplies through the tree.
      :style/fill {:color [:color/rgb 0 0 255]}
      :node/opacity 0.5}]}]}
 ```
+
+<img src="images/composition.png" width="200" alt="Red circle with blue rectangle, opacity blending" />
 
 ## Colors
 
@@ -147,7 +151,11 @@ The `eido.scene` namespace provides helpers for common patterns:
      :circle/center [(+ 30 (* col 40)) (+ 30 (* row 40))]
      :circle/radius 15
      :style/fill {:color [:color/rgb (* col 25) (* row 25) 128]}}))
+```
 
+<img src="images/grid-pattern.png" width="250" alt="Color gradient grid of circles" />
+
+```clojure
 ;; Points along a line
 (scene/distribute 8 [50 200] [750 200]
   (fn [x y t]
@@ -155,7 +163,11 @@ The `eido.scene` namespace provides helpers for common patterns:
      :circle/center [x y]
      :circle/radius (+ 5 (* 20 t))
      :style/fill {:color [:color/rgb 0 0 0]}}))
+```
 
+<img src="images/distribute-pattern.png" width="400" alt="Circles growing along a line" />
+
+```clojure
 ;; Arranged around a circle
 (scene/radial 12 200 200 150
   (fn [x y angle]
@@ -165,6 +177,8 @@ The `eido.scene` namespace provides helpers for common patterns:
      :node/transform [[:transform/rotate angle]]
      :style/fill {:color [:color/rgb 200 0 0]}}))
 ```
+
+<img src="images/radial-pattern.png" width="200" alt="Rotated squares around a circle" />
 
 ## File Workflow
 
@@ -291,6 +305,11 @@ Animations are sequences of scenes. Build the frames however you like, then rend
             :circle/radius 12
             :style/fill {:color [:color/rgb 255 100 50]}}))})))
 
+```
+
+<img src="images/animation-example.gif" width="200" alt="Pulsing radial animation" />
+
+```clojure
 ;; Export as animated GIF (30 fps)
 (eido/render-to-gif frames "animation.gif" 30)
 
