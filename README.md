@@ -5,6 +5,14 @@
 Eido is a declarative, EDN-based language for creating 2D images.
 Describe the image as data, not drawing instructions.
 
+<p align="center">
+  <img src="images/hero.png" width="300" alt="Radial color pattern" />
+  <img src="images/grid.png" width="300" alt="Color gradient grid" />
+</p>
+<p align="center">
+  <img src="images/animation.gif" width="300" alt="Animated radial pattern" />
+</p>
+
 ## Quick Start
 
 Requires Clojure 1.12+ and Java 11+.
@@ -286,6 +294,9 @@ Animations are sequences of scenes. Build the frames however you like, then rend
 ;; Export as animated GIF (30 fps)
 (eido/render-to-gif frames "animation.gif" 30)
 
+;; GIF without looping
+(eido/render-to-gif frames "once.gif" 30 {:loop false})
+
 ;; Export as animated SVG (SMIL)
 (eido/render-to-animated-svg frames "animation.svg" 30)
 
@@ -295,7 +306,10 @@ Animations are sequences of scenes. Build the frames however you like, then rend
 ;; Export as numbered PNG sequence
 (eido/render-animation frames "frames/")
 
-;; Preview in REPL window
+;; Custom file prefix
+(eido/render-animation frames "frames/" {:prefix "img-"})
+
+;; Preview in REPL window (dev only)
 (play frames 30)
 (stop)
 ```
@@ -337,6 +351,7 @@ The `eido.animate` namespace provides pure functions for building frame sequence
 | `eido.color/desaturate` | Decrease saturation |
 | `eido.color/rotate-hue` | Shift hue by degrees |
 | `eido.color/lerp` | Interpolate between two colors |
+| `eido.color/rgb->hsl` | Convert RGB (0-255) to HSL |
 | `eido.scene/grid` | Generate nodes in a grid |
 | `eido.scene/distribute` | Distribute nodes along a line |
 | `eido.scene/radial` | Distribute nodes around a circle |
@@ -363,7 +378,7 @@ clj -X:test
 
 ## Status
 
-v0.9.0 — Core language complete. SVG at full parity with Java2D including animated SVG.
-Headed toward stabilization.
+v0.10.0 — Core language complete. Polish pass: API consistency, expanded tests, full spec documentation.
+Headed toward v1.0 alpha.
 
 **This is an experiment and a work in progress. The API is not stable and may change without notice.**
