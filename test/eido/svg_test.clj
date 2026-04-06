@@ -48,6 +48,19 @@
       (is (re-find #"<circle cx=\"50\" cy=\"60\" r=\"25\"" out))
       (is (re-find #"fill=\"rgb\(0,255,0\)\"" out)))))
 
+(deftest svg-rounded-rect-test
+  (testing "renders rect with rx and ry attributes"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :rect :x 10 :y 10 :w 80 :h 80
+                         :corner-radius 12
+                         :fill {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"rx=\"12\"" out))
+      (is (re-find #"ry=\"12\"" out)))))
+
 (deftest svg-line-test
   (testing "renders line op"
     (let [ir {:ir/size [100 100]

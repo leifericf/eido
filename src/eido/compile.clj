@@ -32,7 +32,8 @@
   [node]
   (let [[x y] (:rect/xy node)
         [w h] (:rect/size node)]
-    (merge {:op :rect :x x :y y :w w :h h}
+    (merge {:op :rect :x x :y y :w w :h h
+            :corner-radius (:rect/corner-radius node)}
            (compile-style node))))
 
 (defmethod compile-node :shape/circle

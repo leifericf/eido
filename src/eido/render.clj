@@ -1,7 +1,7 @@
 (ns eido.render
   (:import
     [java.awt AlphaComposite BasicStroke Color Graphics2D RenderingHints]
-    [java.awt.geom Ellipse2D$Double GeneralPath Rectangle2D$Double]
+    [java.awt.geom Ellipse2D$Double GeneralPath Rectangle2D$Double RoundRectangle2D$Double]
     [java.awt.image BufferedImage]))
 
 (defn- ->awt-color
@@ -43,9 +43,13 @@
     (.draw g shape)))
 
 (defmethod render-op :rect
-  [^Graphics2D g {:keys [x y w h fill] :as op}]
-  (let [shape (Rectangle2D$Double. (double x) (double y)
-                                   (double w) (double h))]
+  [^Graphics2D g {:keys [x y w h fill corner-radius] :as op}]
+  (let [shape (if corner-radius
+                (let [r (double corner-radius)]
+                  (RoundRectangle2D$Double. (double x) (double y)
+                                            (double w) (double h) r r))
+                (Rectangle2D$Double. (double x) (double y)
+                                     (double w) (double h)))]
     (apply-fill g shape fill)
     (apply-stroke g shape op)))
 

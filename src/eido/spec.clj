@@ -103,6 +103,7 @@
 
 (s/def :rect/xy ::point)
 (s/def :rect/size ::pos-size)
+(s/def :rect/corner-radius (s/and number? #(>= % 0)))
 (s/def :circle/center ::point)
 (s/def :circle/radius ::pos-number)
 (s/def :line/from ::point)
@@ -116,7 +117,7 @@
 
 (defmethod node-type :shape/rect [_]
   (s/keys :req [:node/type :rect/xy :rect/size]
-          :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+          :opt [:rect/corner-radius :style/fill :style/stroke :node/opacity :node/transform]))
 
 (defmethod node-type :shape/circle [_]
   (s/keys :req [:node/type :circle/center :circle/radius]

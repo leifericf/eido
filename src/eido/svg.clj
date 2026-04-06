@@ -69,10 +69,12 @@
   :op)
 
 (defmethod op->svg :rect
-  [{:keys [x y w h] :as op}]
+  [{:keys [x y w h corner-radius] :as op}]
   (str "<rect x=\"" x "\" y=\"" y
-       "\" width=\"" w "\" height=\"" h
-       "\" " (style-attrs op) "/>"))
+       "\" width=\"" w "\" height=\"" h "\""
+       (when corner-radius
+         (str " rx=\"" corner-radius "\" ry=\"" corner-radius "\""))
+       " " (style-attrs op) "/>"))
 
 (defmethod op->svg :circle
   [{:keys [cx cy r] :as op}]

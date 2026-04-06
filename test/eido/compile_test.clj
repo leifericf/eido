@@ -424,6 +424,33 @@
       (is (= 40 (:ry op)))
       (is (= {:r 0 :g 255 :b 0 :a 1.0} (:fill op))))))
 
+;; --- rounded rect tests ---
+
+(deftest compile-rounded-rect-test
+  (testing "compiles rect with corner-radius"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [10 10]
+                   :rect/size [80 80]
+                   :rect/corner-radius 12
+                   :style/fill [:color/rgb 255 0 0]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= :rect (:op op)))
+      (is (= 12 (:corner-radius op))))))
+
+(deftest compile-rect-no-radius-test
+  (testing "rect without corner-radius has nil"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [10 10]
+                   :rect/size [80 80]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (nil? (:corner-radius op))))))
+
 ;; --- stroke cap/join/dash tests ---
 
 (deftest compile-stroke-cap-join-test

@@ -184,10 +184,22 @@
           {:node/type :shape/rect
            :rect/xy [10 20]
            :rect/size [100 50]})))
+  (testing "accepts rect with corner-radius"
+    (is (s/valid? :eido.spec/node
+          {:node/type :shape/rect
+           :rect/xy [10 20]
+           :rect/size [100 50]
+           :rect/corner-radius 8})))
   (testing "rejects rect missing :rect/xy"
     (is (not (s/valid? :eido.spec/node
                {:node/type :shape/rect
-                :rect/size [100 50]})))))
+                :rect/size [100 50]}))))
+  (testing "rejects negative corner-radius"
+    (is (not (s/valid? :eido.spec/node
+               {:node/type :shape/rect
+                :rect/xy [0 0]
+                :rect/size [50 50]
+                :rect/corner-radius -1})))))
 
 (deftest node-circle-test
   (testing "accepts valid circle"
