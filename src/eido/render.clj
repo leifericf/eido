@@ -3,7 +3,7 @@
     [eido.color :as color])
   (:import
     [java.awt AlphaComposite BasicStroke Graphics2D RenderingHints]
-    [java.awt.geom Ellipse2D$Double Rectangle2D$Double]
+    [java.awt.geom Ellipse2D$Double GeneralPath Rectangle2D$Double]
     [java.awt.image BufferedImage]))
 
 (defmulti render-op
@@ -33,6 +33,27 @@
   (let [d (* 2.0 r)
         shape (Ellipse2D$Double. (double (- cx r)) (double (- cy r))
                                 d d)]
+    (apply-fill g shape fill)
+    (apply-stroke g shape stroke-color stroke-width)))
+
+(defn- build-path
+  "Builds a GeneralPath from a sequence of IR path commands."
+  ^GeneralPath [commands]
+  (let [p (GeneralPath.)]
+    (doseq [[cmd & args] commands]
+      (case cmd
+        :move-to  (.moveTo p (double (first args)) (double (second args)))
+        :line-to  (.lineTo p (double (first args)) (double (second args)))
+        :curve-to (.curveTo p
+                    (double (nth args 0)) (double (nth args 1))
+                    (double (nth args 2)) (double (nth args 3))
+                    (double (nth args 4)) (double (nth args 5)))
+        :close    (.closePath p)))
+    p))
+
+(defmethod render-op :path
+  [^Graphics2D g {:keys [commands fill stroke-color stroke-width]}]
+  (let [shape (build-path commands)]
     (apply-fill g shape fill)
     (apply-stroke g shape stroke-color stroke-width)))
 

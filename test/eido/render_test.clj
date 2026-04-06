@@ -179,3 +179,70 @@
                          :opacity 1.0}]}
           img (render/render ir)]
       (is (= [255 0 0] (pixel-rgb img 50 50))))))
+
+;; --- v0.3 path rendering tests ---
+
+(deftest render-path-fill-test
+  (testing "renders a filled triangle path"
+    (let [ir {:ir/size [200 200]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :path
+                         :commands [[:move-to 50 150]
+                                    [:line-to 100 50]
+                                    [:line-to 150 150]
+                                    [:close]]
+                         :fill {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0
+                         :transforms []}]}
+          img (render/render ir)]
+      (is (= [255 0 0] (pixel-rgb img 100 120))
+          "inside triangle should be red")
+      (is (= [255 255 255] (pixel-rgb img 10 10))
+          "outside triangle should be background"))))
+
+(deftest render-path-stroke-test
+  (testing "renders a stroked line path"
+    (let [ir {:ir/size [200 200]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :path
+                         :commands [[:move-to 0 100]
+                                    [:line-to 200 100]]
+                         :fill nil
+                         :stroke-color {:r 0 :g 0 :b 0 :a 1.0}
+                         :stroke-width 4
+                         :opacity 1.0
+                         :transforms []}]}
+          img (render/render ir)]
+      (is (= [0 0 0] (pixel-rgb img 100 100))
+          "pixel on the line should be stroke color"))))
+
+(deftest render-path-curve-test
+  (testing "renders a filled path with cubic bezier"
+    (let [ir {:ir/size [200 200]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :path
+                         :commands [[:move-to 10 150]
+                                    [:curve-to 10 10 190 10 190 150]
+                                    [:close]]
+                         :fill {:r 0 :g 0 :b 255 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0
+                         :transforms []}]}
+          img (render/render ir)]
+      (is (= [0 0 255] (pixel-rgb img 100 100))
+          "inside curved shape should be blue"))))
+
+(deftest render-path-empty-test
+  (testing "empty commands list renders without error"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 128 :g 128 :b 128 :a 1.0}
+              :ir/ops [{:op :path
+                         :commands []
+                         :fill {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0
+                         :transforms []}]}
+          img (render/render ir)]
+      (is (= [128 128 128] (pixel-rgb img 50 50))
+          "background should be intact"))))
