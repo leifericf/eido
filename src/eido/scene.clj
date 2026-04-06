@@ -29,6 +29,22 @@
                            y (+ y1 (* t (- y2 y1)))]]
                  (f x y t)))))
 
+(defn radial
+  "Generates n nodes distributed evenly around a circle.
+  f receives (x y angle) where angle is in radians [0, 2*pi).
+  Angles start from the top (12 o'clock) and proceed clockwise."
+  [n cx cy radius f]
+  (if (<= n 0)
+    []
+    (let [step (/ (* 2.0 Math/PI) n)]
+      (into []
+        (for [i (range n)
+              :let [angle (* i step)
+                    a (- angle (/ Math/PI 2.0))
+                    x (+ cx (* radius (Math/cos a)))
+                    y (+ cy (* radius (Math/sin a)))]]
+          (f x y angle))))))
+
 (comment
   (grid 3 2 (fn [c r]
               {:node/type :shape/circle

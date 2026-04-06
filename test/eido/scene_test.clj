@@ -56,3 +56,48 @@
   (testing "n=0 returns empty vector"
     (is (= [] (scene/distribute 0 [0 0] [100 100]
                 (fn [x y t] {:x x}))))))
+
+;; --- radial tests ---
+
+(defn- approx=
+  "Checks approximate equality for floating-point values."
+  [expected actual tolerance]
+  (< (Math/abs (- (double expected) (double actual))) tolerance))
+
+(deftest radial-cardinal-test
+  (testing "4 points produce cardinal positions starting from top"
+    (let [nodes (scene/radial 4 100 100 50
+                  (fn [x y _a] {:x x :y y}))]
+      (is (= 4 (count nodes)))
+      ;; top (12 o'clock)
+      (is (approx= 100.0 (:x (nth nodes 0)) 0.01))
+      (is (approx= 50.0 (:y (nth nodes 0)) 0.01))
+      ;; right (3 o'clock)
+      (is (approx= 150.0 (:x (nth nodes 1)) 0.01))
+      (is (approx= 100.0 (:y (nth nodes 1)) 0.01))
+      ;; bottom (6 o'clock)
+      (is (approx= 100.0 (:x (nth nodes 2)) 0.01))
+      (is (approx= 150.0 (:y (nth nodes 2)) 0.01))
+      ;; left (9 o'clock)
+      (is (approx= 50.0 (:x (nth nodes 3)) 0.01))
+      (is (approx= 100.0 (:y (nth nodes 3)) 0.01)))))
+
+(deftest radial-single-test
+  (testing "n=1 places at top"
+    (let [nodes (scene/radial 1 0 0 10
+                  (fn [x y _a] {:x x :y y}))]
+      (is (= 1 (count nodes)))
+      (is (approx= 0.0 (:x (first nodes)) 0.01))
+      (is (approx= -10.0 (:y (first nodes)) 0.01)))))
+
+(deftest radial-zero-test
+  (testing "n=0 returns empty vector"
+    (is (= [] (scene/radial 0 0 0 10 (fn [x y a] :x))))))
+
+(deftest radial-angle-passed-test
+  (testing "angle parameter starts at 0 and increases"
+    (let [nodes (scene/radial 4 0 0 10
+                  (fn [_x _y a] {:angle a}))]
+      (is (approx= 0.0 (:angle (nth nodes 0)) 0.01))
+      (is (approx= (* 0.5 Math/PI) (:angle (nth nodes 1)) 0.01))
+      (is (approx= Math/PI (:angle (nth nodes 2)) 0.01)))))
