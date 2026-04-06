@@ -6,9 +6,9 @@ Eido is a declarative, EDN-based language for creating 2D images.
 Describe the image as data, not drawing instructions.
 
 <p align="center">
-  <img src="images/hero.png" width="250" alt="Radial color pattern" />
-  <img src="images/grid.png" width="250" alt="Color gradient grid" />
-  <img src="images/animation.gif" width="250" alt="Animated radial pattern" />
+  <img src="images/spiral-grid.gif" width="250" alt="Spiral rainbow grid" />
+  <img src="images/sine-field.gif" width="250" alt="Sine wave interference" />
+  <img src="images/breathing-grid.gif" width="250" alt="Breathing diagonal wave" />
 </p>
 
 ## Quick Start
@@ -346,6 +346,105 @@ The `eido.animate` namespace provides pure functions for building frame sequence
 (anim/ease-in-out 0.5)         ;; => 0.5  (quadratic ease in-out)
 (anim/stagger 2 5 0.5 0.3)    ;; per-element progress for staggered animations
 ```
+
+## Gallery
+
+These examples combine grids, color manipulation, and animation helpers to create patterns that would be difficult to produce without code.
+
+### Spiral Rainbow
+
+A rotating spiral wave where hue follows the angle and pulse follows the distance from center.
+
+```clojure
+(def frames
+  (for [i (range 60)]
+    (let [t (anim/progress i 60)]
+      {:image/size [400 400]
+       :image/background [:color/rgb 10 10 18]
+       :image/nodes
+       (scene/grid 20 20
+         (fn [col row]
+           (let [cx (- (/ col 9.5) 1.0)
+                 cy (- (/ row 9.5) 1.0)
+                 dist (Math/sqrt (+ (* cx cx) (* cy cy)))
+                 angle (Math/atan2 cy cx)
+                 spiral (mod (+ (* dist 2.0)
+                                (* angle (/ 1.0 Math/PI))
+                                (- (* t 3.0))) 1.0)
+                 pulse (/ (+ 1.0 (Math/sin (* spiral 2.0 Math/PI))) 2.0)
+                 radius (+ 2 (* 8 pulse))
+                 hue (mod (+ (* angle (/ 180.0 Math/PI)) 180 (* t 360)) 360)
+                 c (color/resolve-color [:color/hsl hue 0.9 (+ 0.3 (* 0.35 pulse))])]
+             {:node/type :shape/circle
+              :circle/center [(+ 12 (* col 19.8)) (+ 12 (* row 19.8))]
+              :circle/radius radius
+              :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+
+(eido/render-to-gif frames "spiral.gif" 24)
+```
+
+<img src="images/spiral-grid.gif" width="300" alt="Spiral rainbow grid" />
+
+### Sine Interference
+
+Three overlapping sine waves at different frequencies create organic, shifting patterns.
+
+```clojure
+(def frames
+  (for [i (range 50)]
+    (let [t (anim/progress i 50)]
+      {:image/size [400 400]
+       :image/background [:color/rgb 10 10 18]
+       :image/nodes
+       (scene/grid 20 20
+         (fn [col row]
+           (let [x (/ col 19.0)
+                 y (/ row 19.0)
+                 v (/ (+ (Math/sin (+ (* x 8) (* t 2 Math/PI)))
+                         (Math/sin (+ (* y 6) (* t 2 Math/PI 1.3)))
+                         (Math/sin (+ (* (+ x y) 5) (* t 2 Math/PI 0.7)))) 3.0)
+                 pulse (/ (+ v 1.0) 2.0)
+                 radius (+ 3 (* 7 pulse))
+                 hue (mod (+ (* pulse 200) (* t 360) 180) 360)
+                 c (color/resolve-color [:color/hsl hue 0.9 (+ 0.35 (* 0.3 pulse))])]
+             {:node/type :shape/circle
+              :circle/center [(+ 12 (* col 19.8)) (+ 12 (* row 19.8))]
+              :circle/radius radius
+              :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+
+(eido/render-to-gif frames "sine-field.gif" 24)
+```
+
+<img src="images/sine-field.gif" width="300" alt="Sine wave interference" />
+
+### Breathing Wave
+
+A diagonal wave where cells expand and contract with staggered timing, hue shifting along the diagonal.
+
+```clojure
+(def frames
+  (for [i (range 50)]
+    (let [t (anim/progress i 50)]
+      {:image/size [400 400]
+       :image/background [:color/rgb 245 243 238]
+       :image/nodes
+       (scene/grid 14 14
+         (fn [col row]
+           (let [delay (/ (+ col row) 26.0)
+                 phase (mod (- (* t 2.0) delay) 1.0)
+                 breath (/ (+ 1.0 (Math/sin (* phase 2.0 Math/PI))) 2.0)
+                 size (+ 3 (* 10 breath))
+                 hue (mod (+ (* (+ col row) 14) (* t 120)) 360)
+                 c (color/resolve-color [:color/hsl hue (+ 0.5 (* 0.4 breath)) 0.48])]
+             {:node/type :shape/circle
+              :circle/center [(+ 18 (* col 27)) (+ 18 (* row 27))]
+              :circle/radius size
+              :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+
+(eido/render-to-gif frames "breathing.gif" 24)
+```
+
+<img src="images/breathing-grid.gif" width="300" alt="Breathing diagonal wave" />
 
 ## API
 
