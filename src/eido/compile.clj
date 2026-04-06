@@ -1,7 +1,8 @@
 (ns eido.compile
   (:refer-clojure :exclude [compile])
   (:require
-    [eido.color :as color]))
+    [eido.color :as color]
+    [eido.validate :as validate]))
 
 (defn- compile-style
   "Extracts fill and stroke from a node, resolving colors."
@@ -98,8 +99,12 @@
       [(assoc (compile-node styled-node) :transforms transforms)])))
 
 (defn compile
-  "Compiles a scene map into an intermediate representation."
+  "Compiles a scene map into an intermediate representation.
+  Validates the scene first; throws ex-info with :errors on failure."
   [scene]
+  (when-let [errors (validate/validate scene)]
+    (throw (ex-info "Invalid scene"
+                    {:errors errors})))
   {:ir/size       (:image/size scene)
    :ir/background (color/resolve-color (:image/background scene))
    :ir/ops        (into [] (mapcat #(compile-tree % default-ctx))

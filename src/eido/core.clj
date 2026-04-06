@@ -4,7 +4,8 @@
     [clojure.string :as str]
     [eido.compile :as compile]
     [eido.render :as render]
-    [eido.svg :as svg])
+    [eido.svg :as svg]
+    [eido.validate :as validate])
   (:import
     [java.awt Color Graphics2D]
     [java.awt.image BufferedImage]
@@ -22,6 +23,13 @@
       (throw (ex-info "Failed to read scene file"
                       {:path path}
                       e)))))
+
+(defn validate
+  "Validates a scene map against the Eido scene spec.
+  Returns nil if valid, or a vector of error maps with
+  :path, :pred, :message, and :value."
+  [scene]
+  (validate/validate scene))
 
 (defn render
   "Renders a scene EDN map to a BufferedImage.

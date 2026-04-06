@@ -82,3 +82,19 @@
     (let [errors (validate/validate {})]
       (is (some? errors))
       (is (>= (count errors) 3)))))
+
+;; --- core integration ---
+
+(deftest core-validate-test
+  (testing "eido.core/validate returns nil for valid scene"
+    (is (nil? ((requiring-resolve 'eido.core/validate) valid-scene)))))
+
+(deftest compile-throws-on-invalid-test
+  (testing "compile throws ex-info with :errors for invalid scene"
+    (try
+      ((requiring-resolve 'eido.compile/compile) {:bad "scene"})
+      (is false "should have thrown")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= "Invalid scene" (.getMessage e)))
+        (is (vector? (:errors (ex-data e))))
+        (is (pos? (count (:errors (ex-data e)))))))))
