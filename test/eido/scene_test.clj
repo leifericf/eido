@@ -105,6 +105,51 @@
       (is (approx= (* 0.5 Math/PI) (:angle (nth nodes 1)) 0.01))
       (is (approx= Math/PI (:angle (nth nodes 2)) 0.01)))))
 
+;; --- polygon tests ---
+
+(deftest polygon-triangle-test
+  (testing "creates a closed triangle path"
+    (let [node (scene/polygon [[0 0] [100 0] [50 100]])]
+      (is (= :shape/path (:node/type node)))
+      (is (= [[:move-to [0 0]]
+              [:line-to [100 0]]
+              [:line-to [50 100]]
+              [:close]]
+             (:path/commands node))))))
+
+(deftest polygon-empty-test
+  (testing "empty points returns path with no commands"
+    (let [node (scene/polygon [])]
+      (is (= [] (:path/commands node))))))
+
+(deftest triangle-test
+  (testing "creates a triangle path from 3 points"
+    (let [node (scene/triangle [0 0] [100 0] [50 80])]
+      (is (= :shape/path (:node/type node)))
+      (is (= 4 (count (:path/commands node)))))))
+
+;; --- smooth-path tests ---
+
+(deftest smooth-path-basic-test
+  (testing "creates a smooth path through points"
+    (let [node (scene/smooth-path [[0 0] [100 50] [200 0] [300 50]])]
+      (is (= :shape/path (:node/type node)))
+      (is (= :move-to (first (first (:path/commands node)))))
+      ;; Should have curve-to commands
+      (is (every? #{:move-to :curve-to} (map first (:path/commands node)))))))
+
+(deftest smooth-path-two-points-test
+  (testing "two points produce a simple line"
+    (let [node (scene/smooth-path [[0 0] [100 100]])]
+      (is (= [[:move-to [0 0]] [:line-to [100 100]]]
+             (:path/commands node))))))
+
+(deftest smooth-path-one-point-test
+  (testing "one point produces just a move-to"
+    (let [node (scene/smooth-path [[50 50]])]
+      (is (= [[:move-to [50 50]]]
+             (:path/commands node))))))
+
 ;; --- integration: scene helpers → render ---
 
 (defn- pixel-rgb

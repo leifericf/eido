@@ -45,6 +45,58 @@
                     y (+ cy (* radius (Math/sin a)))]]
           (f x y angle))))))
 
+(defn polygon
+  "Creates a closed path node from a sequence of [x y] points."
+  [points]
+  (let [pts (vec points)]
+    {:node/type :shape/path
+     :path/commands
+     (if (empty? pts)
+       []
+       (into [[:move-to (first pts)]]
+             (conj (mapv (fn [p] [:line-to p]) (rest pts))
+                   [:close])))}))
+
+(defn triangle
+  "Creates a triangle path node from three [x y] points."
+  [p1 p2 p3]
+  (polygon [p1 p2 p3]))
+
+(defn- catmull-rom->cubic
+  "Converts four Catmull-Rom control points to a cubic bezier :curve-to command.
+  p0, p1, p2, p3 are [x y] vectors. The curve spans from p1 to p2."
+  [[x0 y0] [x1 y1] [x2 y2] [x3 y3]]
+  (let [cp1x (+ x1 (/ (- x2 x0) 6.0))
+        cp1y (+ y1 (/ (- y2 y0) 6.0))
+        cp2x (- x2 (/ (- x3 x1) 6.0))
+        cp2y (- y2 (/ (- y3 y1) 6.0))]
+    [:curve-to [cp1x cp1y] [cp2x cp2y] [x2 y2]]))
+
+(defn smooth-path
+  "Creates a smooth path through a sequence of [x y] points using
+  Catmull-Rom to cubic bezier conversion. Returns a path node."
+  [points]
+  (let [pts (vec points)
+        n   (count pts)]
+    {:node/type :shape/path
+     :path/commands
+     (cond
+       (= n 0) []
+       (= n 1) [[:move-to (first pts)]]
+       (= n 2) [[:move-to (first pts)] [:line-to (second pts)]]
+       :else
+       (let [;; Pad with mirrored endpoints for natural boundary
+             padded (vec (concat [(first pts)] pts [(peek pts)]))
+             curves (for [i (range 1 (dec (count padded) ))]
+                      (when (< (inc i) (count padded))
+                        (catmull-rom->cubic
+                          (nth padded (dec i))
+                          (nth padded i)
+                          (nth padded (inc i))
+                          (nth padded (min (+ i 2) (dec (count padded)))))))]
+         (into [[:move-to (first pts)]]
+               (remove nil? (take (dec n) curves)))))}))
+
 (comment
   (grid 3 2 (fn [c r]
               {:node/type :shape/circle
