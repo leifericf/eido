@@ -79,6 +79,17 @@
   (testing "accepts valid hsla"
     (is (s/valid? :eido.spec/color [:color/hsla 120 0.8 0.5 0.7]))))
 
+(deftest color-hsb-test
+  (testing "accepts valid hsb"
+    (is (s/valid? :eido.spec/color [:color/hsb 0 1.0 1.0]))
+    (is (s/valid? :eido.spec/color [:color/hsb 360 0 0])))
+  (testing "rejects bad values"
+    (is (not (s/valid? :eido.spec/color [:color/hsb 400 0 0])))))
+
+(deftest color-hsba-test
+  (testing "accepts valid hsba"
+    (is (s/valid? :eido.spec/color [:color/hsba 120 0.8 0.5 0.7]))))
+
 (deftest color-hex-test
   (testing "accepts valid hex strings"
     (is (s/valid? :eido.spec/color [:color/hex "#FF0000"]))

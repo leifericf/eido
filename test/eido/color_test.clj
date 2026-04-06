@@ -52,6 +52,30 @@
     (is (= {:r 255 :g 0 :b 0 :a 0.5}
            (color/resolve-color [:color/hsla 0 1.0 0.5 0.5])))))
 
+;; --- HSB tests ---
+
+(deftest resolve-color-hsb-primaries-test
+  (testing "resolves primary colors from HSB"
+    (is (= {:r 255 :g 0 :b 0 :a 1.0}
+           (color/resolve-color [:color/hsb 0 1.0 1.0])))
+    (is (= {:r 0 :g 255 :b 0 :a 1.0}
+           (color/resolve-color [:color/hsb 120 1.0 1.0])))
+    (is (= {:r 0 :g 0 :b 255 :a 1.0}
+           (color/resolve-color [:color/hsb 240 1.0 1.0])))))
+
+(deftest resolve-color-hsb-black-white-test
+  (testing "HSB with brightness=0 is black"
+    (is (= {:r 0 :g 0 :b 0 :a 1.0}
+           (color/resolve-color [:color/hsb 0 1.0 0]))))
+  (testing "HSB with saturation=0 brightness=1 is white"
+    (is (= {:r 255 :g 255 :b 255 :a 1.0}
+           (color/resolve-color [:color/hsb 0 0 1.0])))))
+
+(deftest resolve-color-hsba-test
+  (testing "HSBA includes alpha"
+    (is (= {:r 255 :g 0 :b 0 :a 0.5}
+           (color/resolve-color [:color/hsba 0 1.0 1.0 0.5])))))
+
 ;; --- v0.5 hex tests ---
 
 (deftest resolve-color-hex-6-test

@@ -29,6 +29,14 @@
   (s/and vector?
          (s/cat :tag #{:color/hsla} :h ::hue-val :s ::unit-val :l ::unit-val :a ::unit-val)))
 
+(s/def :color/hsb
+  (s/and vector?
+         (s/cat :tag #{:color/hsb} :h ::hue-val :s ::unit-val :b ::unit-val)))
+
+(s/def :color/hsba
+  (s/and vector?
+         (s/cat :tag #{:color/hsba} :h ::hue-val :s ::unit-val :b ::unit-val :a ::unit-val)))
+
 (s/def :color/hex
   (s/and vector?
          (s/cat :tag #{:color/hex}
@@ -40,6 +48,8 @@
         :rgba :color/rgba
         :hsl :color/hsl
         :hsla :color/hsla
+        :hsb :color/hsb
+        :hsba :color/hsba
         :hex :color/hex))
 
 ;; --- transforms ---

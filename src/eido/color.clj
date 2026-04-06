@@ -45,6 +45,31 @@
             h (mod h 360)]
         [h s l]))))
 
+(defn- hsb->rgb
+  "Converts HSB/HSV to [r g b] with values in 0-255.
+  h: 0-360, s: 0-1, b: 0-1"
+  [h s b]
+  (let [h (mod h 360)
+        s (max 0.0 (min 1.0 (double s)))
+        b (max 0.0 (min 1.0 (double b)))]
+    (if (zero? s)
+      (let [v (Math/round (* b 255.0))]
+        [v v v])
+      (let [h' (/ h 60.0)
+            i  (int (Math/floor h'))
+            f  (- h' i)
+            p  (Math/round (* b (- 1.0 s) 255.0))
+            q  (Math/round (* b (- 1.0 (* s f)) 255.0))
+            t  (Math/round (* b (- 1.0 (* s (- 1.0 f))) 255.0))
+            v  (Math/round (* b 255.0))]
+        (case (mod i 6)
+          0 [v t p]
+          1 [q v p]
+          2 [p v t]
+          3 [p q v]
+          4 [t p v]
+          5 [v p q])))))
+
 (defn- parse-hex
   "Parses a hex color string to {:r :g :b :a}."
   [hex-str]
@@ -77,6 +102,12 @@
                   {:r r :g g :b b :a 1.0})
     :color/hsla (let [[_ h s l a] color-vec
                        [r g b] (hsl->rgb h s l)]
+                  {:r r :g g :b b :a a})
+    :color/hsb  (let [[_ h s b] color-vec
+                       [r g b] (hsb->rgb h s b)]
+                  {:r r :g g :b b :a 1.0})
+    :color/hsba (let [[_ h s b a] color-vec
+                       [r g b] (hsb->rgb h s b)]
                   {:r r :g g :b b :a a})
     :color/hex  (parse-hex (second color-vec))))
 
