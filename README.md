@@ -36,7 +36,7 @@ If it cannot be represented as plain data, it probably should not be in the libr
 Add eido as a git dependency in your `deps.edn`:
 
 ```clojure
-io.github.leifericf/eido {:git/tag "v1.0.0-alpha1" :git/sha "eecbe60"}
+io.github.leifericf/eido {:git/tag "v1.0.0-alpha2" :git/sha "c60ee7f"}
 ```
 
 ## Quick Start
@@ -244,6 +244,7 @@ Multiple color formats are supported:
 [:color/hsb 0 1.0 1.0]          ;; HSB/HSV: hue (0-360), saturation (0-1), brightness (0-1)
 [:color/hsba 120 0.8 0.5 0.7]   ;; HSB with alpha
 [:color/hex "#FF0000"]           ;; Hex (6-digit, 8-digit, 3-digit, 4-digit)
+[:color/name "coral"]            ;; CSS named color (148 standard colors)
 ```
 
 All color formats work directly in style maps — no manual resolution needed:
@@ -251,6 +252,7 @@ All color formats work directly in style maps — no manual resolution needed:
 ```clojure
 {:style/fill [:color/hsl 200 0.9 0.5]}   ;; HSL straight in the scene
 {:style/fill [:color/hex "#FF6B35"]}      ;; hex too
+{:style/fill [:color/name "tomato"]}      ;; named colors too
 ```
 
 Color manipulation helpers accept and return color vectors:
@@ -265,6 +267,38 @@ Color manipulation helpers accept and return color vectors:
 (color/rotate-hue [:color/rgb 255 0 0] 120)       ;; green
 (color/lerp [:color/rgb 0 0 0] [:color/rgb 255 255 255] 0.5) ;; blend
 ```
+
+## Gradient Fills
+
+Fills can be solid colors or gradients. Both linear and radial gradients are supported:
+
+```clojure
+;; Linear gradient — left to right, red to blue
+{:style/fill {:gradient/type :linear
+              :gradient/from [0 0]
+              :gradient/to [200 0]
+              :gradient/stops [[0.0 [:color/rgb 255 0 0]]
+                               [1.0 [:color/rgb 0 0 255]]]}}
+
+;; Radial gradient — white center fading to black
+{:style/fill {:gradient/type :radial
+              :gradient/center [100 100]
+              :gradient/radius 100
+              :gradient/stops [[0.0 [:color/name "white"]]
+                               [1.0 [:color/name "black"]]]}}
+
+;; Multi-stop gradient
+{:style/fill {:gradient/type :linear
+              :gradient/from [0 0]
+              :gradient/to [400 0]
+              :gradient/stops [[0.0 [:color/name "red"]]
+                               [0.5 [:color/name "yellow"]]
+                               [1.0 [:color/name "blue"]]]}}
+```
+
+Gradient coordinates use `userSpaceOnUse` — they are relative to the scene, not the shape. Any color format works in stops (RGB, HSL, hex, named colors).
+
+<img src="images/gradients.png" width="400" alt="Linear gradient, radial gradient, and gradient star" />
 
 ## Generative Patterns
 
@@ -318,7 +352,15 @@ The `eido.scene` namespace provides helpers for common patterns:
 
 ;; Smooth curve through points (Catmull-Rom → cubic bezier)
 (scene/smooth-path [[50 200] [150 50] [250 200] [350 50]])
+
+;; Regular polygon (n-sided, centered)
+(scene/regular-polygon [200 200] 80 6)   ;; hexagon
+
+;; Star (n-pointed, with outer and inner radii)
+(scene/star [200 200] 80 35 5)           ;; 5-pointed star
 ```
+
+<img src="images/polygons-stars.png" width="400" alt="Triangle, pentagon, hexagon, and star" />
 
 ## Transforms
 
@@ -482,7 +524,20 @@ The `eido.animate` namespace provides pure functions for building frame sequence
 (anim/ease-out 0.5)            ;; => 0.75 (quadratic ease out)
 (anim/ease-in-out 0.5)         ;; => 0.5  (quadratic ease in-out)
 (anim/stagger 2 5 0.5 0.3)    ;; per-element progress for staggered animations
+
+;; Extended easing curves (all have ease-in-*, ease-out-*, ease-in-out-* variants)
+(anim/ease-in-cubic 0.5)      ;; cubic
+(anim/ease-out-quart 0.5)     ;; quartic
+(anim/ease-in-expo 0.5)       ;; exponential
+(anim/ease-out-circ 0.5)      ;; circular
+(anim/ease-in-back 0.5)       ;; overshoot
+(anim/ease-out-elastic 0.5)   ;; spring-like
+(anim/ease-out-bounce 0.5)    ;; bouncing
 ```
+
+Eight easing curves compared — each dot follows a different curve:
+
+<img src="images/easings.gif" width="300" alt="Eight easing functions compared" />
 
 ## Gallery
 
@@ -843,6 +898,44 @@ Eight-fold rotational symmetry with orbiting, pulsing dots.
 
 <img src="images/kaleidoscope.gif" width="300" alt="Kaleidoscope" />
 
+### Star Burst
+
+Rotating gradient stars with staggered pulsing, using `scene/star`, radial gradients, and cubic easing.
+
+```clojure
+(def frames
+  (anim/frames 60
+    (fn [t]
+      {:image/size [400 400]
+       :image/background [:color/name "midnightblue"]
+       :image/nodes
+       (vec
+         (for [i (range 6)
+               :let [rotation (* (+ t (* i 0.167)) 2 Math/PI (/ 1.0 6))
+                     pulse (anim/ease-in-out-cubic
+                             (anim/ping-pong (mod (+ t (* i 0.12)) 1.0)))
+                     outer (+ 60 (* 50 pulse))
+                     inner (* outer 0.4)
+                     hue (mod (+ (* i 60) (* t 360)) 360)]]
+           {:node/type :group
+            :node/transform [[:transform/translate 200 200]
+                             [:transform/rotate rotation]]
+            :node/opacity (+ 0.5 (* 0.5 pulse))
+            :group/children
+            [(merge (scene/star [0 0] outer inner 5)
+                    {:style/fill
+                     {:gradient/type :radial
+                      :gradient/center [0 0]
+                      :gradient/radius outer
+                      :gradient/stops
+                      [[0.0 [:color/hsl hue 0.95 0.7]]
+                       [1.0 [:color/hsl (mod (+ hue 60) 360) 0.9 0.35]]]}})]}))})))
+
+(eido/render frames {:output "star-burst.gif" :fps 30})
+```
+
+<img src="images/star-burst.gif" width="300" alt="Rotating gradient star burst" />
+
 ### Blooming Tree
 
 A recursive fractal tree that grows from trunk to full canopy, then sways in the wind. Leaves appear at the tips once fully grown.
@@ -882,6 +975,8 @@ A Koch snowflake that gains detail with each frame, the boundary growing ever mo
 | `eido.scene/polygon` | Create closed path from points |
 | `eido.scene/triangle` | Create triangle path from 3 points |
 | `eido.scene/smooth-path` | Smooth curve through points (Catmull-Rom) |
+| `eido.scene/regular-polygon` | Create regular n-sided polygon |
+| `eido.scene/star` | Create n-pointed star with inner/outer radii |
 | `user/show` | Preview scene in a window (dev) |
 | `user/watch-file` | Auto-reload file on save (dev) |
 | `user/watch-scene` | Auto-reload atom on change (dev) |
@@ -896,6 +991,13 @@ A Koch snowflake that gains detail with each frame, the boundary growing ever mo
 | `eido.animate/ease-in` | Quadratic ease in |
 | `eido.animate/ease-out` | Quadratic ease out |
 | `eido.animate/ease-in-out` | Quadratic ease in-out |
+| `eido.animate/ease-{in,out,in-out}-cubic` | Cubic easing |
+| `eido.animate/ease-{in,out,in-out}-quart` | Quartic easing |
+| `eido.animate/ease-{in,out,in-out}-expo` | Exponential easing |
+| `eido.animate/ease-{in,out,in-out}-circ` | Circular easing |
+| `eido.animate/ease-{in,out,in-out}-back` | Overshoot easing |
+| `eido.animate/ease-{in,out,in-out}-elastic` | Elastic/spring easing |
+| `eido.animate/ease-{in,out,in-out}-bounce` | Bounce easing |
 | `eido.animate/stagger` | Per-element staggered progress |
 
 ## Running Tests
@@ -906,4 +1008,4 @@ clj -X:test
 
 ## Status
 
-v1.0.0-alpha1 — The API is still evolving and may change without notice.
+v1.0.0-alpha2 — The API is still evolving and may change without notice.

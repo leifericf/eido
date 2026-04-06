@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## v1.0.0-alpha2 — Colors, Gradients & Easings
+
+- Add `:color/name` with all 148 CSS Color Level 4 named colors (case-insensitive)
+- Add `eido.scene/regular-polygon` for creating n-sided regular polygons
+- Add `eido.scene/star` for creating n-pointed stars with outer/inner radii
+- Add extended easing functions: cubic, quart, expo, circ, back, elastic, bounce (in/out/in-out variants for each)
+- Add linear and radial gradient fills via `:style/fill` gradient maps
+  - `:gradient/type :linear` with `:gradient/from`, `:gradient/to`, `:gradient/stops`
+  - `:gradient/type :radial` with `:gradient/center`, `:gradient/radius`, `:gradient/stops`
+  - Both Java2D and SVG backends supported
+
 ## v1.0.0-alpha1
 
 - Add installation instructions to README (git dependency via deps.edn)
