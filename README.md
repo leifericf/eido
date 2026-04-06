@@ -6,9 +6,14 @@ Eido is a declarative, EDN-based language for creating 2D images.
 Describe the image as data, not drawing instructions.
 
 <p align="center">
-  <img src="images/tentacles.gif" width="250" alt="Rainbow tentacles" />
-  <img src="images/spiral-grid.gif" width="250" alt="Spiral rainbow grid" />
-  <img src="images/dancing-bars.gif" width="250" alt="Dancing rainbow bars" />
+  <img src="images/galaxy.gif" width="200" alt="Particle galaxy" />
+  <img src="images/op-art.gif" width="200" alt="Op art" />
+  <img src="images/pendulum-wave.gif" width="200" alt="Pendulum wave" />
+</p>
+<p align="center">
+  <img src="images/tentacles.gif" width="200" alt="Rainbow tentacles" />
+  <img src="images/spiral-grid.gif" width="200" alt="Spiral rainbow grid" />
+  <img src="images/lissajous.gif" width="200" alt="Lissajous curve" />
 </p>
 
 ## Quick Start
@@ -520,6 +525,202 @@ Eight arms spiral outward from the center, wobbling and shifting color along the
 ```
 
 <img src="images/tentacles.gif" width="300" alt="Rainbow tentacles" />
+
+### Pendulum Wave
+
+15 pendulums with increasing frequencies create wave patterns. Uses paths for strings and circles for bobs.
+
+```clojure
+(def frames
+  (for [i (range 80)]
+    (let [t (anim/progress i 80)]
+      {:image/size [500 400]
+       :image/background [:color/rgb 245 243 238]
+       :image/nodes
+       (vec (for [p (range 15)]
+              (let [freq (+ 6 p)
+                    angle (* (Math/sin (* t 2 Math/PI freq)) 0.9)
+                    pivot-x (+ 30 (* p 31.4))
+                    bob-x (+ pivot-x (* 250 (Math/sin angle)))
+                    bob-y (* 250 (Math/cos angle))
+                    hue (* p 24)
+                    c (color/resolve-color [:color/hsl hue 0.75 0.5])]
+                {:node/type :group
+                 :group/children
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [pivot-x 20]]
+                                   [:line-to [bob-x (+ 20 bob-y)]]]
+                   :style/stroke {:color [:color/rgb 80 80 80] :width 1}}
+                  {:node/type :shape/circle
+                   :circle/center [bob-x (+ 20 bob-y)]
+                   :circle/radius 10
+                   :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}}]})))})))
+
+(eido/render-to-gif frames "pendulum-wave.gif" 30)
+```
+
+<img src="images/pendulum-wave.gif" width="400" alt="Pendulum wave" />
+
+### Particle Galaxy
+
+300 particles orbiting with Keplerian speeds and 3 spiral arms.
+
+```clojure
+(def frames
+  (for [i (range 60)]
+    (let [t (anim/progress i 60)]
+      {:image/size [500 500]
+       :image/background [:color/rgb 5 5 12]
+       :image/nodes
+       (vec (for [p (range 300)]
+              (let [arm (mod p 3)
+                    base-r (+ 15 (* (Math/sqrt (/ p 300.0)) 220))
+                    speed (/ 1.0 (Math/sqrt (max 1 base-r)))
+                    angle (+ (* t 2 Math/PI speed 3)
+                             (/ (* p 137.508) 50.0)
+                             (* arm (/ (* 2 Math/PI) 3))
+                             (* (/ base-r 300.0) 1.5))
+                    r (+ base-r (* 8 (Math/sin (+ (* t 6 Math/PI) (* p 137.508)))))
+                    x (+ 250 (* r (Math/cos angle)))
+                    y (+ 250 (* r (Math/sin angle)))
+                    hue (mod (+ 200 (* -200 (/ base-r 230.0))) 360)
+                    bright (- 1.0 (* 0.5 (/ base-r 230.0)))
+                    size (max 1 (- 4 (* 2.5 (/ base-r 230.0))))
+                    c (color/resolve-color [:color/hsl hue 0.8 (* 0.55 bright)])]
+                {:node/type :shape/circle
+                 :circle/center [x y]
+                 :circle/radius size
+                 :node/opacity (min 1.0 bright)
+                 :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+
+(eido/render-to-gif frames "galaxy.gif" 24)
+```
+
+<img src="images/galaxy.gif" width="300" alt="Particle galaxy" />
+
+### Op Art
+
+Concentric rings that wobble to create an optical illusion, using only black and white.
+
+```clojure
+(def frames
+  (for [i (range 50)]
+    (let [t (anim/progress i 50)]
+      {:image/size [400 400]
+       :image/background [:color/rgb 255 255 255]
+       :image/nodes
+       (vec (for [ring (reverse (range 40))]
+              (let [phase (+ (* t 2 Math/PI) (* ring 0.3))
+                    wobble (* 15 (Math/sin phase))
+                    r (+ (* ring 7) wobble)]
+                {:node/type :shape/circle
+                 :circle/center [(+ 200 (* 5 (Math/sin (+ phase 1.5))))
+                                 (+ 200 (* 5 (Math/cos phase)))]
+                 :circle/radius (max 1 r)
+                 :style/fill {:color (if (even? ring)
+                                       [:color/rgb 0 0 0]
+                                       [:color/rgb 255 255 255])}})))})))
+
+(eido/render-to-gif frames "op-art.gif" 24)
+```
+
+<img src="images/op-art.gif" width="300" alt="Op art optical illusion" />
+
+### Lissajous Curve
+
+A 3:2 Lissajous figure traced with a rainbow trail that fades with age.
+
+```clojure
+(def frames
+  (for [i (range 60)]
+    (let [t (anim/progress i 60)]
+      {:image/size [400 400]
+       :image/background [:color/rgb 5 5 12]
+       :image/nodes
+       (vec (for [j (range 200)]
+              (let [s (/ j 200.0)
+                    phase (* (+ t s) 2 Math/PI)
+                    x (+ 200 (* 160 (Math/sin (* phase 3))))
+                    y (+ 200 (* 160 (Math/cos (* phase 2))))
+                    age (- 1.0 s)
+                    hue (mod (* (+ t s) 720) 360)
+                    c (color/resolve-color [:color/hsl hue 0.9 (+ 0.3 (* 0.4 age))])]
+                {:node/type :shape/circle
+                 :circle/center [x y]
+                 :circle/radius (+ 1 (* 5 age age))
+                 :node/opacity (* age age)
+                 :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+
+(eido/render-to-gif frames "lissajous.gif" 30)
+```
+
+<img src="images/lissajous.gif" width="300" alt="Lissajous curve" />
+
+### Cellular Automaton
+
+Evolving cellular patterns driven by sine wave interference, rendered as glowing colored cells.
+
+```clojure
+(def frames
+  (for [i (range 40)]
+    (let [t (anim/progress i 40)]
+      {:image/size [400 400]
+       :image/background [:color/rgb 10 10 18]
+       :image/nodes
+       (scene/grid 25 25
+         (fn [col row]
+           (let [sum (+ (Math/sin (+ (* col 0.7) (* t 5)))
+                        (Math/cos (+ (* row 0.8) (* t 4)))
+                        (Math/sin (+ (* (+ col row) 0.4) (* t 3)))
+                        (Math/cos (+ (* (Math/abs (- col row)) 0.6) (* t 6))))]
+             (when (> sum 0.5)
+               (let [glow (max 0 (/ (- sum 0.5) 3.5))
+                     hue (mod (+ (* col 8) (* row 8) (* t 200)) 360)
+                     c (color/resolve-color [:color/hsl hue 0.9 (+ 0.35 (* 0.3 glow))])]
+                 {:node/type :shape/rect
+                  :rect/xy [(+ 2 (* col 15.8)) (+ 2 (* row 15.8))]
+                  :rect/size [14 14]
+                  :node/opacity (+ 0.6 (* 0.4 glow))
+                  :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))))})
+    ))
+
+(eido/render-to-gif frames "cellular.gif" 15)
+```
+
+<img src="images/cellular.gif" width="300" alt="Cellular automaton" />
+
+### Kaleidoscope
+
+Eight-fold rotational symmetry with orbiting, pulsing dots.
+
+```clojure
+(def frames
+  (for [i (range 60)]
+    (let [t (anim/progress i 60)]
+      {:image/size [400 400]
+       :image/background [:color/rgb 5 5 12]
+       :image/nodes
+       (vec (for [sym (range 8)
+                  shape (range 6)]
+              (let [angle (+ (* sym (/ Math/PI 4)) (* t Math/PI 0.25))
+                    shape-r (+ 30 (* shape 25))
+                    shape-angle (+ angle (* shape 0.8)
+                                   (* (Math/sin (+ (* t 4 Math/PI) (* shape 1.2))) 0.3))
+                    x (+ 200 (* shape-r (Math/cos shape-angle)))
+                    y (+ 200 (* shape-r (Math/sin shape-angle)))
+                    hue (mod (+ (* sym 45) (* shape 30) (* t 180)) 360)
+                    size (+ 5 (* 8 (/ (+ 1 (Math/sin (+ (* t 3 Math/PI) shape sym))) 2.0)))
+                    c (color/resolve-color [:color/hsl hue 0.85 0.55])]
+                {:node/type :shape/circle
+                 :circle/center [x y]
+                 :circle/radius size
+                 :node/opacity 0.75
+                 :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+
+(eido/render-to-gif frames "kaleidoscope.gif" 24)
+```
+
+<img src="images/kaleidoscope.gif" width="300" alt="Kaleidoscope" />
 
 ## API
 
