@@ -96,6 +96,55 @@
                   (conj "</svg>"))]
      (str/join "\n" lines))))
 
+(defn- frame-group
+  "Wraps IR ops in a <g> with SMIL visibility animation."
+  [ir i n fps transparent-bg?]
+  (let [bg         (:ir/background ir)
+        [w h]      (:ir/size ir)
+        frame-dur  (/ 1.0 fps)
+        total-dur  (fmt (* n frame-dur))
+        begin      (fmt (* i frame-dur))
+        dur        (fmt frame-dur)
+        animate    (str "    <animate attributeName=\"visibility\""
+                        " values=\"visible;hidden\""
+                        " begin=\"" begin "s\""
+                        " dur=\"" dur "s\""
+                        " repeatCount=\"indefinite\""
+                        " keyTimes=\"0;1\""
+                        " calcMode=\"discrete\""
+                        " fill=\"freeze\"/>")
+        bg-line    (when (and bg (not transparent-bg?))
+                     (str "    <rect x=\"0\" y=\"0\" width=\"" w
+                          "\" height=\"" h "\" fill=\"" (color->css bg) "\"/>"))
+        op-lines   (map #(str "    " (op->svg %)) (:ir/ops ir))]
+    (str/join "\n"
+      (filter some?
+        (concat
+          [(str "  <g visibility=\"hidden\">")
+           animate
+           bg-line]
+          op-lines
+          ["  </g>"])))))
+
+(defn render-animated
+  "Renders a sequence of IRs to an animated SVG string using SMIL.
+  fps: frames per second.
+  Opts: :scale, :transparent-background."
+  ([irs fps] (render-animated irs fps {}))
+  ([irs fps opts]
+   (let [[w h]   (:ir/size (first irs))
+         scale   (get opts :scale 1)
+         sw      (int (* w scale))
+         sh      (int (* h scale))
+         n       (count irs)
+         t-bg?   (:transparent-background opts)
+         header  (str "<svg xmlns=\"http://www.w3.org/2000/svg\""
+                      " width=\"" sw "\" height=\"" sh "\""
+                      " viewBox=\"0 0 " w " " h "\">")
+         frames  (map-indexed (fn [i ir] (frame-group ir i n fps t-bg?)) irs)]
+     (str/join "\n"
+       (concat [header] frames ["</svg>"])))))
+
 (comment
   (render {:ir/size [200 200]
            :ir/background {:r 255 :g 255 :b 255 :a 1.0}

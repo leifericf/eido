@@ -188,3 +188,57 @@
           out (svg/render ir {:scale 1.5})]
       (is (re-find #"width=\"150\"" out))
       (is (re-find #"height=\"150\"" out)))))
+
+;; --- animated SVG ---
+
+(def ^:private sample-irs
+  [{:ir/size [100 100]
+    :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+    :ir/ops [{:op :circle :cx 50 :cy 50 :r 20
+              :fill {:r 255 :g 0 :b 0 :a 1.0}
+              :stroke-color nil :stroke-width nil
+              :opacity 1.0 :transforms []}]}
+   {:ir/size [100 100]
+    :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+    :ir/ops [{:op :circle :cx 50 :cy 50 :r 40
+              :fill {:r 0 :g 255 :b 0 :a 1.0}
+              :stroke-color nil :stroke-width nil
+              :opacity 1.0 :transforms []}]}])
+
+(deftest render-animated-test
+  (testing "produces valid SVG wrapper"
+    (let [out (svg/render-animated sample-irs 10)]
+      (is (re-find #"<svg" out))
+      (is (re-find #"xmlns=\"http://www.w3.org/2000/svg\"" out))
+      (is (re-find #"</svg>" out))))
+
+  (testing "uses first IR dimensions"
+    (let [out (svg/render-animated sample-irs 10)]
+      (is (re-find #"width=\"100\"" out))
+      (is (re-find #"height=\"100\"" out))
+      (is (re-find #"viewBox=\"0 0 100 100\"" out))))
+
+  (testing "contains one group per frame"
+    (let [out (svg/render-animated sample-irs 10)]
+      (is (= 2 (count (re-seq #"<g " out))))))
+
+  (testing "frames contain their ops"
+    (let [out (svg/render-animated sample-irs 10)]
+      (is (re-find #"r=\"20\"" out))
+      (is (re-find #"r=\"40\"" out))))
+
+  (testing "contains SMIL animation elements"
+    (let [out (svg/render-animated sample-irs 10)]
+      (is (re-find #"<animate" out))
+      (is (re-find #"attributeName=\"visibility\"" out))))
+
+  (testing "scale option works"
+    (let [out (svg/render-animated sample-irs 10 {:scale 2})]
+      (is (re-find #"width=\"200\"" out))
+      (is (re-find #"height=\"200\"" out))
+      (is (re-find #"viewBox=\"0 0 100 100\"" out))))
+
+  (testing "single frame produces valid SVG"
+    (let [out (svg/render-animated [(first sample-irs)] 10)]
+      (is (re-find #"<svg" out))
+      (is (re-find #"</svg>" out)))))
