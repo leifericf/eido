@@ -86,6 +86,38 @@
           out (svg/render ir)]
       (is (re-find #"fill=\"none\"" out)))))
 
+(deftest svg-fill-alpha-test
+  (testing "renders fill with alpha as rgba()"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 10 :h 10
+                         :fill {:r 255 :g 0 :b 0 :a 0.5}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"fill=\"rgba\(255,0,0,0\.5\)\"" out))))
+  (testing "fill with alpha 1.0 stays rgb()"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 10 :h 10
+                         :fill {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"fill=\"rgb\(255,0,0\)\"" out)))))
+
+(deftest svg-stroke-alpha-test
+  (testing "renders stroke with alpha as rgba()"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 10 :h 10
+                         :fill nil
+                         :stroke-color {:r 0 :g 255 :b 0 :a 0.3}
+                         :stroke-width 2
+                         :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"stroke=\"rgba\(0,255,0,0\.3\)\"" out)))))
+
 (deftest svg-stroke-test
   (testing "renders stroke attributes"
     (let [ir {:ir/size [100 100]

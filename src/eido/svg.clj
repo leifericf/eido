@@ -2,11 +2,6 @@
   (:require
     [clojure.string :as str]))
 
-(defn- color->css
-  "Converts a resolved color map to CSS rgb() string."
-  [{:keys [r g b]}]
-  (str "rgb(" r "," g "," b ")"))
-
 (defn- fmt
   "Formats a number, stripping unnecessary trailing zeros."
   [n]
@@ -14,6 +9,13 @@
     (-> s
         (str/replace #"0+$" "")
         (str/replace #"\.$" ""))))
+
+(defn- color->css
+  "Converts a resolved color map to CSS rgb()/rgba() string."
+  [{:keys [r g b a]}]
+  (if (and a (not= a 1.0))
+    (str "rgba(" r "," g "," b "," (fmt a) ")")
+    (str "rgb(" r "," g "," b ")")))
 
 (defn- transforms->svg
   "Converts IR transforms to SVG transform attribute string.
