@@ -195,12 +195,53 @@ Render any scene by tapping it:
                       :style/fill {:color [:color/rgb 255 200 50]}}]})
 ```
 
+## Export
+
+Multiple output formats with options:
+
+```clojure
+;; PNG (default)
+(eido/render-to-file scene "out.png")
+
+;; JPEG with quality
+(eido/render-to-file scene "out.jpg" {:quality 0.9})
+
+;; SVG (scalable vector output)
+(eido/render-to-file scene "out.svg")
+
+;; Or get the SVG string directly
+(eido/render-to-svg scene)
+
+;; High-resolution (2x for retina)
+(eido/render-to-file scene "out.png" {:scale 2})
+
+;; PNG with DPI metadata
+(eido/render-to-file scene "out.png" {:dpi 300})
+
+;; Transparent background (no background fill)
+(eido/render-to-file scene "out.png" {:transparent-background true})
+
+;; Batch export — render many scenes at once
+(eido/render-batch [{:scene scene-a :path "a.png"}
+                    {:scene scene-b :path "b.svg" :opts {:transparent-background true}}])
+
+;; Batch with generator function
+(eido/render-batch
+  (fn [i] {:scene (make-variation i)
+           :path (str "frame-" i ".png")})
+  100)
+```
+
+Supported formats: PNG, JPEG, GIF, BMP, SVG.
+
 ## API
 
 | Function | Description |
 |---|---|
-| `eido.core/render` | Scene map to BufferedImage |
-| `eido.core/render-to-file` | Scene map to PNG file |
+| `eido.core/render` | Scene map to BufferedImage (opts: :scale, :transparent-background) |
+| `eido.core/render-to-file` | Scene to file (opts: :format, :quality, :scale, :dpi, :transparent-background) |
+| `eido.core/render-to-svg` | Scene to SVG string (opts: :transparent-background) |
+| `eido.core/render-batch` | Render multiple scenes to files |
 | `eido.core/read-scene` | Read scene from `.edn` file |
 | `eido.core/render-file` | Render scene from `.edn` file |
 | `eido.color/resolve-color` | Color vector to `{:r :g :b :a}` map |
@@ -226,7 +267,7 @@ clj -X:test
 
 ## Status
 
-v0.5.0 — Core language, REPL workflow, and color system in place.
-Headed toward export options, validation, and additional backends.
+v0.6.0 — Core language, REPL workflow, color system, and multi-format export complete.
+Headed toward validation, animation, and additional backends.
 
 **This is an experiment and a work in progress. The API is not stable and may change without notice.**
