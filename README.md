@@ -299,18 +299,18 @@ Animations are sequences of scenes. Build the frames however you like, then rend
 
 ;; Build 60 frames — each is a plain scene map
 (def frames
-  (for [i (range 60)]
-    (let [t (anim/progress i 60)
-          r (anim/lerp 20 80 (anim/ease-in-out (anim/ping-pong t)))]
-      {:image/size [200 200]
-       :image/background [:color/rgb 30 30 40]
-       :image/nodes
-       (scene/radial 6 100 100 r
-         (fn [x y _]
-           {:node/type :shape/circle
-            :circle/center [x y]
-            :circle/radius 12
-            :style/fill [:color/rgb 255 100 50]}))})))
+  (anim/frames 60
+    (fn [t]
+      (let [r (anim/lerp 20 80 (anim/ease-in-out (anim/ping-pong t)))]
+        {:image/size [200 200]
+         :image/background [:color/rgb 30 30 40]
+         :image/nodes
+         (scene/radial 6 100 100 r
+           (fn [x y _]
+             {:node/type :shape/circle
+              :circle/center [x y]
+              :circle/radius 12
+              :style/fill [:color/rgb 255 100 50]}))}))))
 
 ```
 
@@ -345,6 +345,7 @@ Animations are sequences of scenes. Build the frames however you like, then rend
 The `eido.animate` namespace provides pure functions for building frame sequences:
 
 ```clojure
+(anim/frames 60 (fn [t] ...))  ;; build n frames, t is progress [0, 1]
 (anim/progress 15 60)          ;; => 0.25 (normalized frame position)
 (anim/ping-pong 0.75)          ;; => 0.5  (oscillate 0->1->0)
 (anim/cycle-n 3 0.5)           ;; => 0.5  (3 full cycles)
@@ -365,8 +366,8 @@ A rotating spiral wave where hue follows the angle and pulse follows the distanc
 
 ```clojure
 (def frames
-  (for [i (range 60)]
-    (let [t (anim/progress i 60)]
+  (anim/frames 60
+    (fn [t]
       {:image/size [400 400]
        :image/background [:color/rgb 10 10 18]
        :image/nodes
@@ -398,8 +399,8 @@ Three overlapping sine waves at different frequencies create organic, shifting p
 
 ```clojure
 (def frames
-  (for [i (range 50)]
-    (let [t (anim/progress i 50)]
+  (anim/frames 50
+    (fn [t]
       {:image/size [400 400]
        :image/background [:color/rgb 10 10 18]
        :image/nodes
@@ -429,8 +430,8 @@ A diagonal wave where cells expand and contract with staggered timing, hue shift
 
 ```clojure
 (def frames
-  (for [i (range 50)]
-    (let [t (anim/progress i 50)]
+  (anim/frames 50
+    (fn [t]
       {:image/size [400 400]
        :image/background [:color/rgb 245 243 238]
        :image/nodes
@@ -457,8 +458,8 @@ Vertical bars with height, position, and color driven by overlapping sine waves.
 
 ```clojure
 (def frames
-  (for [i (range 50)]
-    (let [t (anim/progress i 50)]
+  (anim/frames 50
+    (fn [t]
       {:image/size [400 400]
        :image/background [:color/rgb 10 10 18]
        :image/nodes
@@ -490,8 +491,8 @@ Eight arms spiral outward from the center, wobbling and shifting color along the
 
 ```clojure
 (def frames
-  (for [i (range 60)]
-    (let [t (anim/progress i 60)]
+  (anim/frames 60
+    (fn [t]
       {:image/size [400 400]
        :image/background [:color/rgb 10 10 18]
        :image/nodes
@@ -530,8 +531,8 @@ Eight arms spiral outward from the center, wobbling and shifting color along the
 
 ```clojure
 (def frames
-  (for [i (range 80)]
-    (let [t (anim/progress i 80)]
+  (anim/frames 80
+    (fn [t]
       {:image/size [500 400]
        :image/background [:color/rgb 245 243 238]
        :image/nodes
@@ -564,8 +565,8 @@ Eight arms spiral outward from the center, wobbling and shifting color along the
 
 ```clojure
 (def frames
-  (for [i (range 60)]
-    (let [t (anim/progress i 60)]
+  (anim/frames 60
+    (fn [t]
       {:image/size [500 500]
        :image/background [:color/rgb 5 5 12]
        :image/nodes
@@ -600,8 +601,8 @@ Concentric rings that wobble to create an optical illusion, using only black and
 
 ```clojure
 (def frames
-  (for [i (range 50)]
-    (let [t (anim/progress i 50)]
+  (anim/frames 50
+    (fn [t]
       {:image/size [400 400]
        :image/background [:color/rgb 255 255 255]
        :image/nodes
@@ -628,8 +629,8 @@ A 3:2 Lissajous figure traced with a rainbow trail that fades with age.
 
 ```clojure
 (def frames
-  (for [i (range 60)]
-    (let [t (anim/progress i 60)]
+  (anim/frames 60
+    (fn [t]
       {:image/size [400 400]
        :image/background [:color/rgb 5 5 12]
        :image/nodes
@@ -657,8 +658,8 @@ Evolving cellular patterns driven by sine wave interference, rendered as glowing
 
 ```clojure
 (def frames
-  (for [i (range 40)]
-    (let [t (anim/progress i 40)]
+  (anim/frames 40
+    (fn [t]
       {:image/size [400 400]
        :image/background [:color/rgb 10 10 18]
        :image/nodes
@@ -675,8 +676,7 @@ Evolving cellular patterns driven by sine wave interference, rendered as glowing
                   :rect/xy [(+ 2 (* col 15.8)) (+ 2 (* row 15.8))]
                   :rect/size [14 14]
                   :node/opacity (+ 0.6 (* 0.4 glow))
-                  :style/fill [:color/hsl hue 0.9 (+ 0.35 (* 0.3 glow))]}))))))})
-    ))
+                  :style/fill [:color/hsl hue 0.9 (+ 0.35 (* 0.3 glow))]})))))})))
 
 (eido/render frames {:output "cellular.gif" :fps 15})
 ```
@@ -689,8 +689,8 @@ Eight-fold rotational symmetry with orbiting, pulsing dots.
 
 ```clojure
 (def frames
-  (for [i (range 60)]
-    (let [t (anim/progress i 60)]
+  (anim/frames 60
+    (fn [t]
       {:image/size [400 400]
        :image/background [:color/rgb 5 5 12]
        :image/nodes
@@ -757,6 +757,7 @@ A Koch snowflake that gains detail with each frame, the boundary growing ever mo
 | `user/install-tap!` | Render tapped scenes (dev) |
 | `user/play` | Play animation in preview window (dev) |
 | `user/stop` | Stop animation playback (dev) |
+| `eido.animate/frames` | Build n frames from (fn [t] ...) |
 | `eido.animate/progress` | Normalized frame progress [0, 1] |
 | `eido.animate/ping-pong` | Oscillate 0->1->0 |
 | `eido.animate/cycle-n` | Multiple cycles within [0, 1] |
@@ -774,7 +775,7 @@ clj -X:test
 
 ## Status
 
-v0.10.0 — Core language complete. Polish pass: API consistency, expanded tests, full spec documentation.
+v0.11.0 — Core language complete. Added `anim/frames` for streamlined animation authoring.
 Headed toward v1.0 alpha.
 
 **This is an experiment and a work in progress. The API is not stable and may change without notice.**

@@ -8,6 +8,11 @@
 - Add 7 advanced gallery examples (galaxy, pendulum wave, op art, Lissajous, cellular automaton, kaleidoscope, tree)
 - Add fractal examples (blooming tree, Sierpinski triangle, Koch snowflake)
 
+## v0.11.0 — Frames
+
+- Add `eido.animate/frames` higher-order function for building frame sequences without boilerplate
+- Update all README animation examples to use `anim/frames`
+
 ## v0.10.0 — Polish
 
 - Move `->awt-color` to render namespace as private function (no longer public API)
