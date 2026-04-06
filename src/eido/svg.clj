@@ -27,6 +27,8 @@
              (case t
                :translate (str "translate(" (first args) "," (second args) ")")
                :rotate    (str "rotate(" (fmt (* (first args) (/ 180.0 Math/PI))) ")")
+               :shear-x   (str "skewX(" (first args) ")")
+               :shear-y   (str "skewY(" (first args) ")")
                :scale     (str "scale(" (first args) "," (second args) ")")))
            transforms))))
 

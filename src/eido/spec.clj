@@ -53,10 +53,18 @@
 (s/def :transform/scale
   (s/and vector? (s/cat :tag #{:transform/scale} :sx number? :sy number?)))
 
+(s/def :transform/shear-x
+  (s/and vector? (s/cat :tag #{:transform/shear-x} :sx number?)))
+
+(s/def :transform/shear-y
+  (s/and vector? (s/cat :tag #{:transform/shear-y} :sy number?)))
+
 (s/def ::transform
   (s/or :translate :transform/translate
         :rotate :transform/rotate
-        :scale :transform/scale))
+        :scale :transform/scale
+        :shear-x :transform/shear-x
+        :shear-y :transform/shear-y))
 
 (s/def :node/transform (s/coll-of ::transform :kind vector?))
 

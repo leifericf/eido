@@ -132,6 +132,8 @@
                                     (double (first args))
                                     (double (second args)))
              :rotate    (.rotate g (double (first args)))
+             :shear-x   (.shear g (double (first args)) 0.0)
+             :shear-y   (.shear g 0.0 (double (first args)))
              :scale     (.scale g
                                 (double (first args))
                                 (double (second args)))))

@@ -252,6 +252,18 @@
           out (svg/render ir)]
       (is (re-find #"rotate\(180" out)))))
 
+(deftest svg-transform-shear-test
+  (testing "renders shear transforms as skewX/skewY"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 10 :h 10
+                         :fill nil :stroke-color nil :stroke-width nil
+                         :opacity 1.0
+                         :transforms [[:shear-x 0.3] [:shear-y 0.5]]}]}
+          out (svg/render ir)]
+      (is (re-find #"skewX\(0\.3\)" out))
+      (is (re-find #"skewY\(0\.5\)" out)))))
+
 (deftest svg-transform-combined-test
   (testing "combines multiple transforms"
     (let [ir {:ir/size [100 100]

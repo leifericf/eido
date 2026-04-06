@@ -111,6 +111,14 @@
   (testing "accepts valid scale"
     (is (s/valid? :eido.spec/transform [:transform/scale 2 3]))))
 
+(deftest transform-shear-test
+  (testing "accepts valid shear-x"
+    (is (s/valid? :eido.spec/transform [:transform/shear-x 0.3])))
+  (testing "accepts valid shear-y"
+    (is (s/valid? :eido.spec/transform [:transform/shear-y 0.5])))
+  (testing "rejects non-numeric"
+    (is (not (s/valid? :eido.spec/transform [:transform/shear-x "bad"])))))
+
 (deftest transforms-collection-test
   (testing "accepts vector of transforms"
     (is (s/valid? :node/transform [[:transform/translate 10 20]
