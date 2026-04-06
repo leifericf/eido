@@ -97,6 +97,25 @@
          (into [[:move-to (first pts)]]
                (remove nil? (take (dec n) curves)))))}))
 
+(defn regular-polygon
+  "Creates a closed regular n-sided polygon path node centered at [cx cy]
+  with the given radius. First vertex is at the top (12 o'clock)."
+  [[cx cy] radius n]
+  (polygon (radial n cx cy radius (fn [x y _a] [x y]))))
+
+(defn star
+  "Creates a closed star path node with n points centered at [cx cy].
+  outer-radius is the distance to the tips, inner-radius to the inner vertices."
+  [[cx cy] outer-radius inner-radius n]
+  (let [step (/ Math/PI n)
+        pts  (for [i (range (* 2 n))
+                   :let [angle (- (* i step) (/ Math/PI 2.0))
+                         r     (if (even? i) outer-radius inner-radius)
+                         x     (+ cx (* r (Math/cos angle)))
+                         y     (+ cy (* r (Math/sin angle)))]]
+               [x y])]
+    (polygon pts)))
+
 (comment
   (grid 3 2 (fn [c r]
               {:node/type :shape/circle

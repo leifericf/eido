@@ -150,6 +150,58 @@
       (is (= [[:move-to [50 50]]]
              (:path/commands node))))))
 
+;; --- regular-polygon tests ---
+
+(deftest regular-polygon-triangle-test
+  (testing "n=3 produces a triangle"
+    (let [node (scene/regular-polygon [100 100] 50 3)]
+      (is (= :shape/path (:node/type node)))
+      (is (= 4 (count (:path/commands node))))
+      (is (= :move-to (first (first (:path/commands node)))))
+      (is (= :close (first (last (:path/commands node))))))))
+
+(deftest regular-polygon-hexagon-test
+  (testing "n=6 produces a hexagon with 7 commands"
+    (let [node (scene/regular-polygon [0 0] 10 6)]
+      ;; move-to + 5 line-to + close = 7
+      (is (= 7 (count (:path/commands node)))))))
+
+(deftest regular-polygon-first-vertex-at-top-test
+  (testing "first vertex is at the top (12 o'clock)"
+    (let [node (scene/regular-polygon [100 100] 50 4)
+          [_ [x y]] (first (:path/commands node))]
+      (is (approx= 100.0 x 0.01))
+      (is (approx= 50.0 y 0.01)))))
+
+;; --- star tests ---
+
+(deftest star-basic-test
+  (testing "5-pointed star has 10 vertices"
+    (let [node (scene/star [100 100] 50 25 5)]
+      (is (= :shape/path (:node/type node)))
+      ;; move-to + 9 line-to + close = 11
+      (is (= 11 (count (:path/commands node)))))))
+
+(deftest star-tip-at-top-test
+  (testing "first tip is at the top"
+    (let [node (scene/star [100 100] 50 25 5)
+          [_ [x y]] (first (:path/commands node))]
+      (is (approx= 100.0 x 0.01))
+      (is (approx= 50.0 y 0.01)))))
+
+(deftest star-inner-outer-radii-test
+  (testing "alternates between outer and inner radii"
+    (let [node (scene/star [0 0] 100 50 4)
+          pts  (map second (:path/commands node))
+          ;; Remove the :close command (has no point)
+          pts  (butlast pts)
+          dists (mapv (fn [[x y]] (Math/sqrt (+ (* x x) (* y y)))) pts)]
+      ;; Even indices (0,2,4,6) should be at outer radius, odd at inner
+      (is (approx= 100.0 (nth dists 0) 0.01))
+      (is (approx= 50.0 (nth dists 1) 0.01))
+      (is (approx= 100.0 (nth dists 2) 0.01))
+      (is (approx= 50.0 (nth dists 3) 0.01)))))
+
 ;; --- integration: scene helpers → render ---
 
 (defn- pixel-rgb
