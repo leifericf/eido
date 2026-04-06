@@ -63,6 +63,9 @@
                     [cx2 cy2] (second args)
                     [x y]     (nth args 2)]
                 [:curve-to cx1 cy1 cx2 cy2 x y])
+    :quad-to  (let [[cpx cpy] (first args)
+                    [x y]     (second args)]
+                [:quad-to cpx cpy x y])
     :close    [:close]))
 
 (defmethod compile-node :shape/path

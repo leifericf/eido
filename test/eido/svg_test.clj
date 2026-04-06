@@ -99,6 +99,18 @@
           out (svg/render ir)]
       (is (re-find #"C 10 20 30 40 50 60" out)))))
 
+(deftest svg-path-quad-to-test
+  (testing "renders quad-to as Q command"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :path
+                         :commands [[:move-to 0 0]
+                                    [:quad-to 50 80 100 0]]
+                         :fill nil :stroke-color nil :stroke-width nil
+                         :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"Q 50 80 100 0" out)))))
+
 (deftest svg-no-fill-test
   (testing "nil fill produces fill=none"
     (let [ir {:ir/size [100 100]

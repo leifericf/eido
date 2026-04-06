@@ -375,6 +375,21 @@
       (is (= 3 (:stroke-width op)))
       (is (= 0.7 (:opacity op))))))
 
+(deftest compile-path-quad-to-test
+  (testing "compiles quad-to with flattened control point"
+    (let [scene {:image/size [200 200]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [10 10]]
+                                   [:quad-to [50 80] [90 10]]
+                                   [:close]]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= [[:move-to 10 10]
+              [:quad-to 50 80 90 10]
+              [:close]]
+             (:commands op))))))
+
 (deftest compile-path-empty-commands-test
   (testing "empty commands list compiles to empty IR commands"
     (let [scene {:image/size [100 100]

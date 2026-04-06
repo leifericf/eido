@@ -64,6 +64,9 @@
                     (double (nth args 0)) (double (nth args 1))
                     (double (nth args 2)) (double (nth args 3))
                     (double (nth args 4)) (double (nth args 5)))
+        :quad-to  (.quadTo p
+                    (double (nth args 0)) (double (nth args 1))
+                    (double (nth args 2)) (double (nth args 3)))
         :close    (.closePath p)))
     p))
 

@@ -71,6 +71,9 @@
 (s/def :cmd/curve-to
   (s/and vector? (s/cat :tag #{:curve-to} :cp1 ::point :cp2 ::point :pt ::point)))
 
+(s/def :cmd/quad-to
+  (s/and vector? (s/cat :tag #{:quad-to} :cp ::point :pt ::point)))
+
 (s/def :cmd/close
   (s/and vector? (s/cat :tag #{:close})))
 
@@ -78,6 +81,7 @@
   (s/or :move-to :cmd/move-to
         :line-to :cmd/line-to
         :curve-to :cmd/curve-to
+        :quad-to :cmd/quad-to
         :close :cmd/close))
 
 (s/def :path/commands (s/coll-of ::path-command :kind vector?))

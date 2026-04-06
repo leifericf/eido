@@ -134,6 +134,12 @@
   (testing "accepts curve-to with 3 points"
     (is (s/valid? :eido.spec/path-command [:curve-to [10 20] [30 40] [50 60]]))))
 
+(deftest path-command-quad-to-test
+  (testing "accepts quad-to with 2 points"
+    (is (s/valid? :eido.spec/path-command [:quad-to [10 20] [50 60]])))
+  (testing "rejects quad-to with wrong arity"
+    (is (not (s/valid? :eido.spec/path-command [:quad-to [10 20]])))))
+
 (deftest path-command-close-test
   (testing "accepts close"
     (is (s/valid? :eido.spec/path-command [:close]))))

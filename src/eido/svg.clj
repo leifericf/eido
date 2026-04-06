@@ -39,6 +39,7 @@
              :move-to  (str "M " (first args) " " (second args))
              :line-to  (str "L " (first args) " " (second args))
              :curve-to (str "C " (str/join " " args))
+             :quad-to  (str "Q " (str/join " " args))
              :close    "Z"))
          commands)))
 
