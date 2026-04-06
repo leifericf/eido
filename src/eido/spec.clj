@@ -136,3 +136,20 @@
 (s/def ::scene
   (s/keys :req [:image/size :image/background :image/nodes]
           :opt [:eido/version]))
+
+(comment
+  ;; Check if a scene conforms
+  (s/valid? ::scene
+    {:image/size [800 600]
+     :image/background [:color/rgb 255 255 255]
+     :image/nodes []})
+
+  ;; Explain failures
+  (s/explain ::scene
+    {:image/size [800 600]
+     :image/background [:color/rgb 255 255 255]
+     :image/nodes [{:node/type :shape/rect}]})
+
+  ;; Check a color
+  (s/valid? ::color [:color/hsl 180 0.5 0.5])
+  )

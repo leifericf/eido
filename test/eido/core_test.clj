@@ -500,3 +500,44 @@
         (is (re-find #"<svg" content))
         (is (re-find #"<animate" content)))
       (.delete (File. path)))))
+
+;; --- edge cases ---
+
+(deftest single-frame-animation-test
+  (testing "render-to-gif with single frame"
+    (let [path (str (File/createTempFile "eido-1f" ".gif"))]
+      (eido/render-to-gif [(first simple-frames)] path 10)
+      (is (.exists (File. path)))
+      (.delete (File. path))))
+
+  (testing "render-animation with single frame"
+    (let [dir (str (File/createTempFile "eido-1f" "") ".d")]
+      (.mkdirs (File. dir))
+      (let [paths (eido/render-animation [(first simple-frames)] dir)]
+        (is (= 1 (count paths)))
+        (doseq [p paths] (.delete (File. ^String p)))
+        (.delete (File. dir)))))
+
+  (testing "render-to-animated-svg-str with single frame"
+    (let [out (eido/render-to-animated-svg-str [(first simple-frames)] 10)]
+      (is (re-find #"<svg" out))
+      (is (= 1 (count (re-seq #"<g " out)))))))
+
+(deftest version-key-roundtrip-test
+  (testing "scene with version renders normally"
+    (let [scene {:eido/version "1.0"
+                 :image/size [100 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes [{:node/type :shape/circle
+                                :circle/center [50 50]
+                                :circle/radius 30
+                                :style/fill {:color [:color/rgb 200 0 0]}}]}
+          img (eido/render scene)]
+      (is (= 100 (.getWidth img)))
+      (is (= 100 (.getHeight img)))))
+
+  (testing "scene with version validates"
+    (is (nil? (eido/validate {:eido/version "1.0"
+                              :image/size [100 100]
+                              :image/background [:color/rgb 0 0 0]
+                              :image/nodes []})))))

@@ -146,10 +146,27 @@
        (concat [header] frames ["</svg>"])))))
 
 (comment
+  ;; Static SVG
   (render {:ir/size [200 200]
            :ir/background {:r 255 :g 255 :b 255 :a 1.0}
            :ir/ops [{:op :circle :cx 100 :cy 100 :r 50
                      :fill {:r 200 :g 0 :b 0 :a 1.0}
                      :stroke-color nil :stroke-width nil
                      :opacity 1.0 :transforms []}]})
+
+  ;; Animated SVG
+  (render-animated
+    [{:ir/size [100 100]
+      :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+      :ir/ops [{:op :circle :cx 50 :cy 50 :r 20
+                :fill {:r 255 :g 0 :b 0 :a 1.0}
+                :stroke-color nil :stroke-width nil
+                :opacity 1.0 :transforms []}]}
+     {:ir/size [100 100]
+      :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+      :ir/ops [{:op :circle :cx 50 :cy 50 :r 40
+                :fill {:r 0 :g 255 :b 0 :a 1.0}
+                :stroke-color nil :stroke-width nil
+                :opacity 1.0 :transforms []}]}]
+    10)
   )

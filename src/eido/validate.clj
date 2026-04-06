@@ -69,3 +69,21 @@
   [scene]
   (when-let [ed (s/explain-data :eido.spec/scene scene)]
     (mapv problem->error (::s/problems ed))))
+
+(comment
+  ;; Valid scene returns nil
+  (validate {:image/size [800 600]
+             :image/background [:color/rgb 255 255 255]
+             :image/nodes []})
+
+  ;; Missing required key
+  (validate {:image/size [800 600]
+             :image/background [:color/rgb 255 255 255]
+             :image/nodes [{:node/type :shape/rect}]})
+
+  ;; Invalid version
+  (validate {:eido/version "bad"
+             :image/size [100 100]
+             :image/background [:color/rgb 0 0 0]
+             :image/nodes []})
+  )

@@ -66,3 +66,37 @@
       (gif/write-animated-gif images path 100 true)
       (is (= 1 (gif-frame-count path)))
       (.delete (File. path)))))
+
+(deftest gif-no-loop-test
+  (testing "writes GIF without loop extension"
+    (let [path (str (File/createTempFile "eido-gif" ".gif"))
+          images [(solid-image 50 50 Color/RED)
+                  (solid-image 50 50 Color/BLUE)]]
+      (gif/write-animated-gif images path 100 false)
+      (is (= 2 (gif-frame-count path)))
+      (.delete (File. path)))))
+
+(deftest gif-many-frames-test
+  (testing "handles many frames"
+    (let [path   (str (File/createTempFile "eido-gif" ".gif"))
+          images (vec (repeatedly 50 #(solid-image 20 20 Color/RED)))]
+      (gif/write-animated-gif images path 33 true)
+      (is (= 50 (gif-frame-count path)))
+      (.delete (File. path)))))
+
+(deftest gif-short-delay-test
+  (testing "handles very short frame delay"
+    (let [path (str (File/createTempFile "eido-gif" ".gif"))
+          images [(solid-image 10 10 Color/RED)
+                  (solid-image 10 10 Color/BLUE)]]
+      (gif/write-animated-gif images path 5 true)
+      (is (= 2 (gif-frame-count path)))
+      (.delete (File. path)))))
+
+(deftest gif-returns-path-test
+  (testing "returns the output path"
+    (let [path (str (File/createTempFile "eido-gif" ".gif"))
+          images [(solid-image 10 10 Color/RED)]
+          result (gif/write-animated-gif images path 100 true)]
+      (is (= path result))
+      (.delete (File. path)))))
