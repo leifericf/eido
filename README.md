@@ -258,6 +258,54 @@ Scenes are validated automatically before rendering. Invalid scenes produce clea
 
 Validates: required keys, value ranges (RGB 0-255, alpha/opacity 0-1, positive dimensions), node types, path commands, color formats, and recursive group structure.
 
+## Animation
+
+Animations are sequences of scenes. Build the frames however you like, then render them as a GIF or a numbered PNG sequence.
+
+```clojure
+(require '[eido.animate :as anim])
+
+;; Build 60 frames — each is a plain scene map
+(def frames
+  (for [i (range 60)]
+    (let [t (anim/progress i 60)
+          r (anim/lerp 20 80 (anim/ease-in-out (anim/ping-pong t)))]
+      {:image/size [200 200]
+       :image/background [:color/rgb 30 30 40]
+       :image/nodes
+       (scene/radial 6 100 100 r
+         (fn [x y _]
+           {:node/type :shape/circle
+            :circle/center [x y]
+            :circle/radius 12
+            :style/fill {:color [:color/rgb 255 100 50]}}))})))
+
+;; Export as animated GIF (30 fps)
+(eido/render-to-gif frames "animation.gif" 30)
+
+;; Export as numbered PNG sequence
+(eido/render-animation frames "frames/")
+
+;; Preview in REPL window
+(play frames 30)
+(stop)
+```
+
+### Animation Helpers
+
+The `eido.animate` namespace provides pure functions for building frame sequences:
+
+```clojure
+(anim/progress 15 60)          ;; => 0.25 (normalized frame position)
+(anim/ping-pong 0.75)          ;; => 0.5  (oscillate 0->1->0)
+(anim/cycle-n 3 0.5)           ;; => 0.5  (3 full cycles)
+(anim/lerp 0 100 0.5)          ;; => 50.0 (numeric interpolation)
+(anim/ease-in 0.5)             ;; => 0.25 (quadratic ease in)
+(anim/ease-out 0.5)            ;; => 0.75 (quadratic ease out)
+(anim/ease-in-out 0.5)         ;; => 0.5  (quadratic ease in-out)
+(anim/stagger 2 5 0.5 0.3)    ;; per-element progress for staggered animations
+```
+
 ## API
 
 | Function | Description |
@@ -266,6 +314,8 @@ Validates: required keys, value ranges (RGB 0-255, alpha/opacity 0-1, positive d
 | `eido.core/render` | Scene map to BufferedImage (opts: :scale, :transparent-background) |
 | `eido.core/render-to-file` | Scene to file (opts: :format, :quality, :scale, :dpi, :transparent-background) |
 | `eido.core/render-to-svg` | Scene to SVG string (opts: :transparent-background) |
+| `eido.core/render-to-gif` | Render scene sequence to animated GIF |
+| `eido.core/render-animation` | Render scene sequence to numbered PNG files |
 | `eido.core/render-batch` | Render multiple scenes to files |
 | `eido.core/read-scene` | Read scene from `.edn` file |
 | `eido.core/render-file` | Render scene from `.edn` file |
@@ -283,6 +333,16 @@ Validates: required keys, value ranges (RGB 0-255, alpha/opacity 0-1, positive d
 | `user/watch-file` | Auto-reload file on save (dev) |
 | `user/watch-scene` | Auto-reload atom on change (dev) |
 | `user/install-tap!` | Render tapped scenes (dev) |
+| `user/play` | Play animation in preview window (dev) |
+| `user/stop` | Stop animation playback (dev) |
+| `eido.animate/progress` | Normalized frame progress [0, 1] |
+| `eido.animate/ping-pong` | Oscillate 0->1->0 |
+| `eido.animate/cycle-n` | Multiple cycles within [0, 1] |
+| `eido.animate/lerp` | Numeric linear interpolation |
+| `eido.animate/ease-in` | Quadratic ease in |
+| `eido.animate/ease-out` | Quadratic ease out |
+| `eido.animate/ease-in-out` | Quadratic ease in-out |
+| `eido.animate/stagger` | Per-element staggered progress |
 
 ## Running Tests
 
@@ -292,7 +352,7 @@ clj -X:test
 
 ## Status
 
-v0.7.0 — Core language, workflow, color, export, and validation complete.
-Headed toward animation and additional backends.
+v0.8.0 — Core language, workflow, color, export, validation, and animation complete.
+Headed toward additional backends.
 
 **This is an experiment and a work in progress. The API is not stable and may change without notice.**
