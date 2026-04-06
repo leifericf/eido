@@ -424,6 +424,45 @@
       (is (= 40 (:ry op)))
       (is (= {:r 0 :g 255 :b 0 :a 1.0} (:fill op))))))
 
+;; --- arc tests ---
+
+(deftest compile-arc-test
+  (testing "compiles an arc node into IR op"
+    (let [scene {:image/size [400 400]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/arc
+                   :arc/center [200 200]
+                   :arc/rx 80
+                   :arc/ry 60
+                   :arc/start 0
+                   :arc/extent 270
+                   :arc/mode :pie
+                   :style/fill [:color/rgb 255 0 0]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= :arc (:op op)))
+      (is (= 200 (:cx op)))
+      (is (= 200 (:cy op)))
+      (is (= 80 (:rx op)))
+      (is (= 60 (:ry op)))
+      (is (= 0 (:start op)))
+      (is (= 270 (:extent op)))
+      (is (= :pie (:mode op))))))
+
+(deftest compile-arc-default-mode-test
+  (testing "arc defaults to :open mode"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/arc
+                   :arc/center [50 50]
+                   :arc/rx 30
+                   :arc/ry 30
+                   :arc/start 0
+                   :arc/extent 180}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= :open (:mode op))))))
+
 ;; --- rounded rect tests ---
 
 (deftest compile-rounded-rect-test

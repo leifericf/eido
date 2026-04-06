@@ -1,7 +1,7 @@
 (ns eido.render
   (:import
     [java.awt AlphaComposite BasicStroke Color Graphics2D RenderingHints]
-    [java.awt.geom Ellipse2D$Double GeneralPath Rectangle2D$Double RoundRectangle2D$Double]
+    [java.awt.geom Arc2D$Double Ellipse2D$Double GeneralPath Rectangle2D$Double RoundRectangle2D$Double]
     [java.awt.image BufferedImage]))
 
 (defn- ->awt-color
@@ -58,6 +58,20 @@
   (let [d (* 2.0 r)
         shape (Ellipse2D$Double. (double (- cx r)) (double (- cy r))
                                 d d)]
+    (apply-fill g shape fill)
+    (apply-stroke g shape op)))
+
+(def ^:private arc-mode-map
+  {:open  Arc2D$Double/OPEN
+   :chord Arc2D$Double/CHORD
+   :pie   Arc2D$Double/PIE})
+
+(defmethod render-op :arc
+  [^Graphics2D g {:keys [cx cy rx ry start extent mode fill] :as op}]
+  (let [shape (Arc2D$Double. (double (- cx rx)) (double (- cy ry))
+                              (double (* 2.0 rx)) (double (* 2.0 ry))
+                              (double start) (double extent)
+                              (int (get arc-mode-map mode Arc2D$Double/OPEN)))]
     (apply-fill g shape fill)
     (apply-stroke g shape op)))
 

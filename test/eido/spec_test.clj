@@ -273,6 +273,41 @@
                 :ellipse/rx -5
                 :ellipse/ry 40})))))
 
+(deftest node-arc-test
+  (testing "accepts valid arc"
+    (is (s/valid? :eido.spec/node
+          {:node/type :shape/arc
+           :arc/center [200 200]
+           :arc/rx 80
+           :arc/ry 80
+           :arc/start 0
+           :arc/extent 270})))
+  (testing "accepts arc with mode"
+    (is (s/valid? :eido.spec/node
+          {:node/type :shape/arc
+           :arc/center [200 200]
+           :arc/rx 80
+           :arc/ry 80
+           :arc/start 0
+           :arc/extent 270
+           :arc/mode :pie})))
+  (testing "rejects invalid mode"
+    (is (not (s/valid? :eido.spec/node
+               {:node/type :shape/arc
+                :arc/center [200 200]
+                :arc/rx 80
+                :arc/ry 80
+                :arc/start 0
+                :arc/extent 270
+                :arc/mode :invalid}))))
+  (testing "rejects arc missing extent"
+    (is (not (s/valid? :eido.spec/node
+               {:node/type :shape/arc
+                :arc/center [200 200]
+                :arc/rx 80
+                :arc/ry 80
+                :arc/start 0})))))
+
 (deftest node-line-test
   (testing "accepts valid line"
     (is (s/valid? :eido.spec/node

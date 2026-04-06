@@ -48,6 +48,19 @@
       (is (re-find #"<circle cx=\"50\" cy=\"60\" r=\"25\"" out))
       (is (re-find #"fill=\"rgb\(0,255,0\)\"" out)))))
 
+(deftest svg-arc-test
+  (testing "renders arc as path element"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :arc :cx 50 :cy 50 :rx 30 :ry 30
+                         :start 0 :extent 90 :mode :pie
+                         :fill {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"<path d=\"" out))
+      (is (re-find #"fill=\"rgb\(255,0,0\)\"" out)))))
+
 (deftest svg-rounded-rect-test
   (testing "renders rect with rx and ry attributes"
     (let [ir {:ir/size [100 100]

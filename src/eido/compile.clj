@@ -42,6 +42,16 @@
     (merge {:op :circle :cx cx :cy cy :r (:circle/radius node)}
            (compile-style node))))
 
+(defmethod compile-node :shape/arc
+  [node]
+  (let [[cx cy] (:arc/center node)]
+    (merge {:op :arc :cx cx :cy cy
+            :rx (:arc/rx node) :ry (:arc/ry node)
+            :start (:arc/start node)
+            :extent (:arc/extent node)
+            :mode (get node :arc/mode :open)}
+           (compile-style node))))
+
 (defmethod compile-node :shape/line
   [node]
   (let [[x1 y1] (:line/from node)

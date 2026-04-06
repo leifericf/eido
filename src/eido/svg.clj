@@ -84,6 +84,36 @@
        "\" r=\"" r
        "\" " (style-attrs op) "/>"))
 
+(defn- arc->path-d
+  "Converts arc parameters to SVG path d string.
+  start/extent in degrees, mode is :open/:chord/:pie."
+  [cx cy rx ry start extent mode]
+  (let [start-rad (* start (/ Math/PI 180.0))
+        end-rad   (* (+ start extent) (/ Math/PI 180.0))
+        x1 (+ cx (* rx (Math/cos start-rad)))
+        y1 (- cy (* ry (Math/sin start-rad)))
+        x2 (+ cx (* rx (Math/cos end-rad)))
+        y2 (- cy (* ry (Math/sin end-rad)))
+        large-arc (if (> (Math/abs extent) 180) 1 0)
+        sweep     (if (pos? extent) 0 1)]
+    (case mode
+      :pie   (str "M " (fmt cx) " " (fmt cy)
+                  " L " (fmt x1) " " (fmt y1)
+                  " A " rx " " ry " 0 " large-arc " " sweep
+                  " " (fmt x2) " " (fmt y2) " Z")
+      :chord (str "M " (fmt x1) " " (fmt y1)
+                  " A " rx " " ry " 0 " large-arc " " sweep
+                  " " (fmt x2) " " (fmt y2) " Z")
+      ;; :open
+      (str "M " (fmt x1) " " (fmt y1)
+           " A " rx " " ry " 0 " large-arc " " sweep
+           " " (fmt x2) " " (fmt y2)))))
+
+(defmethod op->svg :arc
+  [{:keys [cx cy rx ry start extent mode] :as op}]
+  (str "<path d=\"" (arc->path-d cx cy rx ry start extent mode)
+       "\" " (style-attrs op) "/>"))
+
 (defmethod op->svg :line
   [{:keys [x1 y1 x2 y2] :as op}]
   (str "<line x1=\"" x1 "\" y1=\"" y1

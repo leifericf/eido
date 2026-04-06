@@ -39,7 +39,7 @@
     "version string matching \"X.Y\" (e.g. \"1.0\")"
 
     (some #{:eido.spec/node} via)
-    "valid node (type must be :shape/rect, :shape/circle, :shape/ellipse, :shape/line, :shape/path, or :group)"
+    "valid node (type must be :shape/rect, :shape/circle, :shape/ellipse, :shape/arc, :shape/line, :shape/path, or :group)"
 
     :else
     (pr-str pred)))

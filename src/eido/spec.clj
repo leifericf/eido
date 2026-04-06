@@ -124,6 +124,12 @@
 (s/def :rect/corner-radius (s/and number? #(>= % 0)))
 (s/def :circle/center ::point)
 (s/def :circle/radius ::pos-number)
+(s/def :arc/center ::point)
+(s/def :arc/rx ::pos-number)
+(s/def :arc/ry ::pos-number)
+(s/def :arc/start number?)
+(s/def :arc/extent number?)
+(s/def :arc/mode #{:open :chord :pie})
 (s/def :line/from ::point)
 (s/def :line/to ::point)
 (s/def :ellipse/center ::point)
@@ -140,6 +146,10 @@
 (defmethod node-type :shape/circle [_]
   (s/keys :req [:node/type :circle/center :circle/radius]
           :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+
+(defmethod node-type :shape/arc [_]
+  (s/keys :req [:node/type :arc/center :arc/rx :arc/ry :arc/start :arc/extent]
+          :opt [:arc/mode :style/fill :style/stroke :node/opacity :node/transform]))
 
 (defmethod node-type :shape/line [_]
   (s/keys :req [:node/type :line/from :line/to]
@@ -160,7 +170,7 @@
 (defmethod node-type :default [_]
   (s/with-gen
     (s/and (s/keys :req [:node/type])
-           #(contains? #{:shape/rect :shape/circle :shape/ellipse :shape/line :shape/path :group}
+           #(contains? #{:shape/rect :shape/circle :shape/ellipse :shape/arc :shape/line :shape/path :group}
                        (:node/type %)))
     #(s/gen #{:shape/rect})))
 
