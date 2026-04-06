@@ -722,6 +722,24 @@ Eight-fold rotational symmetry with orbiting, pulsing dots.
 
 <img src="images/kaleidoscope.gif" width="300" alt="Kaleidoscope" />
 
+### Blooming Tree
+
+A recursive fractal tree that grows from trunk to full canopy, then sways in the wind. Leaves appear at the tips once fully grown.
+
+<img src="images/tree.gif" width="300" alt="Blooming fractal tree" />
+
+### Sierpinski Triangle
+
+The classic fractal, built up one recursion depth at a time with shifting colors.
+
+<img src="images/sierpinski.gif" width="300" alt="Sierpinski triangle" />
+
+### Koch Snowflake
+
+A Koch snowflake that gains detail with each frame, the boundary growing ever more intricate.
+
+<img src="images/koch.gif" width="300" alt="Koch snowflake" />
+
 ## API
 
 | Function | Description |
