@@ -127,7 +127,9 @@
     (let [child-ctx (-> ctx
                         (update :style (partial group-style node))
                         (update :opacity * (get node :node/opacity 1.0))
-                        (update :transforms accumulate-transforms node))]
+                        (update :transforms accumulate-transforms node)
+                        (cond-> (:group/clip node)
+                          (assoc :clip (compile-node (:group/clip node)))))]
       (into [] (mapcat #(compile-tree % child-ctx))
             (:group/children node)))
     (let [effective-opacity (* (:opacity ctx)
@@ -135,7 +137,8 @@
           transforms (accumulate-transforms (:transforms ctx) node)
           styled-node (-> (inherit-style node (:style ctx))
                           (assoc :node/opacity effective-opacity))]
-      [(assoc (compile-node styled-node) :transforms transforms)])))
+      [(cond-> (assoc (compile-node styled-node) :transforms transforms)
+         (:clip ctx) (assoc :clip (:clip ctx)))])))
 
 (defn compile
   "Compiles a scene map into an intermediate representation.

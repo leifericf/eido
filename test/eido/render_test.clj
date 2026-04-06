@@ -211,6 +211,23 @@
           img (render/render ir)]
       (is (= [255 0 0] (pixel-rgb img 50 50))))))
 
+;; --- clipping tests ---
+
+(deftest render-clip-circle-test
+  (testing "clip restricts rendering to clip shape"
+    (let [ir {:ir/size [200 200]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 200 :h 200
+                         :fill {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0 :transforms []
+                         :clip {:op :circle :cx 100 :cy 100 :r 40}}]}
+          img (render/render ir)]
+      (is (= [255 0 0] (pixel-rgb img 100 100))
+          "center inside clip should be red")
+      (is (= [255 255 255] (pixel-rgb img 5 5))
+          "corner outside clip should be background"))))
+
 ;; --- v0.3 path rendering tests ---
 
 (deftest render-path-fill-test

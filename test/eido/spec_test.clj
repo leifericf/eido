@@ -258,6 +258,16 @@
            [{:node/type :shape/rect
              :rect/xy [0 0]
              :rect/size [10 10]}]})))
+  (testing "accepts group with clip"
+    (is (s/valid? :eido.spec/node
+          {:node/type :group
+           :group/clip {:node/type :shape/circle
+                        :circle/center [50 50]
+                        :circle/radius 30}
+           :group/children
+           [{:node/type :shape/rect
+             :rect/xy [0 0]
+             :rect/size [100 100]}]})))
   (testing "rejects group with invalid child"
     (is (not (s/valid? :eido.spec/node
                {:node/type :group

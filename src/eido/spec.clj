@@ -136,6 +136,8 @@
 (s/def :ellipse/center ::point)
 (s/def :ellipse/rx ::pos-number)
 (s/def :ellipse/ry ::pos-number)
+;; group/clip is validated in compile, not here, to avoid circular spec
+;; (clip shape doesn't need to be a full recursive node validation)
 (s/def :group/children (s/coll-of ::node :kind vector?))
 
 (defmulti node-type :node/type)

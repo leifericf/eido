@@ -135,6 +135,40 @@
                                 :non-zero "nonzero") "\""))
        " " (style-attrs op) "/>"))
 
+(defn- clip-shape->svg
+  "Converts a clip IR op to an SVG shape element string (no style)."
+  [{:keys [op] :as clip}]
+  (case op
+    :rect    (let [{:keys [x y w h corner-radius]} clip]
+               (str "<rect x=\"" x "\" y=\"" y
+                    "\" width=\"" w "\" height=\"" h "\""
+                    (when corner-radius
+                      (str " rx=\"" corner-radius "\" ry=\"" corner-radius "\""))
+                    "/>"))
+    :circle  (let [{:keys [cx cy r]} clip]
+               (str "<circle cx=\"" cx "\" cy=\"" cy "\" r=\"" r "\"/>"))
+    :ellipse (let [{:keys [cx cy rx ry]} clip]
+               (str "<ellipse cx=\"" cx "\" cy=\"" cy
+                    "\" rx=\"" rx "\" ry=\"" ry "\"/>"))
+    :path    (str "<path d=\"" (commands->d (:commands clip)) "\"/>")))
+
+(defn- op-svg-with-clip
+  "Renders an op to SVG, adding clip-path reference if it has a clip."
+  [op idx]
+  (if (:clip op)
+    (let [clip-id (str "clip-" idx)
+          svg-str (op->svg (assoc op
+                             :extra-attrs
+                             (str "clip-path=\"url(#" clip-id ")\"")))
+          ;; Since op->svg doesn't support extra-attrs, inject it
+          base (op->svg op)
+          ;; Insert clip-path attr before the closing />
+          injected (str/replace base #"/>" (str " clip-path=\"url(#" clip-id ")\"/>"))]
+      {:defs (str "<clipPath id=\"" clip-id "\">"
+                  (clip-shape->svg (:clip op)) "</clipPath>")
+       :element injected})
+    {:defs nil :element (op->svg op)}))
+
 (defn render
   "Renders IR to an SVG XML string."
   ([ir] (render ir {}))
@@ -144,14 +178,19 @@
          sw     (int (* w scale))
          sh     (int (* h scale))
          bg     (:ir/background ir)
+         ops-with-clips (map-indexed (fn [i op] (op-svg-with-clip op i))
+                                     (:ir/ops ir))
+         defs   (keep :defs ops-with-clips)
          lines  (cond-> [(str "<svg xmlns=\"http://www.w3.org/2000/svg\""
                               " width=\"" sw "\" height=\"" sh "\""
                               " viewBox=\"0 0 " w " " h "\">")]
+                  (seq defs)
+                  (conj (str "  <defs>" (str/join "" defs) "</defs>"))
                   (and bg (not (:transparent-background opts)))
                   (conj (str "  <rect x=\"0\" y=\"0\" width=\"" w
                              "\" height=\"" h "\" fill=\"" (color->css bg) "\"/>"))
                   true
-                  (into (map #(str "  " (op->svg %)) (:ir/ops ir)))
+                  (into (map #(str "  " (:element %)) ops-with-clips))
                   true
                   (conj "</svg>"))]
      (str/join "\n" lines))))

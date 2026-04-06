@@ -114,6 +114,24 @@
     (apply-fill g shape fill)
     (apply-stroke g shape op)))
 
+(defn- op->clip-shape
+  "Converts a clip IR op to a java.awt.Shape for clipping."
+  ^java.awt.Shape [{:keys [op] :as clip}]
+  (case op
+    :rect    (let [{:keys [x y w h corner-radius]} clip]
+               (if corner-radius
+                 (RoundRectangle2D$Double. (double x) (double y)
+                                           (double w) (double h)
+                                           (double corner-radius) (double corner-radius))
+                 (Rectangle2D$Double. (double x) (double y) (double w) (double h))))
+    :circle  (let [{:keys [cx cy r]} clip
+                   d (* 2.0 r)]
+               (Ellipse2D$Double. (double (- cx r)) (double (- cy r)) d d))
+    :ellipse (let [{:keys [cx cy rx ry]} clip]
+               (Ellipse2D$Double. (double (- cx rx)) (double (- cy ry))
+                                   (double (* 2.0 rx)) (double (* 2.0 ry))))
+    :path    (build-path (:commands clip))))
+
 (defn render
   "Renders compiled IR into a BufferedImage.
   Opts: :scale (number, default 1), :transparent-background (boolean)."
@@ -140,7 +158,8 @@
        (.fillRect g 0 0 w h))
      ;; Render ops in order
      (doseq [op (:ir/ops ir)]
-       (let [saved (.getTransform g)]
+       (let [saved-transform (.getTransform g)
+             saved-clip      (.getClip g)]
          (.setComposite g (AlphaComposite/getInstance
                             AlphaComposite/SRC_OVER
                             (float (:opacity op))))
@@ -155,8 +174,11 @@
              :scale     (.scale g
                                 (double (first args))
                                 (double (second args)))))
+         (when-let [clip-op (:clip op)]
+           (.setClip g (op->clip-shape clip-op)))
          (render-op g op)
-         (.setTransform g saved)))
+         (.setTransform g saved-transform)
+         (.setClip g saved-clip)))
      (.dispose g)
      img)))
 

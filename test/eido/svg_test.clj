@@ -207,6 +207,19 @@
       (is (re-find #"stroke=\"rgb\(255,0,0\)\"" out))
       (is (re-find #"stroke-width=\"3\"" out)))))
 
+(deftest svg-clip-test
+  (testing "renders clipPath and clip-path reference"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 100 :h 100
+                         :fill {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0 :transforms []
+                         :clip {:op :circle :cx 50 :cy 50 :r 30}}]}
+          out (svg/render ir)]
+      (is (re-find #"<clipPath id=\"clip-0\">" out))
+      (is (re-find #"clip-path=\"url\(#clip-0\)\"" out)))))
+
 (deftest svg-stroke-cap-join-test
   (testing "renders stroke-linecap and stroke-linejoin"
     (let [ir {:ir/size [100 100]
