@@ -92,3 +92,68 @@
 (deftest color-dispatch-test
   (testing "unknown color tag is invalid"
     (is (not (s/valid? :eido.spec/color [:color/cmyk 0 0 0 0])))))
+
+;; --- transform specs ---
+
+(deftest transform-translate-test
+  (testing "accepts valid translate"
+    (is (s/valid? :eido.spec/transform [:transform/translate 10 20])))
+  (testing "rejects wrong arity"
+    (is (not (s/valid? :eido.spec/transform [:transform/translate 10])))))
+
+(deftest transform-rotate-test
+  (testing "accepts valid rotate"
+    (is (s/valid? :eido.spec/transform [:transform/rotate 3.14])))
+  (testing "rejects non-numeric"
+    (is (not (s/valid? :eido.spec/transform [:transform/rotate "90deg"])))))
+
+(deftest transform-scale-test
+  (testing "accepts valid scale"
+    (is (s/valid? :eido.spec/transform [:transform/scale 2 3]))))
+
+(deftest transforms-collection-test
+  (testing "accepts vector of transforms"
+    (is (s/valid? :node/transform [[:transform/translate 10 20]
+                                    [:transform/rotate 1.57]])))
+  (testing "rejects unknown transform"
+    (is (not (s/valid? :node/transform [[:transform/skew 10 20]])))))
+
+;; --- path command specs ---
+
+(deftest path-command-move-to-test
+  (testing "accepts move-to with point"
+    (is (s/valid? :eido.spec/path-command [:move-to [10 20]])))
+  (testing "rejects move-to without point vector"
+    (is (not (s/valid? :eido.spec/path-command [:move-to 10 20])))))
+
+(deftest path-command-line-to-test
+  (testing "accepts line-to"
+    (is (s/valid? :eido.spec/path-command [:line-to [50 60]]))))
+
+(deftest path-command-curve-to-test
+  (testing "accepts curve-to with 3 points"
+    (is (s/valid? :eido.spec/path-command [:curve-to [10 20] [30 40] [50 60]]))))
+
+(deftest path-command-close-test
+  (testing "accepts close"
+    (is (s/valid? :eido.spec/path-command [:close]))))
+
+;; --- style specs ---
+
+(deftest style-fill-test
+  (testing "accepts fill with color"
+    (is (s/valid? :style/fill {:color [:color/rgb 255 0 0]})))
+  (testing "rejects fill without color"
+    (is (not (s/valid? :style/fill {})))))
+
+(deftest style-stroke-test
+  (testing "accepts stroke with color and width"
+    (is (s/valid? :style/stroke {:color [:color/rgb 0 0 0] :width 2})))
+  (testing "rejects stroke without width"
+    (is (not (s/valid? :style/stroke {:color [:color/rgb 0 0 0]})))))
+
+(deftest opacity-test
+  (testing "accepts valid opacity"
+    (is (s/valid? :node/opacity 0.5)))
+  (testing "rejects out of range"
+    (is (not (s/valid? :node/opacity 1.5)))))
