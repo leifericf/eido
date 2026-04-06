@@ -30,12 +30,23 @@
     (merge {:op :circle :cx cx :cy cy :r (:circle/radius node)}
            (compile-style node))))
 
+(def ^:private default-ctx
+  {:style {} :transforms [] :opacity 1.0})
+
+(defn- compile-tree
+  "Recursively compiles a node tree into a flat sequence of IR ops."
+  [node ctx]
+  (if (= :group (:node/type node))
+    (into [] (mapcat #(compile-tree % ctx)) (:group/children node))
+    [(compile-node node)]))
+
 (defn compile
   "Compiles a scene map into an intermediate representation."
   [scene]
   {:ir/size       (:image/size scene)
    :ir/background (color/resolve-color (:image/background scene))
-   :ir/ops        (mapv compile-node (:image/nodes scene))})
+   :ir/ops        (into [] (mapcat #(compile-tree % default-ctx))
+                         (:image/nodes scene))})
 
 (comment
   (compile {:image/size [800 600]

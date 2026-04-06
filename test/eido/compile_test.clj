@@ -86,3 +86,55 @@
       (is (= 2 (count ops)))
       (is (= :rect (:op (first ops))))
       (is (= :circle (:op (second ops)))))))
+
+;; --- v0.2 group tests ---
+
+(deftest compile-group-flattens-test
+  (testing "group with two children flattens to two IR ops"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :group
+                   :group/children
+                   [{:node/type :shape/rect
+                     :rect/xy [0 0]
+                     :rect/size [50 50]
+                     :style/fill {:color [:color/rgb 255 0 0]}}
+                    {:node/type :shape/circle
+                     :circle/center [50 50]
+                     :circle/radius 20
+                     :style/fill {:color [:color/rgb 0 0 255]}}]}]}
+          ops (:ir/ops (compile/compile scene))]
+      (is (= 2 (count ops)))
+      (is (= :rect (:op (first ops))))
+      (is (= :circle (:op (second ops)))))))
+
+(deftest compile-nested-groups-test
+  (testing "nested groups flatten correctly"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :group/children
+                   [{:node/type :group
+                     :group/children
+                     [{:node/type :shape/rect
+                       :rect/xy [0 0]
+                       :rect/size [10 10]}]}
+                    {:node/type :shape/circle
+                     :circle/center [50 50]
+                     :circle/radius 5}]}]}
+          ops (:ir/ops (compile/compile scene))]
+      (is (= 2 (count ops)))
+      (is (= :rect (:op (first ops))))
+      (is (= :circle (:op (second ops)))))))
+
+(deftest compile-empty-group-test
+  (testing "empty group produces no ops"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :group/children []}]}
+          ops (:ir/ops (compile/compile scene))]
+      (is (= 0 (count ops))))))
