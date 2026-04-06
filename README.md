@@ -16,6 +16,21 @@ Describe the image as data, not drawing instructions.
   <img src="images/lissajous.gif" width="200" alt="Lissajous curve" />
 </p>
 
+## Design
+
+This project has been on my mind since I discovered Clojure in 2020. As a graphics nerd, describing images as plain data — not issuing drawing commands — felt like the natural thing to build.
+
+The approach is inspired by Christian Johansen's [Replicant](https://github.com/cjohansen/replicant), which showed how far a minimal, data-first approach to rendering can go. Eido applies similar thinking to 2D image generation.
+
+- **Images are values.** A scene is a plain Clojure map — printable, serializable, diffable. Nothing opaque.
+- **One function.** `render` takes a scene (or a sequence of scenes) and produces output. That's the API.
+- **Description, not instruction.** You declare what the image contains; eido decides how to draw it. A compile step separates your description from the renderer's execution.
+- **Animations are sequences.** 60 frames = 60 maps in a vector. No timeline, no keyframes, no mutation.
+- **No state, no framework.** Every function takes data and returns data. You bring your own workflow.
+- **Zero dependencies.** Just Clojure and the standard library.
+
+If it cannot be represented as plain data, it probably should not be in the library.
+
 ## Quick Start
 
 Requires Clojure 1.12+ and Java 11+.
@@ -36,15 +51,15 @@ Render your first image:
 ```clojure
 (require '[eido.core :as eido])
 
-(eido/render-to-file
+(eido/render
   {:image/size [400 400]
    :image/background [:color/rgb 245 243 238]
    :image/nodes
    [{:node/type :shape/circle
      :circle/center [200 200]
      :circle/radius 120
-     :style/fill {:color [:color/rgb 200 50 50]}}]}
-  "circle.png")
+     :style/fill [:color/rgb 200 50 50]}]}
+  {:output "circle.png"})
 ```
 
 <img src="images/quick-start.png" width="200" alt="Red circle on light background" />
@@ -58,7 +73,7 @@ Or preview interactively in a window:
        [{:node/type :shape/circle
          :circle/center [200 200]
          :circle/radius 120
-         :style/fill {:color [:color/rgb 200 50 50]}}]})
+         :style/fill [:color/rgb 200 50 50]}]})
 ```
 
 ## Shapes
@@ -70,7 +85,7 @@ Three primitives are available: rectangles, circles, and paths.
 {:node/type :shape/rect
  :rect/xy [50 50]
  :rect/size [200 100]
- :style/fill {:color [:color/rgb 0 128 255]}}
+ :style/fill [:color/rgb 0 128 255]}
 
 ;; Circle
 {:node/type :shape/circle
@@ -84,7 +99,7 @@ Three primitives are available: rectangles, circles, and paths.
                  [:line-to [200 50]]
                  [:line-to [300 200]]
                  [:close]]
- :style/fill {:color [:color/rgb 255 200 50]}}
+ :style/fill [:color/rgb 255 200 50]}
 ```
 
 <img src="images/shapes.png" width="400" alt="Rectangle, circle, and path" />
@@ -100,7 +115,7 @@ Styles inherit from parent to child. Opacity multiplies through the tree.
  :image/nodes
  [{:node/type :group
    :node/transform [[:transform/translate 200 200]]
-   :style/fill {:color [:color/rgb 255 0 0]}
+   :style/fill [:color/rgb 255 0 0]
    :node/opacity 0.8
    :group/children
    [{:node/type :shape/circle
@@ -109,7 +124,7 @@ Styles inherit from parent to child. Opacity multiplies through the tree.
     {:node/type :shape/rect
      :rect/xy [-30 -30]
      :rect/size [60 60]
-     :style/fill {:color [:color/rgb 0 0 255]}
+     :style/fill [:color/rgb 0 0 255]
      :node/opacity 0.5}]}]}
 ```
 
@@ -127,19 +142,24 @@ Multiple color formats are supported:
 [:color/hex "#FF0000"]           ;; Hex (6-digit, 8-digit, 3-digit, 4-digit)
 ```
 
-Color manipulation helpers operate on resolved color maps:
+All color formats work directly in style maps — no manual resolution needed:
+
+```clojure
+{:style/fill [:color/hsl 200 0.9 0.5]}   ;; HSL straight in the scene
+{:style/fill [:color/hex "#FF6B35"]}      ;; hex too
+```
+
+Color manipulation helpers accept and return color vectors:
 
 ```clojure
 (require '[eido.color :as color])
 
-(def red (color/resolve-color [:color/rgb 255 0 0]))
-
-(color/lighten red 0.2)          ;; lighter red
-(color/darken red 0.2)           ;; darker red
-(color/saturate red 0.3)         ;; more vivid
-(color/desaturate red 0.5)       ;; more muted
-(color/rotate-hue red 120)       ;; green
-(color/lerp red white 0.5)       ;; blend two colors
+(color/lighten [:color/rgb 255 0 0] 0.2)          ;; lighter red
+(color/darken [:color/rgb 255 0 0] 0.2)           ;; darker red
+(color/saturate [:color/rgb 150 100 100] 0.3)     ;; more vivid
+(color/desaturate [:color/rgb 255 0 0] 0.5)       ;; more muted
+(color/rotate-hue [:color/rgb 255 0 0] 120)       ;; green
+(color/lerp [:color/rgb 0 0 0] [:color/rgb 255 255 255] 0.5) ;; blend
 ```
 
 ## Generative Patterns
@@ -155,7 +175,7 @@ The `eido.scene` namespace provides helpers for common patterns:
     {:node/type :shape/circle
      :circle/center [(+ 30 (* col 40)) (+ 30 (* row 40))]
      :circle/radius 15
-     :style/fill {:color [:color/rgb (* col 25) (* row 25) 128]}}))
+     :style/fill [:color/rgb (* col 25) (* row 25) 128]}))
 ```
 
 <img src="images/grid-pattern.png" width="250" alt="Color gradient grid of circles" />
@@ -167,7 +187,7 @@ The `eido.scene` namespace provides helpers for common patterns:
     {:node/type :shape/circle
      :circle/center [x y]
      :circle/radius (+ 5 (* 20 t))
-     :style/fill {:color [:color/rgb 0 0 0]}}))
+     :style/fill [:color/rgb 0 0 0]}))
 ```
 
 <img src="images/distribute-pattern.png" width="400" alt="Circles growing along a line" />
@@ -179,7 +199,7 @@ The `eido.scene` namespace provides helpers for common patterns:
     {:node/type :shape/circle
      :circle/center [x y]
      :circle/radius 15
-     :style/fill {:color [:color/rgb 200 0 0]}}))
+     :style/fill [:color/rgb 200 0 0]}))
 ```
 
 <img src="images/radial-pattern.png" width="200" alt="Rotated squares around a circle" />
@@ -189,11 +209,8 @@ The `eido.scene` namespace provides helpers for common patterns:
 Scenes can be stored as `.edn` files and rendered directly:
 
 ```clojure
-;; Read a scene file
-(eido/read-scene "my-scene.edn")
-
-;; Render an EDN file to a BufferedImage
-(eido/render-file "my-scene.edn")
+;; Read a scene file and render
+(eido/render (eido/read-scene "my-scene.edn") {:output "out.png"})
 
 ;; Watch a file and auto-reload the preview on save
 (watch-file "my-scene.edn")
@@ -218,47 +235,38 @@ Render any scene by tapping it:
        :image/nodes [{:node/type :shape/circle
                       :circle/center [100 100]
                       :circle/radius 60
-                      :style/fill {:color [:color/rgb 255 200 50]}}]})
+                      :style/fill [:color/rgb 255 200 50]}]})
 ```
 
 ## Export
 
-Multiple output formats with options:
+All output goes through `render`:
 
 ```clojure
 ;; PNG (default)
-(eido/render-to-file scene "out.png")
+(eido/render scene {:output "out.png"})
 
 ;; JPEG with quality
-(eido/render-to-file scene "out.jpg" {:quality 0.9})
+(eido/render scene {:output "out.jpg" :quality 0.9})
 
 ;; SVG (scalable vector output)
-(eido/render-to-file scene "out.svg")
+(eido/render scene {:output "out.svg"})
 
-;; Or get the SVG string directly
-(eido/render-to-svg scene)
-
-;; SVG with scale (2x dimensions, same viewBox)
-(eido/render-to-svg scene {:scale 2})
+;; SVG string (no file)
+(eido/render scene {:format :svg})
 
 ;; High-resolution (2x for retina)
-(eido/render-to-file scene "out.png" {:scale 2})
+(eido/render scene {:output "out.png" :scale 2})
 
 ;; PNG with DPI metadata
-(eido/render-to-file scene "out.png" {:dpi 300})
+(eido/render scene {:output "out.png" :dpi 300})
 
 ;; Transparent background (no background fill)
-(eido/render-to-file scene "out.png" {:transparent-background true})
+(eido/render scene {:output "out.png" :transparent-background true})
 
-;; Batch export — render many scenes at once
-(eido/render-batch [{:scene scene-a :path "a.png"}
-                    {:scene scene-b :path "b.svg" :opts {:transparent-background true}}])
-
-;; Batch with generator function
-(eido/render-batch
-  (fn [i] {:scene (make-variation i)
-           :path (str "frame-" i ".png")})
-  100)
+;; BufferedImage (no output path)
+(eido/render scene)
+(eido/render scene {:scale 2})
 ```
 
 Supported formats: PNG, JPEG, GIF, BMP, SVG.
@@ -268,28 +276,23 @@ Supported formats: PNG, JPEG, GIF, BMP, SVG.
 Scenes are validated automatically before rendering. Invalid scenes produce clear errors with paths:
 
 ```clojure
-;; Check a scene without rendering — returns nil if valid, or error vector
+;; Check without rendering — returns nil if valid, or error vector
 (eido/validate {:image/size [800 600]
                 :image/background [:color/rgb 255 255 255]
                 :image/nodes [{:node/type :shape/rect}]})
 ;; => [{:path [:image/nodes 0],
-;;      :pred "missing required key :rect/xy",
-;;      :message "at [:image/nodes 0]: missing required key :rect/xy, got: {:node/type :shape/rect}",
-;;      :value {:node/type :shape/rect}}
-;;     ...]
+;;      :pred "missing required key :rect/xy", ...}]
 
 ;; Rendering an invalid scene throws ex-info with :errors in ex-data
 (try
   (eido/render {:bad "scene"})
   (catch Exception e
-    (ex-data e)))  ;; => {:errors [{:path ..., :message ..., ...}]}
+    (ex-data e)))  ;; => {:errors [...]}
 ```
-
-Validates: required keys, value ranges (RGB 0-255, alpha/opacity 0-1, positive dimensions), node types, path commands, color formats, and recursive group structure.
 
 ## Animation
 
-Animations are sequences of scenes. Build the frames however you like, then render them as a GIF or a numbered PNG sequence.
+Animations are sequences of scenes. Build the frames however you like, then render.
 
 ```clojure
 (require '[eido.animate :as anim])
@@ -307,7 +310,7 @@ Animations are sequences of scenes. Build the frames however you like, then rend
            {:node/type :shape/circle
             :circle/center [x y]
             :circle/radius 12
-            :style/fill {:color [:color/rgb 255 100 50]}}))})))
+            :style/fill [:color/rgb 255 100 50]}))})))
 
 ```
 
@@ -315,22 +318,22 @@ Animations are sequences of scenes. Build the frames however you like, then rend
 
 ```clojure
 ;; Export as animated GIF (30 fps)
-(eido/render-to-gif frames "animation.gif" 30)
+(eido/render frames {:output "animation.gif" :fps 30})
 
 ;; GIF without looping
-(eido/render-to-gif frames "once.gif" 30 {:loop false})
+(eido/render frames {:output "once.gif" :fps 30 :loop false})
 
 ;; Export as animated SVG (SMIL)
-(eido/render-to-animated-svg frames "animation.svg" 30)
+(eido/render frames {:output "animation.svg" :fps 30})
 
-;; Or get the animated SVG string directly
-(eido/render-to-animated-svg-str frames 30)
+;; Animated SVG string (no file)
+(eido/render frames {:format :svg :fps 30})
 
 ;; Export as numbered PNG sequence
-(eido/render-animation frames "frames/")
+(eido/render frames {:output "frames/" :fps 30})
 
 ;; Custom file prefix
-(eido/render-animation frames "frames/" {:prefix "img-"})
+(eido/render frames {:output "frames/" :fps 30 :prefix "img-"})
 
 ;; Preview in REPL window (dev only)
 (play frames 30)
@@ -378,14 +381,13 @@ A rotating spiral wave where hue follows the angle and pulse follows the distanc
                                 (- (* t 3.0))) 1.0)
                  pulse (/ (+ 1.0 (Math/sin (* spiral 2.0 Math/PI))) 2.0)
                  radius (+ 2 (* 8 pulse))
-                 hue (mod (+ (* angle (/ 180.0 Math/PI)) 180 (* t 360)) 360)
-                 c (color/resolve-color [:color/hsl hue 0.9 (+ 0.3 (* 0.35 pulse))])]
+                 hue (mod (+ (* angle (/ 180.0 Math/PI)) 180 (* t 360)) 360)]
              {:node/type :shape/circle
               :circle/center [(+ 12 (* col 19.8)) (+ 12 (* row 19.8))]
               :circle/radius radius
-              :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+              :style/fill [:color/hsl hue 0.9 (+ 0.3 (* 0.35 pulse))]})))})))
 
-(eido/render-to-gif frames "spiral.gif" 24)
+(eido/render frames {:output "spiral.gif" :fps 24})
 ```
 
 <img src="images/spiral-grid.gif" width="300" alt="Spiral rainbow grid" />
@@ -410,14 +412,13 @@ Three overlapping sine waves at different frequencies create organic, shifting p
                          (Math/sin (+ (* (+ x y) 5) (* t 2 Math/PI 0.7)))) 3.0)
                  pulse (/ (+ v 1.0) 2.0)
                  radius (+ 3 (* 7 pulse))
-                 hue (mod (+ (* pulse 200) (* t 360) 180) 360)
-                 c (color/resolve-color [:color/hsl hue 0.9 (+ 0.35 (* 0.3 pulse))])]
+                 hue (mod (+ (* pulse 200) (* t 360) 180) 360)]
              {:node/type :shape/circle
               :circle/center [(+ 12 (* col 19.8)) (+ 12 (* row 19.8))]
               :circle/radius radius
-              :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+              :style/fill [:color/hsl hue 0.9 (+ 0.35 (* 0.3 pulse))]})))})))
 
-(eido/render-to-gif frames "sine-field.gif" 24)
+(eido/render frames {:output "sine-field.gif" :fps 24})
 ```
 
 <img src="images/sine-field.gif" width="300" alt="Sine wave interference" />
@@ -439,14 +440,13 @@ A diagonal wave where cells expand and contract with staggered timing, hue shift
                  phase (mod (- (* t 2.0) delay) 1.0)
                  breath (/ (+ 1.0 (Math/sin (* phase 2.0 Math/PI))) 2.0)
                  size (+ 3 (* 10 breath))
-                 hue (mod (+ (* (+ col row) 14) (* t 120)) 360)
-                 c (color/resolve-color [:color/hsl hue (+ 0.5 (* 0.4 breath)) 0.48])]
+                 hue (mod (+ (* (+ col row) 14) (* t 120)) 360)]
              {:node/type :shape/circle
               :circle/center [(+ 18 (* col 27)) (+ 18 (* row 27))]
               :circle/radius size
-              :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+              :style/fill [:color/hsl hue (+ 0.5 (* 0.4 breath)) 0.48]})))})))
 
-(eido/render-to-gif frames "breathing.gif" 24)
+(eido/render frames {:output "breathing.gif" :fps 24})
 ```
 
 <img src="images/breathing-grid.gif" width="300" alt="Breathing diagonal wave" />
@@ -471,16 +471,15 @@ Vertical bars with height, position, and color driven by overlapping sine waves.
                     y-center (+ 200 (* 60 (Math/sin (+ (* x-norm 3 Math/PI)
                                                         (* t 2 Math/PI 0.5)))))
                     width (+ 4 (* 6 (/ (+ combined 1.0) 2.0)))
-                    hue (mod (+ (* x-norm 360) (* t 200)) 360)
-                    c (color/resolve-color [:color/hsl hue 0.85
-                                            (+ 0.35 (* 0.3 (/ (+ combined 1.0) 2.0)))])]
+                    hue (mod (+ (* x-norm 360) (* t 200)) 360)]
                 {:node/type :shape/rect
                  :rect/xy [(- (* (+ 0.5 col) (/ 400.0 30)) (/ width 2))
                             (- y-center (/ height 2))]
                  :rect/size [width height]
-                 :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+                 :style/fill [:color/hsl hue 0.85
+                               (+ 0.35 (* 0.3 (/ (+ combined 1.0) 2.0)))]})))})))
 
-(eido/render-to-gif frames "dancing-bars.gif" 24)
+(eido/render frames {:output "dancing-bars.gif" :fps 24})
 ```
 
 <img src="images/dancing-bars.gif" width="300" alt="Dancing rainbow bars" />
@@ -513,15 +512,14 @@ Eight arms spiral outward from the center, wobbling and shifting color along the
                               x (+ 200 (* (+ r wobble) (Math/cos angle)))
                               y (+ 200 (* (+ r wobble) (Math/sin angle)))
                               size (max 1 (- 10 (* seg-t 8)))
-                              seg-hue (mod (+ hue (* seg-t 90) (* t 120)) 360)
-                              c (color/resolve-color [:color/hsl seg-hue 0.85 0.55])]
+                              seg-hue (mod (+ hue (* seg-t 90) (* t 120)) 360)]
                           {:node/type :shape/circle
                            :circle/center [x y]
                            :circle/radius size
                            :node/opacity (- 1.0 (* seg-t 0.6))
-                           :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))})))
+                           :style/fill [:color/hsl seg-hue 0.85 0.55]})))})))})))
 
-(eido/render-to-gif frames "tentacles.gif" 24)
+(eido/render frames {:output "tentacles.gif" :fps 24})
 ```
 
 <img src="images/tentacles.gif" width="300" alt="Rainbow tentacles" />
@@ -543,8 +541,7 @@ Eight arms spiral outward from the center, wobbling and shifting color along the
                     pivot-x (+ 30 (* p 31.4))
                     bob-x (+ pivot-x (* 250 (Math/sin angle)))
                     bob-y (* 250 (Math/cos angle))
-                    hue (* p 24)
-                    c (color/resolve-color [:color/hsl hue 0.75 0.5])]
+                    hue (* p 24)]
                 {:node/type :group
                  :group/children
                  [{:node/type :shape/path
@@ -554,9 +551,9 @@ Eight arms spiral outward from the center, wobbling and shifting color along the
                   {:node/type :shape/circle
                    :circle/center [bob-x (+ 20 bob-y)]
                    :circle/radius 10
-                   :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}}]})))})))
+                   :style/fill [:color/hsl hue 0.75 0.5]}]})))})))
 
-(eido/render-to-gif frames "pendulum-wave.gif" 30)
+(eido/render frames {:output "pendulum-wave.gif" :fps 30})
 ```
 
 <img src="images/pendulum-wave.gif" width="400" alt="Pendulum wave" />
@@ -585,15 +582,14 @@ Eight arms spiral outward from the center, wobbling and shifting color along the
                     y (+ 250 (* r (Math/sin angle)))
                     hue (mod (+ 200 (* -200 (/ base-r 230.0))) 360)
                     bright (- 1.0 (* 0.5 (/ base-r 230.0)))
-                    size (max 1 (- 4 (* 2.5 (/ base-r 230.0))))
-                    c (color/resolve-color [:color/hsl hue 0.8 (* 0.55 bright)])]
+                    size (max 1 (- 4 (* 2.5 (/ base-r 230.0))))]
                 {:node/type :shape/circle
                  :circle/center [x y]
                  :circle/radius size
                  :node/opacity (min 1.0 bright)
-                 :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+                 :style/fill [:color/hsl hue 0.8 (* 0.55 bright)]})))})))
 
-(eido/render-to-gif frames "galaxy.gif" 24)
+(eido/render frames {:output "galaxy.gif" :fps 24})
 ```
 
 <img src="images/galaxy.gif" width="300" alt="Particle galaxy" />
@@ -617,11 +613,11 @@ Concentric rings that wobble to create an optical illusion, using only black and
                  :circle/center [(+ 200 (* 5 (Math/sin (+ phase 1.5))))
                                  (+ 200 (* 5 (Math/cos phase)))]
                  :circle/radius (max 1 r)
-                 :style/fill {:color (if (even? ring)
-                                       [:color/rgb 0 0 0]
-                                       [:color/rgb 255 255 255])}})))})))
+                 :style/fill (if (even? ring)
+                               [:color/rgb 0 0 0]
+                               [:color/rgb 255 255 255])})))})))
 
-(eido/render-to-gif frames "op-art.gif" 24)
+(eido/render frames {:output "op-art.gif" :fps 24})
 ```
 
 <img src="images/op-art.gif" width="300" alt="Op art optical illusion" />
@@ -643,15 +639,14 @@ A 3:2 Lissajous figure traced with a rainbow trail that fades with age.
                     x (+ 200 (* 160 (Math/sin (* phase 3))))
                     y (+ 200 (* 160 (Math/cos (* phase 2))))
                     age (- 1.0 s)
-                    hue (mod (* (+ t s) 720) 360)
-                    c (color/resolve-color [:color/hsl hue 0.9 (+ 0.3 (* 0.4 age))])]
+                    hue (mod (* (+ t s) 720) 360)]
                 {:node/type :shape/circle
                  :circle/center [x y]
                  :circle/radius (+ 1 (* 5 age age))
                  :node/opacity (* age age)
-                 :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+                 :style/fill [:color/hsl hue 0.9 (+ 0.3 (* 0.4 age))]})))})))
 
-(eido/render-to-gif frames "lissajous.gif" 30)
+(eido/render frames {:output "lissajous.gif" :fps 30})
 ```
 
 <img src="images/lissajous.gif" width="300" alt="Lissajous curve" />
@@ -675,16 +670,15 @@ Evolving cellular patterns driven by sine wave interference, rendered as glowing
                         (Math/cos (+ (* (Math/abs (- col row)) 0.6) (* t 6))))]
              (when (> sum 0.5)
                (let [glow (max 0 (/ (- sum 0.5) 3.5))
-                     hue (mod (+ (* col 8) (* row 8) (* t 200)) 360)
-                     c (color/resolve-color [:color/hsl hue 0.9 (+ 0.35 (* 0.3 glow))])]
+                     hue (mod (+ (* col 8) (* row 8) (* t 200)) 360)]
                  {:node/type :shape/rect
                   :rect/xy [(+ 2 (* col 15.8)) (+ 2 (* row 15.8))]
                   :rect/size [14 14]
                   :node/opacity (+ 0.6 (* 0.4 glow))
-                  :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))))})
+                  :style/fill [:color/hsl hue 0.9 (+ 0.35 (* 0.3 glow))]}))))))})
     ))
 
-(eido/render-to-gif frames "cellular.gif" 15)
+(eido/render frames {:output "cellular.gif" :fps 15})
 ```
 
 <img src="images/cellular.gif" width="300" alt="Cellular automaton" />
@@ -709,15 +703,14 @@ Eight-fold rotational symmetry with orbiting, pulsing dots.
                     x (+ 200 (* shape-r (Math/cos shape-angle)))
                     y (+ 200 (* shape-r (Math/sin shape-angle)))
                     hue (mod (+ (* sym 45) (* shape 30) (* t 180)) 360)
-                    size (+ 5 (* 8 (/ (+ 1 (Math/sin (+ (* t 3 Math/PI) shape sym))) 2.0)))
-                    c (color/resolve-color [:color/hsl hue 0.85 0.55])]
+                    size (+ 5 (* 8 (/ (+ 1 (Math/sin (+ (* t 3 Math/PI) shape sym))) 2.0)))]
                 {:node/type :shape/circle
                  :circle/center [x y]
                  :circle/radius size
                  :node/opacity 0.75
-                 :style/fill {:color [:color/rgb (:r c) (:g c) (:b c)]}})))})))
+                 :style/fill [:color/hsl hue 0.85 0.55]})))})))
 
-(eido/render-to-gif frames "kaleidoscope.gif" 24)
+(eido/render frames {:output "kaleidoscope.gif" :fps 24})
 ```
 
 <img src="images/kaleidoscope.gif" width="300" alt="Kaleidoscope" />
@@ -744,24 +737,16 @@ A Koch snowflake that gains detail with each frame, the boundary growing ever mo
 
 | Function | Description |
 |---|---|
+| `eido.core/render` | Render scene or animation (opts: :output, :format, :fps, :scale, :dpi, etc.) |
 | `eido.core/validate` | Validate scene, returns nil or error vector |
-| `eido.core/render` | Scene map to BufferedImage (opts: :scale, :transparent-background) |
-| `eido.core/render-to-file` | Scene to file (opts: :format, :quality, :scale, :dpi, :transparent-background) |
-| `eido.core/render-to-svg` | Scene to SVG string (opts: :scale, :transparent-background) |
-| `eido.core/render-to-gif` | Render scene sequence to animated GIF |
-| `eido.core/render-to-animated-svg` | Render scene sequence to animated SVG file |
-| `eido.core/render-to-animated-svg-str` | Render scene sequence to animated SVG string |
-| `eido.core/render-animation` | Render scene sequence to numbered PNG files |
-| `eido.core/render-batch` | Render multiple scenes to files |
 | `eido.core/read-scene` | Read scene from `.edn` file |
-| `eido.core/render-file` | Render scene from `.edn` file |
-| `eido.color/resolve-color` | Color vector to `{:r :g :b :a}` map |
-| `eido.color/lighten` | Increase lightness |
-| `eido.color/darken` | Decrease lightness |
-| `eido.color/saturate` | Increase saturation |
-| `eido.color/desaturate` | Decrease saturation |
+| `eido.color/lighten` | Increase lightness of a color vector |
+| `eido.color/darken` | Decrease lightness of a color vector |
+| `eido.color/saturate` | Increase saturation of a color vector |
+| `eido.color/desaturate` | Decrease saturation of a color vector |
 | `eido.color/rotate-hue` | Shift hue by degrees |
-| `eido.color/lerp` | Interpolate between two colors |
+| `eido.color/lerp` | Interpolate between two color vectors |
+| `eido.color/resolve-color` | Color vector to `{:r :g :b :a}` map |
 | `eido.color/rgb->hsl` | Convert RGB (0-255) to HSL |
 | `eido.scene/grid` | Generate nodes in a grid |
 | `eido.scene/distribute` | Distribute nodes along a line |
