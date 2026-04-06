@@ -125,6 +125,31 @@
     (is (== 0.0 (anim/stagger 2 3 0.1 0.0)))
     (is (== 1.0 (anim/stagger 0 3 0.5 0.0)))))
 
+;; --- frames ---
+
+(deftest frames-test
+  (testing "produces correct progress values"
+    (is (= [0.0 0.25 0.5 0.75 1.0]
+           (anim/frames 5 identity))))
+
+  (testing "single frame returns [0.0]"
+    (is (= [0.0]
+           (anim/frames 1 identity))))
+
+  (testing "zero frames returns []"
+    (is (= []
+           (anim/frames 0 identity))))
+
+  (testing "applies f to each progress value"
+    (is (= [0.0 50.0 100.0]
+           (anim/frames 3 (fn [t] (anim/lerp 0 100 t))))))
+
+  (testing "builds scene maps"
+    (let [scenes (anim/frames 3 (fn [t] {:radius (anim/lerp 10 50 t)}))]
+      (is (= 3 (count scenes)))
+      (is (= {:radius 10.0} (first scenes)))
+      (is (= {:radius 50.0} (last scenes))))))
+
 ;; --- composition ---
 
 (deftest composition-test

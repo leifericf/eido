@@ -45,6 +45,12 @@
     (* 2.0 t t)
     (- 1.0 (* 2.0 (- 1.0 t) (- 1.0 t)))))
 
+(defn frames
+  "Builds a vector of n frames by calling (f t) for each frame,
+  where t is normalized progress [0.0, 1.0]."
+  [n f]
+  (mapv (fn [i] (f (progress i n))) (range n)))
+
 (defn stagger
   "Returns per-element progress for staggered animations.
   i: element index (0-based), n: total elements, t: global progress [0, 1],
@@ -58,10 +64,9 @@
 
 (comment
   ;; Build 60 frames of a pulsing radius
-  (for [i (range 60)]
-    (let [t (progress i 60)
-          r (lerp 50 150 (ease-in-out (ping-pong t)))]
-      r))
+  (frames 60
+    (fn [t]
+      (lerp 50 150 (ease-in-out (ping-pong t)))))
 
   ;; Staggered appearance of 5 elements
   (for [t [0.0 0.25 0.5 0.75 1.0]]
