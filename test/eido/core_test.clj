@@ -53,3 +53,43 @@
         (is (.exists f))
         (is (pos? (.length f)))
         (.delete f)))))
+
+;; --- v0.2 integration tests ---
+
+(def composition-scene
+  {:image/size [400 400]
+   :image/background [:color/rgb 255 255 255]
+   :image/nodes
+   [{:node/type :group
+     :node/transform [[:transform/translate 200 200]]
+     :style/fill {:color [:color/rgb 255 0 0]}
+     :group/children
+     [{:node/type :shape/circle
+       :circle/center [0 0]
+       :circle/radius 50}
+      {:node/type :shape/rect
+       :rect/xy [-30 -30]
+       :rect/size [60 60]
+       :style/fill {:color [:color/rgb 0 0 255]}
+       :node/opacity 0.5}]}]})
+
+(deftest composition-integration-test
+  (testing "group with transform, style inheritance, and opacity"
+    (let [img (eido/render composition-scene)]
+      (is (= 400 (.getWidth img)))
+      (is (= 400 (.getHeight img)))
+      (is (= [255 255 255] (pixel-rgb img 10 10))
+          "corner should be background")
+      ;; Circle at (200,200) with inherited red fill, under the blue rect
+      ;; Blue rect at (170-230, 170-230) with 0.5 opacity over the red circle
+      ;; At (200,200) — center — the blue rect paints over the red circle
+      (let [[r _ b] (pixel-rgb img 200 200)]
+        (is (pos? b) "blue component should be present at center")))))
+
+(deftest backward-compat-test
+  (testing "v0.1 sample scene still renders correctly"
+    (let [img (eido/render sample-scene)]
+      (is (= [0 128 255] (pixel-rgb img 200 175))
+          "rect fill unchanged")
+      (is (= [200 0 0] (pixel-rgb img 400 300))
+          "circle fill unchanged"))))
