@@ -212,6 +212,9 @@ Multiple output formats with options:
 ;; Or get the SVG string directly
 (eido/render-to-svg scene)
 
+;; SVG with scale (2x dimensions, same viewBox)
+(eido/render-to-svg scene {:scale 2})
+
 ;; High-resolution (2x for retina)
 (eido/render-to-file scene "out.png" {:scale 2})
 
@@ -283,6 +286,12 @@ Animations are sequences of scenes. Build the frames however you like, then rend
 ;; Export as animated GIF (30 fps)
 (eido/render-to-gif frames "animation.gif" 30)
 
+;; Export as animated SVG (SMIL)
+(eido/render-to-animated-svg frames "animation.svg" 30)
+
+;; Or get the animated SVG string directly
+(eido/render-to-animated-svg-str frames 30)
+
 ;; Export as numbered PNG sequence
 (eido/render-animation frames "frames/")
 
@@ -313,8 +322,10 @@ The `eido.animate` namespace provides pure functions for building frame sequence
 | `eido.core/validate` | Validate scene, returns nil or error vector |
 | `eido.core/render` | Scene map to BufferedImage (opts: :scale, :transparent-background) |
 | `eido.core/render-to-file` | Scene to file (opts: :format, :quality, :scale, :dpi, :transparent-background) |
-| `eido.core/render-to-svg` | Scene to SVG string (opts: :transparent-background) |
+| `eido.core/render-to-svg` | Scene to SVG string (opts: :scale, :transparent-background) |
 | `eido.core/render-to-gif` | Render scene sequence to animated GIF |
+| `eido.core/render-to-animated-svg` | Render scene sequence to animated SVG file |
+| `eido.core/render-to-animated-svg-str` | Render scene sequence to animated SVG string |
 | `eido.core/render-animation` | Render scene sequence to numbered PNG files |
 | `eido.core/render-batch` | Render multiple scenes to files |
 | `eido.core/read-scene` | Read scene from `.edn` file |
@@ -352,7 +363,7 @@ clj -X:test
 
 ## Status
 
-v0.8.0 — Core language, workflow, color, export, validation, and animation complete.
-Headed toward additional backends.
+v0.9.0 — Core language complete. SVG at full parity with Java2D including animated SVG.
+Headed toward stabilization.
 
 **This is an experiment and a work in progress. The API is not stable and may change without notice.**
