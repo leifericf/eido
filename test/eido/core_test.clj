@@ -384,3 +384,64 @@
       (let [[r _ b] (pixel-rgb img 150 155)]
         (is (pos? r) "red from circle should be visible")
         (is (pos? b) "blue from path should be blended in")))))
+
+;; --- render-animation ---
+
+(def ^:private simple-frames
+  (mapv (fn [i]
+          {:image/size [100 100]
+           :image/background [:color/rgb 0 0 0]
+           :image/nodes
+           [{:node/type :shape/circle
+             :circle/center [50 50]
+             :circle/radius (+ 10 (* i 10))
+             :style/fill {:color [:color/rgb 255 0 0]}}]})
+    (range 3)))
+
+(deftest render-animation-test
+  (testing "renders correct number of files"
+    (let [dir (str (File/createTempFile "eido-anim" "") ".d")]
+      (.mkdirs (File. dir))
+      (let [paths (eido/render-animation simple-frames dir)]
+        (is (= 3 (count paths)))
+        (doseq [p paths]
+          (is (.exists (File. ^String p))))
+        (doseq [p paths] (.delete (File. ^String p)))
+        (.delete (File. dir)))))
+
+  (testing "files are named with prefix and index"
+    (let [dir (str (File/createTempFile "eido-anim" "") ".d")]
+      (.mkdirs (File. dir))
+      (let [paths (eido/render-animation simple-frames dir)]
+        (is (= (str dir "/frame-0.png") (first paths)))
+        (is (= (str dir "/frame-2.png") (last paths)))
+        (doseq [p paths] (.delete (File. ^String p)))
+        (.delete (File. dir)))))
+
+  (testing "custom prefix"
+    (let [dir (str (File/createTempFile "eido-anim" "") ".d")]
+      (.mkdirs (File. dir))
+      (let [paths (eido/render-animation simple-frames dir {:prefix "f-"})]
+        (is (= (str dir "/f-0.png") (first paths)))
+        (doseq [p paths] (.delete (File. ^String p)))
+        (.delete (File. dir)))))
+
+  (testing "padding for larger frame counts"
+    (let [dir    (str (File/createTempFile "eido-anim" "") ".d")
+          frames (repeat 100 (first simple-frames))]
+      (.mkdirs (File. dir))
+      (let [paths (eido/render-animation frames dir)]
+        (is (= (str dir "/frame-00.png") (first paths)))
+        (is (= (str dir "/frame-99.png") (last paths)))
+        (doseq [p paths] (.delete (File. ^String p)))
+        (.delete (File. dir)))))
+
+  (testing "rendered images have correct dimensions"
+    (let [dir (str (File/createTempFile "eido-anim" "") ".d")]
+      (.mkdirs (File. dir))
+      (let [paths (eido/render-animation simple-frames dir)
+            img   (ImageIO/read (File. ^String (first paths)))]
+        (is (= 100 (.getWidth img)))
+        (is (= 100 (.getHeight img)))
+        (doseq [p paths] (.delete (File. ^String p)))
+        (.delete (File. dir))))))

@@ -140,6 +140,35 @@
                            {:path path :format format})))))
      path)))
 
+(defn- pad-index
+  "Zero-pads an index to the given width."
+  [i width]
+  (let [s (str i)]
+    (if (>= (count s) width)
+      s
+      (str (apply str (repeat (- width (count s)) "0")) s))))
+
+(defn render-animation
+  "Renders a sequence of scenes to numbered PNG files in a directory.
+  Returns a vector of written file paths.
+  Opts: :scale, :transparent-background, :prefix (default \"frame-\")."
+  ([scenes dir] (render-animation scenes dir {}))
+  ([scenes dir opts]
+   (let [scene-vec   (vec scenes)
+         n           (count scene-vec)
+         prefix      (get opts :prefix "frame-")
+         pad-width   (count (str (dec n)))
+         render-opts (select-keys opts [:scale :transparent-background])]
+     (.mkdirs (File. ^String dir))
+     (mapv (fn [i]
+             (let [scene (nth scene-vec i)
+                   fname (str prefix (pad-index i pad-width) ".png")
+                   path  (str dir "/" fname)
+                   img   (render scene render-opts)]
+               (ImageIO/write img "png" (File. ^String path))
+               path))
+           (range n)))))
+
 (defn render-batch
   "Renders a sequence of export jobs to files. Each job is a map with
   :scene, :path, and optional :opts. Returns a vector of written paths.
