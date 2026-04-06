@@ -4,7 +4,8 @@
     [eido.core :as eido])
   (:import
     [java.awt.image BufferedImage]
-    [java.io File]))
+    [java.io File]
+    [javax.imageio ImageIO]))
 
 (defn- pixel-rgb
   "Returns [r g b] for the pixel at (x, y) in a BufferedImage."
@@ -52,6 +53,63 @@
       (let [f (File. ^String path)]
         (is (.exists f))
         (is (pos? (.length f)))
+        (.delete f)))))
+
+;; --- v0.6 export format tests ---
+
+(deftest render-to-file-jpeg-test
+  (testing "writes a valid JPEG file"
+    (let [path (str (File/createTempFile "eido-test" ".jpg"))]
+      (eido/render-to-file sample-scene path)
+      (let [f (File. ^String path)
+            img (ImageIO/read f)]
+        (is (.exists f))
+        (is (pos? (.length f)))
+        (is (= 800 (.getWidth img)))
+        (.delete f)))))
+
+(deftest render-to-file-gif-test
+  (testing "writes a valid GIF file"
+    (let [path (str (File/createTempFile "eido-test" ".gif"))]
+      (eido/render-to-file sample-scene path)
+      (let [f (File. ^String path)]
+        (is (.exists f))
+        (is (pos? (.length f)))
+        (.delete f)))))
+
+(deftest render-to-file-bmp-test
+  (testing "writes a valid BMP file"
+    (let [path (str (File/createTempFile "eido-test" ".bmp"))]
+      (eido/render-to-file sample-scene path)
+      (let [f (File. ^String path)]
+        (is (.exists f))
+        (is (pos? (.length f)))
+        (.delete f)))))
+
+(deftest render-to-file-jpeg-quality-test
+  (testing "higher quality produces larger file"
+    (let [path-lo (str (File/createTempFile "eido-lo" ".jpg"))
+          path-hi (str (File/createTempFile "eido-hi" ".jpg"))]
+      (eido/render-to-file sample-scene path-lo {:quality 0.1})
+      (eido/render-to-file sample-scene path-hi {:quality 1.0})
+      (let [lo (File. ^String path-lo)
+            hi (File. ^String path-hi)]
+        (is (> (.length hi) (.length lo)))
+        (.delete lo)
+        (.delete hi)))))
+
+(deftest render-to-file-unknown-ext-test
+  (testing "throws for unknown extension"
+    (is (thrown? clojure.lang.ExceptionInfo
+          (eido/render-to-file sample-scene "/tmp/test.xyz")))))
+
+(deftest render-to-file-format-override-test
+  (testing ":format option overrides extension"
+    (let [path (str (File/createTempFile "eido-test" ".png"))]
+      (eido/render-to-file sample-scene path {:format "jpeg"})
+      (let [f (File. ^String path)
+            img (ImageIO/read f)]
+        (is (some? img))
         (.delete f)))))
 
 ;; --- v0.2 integration tests ---

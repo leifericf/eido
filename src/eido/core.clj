@@ -1,11 +1,15 @@
 (ns eido.core
   (:require
     [clojure.edn :as edn]
+    [clojure.string :as str]
     [eido.compile :as compile]
     [eido.render :as render])
   (:import
+    [java.awt Color Graphics2D]
+    [java.awt.image BufferedImage]
     [java.io File]
-    [javax.imageio ImageIO]))
+    [javax.imageio ImageIO ImageWriteParam]
+    [javax.imageio.stream FileImageOutputStream]))
 
 (defn read-scene
   "Reads an EDN file and returns the scene map."
@@ -27,13 +31,64 @@
   [path]
   (render (read-scene path)))
 
+(def ^:private format-aliases
+  {"jpg" "jpeg"})
+
+(defn- detect-format
+  "Detects image format from file extension."
+  [path]
+  (let [ext (some-> (re-find #"\.([^.]+)$" path) second str/lower-case)]
+    (when-not ext
+      (throw (ex-info "Cannot detect format from path"
+                      {:path path})))
+    (get format-aliases ext ext)))
+
+(defn- ensure-rgb
+  "Converts an ARGB BufferedImage to RGB by painting onto white."
+  [^BufferedImage img]
+  (let [w (.getWidth img)
+        h (.getHeight img)
+        rgb (BufferedImage. w h BufferedImage/TYPE_INT_RGB)
+        ^Graphics2D g (.createGraphics rgb)]
+    (.setColor g Color/WHITE)
+    (.fillRect g 0 0 w h)
+    (.drawImage g img 0 0 nil)
+    (.dispose g)
+    rgb))
+
+(defn- write-jpeg
+  "Writes a BufferedImage as JPEG with quality setting."
+  [^BufferedImage img ^String path quality]
+  (let [writer (.next (ImageIO/getImageWritersByFormatName "jpeg"))
+        param (.getDefaultWriteParam writer)]
+    (.setCompressionMode param ImageWriteParam/MODE_EXPLICIT)
+    (.setCompressionQuality param (float quality))
+    (with-open [out (FileImageOutputStream. (File. path))]
+      (.setOutput writer out)
+      (.write writer nil
+              (javax.imageio.IIOImage. img nil nil)
+              param)
+      (.dispose writer)))
+  path)
+
 (defn render-to-file
-  "Renders a scene EDN map and writes it as a PNG file.
-  Returns the file path."
-  [scene path]
-  (let [img (render scene)]
-    (ImageIO/write img "png" (File. ^String path))
-    path))
+  "Renders a scene and writes to file. Format detected from extension.
+  Opts: :format (override), :quality (0.0-1.0, JPEG only, default 0.75)."
+  ([scene path]
+   (render-to-file scene path {}))
+  ([scene path opts]
+   (let [format (or (:format opts) (detect-format path))
+         img    (render scene)]
+     (case format
+       "jpeg" (write-jpeg (ensure-rgb img) path
+                          (get opts :quality 0.75))
+       "bmp"  (ImageIO/write (ensure-rgb img) "bmp" (File. ^String path))
+       ("png" "gif")
+       (ImageIO/write img format (File. ^String path))
+
+       (throw (ex-info "Unsupported export format"
+                       {:path path :format format})))
+     path)))
 
 (comment
   (render {:image/size [800 600]
