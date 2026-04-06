@@ -94,6 +94,62 @@
       (is (= [200 0 0] (pixel-rgb img 400 300))
           "circle fill unchanged"))))
 
+;; --- v0.4 file loading tests ---
+
+(defn- write-temp-edn
+  "Writes EDN content to a temp file, returns the path."
+  [content]
+  (let [f (File/createTempFile "eido-test" ".edn")]
+    (spit f (pr-str content))
+    (.getAbsolutePath f)))
+
+(deftest read-scene-test
+  (testing "reads a scene from an EDN file"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes []}
+          path (write-temp-edn scene)]
+      (is (= scene (eido/read-scene path)))
+      (.delete (File. ^String path)))))
+
+(deftest read-scene-missing-file-test
+  (testing "throws ex-info for nonexistent file"
+    (try
+      (eido/read-scene "/tmp/nonexistent-eido-scene-12345.edn")
+      (is false "should have thrown")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= "/tmp/nonexistent-eido-scene-12345.edn"
+               (:path (ex-data e))))))))
+
+(deftest read-scene-invalid-edn-test
+  (testing "throws ex-info for invalid EDN"
+    (let [path (let [f (File/createTempFile "eido-test" ".edn")]
+                 (spit f "{{{invalid")
+                 (.getAbsolutePath f))]
+      (try
+        (eido/read-scene path)
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= path (:path (ex-data e))))))
+      (.delete (File. ^String path)))))
+
+(deftest render-file-test
+  (testing "renders a scene from an EDN file"
+    (let [scene {:image/size [200 150]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [0 0]
+                   :rect/size [200 150]
+                   :style/fill {:color [:color/rgb 255 0 0]}}]}
+          path (write-temp-edn scene)
+          img (eido/render-file path)]
+      (is (instance? BufferedImage img))
+      (is (= 200 (.getWidth img)))
+      (is (= 150 (.getHeight img)))
+      (is (= [255 0 0] (pixel-rgb img 100 75)))
+      (.delete (File. ^String path)))))
+
 ;; --- v0.3 integration tests ---
 
 (def path-scene
