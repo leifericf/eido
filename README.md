@@ -98,6 +98,33 @@ Styles inherit from parent to child. Opacity multiplies through the tree.
      :node/opacity 0.5}]}]}
 ```
 
+## Colors
+
+Multiple color formats are supported:
+
+```clojure
+[:color/rgb 255 0 0]            ;; RGB (0-255)
+[:color/rgba 255 0 0 0.5]       ;; RGB with alpha (0-1)
+[:color/hsl 0 1.0 0.5]          ;; HSL: hue (0-360), saturation (0-1), lightness (0-1)
+[:color/hsla 120 0.8 0.5 0.7]   ;; HSL with alpha
+[:color/hex "#FF0000"]           ;; Hex (6-digit, 8-digit, 3-digit, 4-digit)
+```
+
+Color manipulation helpers operate on resolved color maps:
+
+```clojure
+(require '[eido.color :as color])
+
+(def red (color/resolve-color [:color/rgb 255 0 0]))
+
+(color/lighten red 0.2)          ;; lighter red
+(color/darken red 0.2)           ;; darker red
+(color/saturate red 0.3)         ;; more vivid
+(color/desaturate red 0.5)       ;; more muted
+(color/rotate-hue red 120)       ;; green
+(color/lerp red white 0.5)       ;; blend two colors
+```
+
 ## Generative Patterns
 
 The `eido.scene` namespace provides helpers for common patterns:
@@ -176,6 +203,13 @@ Render any scene by tapping it:
 | `eido.core/render-to-file` | Scene map to PNG file |
 | `eido.core/read-scene` | Read scene from `.edn` file |
 | `eido.core/render-file` | Render scene from `.edn` file |
+| `eido.color/resolve-color` | Color vector to `{:r :g :b :a}` map |
+| `eido.color/lighten` | Increase lightness |
+| `eido.color/darken` | Decrease lightness |
+| `eido.color/saturate` | Increase saturation |
+| `eido.color/desaturate` | Decrease saturation |
+| `eido.color/rotate-hue` | Shift hue by degrees |
+| `eido.color/lerp` | Interpolate between two colors |
 | `eido.scene/grid` | Generate nodes in a grid |
 | `eido.scene/distribute` | Distribute nodes along a line |
 | `eido.scene/radial` | Distribute nodes around a circle |
@@ -192,7 +226,7 @@ clj -X:test
 
 ## Status
 
-v0.4.0 — Core language complete (shapes, composition, paths), REPL workflow tools in place.
-Headed toward color extensions, export options, and validation.
+v0.5.0 — Core language, REPL workflow, and color system in place.
+Headed toward export options, validation, and additional backends.
 
 **This is an experiment and a work in progress. The API is not stable and may change without notice.**
