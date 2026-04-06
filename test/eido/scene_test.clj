@@ -27,3 +27,32 @@
   (testing "zero cols or rows returns empty vector"
     (is (= [] (scene/grid 0 5 (fn [_ _] :x))))
     (is (= [] (scene/grid 5 0 (fn [_ _] :x))))))
+
+;; --- distribute tests ---
+
+(deftest distribute-basic-test
+  (testing "distributes 3 points along horizontal line"
+    (let [nodes (scene/distribute 3 [0 0] [100 0]
+                  (fn [x y t] {:x x :y y :t t}))]
+      (is (= 3 (count nodes)))
+      (is (= {:x 0.0 :y 0.0 :t 0.0} (first nodes)))
+      (is (= {:x 50.0 :y 0.0 :t 0.5} (second nodes)))
+      (is (= {:x 100.0 :y 0.0 :t 1.0} (nth nodes 2))))))
+
+(deftest distribute-single-test
+  (testing "n=1 places at midpoint"
+    (let [nodes (scene/distribute 1 [0 0] [100 100]
+                  (fn [x y t] {:x x :y y :t t}))]
+      (is (= 1 (count nodes)))
+      (is (= {:x 50.0 :y 50.0 :t 0.5} (first nodes))))))
+
+(deftest distribute-two-endpoints-test
+  (testing "n=2 places at endpoints"
+    (let [nodes (scene/distribute 2 [0 0] [0 100]
+                  (fn [x y _t] {:x x :y y}))]
+      (is (= [{:x 0.0 :y 0.0} {:x 0.0 :y 100.0}] nodes)))))
+
+(deftest distribute-zero-test
+  (testing "n=0 returns empty vector"
+    (is (= [] (scene/distribute 0 [0 0] [100 100]
+                (fn [x y t] {:x x}))))))
