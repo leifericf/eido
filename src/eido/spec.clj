@@ -85,7 +85,8 @@
 ;; --- styles ---
 
 (s/def ::style-color ::color)
-(s/def :style/fill (s/keys :req-un [::color]))
+(s/def :style/fill (s/or :color-vec ::color
+                         :color-map (s/keys :req-un [::color])))
 (s/def ::width ::pos-number)
 (s/def :style/stroke (s/keys :req-un [::color ::width]))
 (s/def :node/opacity ::unit-val)

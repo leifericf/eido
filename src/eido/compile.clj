@@ -4,12 +4,19 @@
     [eido.color :as color]
     [eido.validate :as validate]))
 
+(defn- resolve-fill
+  "Resolves a fill value — either a bare color vector or a map with :color."
+  [fill]
+  (when fill
+    (if (vector? fill)
+      (color/resolve-color fill)
+      (some-> (:color fill) color/resolve-color))))
+
 (defn- compile-style
   "Extracts fill and stroke from a node, resolving colors."
   [node]
-  (let [fill   (some-> (:style/fill node) :color color/resolve-color)
-        stroke (:style/stroke node)]
-    {:fill         fill
+  (let [stroke (:style/stroke node)]
+    {:fill         (resolve-fill (:style/fill node))
      :stroke-color (some-> stroke :color color/resolve-color)
      :stroke-width (when stroke (:width stroke))
      :opacity      (get node :node/opacity 1.0)}))

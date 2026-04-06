@@ -386,6 +386,54 @@
       (is (= :path (:op op)))
       (is (= [] (:commands op))))))
 
+;; --- flat fill color vector tests ---
+
+(deftest compile-flat-fill-test
+  (testing "bare color vector as :style/fill"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [0 0]
+                   :rect/size [50 50]
+                   :style/fill [:color/rgb 255 0 0]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= {:r 255 :g 0 :b 0 :a 1.0} (:fill op)))))
+  (testing "HSL color vector as :style/fill"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/circle
+                   :circle/center [50 50]
+                   :circle/radius 20
+                   :style/fill [:color/hsl 0 1.0 0.5]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= {:r 255 :g 0 :b 0 :a 1.0} (:fill op)))))
+  (testing "map-style fill still works"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [0 0]
+                   :rect/size [50 50]
+                   :style/fill {:color [:color/rgb 0 255 0]}}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= {:r 0 :g 255 :b 0 :a 1.0} (:fill op))))))
+
+(deftest compile-flat-fill-inherit-test
+  (testing "flat fill inherits from group"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :style/fill [:color/rgb 255 0 0]
+                   :group/children
+                   [{:node/type :shape/rect
+                     :rect/xy [0 0]
+                     :rect/size [50 50]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= {:r 255 :g 0 :b 0 :a 1.0} (:fill op))))))
+
 (deftest compile-path-inherits-style-test
   (testing "path inside group inherits fill from parent"
     (let [scene {:image/size [100 100]
