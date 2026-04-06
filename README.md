@@ -169,12 +169,11 @@ The `eido.scene` namespace provides helpers for common patterns:
 
 ```clojure
 ;; Arranged around a circle
-(scene/radial 12 200 200 150
-  (fn [x y angle]
-    {:node/type :shape/rect
-     :rect/xy [(- x 10) (- y 10)]
-     :rect/size [20 20]
-     :node/transform [[:transform/rotate angle]]
+(scene/radial 12 200 200 120
+  (fn [x y _angle]
+    {:node/type :shape/circle
+     :circle/center [x y]
+     :circle/radius 15
      :style/fill {:color [:color/rgb 200 0 0]}}))
 ```
 
