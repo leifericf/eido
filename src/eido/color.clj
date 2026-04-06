@@ -87,13 +87,57 @@
   [{:keys [r g b a]}]
   (Color. (int r) (int g) (int b) (int (* a 255))))
 
+;; --- color manipulation ---
+
+(defn- modify-hsl
+  "Converts color to HSL, applies f to [h s l], converts back."
+  [{:keys [r g b a]} f]
+  (let [[h s l] (rgb->hsl r g b)
+        [h' s' l'] (f h s l)
+        [r' g' b'] (hsl->rgb h' (max 0.0 (min 1.0 s'))
+                              (max 0.0 (min 1.0 l')))]
+    {:r r' :g g' :b b' :a a}))
+
+(defn lighten
+  "Increases lightness by amount (0-1)."
+  [color amount]
+  (modify-hsl color (fn [h s l] [h s (+ l amount)])))
+
+(defn darken
+  "Decreases lightness by amount (0-1)."
+  [color amount]
+  (modify-hsl color (fn [h s l] [h s (- l amount)])))
+
+(defn saturate
+  "Increases saturation by amount (0-1)."
+  [color amount]
+  (modify-hsl color (fn [h s l] [h (+ s amount) l])))
+
+(defn desaturate
+  "Decreases saturation by amount (0-1)."
+  [color amount]
+  (modify-hsl color (fn [h s l] [h (- s amount) l])))
+
+(defn rotate-hue
+  "Shifts hue by degrees (can be negative)."
+  [color degrees]
+  (modify-hsl color (fn [h s l] [(mod (+ h degrees) 360) s l])))
+
+(defn lerp
+  "Linearly interpolates between color-a and color-b. t in [0, 1]."
+  [color-a color-b t]
+  (let [t (max 0.0 (min 1.0 (double t)))
+        inv (- 1.0 t)]
+    {:r (Math/round (+ (* inv (:r color-a)) (* t (:r color-b))))
+     :g (Math/round (+ (* inv (:g color-a)) (* t (:g color-b))))
+     :b (Math/round (+ (* inv (:b color-a)) (* t (:b color-b))))
+     :a (+ (* inv (:a color-a)) (* t (:a color-b)))}))
+
 (comment
   (resolve-color [:color/rgb 200 0 0])
-  ;; => {:r 200, :g 0, :b 0, :a 1.0}
-
-  (resolve-color [:color/rgba 200 0 0 0.5])
-  ;; => {:r 200, :g 0, :b 0, :a 0.5}
-
-  (->awt-color {:r 200 :g 100 :b 50 :a 1.0})
-  ;; => #object[java.awt.Color ...]
+  (resolve-color [:color/hsl 0 1.0 0.5])
+  (resolve-color [:color/hex "#FF0000"])
+  (lighten {:r 200 :g 0 :b 0 :a 1.0} 0.2)
+  (rotate-hue {:r 255 :g 0 :b 0 :a 1.0} 120)
+  (lerp {:r 0 :g 0 :b 0 :a 1.0} {:r 255 :g 255 :b 255 :a 1.0} 0.5)
   )
