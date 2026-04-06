@@ -82,55 +82,75 @@
 
 ;; --- color manipulation ---
 
+(defn- ensure-map
+  "Coerces a color to a resolved map. Accepts both color vectors and maps."
+  [color]
+  (if (vector? color)
+    (resolve-color color)
+    color))
+
+(defn- map->vec
+  "Converts a resolved color map to a color vector."
+  [{:keys [r g b a]}]
+  (if (= 1.0 a)
+    [:color/rgb r g b]
+    [:color/rgba r g b a]))
+
 (defn- modify-hsl
-  "Converts color to HSL, applies f to [h s l], converts back."
-  [{:keys [r g b a]} f]
-  (let [[h s l] (rgb->hsl r g b)
+  "Converts color to HSL, applies f to [h s l], converts back.
+  Accepts color vectors or maps; returns a color vector."
+  [color f]
+  (let [{:keys [r g b a]} (ensure-map color)
+        [h s l] (rgb->hsl r g b)
         [h' s' l'] (f h s l)
         [r' g' b'] (hsl->rgb h' (max 0.0 (min 1.0 s'))
                               (max 0.0 (min 1.0 l')))]
-    {:r r' :g g' :b b' :a a}))
+    (map->vec {:r r' :g g' :b b' :a a})))
 
 (defn lighten
-  "Increases lightness by amount (0-1)."
+  "Increases lightness by amount (0-1). Accepts color vectors or maps."
   [color amount]
   (modify-hsl color (fn [h s l] [h s (+ l amount)])))
 
 (defn darken
-  "Decreases lightness by amount (0-1)."
+  "Decreases lightness by amount (0-1). Accepts color vectors or maps."
   [color amount]
   (modify-hsl color (fn [h s l] [h s (- l amount)])))
 
 (defn saturate
-  "Increases saturation by amount (0-1)."
+  "Increases saturation by amount (0-1). Accepts color vectors or maps."
   [color amount]
   (modify-hsl color (fn [h s l] [h (+ s amount) l])))
 
 (defn desaturate
-  "Decreases saturation by amount (0-1)."
+  "Decreases saturation by amount (0-1). Accepts color vectors or maps."
   [color amount]
   (modify-hsl color (fn [h s l] [h (- s amount) l])))
 
 (defn rotate-hue
-  "Shifts hue by degrees (can be negative)."
+  "Shifts hue by degrees (can be negative). Accepts color vectors or maps."
   [color degrees]
   (modify-hsl color (fn [h s l] [(mod (+ h degrees) 360) s l])))
 
 (defn lerp
-  "Linearly interpolates between color-a and color-b. t in [0, 1]."
+  "Linearly interpolates between two colors. t in [0, 1].
+  Accepts color vectors or maps; returns a color vector."
   [color-a color-b t]
-  (let [t (max 0.0 (min 1.0 (double t)))
+  (let [a (ensure-map color-a)
+        b (ensure-map color-b)
+        t (max 0.0 (min 1.0 (double t)))
         inv (- 1.0 t)]
-    {:r (Math/round (+ (* inv (:r color-a)) (* t (:r color-b))))
-     :g (Math/round (+ (* inv (:g color-a)) (* t (:g color-b))))
-     :b (Math/round (+ (* inv (:b color-a)) (* t (:b color-b))))
-     :a (+ (* inv (:a color-a)) (* t (:a color-b)))}))
+    (map->vec
+      {:r (Math/round (+ (* inv (:r a)) (* t (:r b))))
+       :g (Math/round (+ (* inv (:g a)) (* t (:g b))))
+       :b (Math/round (+ (* inv (:b a)) (* t (:b b))))
+       :a (+ (* inv (:a a)) (* t (:a b)))})))
 
 (comment
   (resolve-color [:color/rgb 200 0 0])
   (resolve-color [:color/hsl 0 1.0 0.5])
   (resolve-color [:color/hex "#FF0000"])
-  (lighten {:r 200 :g 0 :b 0 :a 1.0} 0.2)
-  (rotate-hue {:r 255 :g 0 :b 0 :a 1.0} 120)
-  (lerp {:r 0 :g 0 :b 0 :a 1.0} {:r 255 :g 255 :b 255 :a 1.0} 0.5)
+  (lighten [:color/rgb 200 0 0] 0.2)
+  (rotate-hue [:color/rgb 255 0 0] 120)
+  (lerp [:color/rgb 0 0 0] [:color/rgb 255 255 255] 0.5)
   )
