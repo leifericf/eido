@@ -35,6 +35,9 @@
            (and (seq? body) (= 'clojure.core/contains? (first body)))))
     (str "missing required key " (last (nth pred 2)))
 
+    (some #{:eido/version} via)
+    "version string matching \"X.Y\" (e.g. \"1.0\")"
+
     (some #{:eido.spec/node} via)
     "valid node (type must be :shape/rect, :shape/circle, :shape/path, or :group)"
 

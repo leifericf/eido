@@ -256,3 +256,31 @@
                 :image/background [:color/rgb 0 0 0]
                 :image/nodes
                 [{:node/type :shape/rect}]})))))
+
+(deftest scene-version-test
+  (testing "scene without version is valid"
+    (is (s/valid? :eido.spec/scene
+          {:image/size [100 100]
+           :image/background [:color/rgb 0 0 0]
+           :image/nodes []})))
+
+  (testing "scene with valid version is valid"
+    (is (s/valid? :eido.spec/scene
+          {:eido/version "1.0"
+           :image/size [100 100]
+           :image/background [:color/rgb 0 0 0]
+           :image/nodes []})))
+
+  (testing "scene with invalid version format is rejected"
+    (is (not (s/valid? :eido.spec/scene
+               {:eido/version "alpha"
+                :image/size [100 100]
+                :image/background [:color/rgb 0 0 0]
+                :image/nodes []}))))
+
+  (testing "scene with numeric version is rejected"
+    (is (not (s/valid? :eido.spec/scene
+               {:eido/version 1.0
+                :image/size [100 100]
+                :image/background [:color/rgb 0 0 0]
+                :image/nodes []})))))

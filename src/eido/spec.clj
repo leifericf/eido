@@ -131,5 +131,8 @@
 (s/def :image/background ::color)
 (s/def :image/nodes (s/coll-of ::node :kind vector?))
 
+(s/def :eido/version (s/and string? #(re-matches #"\d+\.\d+" %)))
+
 (s/def ::scene
-  (s/keys :req [:image/size :image/background :image/nodes]))
+  (s/keys :req [:image/size :image/background :image/nodes]
+          :opt [:eido/version]))
