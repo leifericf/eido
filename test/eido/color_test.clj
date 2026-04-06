@@ -17,18 +17,6 @@
     (is (= {:r 0 :g 0 :b 0 :a 0.0}
            (color/resolve-color [:color/rgba 0 0 0 0.0])))))
 
-(deftest ->awt-color-test
-  (testing "converts color map to java.awt.Color"
-    (let [c (color/->awt-color {:r 200 :g 100 :b 50 :a 1.0})]
-      (is (instance? java.awt.Color c))
-      (is (= 200 (.getRed c)))
-      (is (= 100 (.getGreen c)))
-      (is (= 50 (.getBlue c)))
-      (is (= 255 (.getAlpha c)))))
-  (testing "handles fractional alpha"
-    (let [c (color/->awt-color {:r 0 :g 0 :b 0 :a 0.5})]
-      (is (< (Math/abs (- 128 (.getAlpha c))) 2)))))
-
 ;; --- v0.5 HSL tests ---
 
 (deftest resolve-color-hsl-primaries-test

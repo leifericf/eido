@@ -1,6 +1,4 @@
-(ns eido.color
-  (:import
-    [java.awt Color]))
+(ns eido.color)
 
 (defn- hue->rgb [p q t]
   (let [t (cond (< t 0) (+ t 1.0) (> t 1) (- t 1.0) :else t)]
@@ -81,11 +79,6 @@
                        [r g b] (hsl->rgb h s l)]
                   {:r r :g g :b b :a a})
     :color/hex  (parse-hex (second color-vec))))
-
-(defn ->awt-color
-  "Converts a resolved color map to a java.awt.Color."
-  [{:keys [r g b a]}]
-  (Color. (int r) (int g) (int b) (int (* a 255))))
 
 ;; --- color manipulation ---
 

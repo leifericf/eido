@@ -1,10 +1,13 @@
 (ns eido.render
-  (:require
-    [eido.color :as color])
   (:import
-    [java.awt AlphaComposite BasicStroke Graphics2D RenderingHints]
+    [java.awt AlphaComposite BasicStroke Color Graphics2D RenderingHints]
     [java.awt.geom Ellipse2D$Double GeneralPath Rectangle2D$Double]
     [java.awt.image BufferedImage]))
+
+(defn- ->awt-color
+  "Converts a resolved color map to a java.awt.Color."
+  ^Color [{:keys [r g b a]}]
+  (Color. (int r) (int g) (int b) (int (* a 255))))
 
 (defmulti render-op
   "Renders a single IR op onto the graphics context."
@@ -12,12 +15,12 @@
 
 (defn- apply-fill [^Graphics2D g shape fill]
   (when fill
-    (.setColor g (color/->awt-color fill))
+    (.setColor g (->awt-color fill))
     (.fill g shape)))
 
 (defn- apply-stroke [^Graphics2D g shape stroke-color stroke-width]
   (when stroke-color
-    (.setColor g (color/->awt-color stroke-color))
+    (.setColor g (->awt-color stroke-color))
     (.setStroke g (BasicStroke. (float (or stroke-width 1))))
     (.draw g shape)))
 
@@ -77,7 +80,7 @@
      (when-not (:transparent-background opts)
        (.setComposite g (AlphaComposite/getInstance
                           AlphaComposite/SRC_OVER 1.0))
-       (.setColor g (color/->awt-color (:ir/background ir)))
+       (.setColor g (->awt-color (:ir/background ir)))
        (.fillRect g 0 0 w h))
      ;; Render ops in order
      (doseq [op (:ir/ops ir)]
