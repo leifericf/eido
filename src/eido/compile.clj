@@ -49,20 +49,34 @@
     (:style/fill node)   (assoc :style/fill (:style/fill node))
     (:style/stroke node) (assoc :style/stroke (:style/stroke node))))
 
+(defn- simplify-transform
+  "Strips namespace prefix from transform keyword.
+  [:transform/translate x y] -> [:translate x y]"
+  [[k & args]]
+  (into [(keyword (name k))] args))
+
+(defn- accumulate-transforms
+  "Concatenates node's transforms onto inherited transforms."
+  [inherited node]
+  (into inherited (mapv simplify-transform
+                        (or (:node/transform node) []))))
+
 (defn- compile-tree
   "Recursively compiles a node tree into a flat sequence of IR ops."
   [node ctx]
   (if (= :group (:node/type node))
     (let [child-ctx (-> ctx
                         (update :style (partial group-style node))
-                        (update :opacity * (get node :node/opacity 1.0)))]
+                        (update :opacity * (get node :node/opacity 1.0))
+                        (update :transforms accumulate-transforms node))]
       (into [] (mapcat #(compile-tree % child-ctx))
             (:group/children node)))
     (let [effective-opacity (* (:opacity ctx)
                                (get node :node/opacity 1.0))
+          transforms (accumulate-transforms (:transforms ctx) node)
           styled-node (-> (inherit-style node (:style ctx))
                           (assoc :node/opacity effective-opacity))]
-      [(compile-node styled-node)])))
+      [(assoc (compile-node styled-node) :transforms transforms)])))
 
 (defn compile
   "Compiles a scene map into an intermediate representation."

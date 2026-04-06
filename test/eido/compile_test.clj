@@ -249,3 +249,74 @@
                        :node/opacity 0.5}]}]}]}
           op (first (:ir/ops (compile/compile scene)))]
       (is (= 0.125 (:opacity op))))))
+
+;; --- v0.2 transform accumulation tests ---
+
+(deftest compile-transform-leaf-test
+  (testing "leaf shape with transform produces :transforms in IR"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [0 0]
+                   :rect/size [50 50]
+                   :node/transform [[:transform/translate 10 20]]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= [[:translate 10 20]] (:transforms op))))))
+
+(deftest compile-transform-group-to-child-test
+  (testing "group transform propagates to child"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :node/transform [[:transform/translate 100 200]]
+                   :group/children
+                   [{:node/type :shape/rect
+                     :rect/xy [0 0]
+                     :rect/size [50 50]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= [[:translate 100 200]] (:transforms op))))))
+
+(deftest compile-transform-concatenation-test
+  (testing "group + child transforms concatenate in order"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :node/transform [[:transform/translate 10 20]]
+                   :group/children
+                   [{:node/type :shape/rect
+                     :rect/xy [0 0]
+                     :rect/size [50 50]
+                     :node/transform [[:transform/rotate 1.57]]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= [[:translate 10 20] [:rotate 1.57]] (:transforms op))))))
+
+(deftest compile-transform-nested-groups-test
+  (testing "transforms accumulate through nested groups"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :node/transform [[:transform/translate 10 20]]
+                   :group/children
+                   [{:node/type :group
+                     :node/transform [[:transform/scale 2 2]]
+                     :group/children
+                     [{:node/type :shape/circle
+                       :circle/center [0 0]
+                       :circle/radius 5}]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= [[:translate 10 20] [:scale 2 2]] (:transforms op))))))
+
+(deftest compile-no-transforms-test
+  (testing "no transforms produces empty vector"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [0 0]
+                   :rect/size [50 50]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= [] (:transforms op))))))
