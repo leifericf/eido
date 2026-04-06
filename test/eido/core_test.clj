@@ -471,3 +471,32 @@
         (is (= 200 (.getWidth img)))
         (is (= 200 (.getHeight img))))
       (.delete (File. path)))))
+
+;; --- animated SVG ---
+
+(deftest render-to-animated-svg-str-test
+  (testing "produces SVG string with animation"
+    (let [out (eido/render-to-animated-svg-str simple-frames 10)]
+      (is (string? out))
+      (is (re-find #"<svg" out))
+      (is (re-find #"<animate" out))
+      (is (re-find #"</svg>" out))))
+
+  (testing "contains all frames"
+    (let [out (eido/render-to-animated-svg-str simple-frames 10)]
+      (is (= 3 (count (re-seq #"<g " out))))))
+
+  (testing "scale option works"
+    (let [out (eido/render-to-animated-svg-str simple-frames 10 {:scale 2})]
+      (is (re-find #"width=\"200\"" out))
+      (is (re-find #"height=\"200\"" out)))))
+
+(deftest render-to-animated-svg-test
+  (testing "writes animated SVG to file"
+    (let [path (str (File/createTempFile "eido-asvg" ".svg"))]
+      (eido/render-to-animated-svg simple-frames path 10)
+      (is (.exists (File. path)))
+      (let [content (slurp path)]
+        (is (re-find #"<svg" content))
+        (is (re-find #"<animate" content)))
+      (.delete (File. path)))))

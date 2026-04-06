@@ -92,6 +92,25 @@
    (svg/render (compile/compile scene)
                (select-keys opts [:scale :transparent-background]))))
 
+(defn render-to-animated-svg-str
+  "Renders a sequence of scenes to an animated SVG string using SMIL.
+  fps: frames per second.
+  Opts: :scale, :transparent-background."
+  ([scenes fps] (render-to-animated-svg-str scenes fps {}))
+  ([scenes fps opts]
+   (let [irs (mapv compile/compile scenes)]
+     (svg/render-animated irs fps
+       (select-keys opts [:scale :transparent-background])))))
+
+(defn render-to-animated-svg
+  "Renders a sequence of scenes to an animated SVG file.
+  fps: frames per second.
+  Opts: :scale, :transparent-background."
+  ([scenes path fps] (render-to-animated-svg scenes path fps {}))
+  ([scenes path fps opts]
+   (spit path (render-to-animated-svg-str scenes fps opts))
+   path))
+
 (defn- write-png-with-dpi
   "Writes PNG with DPI metadata."
   [^BufferedImage img ^String path dpi]
