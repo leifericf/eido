@@ -27,6 +27,25 @@
          (Math/round (* (hue->rgb p q h') 255.0))
          (Math/round (* (hue->rgb p q (- h' (/ 1.0 3))) 255.0))]))))
 
+(defn- parse-hex
+  "Parses a hex color string to {:r :g :b :a}."
+  [hex-str]
+  (let [s (if (= \# (first hex-str)) (subs hex-str 1) hex-str)
+        s (case (count s)
+            3 (apply str (mapcat #(vector % %) s))
+            4 (apply str (mapcat #(vector % %) s))
+            6 s
+            8 s
+            (throw (ex-info "Invalid hex color"
+                            {:input hex-str})))
+        r (Integer/parseInt (subs s 0 2) 16)
+        g (Integer/parseInt (subs s 2 4) 16)
+        b (Integer/parseInt (subs s 4 6) 16)
+        a (if (> (count s) 6)
+            (/ (Integer/parseInt (subs s 6 8) 16) 255.0)
+            1.0)]
+    {:r r :g g :b b :a a}))
+
 (defn resolve-color
   "Resolves a color vector to a map with :r :g :b :a keys."
   [color-vec]
@@ -40,7 +59,8 @@
                   {:r r :g g :b b :a 1.0})
     :color/hsla (let [[_ h s l a] color-vec
                        [r g b] (hsl->rgb h s l)]
-                  {:r r :g g :b b :a a})))
+                  {:r r :g g :b b :a a})
+    :color/hex  (parse-hex (second color-vec))))
 
 (defn ->awt-color
   "Converts a resolved color map to a java.awt.Color."

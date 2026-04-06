@@ -63,3 +63,50 @@
   (testing "HSLA includes alpha"
     (is (= {:r 255 :g 0 :b 0 :a 0.5}
            (color/resolve-color [:color/hsla 0 1.0 0.5 0.5])))))
+
+;; --- v0.5 hex tests ---
+
+(deftest resolve-color-hex-6-test
+  (testing "resolves 6-digit hex"
+    (is (= {:r 255 :g 0 :b 0 :a 1.0}
+           (color/resolve-color [:color/hex "#FF0000"])))
+    (is (= {:r 0 :g 0 :b 0 :a 1.0}
+           (color/resolve-color [:color/hex "#000000"])))
+    (is (= {:r 255 :g 255 :b 255 :a 1.0}
+           (color/resolve-color [:color/hex "#FFFFFF"])))))
+
+(deftest resolve-color-hex-lowercase-test
+  (testing "hex is case insensitive"
+    (is (= {:r 255 :g 0 :b 0 :a 1.0}
+           (color/resolve-color [:color/hex "#ff0000"])))))
+
+(deftest resolve-color-hex-8-test
+  (testing "resolves 8-digit hex with alpha"
+    (let [c (color/resolve-color [:color/hex "#FF000080"])]
+      (is (= 255 (:r c)))
+      (is (= 0 (:g c)))
+      (is (= 0 (:b c)))
+      (is (< (Math/abs (- (/ 128 255.0) (:a c))) 0.01)))))
+
+(deftest resolve-color-hex-3-test
+  (testing "resolves 3-digit shorthand"
+    (is (= {:r 255 :g 0 :b 0 :a 1.0}
+           (color/resolve-color [:color/hex "#F00"])))))
+
+(deftest resolve-color-hex-4-test
+  (testing "resolves 4-digit shorthand with alpha"
+    (let [c (color/resolve-color [:color/hex "#F008"])]
+      (is (= 255 (:r c)))
+      (is (= 0 (:g c)))
+      (is (= 0 (:b c)))
+      (is (< (Math/abs (- (/ 0x88 255.0) (:a c))) 0.01)))))
+
+(deftest resolve-color-hex-no-hash-test
+  (testing "hex works without # prefix"
+    (is (= {:r 255 :g 0 :b 0 :a 1.0}
+           (color/resolve-color [:color/hex "FF0000"])))))
+
+(deftest resolve-color-hex-invalid-test
+  (testing "invalid hex throws ex-info"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid hex"
+          (color/resolve-color [:color/hex "#12345"])))))
