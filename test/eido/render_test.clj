@@ -352,3 +352,43 @@
               :ir/ops []}
           img (render/render ir)]
       (is (= [128 128 128] (pixel-rgb img 50 50))))))
+
+;; --- gradient fill ---
+
+(deftest render-linear-gradient-test
+  (testing "linear gradient renders with color variation across the shape"
+    (let [ir {:ir/size [200 100]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 200 :h 100
+                        :fill {:gradient/type :linear
+                               :gradient/from [0 0]
+                               :gradient/to [200 0]
+                               :gradient/stops [[0.0 {:r 255 :g 0 :b 0 :a 1.0}]
+                                                [1.0 {:r 0 :g 0 :b 255 :a 1.0}]]}
+                        :stroke-color nil :stroke-width nil
+                        :opacity 1.0 :transforms []}]}
+          img (render/render ir)
+          [r1 _ b1] (pixel-rgb img 10 50)
+          [r2 _ b2] (pixel-rgb img 190 50)]
+      (is (> r1 200) "left side should be mostly red")
+      (is (< r2 55) "right side should have little red")
+      (is (< b1 55) "left side should have little blue")
+      (is (> b2 200) "right side should be mostly blue"))))
+
+(deftest render-radial-gradient-test
+  (testing "radial gradient renders with color variation from center"
+    (let [ir {:ir/size [200 200]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :circle :cx 100 :cy 100 :r 100
+                        :fill {:gradient/type :radial
+                               :gradient/center [100 100]
+                               :gradient/radius 100
+                               :gradient/stops [[0.0 {:r 255 :g 255 :b 255 :a 1.0}]
+                                                [1.0 {:r 0 :g 0 :b 0 :a 1.0}]]}
+                        :stroke-color nil :stroke-width nil
+                        :opacity 1.0 :transforms []}]}
+          img (render/render ir)
+          [rc _ _] (pixel-rgb img 100 100)
+          [re _ _] (pixel-rgb img 5 100)]
+      (is (> rc 200) "center should be bright")
+      (is (< re rc) "edge should be darker than center"))))

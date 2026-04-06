@@ -416,3 +416,39 @@
       (is (re-find #"values=\"visible;hidden\".*keyTimes=\"0;0\.5\"" out))
       ;; Frame 1: hidden then visible at 0.5 (1/2)
       (is (re-find #"values=\"hidden;visible\".*keyTimes=\"0;0\.5\"" out)))))
+
+;; --- gradient fill ---
+
+(deftest svg-linear-gradient-test
+  (testing "emits linearGradient def and url() fill reference"
+    (let [ir {:ir/size [200 100]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 200 :h 100
+                        :fill {:gradient/type :linear
+                               :gradient/from [0 0]
+                               :gradient/to [200 0]
+                               :gradient/stops [[0.0 {:r 255 :g 0 :b 0 :a 1.0}]
+                                                [1.0 {:r 0 :g 0 :b 255 :a 1.0}]]}
+                        :stroke-color nil :stroke-width nil
+                        :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"<linearGradient" out))
+      (is (re-find #"gradientUnits=\"userSpaceOnUse\"" out))
+      (is (re-find #"<stop" out))
+      (is (re-find #"fill=\"url\(#grad-0\)\"" out)))))
+
+(deftest svg-radial-gradient-test
+  (testing "emits radialGradient def and url() fill reference"
+    (let [ir {:ir/size [200 200]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :circle :cx 100 :cy 100 :r 100
+                        :fill {:gradient/type :radial
+                               :gradient/center [100 100]
+                               :gradient/radius 100
+                               :gradient/stops [[0.0 {:r 255 :g 255 :b 255 :a 1.0}]
+                                                [1.0 {:r 0 :g 0 :b 0 :a 1.0}]]}
+                        :stroke-color nil :stroke-width nil
+                        :opacity 1.0 :transforms []}]}
+          out (svg/render ir)]
+      (is (re-find #"<radialGradient" out))
+      (is (re-find #"fill=\"url\(#grad-0\)\"" out)))))

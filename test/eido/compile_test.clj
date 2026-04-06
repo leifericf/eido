@@ -622,3 +622,46 @@
           op (first (:ir/ops (compile/compile scene)))]
       (is (= {:r 0 :g 0 :b 255 :a 1.0} (:fill op)))
       (is (= 0.5 (:opacity op))))))
+
+;; --- gradient fill ---
+
+(deftest compile-linear-gradient-fill-test
+  (testing "resolves colors within linear gradient stops"
+    (let [scene {:image/size [200 200]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [0 0]
+                   :rect/size [200 200]
+                   :style/fill {:gradient/type :linear
+                                :gradient/from [0 0]
+                                :gradient/to [200 0]
+                                :gradient/stops [[0.0 [:color/rgb 255 0 0]]
+                                                 [1.0 [:color/rgb 0 0 255]]]}}]}
+          op (first (:ir/ops (compile/compile scene)))
+          fill (:fill op)]
+      (is (= :linear (:gradient/type fill)))
+      (is (= [0 0] (:gradient/from fill)))
+      (is (= [200 0] (:gradient/to fill)))
+      (is (= [[0.0 {:r 255 :g 0 :b 0 :a 1.0}]
+              [1.0 {:r 0 :g 0 :b 255 :a 1.0}]]
+             (:gradient/stops fill))))))
+
+(deftest compile-radial-gradient-fill-test
+  (testing "resolves colors within radial gradient stops"
+    (let [scene {:image/size [200 200]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :shape/circle
+                   :circle/center [100 100]
+                   :circle/radius 100
+                   :style/fill {:gradient/type :radial
+                                :gradient/center [100 100]
+                                :gradient/radius 100
+                                :gradient/stops [[0.0 [:color/rgb 255 255 255]]
+                                                 [1.0 [:color/rgb 0 0 0]]]}}]}
+          op (first (:ir/ops (compile/compile scene)))
+          fill (:fill op)]
+      (is (= :radial (:gradient/type fill)))
+      (is (= [100 100] (:gradient/center fill)))
+      (is (= 100 (:gradient/radius fill))))))

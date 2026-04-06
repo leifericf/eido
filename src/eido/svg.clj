@@ -45,44 +45,77 @@
              :close    "Z"))
          commands)))
 
+(defn- gradient->svg-def
+  "Converts a resolved gradient fill to an SVG gradient definition string.
+  Returns {:id id :def svg-def-string}."
+  [gradient id]
+  (let [stops-str (str/join ""
+                    (map (fn [[pos color]]
+                           (str "<stop offset=\"" (fmt pos)
+                                "\" stop-color=\"" (color->css color) "\""
+                                (when (and (:a color) (not= (:a color) 1.0))
+                                  (str " stop-opacity=\"" (fmt (:a color)) "\""))
+                                "/>"))
+                         (:gradient/stops gradient)))]
+    {:id  id
+     :def (case (:gradient/type gradient)
+            :linear (let [[x1 y1] (:gradient/from gradient)
+                          [x2 y2] (:gradient/to gradient)]
+                      (str "<linearGradient id=\"" id "\""
+                           " x1=\"" (fmt x1) "\" y1=\"" (fmt y1)
+                           "\" x2=\"" (fmt x2) "\" y2=\"" (fmt y2)
+                           "\" gradientUnits=\"userSpaceOnUse\">"
+                           stops-str "</linearGradient>"))
+            :radial (let [[cx cy] (:gradient/center gradient)
+                          r       (:gradient/radius gradient)]
+                      (str "<radialGradient id=\"" id "\""
+                           " cx=\"" (fmt cx) "\" cy=\"" (fmt cy)
+                           "\" r=\"" (fmt r)
+                           "\" gradientUnits=\"userSpaceOnUse\">"
+                           stops-str "</radialGradient>")))}))
+
 (defn- style-attrs
-  "Builds SVG style attribute string for an op."
-  [{:keys [fill stroke-color stroke-width stroke-cap stroke-join
-           stroke-dash opacity transforms]}]
-  (str (if fill
-         (str "fill=\"" (color->css fill) "\"")
-         "fill=\"none\"")
-       (when stroke-color
-         (str " stroke=\"" (color->css stroke-color) "\""
-              " stroke-width=\"" stroke-width "\""))
-       (when stroke-cap
-         (str " stroke-linecap=\"" (name stroke-cap) "\""))
-       (when stroke-join
-         (str " stroke-linejoin=\"" (name stroke-join) "\""))
-       (when stroke-dash
-         (str " stroke-dasharray=\"" (str/join " " stroke-dash) "\""))
-       (when (and opacity (not= opacity 1.0))
-         (str " opacity=\"" opacity "\""))
-       (when-let [t (transforms->svg transforms)]
-         (str " transform=\"" t "\""))))
+  "Builds SVG style attribute string for an op.
+  gradient-id, when provided, is used for fill instead of a solid color."
+  ([op] (style-attrs op nil))
+  ([{:keys [fill stroke-color stroke-width stroke-cap stroke-join
+            stroke-dash opacity transforms]} gradient-id]
+   (str (cond
+          gradient-id    (str "fill=\"url(#" gradient-id ")\"")
+          fill           (str "fill=\"" (color->css fill) "\"")
+          :else          "fill=\"none\"")
+        (when stroke-color
+          (str " stroke=\"" (color->css stroke-color) "\""
+               " stroke-width=\"" stroke-width "\""))
+        (when stroke-cap
+          (str " stroke-linecap=\"" (name stroke-cap) "\""))
+        (when stroke-join
+          (str " stroke-linejoin=\"" (name stroke-join) "\""))
+        (when stroke-dash
+          (str " stroke-dasharray=\"" (str/join " " stroke-dash) "\""))
+        (when (and opacity (not= opacity 1.0))
+          (str " opacity=\"" opacity "\""))
+        (when-let [t (transforms->svg transforms)]
+          (str " transform=\"" t "\"")))))
 
 (defmulti op->svg
-  "Converts a single IR op to an SVG element string."
-  :op)
+  "Converts a single IR op to an SVG element string.
+  Dispatches on :op. Optional second arg is gradient-id for fill."
+  (fn [op & _] (:op op)))
 
 (defmethod op->svg :rect
-  [{:keys [x y w h corner-radius] :as op}]
+  [{:keys [x y w h corner-radius] :as op} & [gradient-id]]
   (str "<rect x=\"" x "\" y=\"" y
        "\" width=\"" w "\" height=\"" h "\""
        (when corner-radius
          (str " rx=\"" corner-radius "\" ry=\"" corner-radius "\""))
-       " " (style-attrs op) "/>"))
+       " " (style-attrs op gradient-id) "/>"))
 
 (defmethod op->svg :circle
-  [{:keys [cx cy r] :as op}]
+  [{:keys [cx cy r] :as op} & [gradient-id]]
   (str "<circle cx=\"" cx "\" cy=\"" cy
        "\" r=\"" r
-       "\" " (style-attrs op) "/>"))
+       "\" " (style-attrs op gradient-id) "/>"))
 
 (defn- arc->path-d
   "Converts arc parameters to SVG path d string.
@@ -110,30 +143,30 @@
            " " (fmt x2) " " (fmt y2)))))
 
 (defmethod op->svg :arc
-  [{:keys [cx cy rx ry start extent mode] :as op}]
+  [{:keys [cx cy rx ry start extent mode] :as op} & [gradient-id]]
   (str "<path d=\"" (arc->path-d cx cy rx ry start extent mode)
-       "\" " (style-attrs op) "/>"))
+       "\" " (style-attrs op gradient-id) "/>"))
 
 (defmethod op->svg :line
-  [{:keys [x1 y1 x2 y2] :as op}]
+  [{:keys [x1 y1 x2 y2] :as op} & [gradient-id]]
   (str "<line x1=\"" x1 "\" y1=\"" y1
        "\" x2=\"" x2 "\" y2=\"" y2
-       "\" " (style-attrs op) "/>"))
+       "\" " (style-attrs op gradient-id) "/>"))
 
 (defmethod op->svg :ellipse
-  [{:keys [cx cy rx ry] :as op}]
+  [{:keys [cx cy rx ry] :as op} & [gradient-id]]
   (str "<ellipse cx=\"" cx "\" cy=\"" cy
        "\" rx=\"" rx "\" ry=\"" ry
-       "\" " (style-attrs op) "/>"))
+       "\" " (style-attrs op gradient-id) "/>"))
 
 (defmethod op->svg :path
-  [{:keys [commands fill-rule] :as op}]
+  [{:keys [commands fill-rule] :as op} & [gradient-id]]
   (str "<path d=\"" (commands->d commands) "\""
        (when fill-rule
          (str " fill-rule=\"" (case fill-rule
                                 :even-odd "evenodd"
                                 :non-zero "nonzero") "\""))
-       " " (style-attrs op) "/>"))
+       " " (style-attrs op gradient-id) "/>"))
 
 (defn- clip-shape->svg
   "Converts a clip IR op to an SVG shape element string (no style)."
@@ -153,21 +186,26 @@
     :path    (str "<path d=\"" (commands->d (:commands clip)) "\"/>")))
 
 (defn- op-svg-with-clip
-  "Renders an op to SVG, adding clip-path reference if it has a clip."
+  "Renders an op to SVG, adding clip-path and/or gradient defs as needed."
   [op idx]
-  (if (:clip op)
-    (let [clip-id (str "clip-" idx)
-          svg-str (op->svg (assoc op
-                             :extra-attrs
-                             (str "clip-path=\"url(#" clip-id ")\"")))
-          ;; Since op->svg doesn't support extra-attrs, inject it
-          base (op->svg op)
-          ;; Insert clip-path attr before the closing />
-          injected (str/replace base #"/>" (str " clip-path=\"url(#" clip-id ")\"/>"))]
-      {:defs (str "<clipPath id=\"" clip-id "\">"
-                  (clip-shape->svg (:clip op)) "</clipPath>")
-       :element injected})
-    {:defs nil :element (op->svg op)}))
+  (let [fill         (:fill op)
+        has-gradient? (and (map? fill) (:gradient/type fill))
+        gradient-id  (when has-gradient? (str "grad-" idx))
+        gradient-def (when has-gradient?
+                       (:def (gradient->svg-def fill gradient-id)))
+        has-clip?    (:clip op)
+        clip-id      (when has-clip? (str "clip-" idx))
+        clip-def     (when has-clip?
+                       (str "<clipPath id=\"" clip-id "\">"
+                            (clip-shape->svg (:clip op)) "</clipPath>"))
+        base         (op->svg op gradient-id)
+        element      (if has-clip?
+                       (str/replace base #"/>"
+                         (str " clip-path=\"url(#" clip-id ")\"/>"))
+                       base)
+        defs         (str/join "" (remove nil? [gradient-def clip-def]))]
+    {:defs    (when (seq defs) defs)
+     :element element}))
 
 (defn render
   "Renders IR to an SVG XML string."
@@ -223,12 +261,12 @@
 
 (defn- frame-group
   "Wraps IR ops in a <g> with SMIL visibility animation."
-  [ir i n fps transparent-bg?]
+  [ir frame-idx n fps transparent-bg? op-offset]
   (let [bg         (:ir/background ir)
         [w h]      (:ir/size ir)
         frame-dur  (/ 1.0 fps)
         total-dur  (fmt (* n frame-dur))
-        {:keys [values key-times]} (frame-key-times i n)
+        {:keys [values key-times]} (frame-key-times frame-idx n)
         animate    (str "    <animate attributeName=\"visibility\""
                         " values=\"" values "\""
                         " dur=\"" total-dur "s\""
@@ -238,15 +276,20 @@
         bg-line    (when (and bg (not transparent-bg?))
                      (str "    <rect x=\"0\" y=\"0\" width=\"" w
                           "\" height=\"" h "\" fill=\"" (color->css bg) "\"/>"))
-        op-lines   (map #(str "    " (op->svg %)) (:ir/ops ir))]
-    (str/join "\n"
-      (filter some?
-        (concat
-          [(str "  <g visibility=\"hidden\">")
-           animate
-           bg-line]
-          op-lines
-          ["  </g>"])))))
+        ops-with-meta (map-indexed
+                        (fn [j op] (op-svg-with-clip op (+ op-offset j)))
+                        (:ir/ops ir))
+        defs-str   (str/join "" (keep :defs ops-with-meta))
+        op-lines   (map #(str "    " (:element %)) ops-with-meta)]
+    {:defs defs-str
+     :body (str/join "\n"
+             (filter some?
+               (concat
+                 [(str "  <g visibility=\"hidden\">")
+                  animate
+                  bg-line]
+                 op-lines
+                 ["  </g>"])))}))
 
 (defn render-animated
   "Renders a sequence of IRs to an animated SVG string using SMIL.
@@ -263,9 +306,24 @@
          header  (str "<svg xmlns=\"http://www.w3.org/2000/svg\""
                       " width=\"" sw "\" height=\"" sh "\""
                       " viewBox=\"0 0 " w " " h "\">")
-         frames  (map-indexed (fn [i ir] (frame-group ir i n fps t-bg?)) irs)]
-     (str/join "\n"
-       (concat [header] frames ["</svg>"])))))
+         ;; Accumulate op-offset so gradient/clip IDs are unique across frames
+         frame-results (loop [i 0, offset 0, results []]
+                         (if (>= i n)
+                           results
+                           (let [ir     (nth irs i)
+                                 result (frame-group ir i n fps t-bg? offset)]
+                             (recur (inc i)
+                                    (+ offset (count (:ir/ops ir)))
+                                    (conj results result)))))
+         all-defs (str/join "" (keep #(when (seq (:defs %)) (:defs %)) frame-results))
+         lines    (cond-> [header]
+                    (seq all-defs)
+                    (conj (str "  <defs>" all-defs "</defs>"))
+                    true
+                    (into (map :body frame-results))
+                    true
+                    (conj "</svg>"))]
+     (str/join "\n" lines))))
 
 (comment
   ;; Static SVG

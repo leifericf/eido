@@ -418,3 +418,40 @@
                 :image/size [100 100]
                 :image/background [:color/rgb 0 0 0]
                 :image/nodes []})))))
+
+;; --- gradient specs ---
+
+(deftest linear-gradient-spec-test
+  (testing "valid linear gradient fill"
+    (is (s/valid? :style/fill
+          {:gradient/type :linear
+           :gradient/from [0 0]
+           :gradient/to [100 0]
+           :gradient/stops [[0.0 [:color/rgb 255 0 0]]
+                            [1.0 [:color/rgb 0 0 255]]]})))
+  (testing "rejects gradient with missing stops"
+    (is (not (s/valid? :style/fill
+               {:gradient/type :linear
+                :gradient/from [0 0]
+                :gradient/to [100 0]}))))
+  (testing "rejects gradient with single stop"
+    (is (not (s/valid? :style/fill
+               {:gradient/type :linear
+                :gradient/from [0 0]
+                :gradient/to [100 0]
+                :gradient/stops [[0.5 [:color/rgb 0 0 0]]]})))))
+
+(deftest radial-gradient-spec-test
+  (testing "valid radial gradient fill"
+    (is (s/valid? :style/fill
+          {:gradient/type :radial
+           :gradient/center [100 100]
+           :gradient/radius 50
+           :gradient/stops [[0.0 [:color/rgb 255 255 255]]
+                            [1.0 [:color/rgb 0 0 0]]]})))
+  (testing "rejects radial gradient missing center"
+    (is (not (s/valid? :style/fill
+               {:gradient/type :radial
+                :gradient/radius 50
+                :gradient/stops [[0.0 [:color/rgb 0 0 0]]
+                                 [1.0 [:color/rgb 255 255 255]]]})))))

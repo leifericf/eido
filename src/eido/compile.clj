@@ -4,13 +4,24 @@
     [eido.color :as color]
     [eido.validate :as validate]))
 
+(defn- resolve-gradient
+  "Resolves colors within gradient stops, passes through coordinates."
+  [gradient]
+  (-> gradient
+      (update :gradient/stops
+              (fn [stops]
+                (mapv (fn [[pos color-vec]]
+                        [pos (color/resolve-color color-vec)])
+                      stops)))))
+
 (defn- resolve-fill
-  "Resolves a fill value — either a bare color vector or a map with :color."
+  "Resolves a fill value — color vector, map with :color, or gradient."
   [fill]
   (when fill
-    (if (vector? fill)
-      (color/resolve-color fill)
-      (some-> (:color fill) color/resolve-color))))
+    (cond
+      (vector? fill)              (color/resolve-color fill)
+      (:gradient/type fill)       (resolve-gradient fill)
+      (:color fill)               (color/resolve-color (:color fill)))))
 
 (defn- compile-style
   "Extracts fill and stroke from a node, resolving colors."

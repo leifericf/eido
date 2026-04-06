@@ -1,7 +1,9 @@
 (ns eido.render
   (:import
-    [java.awt AlphaComposite BasicStroke Color Graphics2D RenderingHints]
-    [java.awt.geom Arc2D$Double Ellipse2D$Double GeneralPath Rectangle2D$Double RoundRectangle2D$Double]
+    [java.awt AlphaComposite BasicStroke Color Graphics2D LinearGradientPaint
+              RadialGradientPaint RenderingHints]
+    [java.awt.geom Arc2D$Double Ellipse2D$Double GeneralPath Point2D$Float
+                    Rectangle2D$Double RoundRectangle2D$Double]
     [java.awt.image BufferedImage]))
 
 (defn- ->awt-color
@@ -13,10 +15,35 @@
   "Renders a single IR op onto the graphics context."
   (fn [^Graphics2D _g op] (:op op)))
 
+(defn- gradient->paint
+  "Converts a resolved gradient map to a Java2D Paint object."
+  [gradient]
+  (let [stops      (:gradient/stops gradient)
+        fractions  (float-array (mapv first stops))
+        colors     (into-array Color (mapv #(->awt-color (second %)) stops))]
+    (case (:gradient/type gradient)
+      :linear (let [[x1 y1] (:gradient/from gradient)
+                    [x2 y2] (:gradient/to gradient)]
+                (LinearGradientPaint.
+                  (Point2D$Float. (float x1) (float y1))
+                  (Point2D$Float. (float x2) (float y2))
+                  fractions colors))
+      :radial (let [[cx cy] (:gradient/center gradient)
+                    r       (:gradient/radius gradient)]
+                (RadialGradientPaint.
+                  (Point2D$Float. (float cx) (float cy))
+                  (float r)
+                  fractions colors)))))
+
 (defn- apply-fill [^Graphics2D g shape fill]
   (when fill
-    (.setColor g (->awt-color fill))
-    (.fill g shape)))
+    (if (:gradient/type fill)
+      (let [saved-paint (.getPaint g)]
+        (.setPaint g (gradient->paint fill))
+        (.fill g shape)
+        (.setPaint g saved-paint))
+      (do (.setColor g (->awt-color fill))
+          (.fill g shape)))))
 
 (def ^:private cap-map
   {:butt   BasicStroke/CAP_BUTT

@@ -110,11 +110,33 @@
 (s/def :path/commands (s/coll-of ::path-command :kind vector?))
 (s/def :path/fill-rule #{:even-odd :non-zero})
 
+;; --- gradients ---
+
+(s/def :gradient/type #{:linear :radial})
+(s/def :gradient/from ::point)
+(s/def :gradient/to ::point)
+(s/def :gradient/center ::point)
+(s/def :gradient/radius ::pos-number)
+(s/def ::stop-position (s/and number? #(<= 0 % 1)))
+(s/def ::gradient-stop (s/tuple ::stop-position ::color))
+(s/def :gradient/stops (s/and (s/coll-of ::gradient-stop :kind vector? :min-count 2)))
+
+(defmulti gradient-type :gradient/type)
+
+(defmethod gradient-type :linear [_]
+  (s/keys :req [:gradient/type :gradient/from :gradient/to :gradient/stops]))
+
+(defmethod gradient-type :radial [_]
+  (s/keys :req [:gradient/type :gradient/center :gradient/radius :gradient/stops]))
+
+(s/def ::gradient (s/multi-spec gradient-type :gradient/type))
+
 ;; --- styles ---
 
 (s/def ::style-color ::color)
 (s/def :style/fill (s/or :color-vec ::color
-                         :color-map (s/keys :req-un [::color])))
+                         :color-map (s/keys :req-un [::color])
+                         :gradient ::gradient))
 (s/def ::width ::pos-number)
 (s/def ::cap #{:butt :round :square})
 (s/def ::join #{:miter :round :bevel})
