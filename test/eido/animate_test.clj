@@ -105,6 +105,143 @@
   (testing "fast at end"
     (is (> (anim/ease-in-out 0.75) 0.75))))
 
+;; --- cubic easing ---
+
+(deftest ease-in-cubic-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-in-cubic 0.0)))
+    (is (== 1.0 (anim/ease-in-cubic 1.0))))
+  (testing "slower than linear at start"
+    (is (< (anim/ease-in-cubic 0.25) 0.25))))
+
+(deftest ease-out-cubic-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-out-cubic 0.0)))
+    (is (== 1.0 (anim/ease-out-cubic 1.0))))
+  (testing "faster than linear at start"
+    (is (> (anim/ease-out-cubic 0.25) 0.25))))
+
+(deftest ease-in-out-cubic-test
+  (testing "boundaries and midpoint"
+    (is (== 0.0 (anim/ease-in-out-cubic 0.0)))
+    (is (== 1.0 (anim/ease-in-out-cubic 1.0)))
+    (is (== 0.5 (anim/ease-in-out-cubic 0.5)))))
+
+;; --- quart easing ---
+
+(deftest ease-in-quart-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-in-quart 0.0)))
+    (is (== 1.0 (anim/ease-in-quart 1.0))))
+  (testing "even slower than cubic at start"
+    (is (< (anim/ease-in-quart 0.25) (anim/ease-in-cubic 0.25)))))
+
+(deftest ease-out-quart-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-out-quart 0.0)))
+    (is (== 1.0 (anim/ease-out-quart 1.0)))))
+
+(deftest ease-in-out-quart-test
+  (testing "boundaries and midpoint"
+    (is (== 0.0 (anim/ease-in-out-quart 0.0)))
+    (is (== 1.0 (anim/ease-in-out-quart 1.0)))
+    (is (== 0.5 (anim/ease-in-out-quart 0.5)))))
+
+;; --- expo easing ---
+
+(deftest ease-in-expo-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-in-expo 0.0)))
+    (is (== 1.0 (anim/ease-in-expo 1.0))))
+  (testing "very slow at start"
+    (is (< (anim/ease-in-expo 0.1) 0.01))))
+
+(deftest ease-out-expo-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-out-expo 0.0)))
+    (is (== 1.0 (anim/ease-out-expo 1.0)))))
+
+(deftest ease-in-out-expo-test
+  (testing "boundaries and midpoint"
+    (is (== 0.0 (anim/ease-in-out-expo 0.0)))
+    (is (== 1.0 (anim/ease-in-out-expo 1.0)))
+    (is (== 0.5 (anim/ease-in-out-expo 0.5)))))
+
+;; --- circ easing ---
+
+(deftest ease-in-circ-test
+  (testing "boundaries"
+    (is (< (Math/abs (- 0.0 (anim/ease-in-circ 0.0))) 1e-9))
+    (is (== 1.0 (anim/ease-in-circ 1.0)))))
+
+(deftest ease-out-circ-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-out-circ 0.0)))
+    (is (< (Math/abs (- 1.0 (anim/ease-out-circ 1.0))) 1e-9))))
+
+(deftest ease-in-out-circ-test
+  (testing "boundaries"
+    (is (< (Math/abs (- 0.0 (anim/ease-in-out-circ 0.0))) 1e-9))
+    (is (< (Math/abs (- 1.0 (anim/ease-in-out-circ 1.0))) 1e-9))))
+
+;; --- back easing ---
+
+(deftest ease-in-back-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-in-back 0.0)))
+    (is (< (Math/abs (- 1.0 (anim/ease-in-back 1.0))) 1e-9)))
+  (testing "goes negative (overshoots backward)"
+    (is (< (anim/ease-in-back 0.1) 0.0))))
+
+(deftest ease-out-back-test
+  (testing "boundaries"
+    (is (< (Math/abs (- 0.0 (anim/ease-out-back 0.0))) 1e-9))
+    (is (< (Math/abs (- 1.0 (anim/ease-out-back 1.0))) 1e-9)))
+  (testing "overshoots past 1.0"
+    (is (> (anim/ease-out-back 0.9) 1.0))))
+
+(deftest ease-in-out-back-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-in-out-back 0.0)))
+    (is (< (Math/abs (- 1.0 (anim/ease-in-out-back 1.0))) 1e-9))))
+
+;; --- elastic easing ---
+
+(deftest ease-in-elastic-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-in-elastic 0.0)))
+    (is (== 1.0 (anim/ease-in-elastic 1.0)))))
+
+(deftest ease-out-elastic-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-out-elastic 0.0)))
+    (is (== 1.0 (anim/ease-out-elastic 1.0)))))
+
+(deftest ease-in-out-elastic-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-in-out-elastic 0.0)))
+    (is (== 1.0 (anim/ease-in-out-elastic 1.0)))))
+
+;; --- bounce easing ---
+
+(deftest ease-out-bounce-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-out-bounce 0.0)))
+    (is (== 1.0 (anim/ease-out-bounce 1.0))))
+  (testing "monotonically reaches 1.0 at end"
+    (is (> (anim/ease-out-bounce 0.99) 0.95))))
+
+(deftest ease-in-bounce-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-in-bounce 0.0)))
+    (is (== 1.0 (anim/ease-in-bounce 1.0)))))
+
+(deftest ease-in-out-bounce-test
+  (testing "boundaries"
+    (is (== 0.0 (anim/ease-in-out-bounce 0.0)))
+    (is (== 1.0 (anim/ease-in-out-bounce 1.0)))
+    (is (== 0.5 (anim/ease-in-out-bounce 0.5)))))
+
 ;; --- stagger ---
 
 (deftest stagger-test

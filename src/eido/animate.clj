@@ -45,6 +45,184 @@
     (* 2.0 t t)
     (- 1.0 (* 2.0 (- 1.0 t) (- 1.0 t)))))
 
+;; --- cubic ---
+
+(defn ease-in-cubic
+  "Cubic ease in. t in [0, 1]."
+  [t]
+  (* t t t))
+
+(defn ease-out-cubic
+  "Cubic ease out. t in [0, 1]."
+  [t]
+  (let [t' (- 1.0 t)]
+    (- 1.0 (* t' t' t'))))
+
+(defn ease-in-out-cubic
+  "Cubic ease in-out. t in [0, 1]."
+  [t]
+  (if (< t 0.5)
+    (* 4.0 t t t)
+    (- 1.0 (* 4.0 (- 1.0 t) (- 1.0 t) (- 1.0 t)))))
+
+;; --- quart ---
+
+(defn ease-in-quart
+  "Quartic ease in. t in [0, 1]."
+  [t]
+  (* t t t t))
+
+(defn ease-out-quart
+  "Quartic ease out. t in [0, 1]."
+  [t]
+  (let [t' (- 1.0 t)]
+    (- 1.0 (* t' t' t' t'))))
+
+(defn ease-in-out-quart
+  "Quartic ease in-out. t in [0, 1]."
+  [t]
+  (if (< t 0.5)
+    (* 8.0 t t t t)
+    (- 1.0 (* 8.0 (- 1.0 t) (- 1.0 t) (- 1.0 t) (- 1.0 t)))))
+
+;; --- exponential ---
+
+(defn ease-in-expo
+  "Exponential ease in. t in [0, 1]."
+  [t]
+  (if (zero? t) 0.0 (Math/pow 2.0 (* 10.0 (- t 1.0)))))
+
+(defn ease-out-expo
+  "Exponential ease out. t in [0, 1]."
+  [t]
+  (if (== t 1.0) 1.0 (- 1.0 (Math/pow 2.0 (* -10.0 t)))))
+
+(defn ease-in-out-expo
+  "Exponential ease in-out. t in [0, 1]."
+  [t]
+  (cond
+    (zero? t)  0.0
+    (== t 1.0) 1.0
+    (< t 0.5) (* 0.5 (Math/pow 2.0 (- (* 20.0 t) 10.0)))
+    :else      (- 1.0 (* 0.5 (Math/pow 2.0 (- (* -20.0 t) -10.0))))))
+
+;; --- circular ---
+
+(defn ease-in-circ
+  "Circular ease in. t in [0, 1]."
+  [t]
+  (- 1.0 (Math/sqrt (- 1.0 (* t t)))))
+
+(defn ease-out-circ
+  "Circular ease out. t in [0, 1]."
+  [t]
+  (let [t' (- t 1.0)]
+    (Math/sqrt (- 1.0 (* t' t')))))
+
+(defn ease-in-out-circ
+  "Circular ease in-out. t in [0, 1]."
+  [t]
+  (if (< t 0.5)
+    (* 0.5 (- 1.0 (Math/sqrt (- 1.0 (* 4.0 t t)))))
+    (* 0.5 (+ 1.0 (Math/sqrt (- 1.0 (let [v (- (* 2.0 t) 2.0)] (* v v))))))))
+
+;; --- back (overshoot) ---
+
+(def ^:private back-c1 1.70158)
+(def ^:private back-c2 (* back-c1 1.525))
+(def ^:private back-c3 (+ back-c1 1.0))
+
+(defn ease-in-back
+  "Back ease in (overshoots then returns). t in [0, 1]."
+  [t]
+  (- (* back-c3 t t t) (* back-c1 t t)))
+
+(defn ease-out-back
+  "Back ease out (overshoots then settles). t in [0, 1]."
+  [t]
+  (let [t' (- t 1.0)]
+    (+ 1.0 (* back-c3 t' t' t') (* back-c1 t' t'))))
+
+(defn ease-in-out-back
+  "Back ease in-out. t in [0, 1]."
+  [t]
+  (if (< t 0.5)
+    (/ (* t t (- (* (+ back-c2 1.0) 2.0 t) back-c2)) 2.0)
+    (let [t' (- (* 2.0 t) 2.0)]
+      (/ (+ (* t' t' (+ (* (+ back-c2 1.0) t') back-c2)) 2.0) 2.0))))
+
+;; --- elastic ---
+
+(def ^:private elastic-c4 (/ (* 2.0 Math/PI) 3.0))
+(def ^:private elastic-c5 (/ (* 2.0 Math/PI) 4.5))
+
+(defn ease-in-elastic
+  "Elastic ease in. t in [0, 1]."
+  [t]
+  (cond
+    (zero? t)  0.0
+    (== t 1.0) 1.0
+    :else (- (* (Math/pow 2.0 (* 10.0 (- t 1.0)))
+               (Math/sin (* (- t 1.075) elastic-c4))))))
+
+(defn ease-out-elastic
+  "Elastic ease out. t in [0, 1]."
+  [t]
+  (cond
+    (zero? t)  0.0
+    (== t 1.0) 1.0
+    :else (+ 1.0 (* (Math/pow 2.0 (* -10.0 t))
+                     (Math/sin (* (- t 0.075) elastic-c4))))))
+
+(defn ease-in-out-elastic
+  "Elastic ease in-out. t in [0, 1]."
+  [t]
+  (cond
+    (zero? t)  0.0
+    (== t 1.0) 1.0
+    (< t 0.5) (/ (- (* (Math/pow 2.0 (- (* 20.0 t) 10.0))
+                       (Math/sin (* (- (* 20.0 t) 11.125) elastic-c5))))
+                 2.0)
+    :else      (+ (/ (* (Math/pow 2.0 (- (* -20.0 t) -10.0))
+                        (Math/sin (* (- (* 20.0 t) 11.125) elastic-c5)))
+                     2.0)
+                  1.0)))
+
+;; --- bounce ---
+
+(defn ease-out-bounce
+  "Bounce ease out. t in [0, 1]."
+  [t]
+  (let [n1 7.5625
+        d1 2.75]
+    (cond
+      (< t (/ 1.0 d1))
+      (* n1 t t)
+
+      (< t (/ 2.0 d1))
+      (let [t' (- t (/ 1.5 d1))]
+        (+ (* n1 t' t') 0.75))
+
+      (< t (/ 2.5 d1))
+      (let [t' (- t (/ 2.25 d1))]
+        (+ (* n1 t' t') 0.9375))
+
+      :else
+      (let [t' (- t (/ 2.625 d1))]
+        (+ (* n1 t' t') 0.984375)))))
+
+(defn ease-in-bounce
+  "Bounce ease in. t in [0, 1]."
+  [t]
+  (- 1.0 (ease-out-bounce (- 1.0 t))))
+
+(defn ease-in-out-bounce
+  "Bounce ease in-out. t in [0, 1]."
+  [t]
+  (if (< t 0.5)
+    (* 0.5 (- 1.0 (ease-out-bounce (- 1.0 (* 2.0 t)))))
+    (* 0.5 (+ 1.0 (ease-out-bounce (- (* 2.0 t) 1.0))))))
+
 (defn frames
   "Builds a vector of n frames by calling (f t) for each frame,
   where t is normalized progress [0.0, 1.0]."
