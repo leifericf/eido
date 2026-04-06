@@ -52,10 +52,21 @@
     (.fillRect g 0 0 w h)
     ;; Render ops in order
     (doseq [op (:ir/ops ir)]
-      (.setComposite g (AlphaComposite/getInstance
-                         AlphaComposite/SRC_OVER
-                         (float (:opacity op))))
-      (render-op g op))
+      (let [saved (.getTransform g)]
+        (.setComposite g (AlphaComposite/getInstance
+                           AlphaComposite/SRC_OVER
+                           (float (:opacity op))))
+        (doseq [[t & args] (:transforms op)]
+          (case t
+            :translate (.translate g
+                                   (double (first args))
+                                   (double (second args)))
+            :rotate    (.rotate g (double (first args)))
+            :scale     (.scale g
+                               (double (first args))
+                               (double (second args)))))
+        (render-op g op)
+        (.setTransform g saved)))
     (.dispose g)
     img))
 

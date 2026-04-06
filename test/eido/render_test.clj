@@ -119,3 +119,63 @@
                     (= (.getRGB img1 x y)
                        (.getRGB img2 x y))))
           "all pixels must be identical across renders"))))
+
+;; --- v0.2 transform rendering tests ---
+
+(deftest render-translate-test
+  (testing "translate moves shape to new position"
+    (let [ir {:ir/size [200 200]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 50 :h 50
+                         :fill {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0
+                         :transforms [[:translate 50 50]]}]}
+          img (render/render ir)]
+      (is (= [255 0 0] (pixel-rgb img 75 75))
+          "center of translated rect should be red")
+      (is (= [255 255 255] (pixel-rgb img 25 25))
+          "original position should be background"))))
+
+(deftest render-scale-test
+  (testing "scale enlarges shape"
+    (let [ir {:ir/size [200 200]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 50 :h 50
+                         :fill {:r 0 :g 255 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0
+                         :transforms [[:scale 2 2]]}]}
+          img (render/render ir)]
+      (is (= [0 255 0] (pixel-rgb img 75 75))
+          "scaled rect should cover (75,75)"))))
+
+(deftest render-identity-rotation-test
+  (testing "rotation by 0 is identical to no rotation"
+    (let [base-ir {:ir/size [100 100]
+                   :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+                   :ir/ops [{:op :rect :x 25 :y 25 :w 50 :h 50
+                              :fill {:r 0 :g 0 :b 255 :a 1.0}
+                              :stroke-color nil :stroke-width nil
+                              :opacity 1.0
+                              :transforms []}]}
+          rot-ir (assoc-in base-ir [:ir/ops 0 :transforms]
+                           [[:rotate 0.0]])
+          img1 (render/render base-ir)
+          img2 (render/render rot-ir)]
+      (is (every? true?
+                  (for [x (range 100) y (range 100)]
+                    (= (.getRGB img1 x y)
+                       (.getRGB img2 x y))))
+          "zero rotation should be identical to no rotation"))))
+
+(deftest render-no-transforms-backward-compat-test
+  (testing "ops without :transforms key still render correctly"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :rect :x 25 :y 25 :w 50 :h 50
+                         :fill {:r 255 :g 0 :b 0 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 1.0}]}
+          img (render/render ir)]
+      (is (= [255 0 0] (pixel-rgb img 50 50))))))
