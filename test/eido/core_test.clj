@@ -194,6 +194,25 @@
        :style/fill {:color [:color/rgb 0 0 255]}
        :node/opacity 0.5}]}]})
 
+;; --- v0.4 integration tests ---
+
+(deftest render-file-integration-test
+  (testing "EDN file round-trip: write, render-file, verify pixels"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :shape/circle
+                   :circle/center [50 50]
+                   :circle/radius 30
+                   :style/fill {:color [:color/rgb 0 255 0]}}]}
+          path (write-temp-edn scene)
+          img (eido/render-file path)]
+      (is (= [0 255 0] (pixel-rgb img 50 50))
+          "center of circle should be green")
+      (is (= [0 0 0] (pixel-rgb img 5 5))
+          "corner should be background")
+      (.delete (File. ^String path)))))
+
 (deftest mixed-path-integration-test
   (testing "path composes with other shapes in groups"
     (let [img (eido/render mixed-path-scene)]
