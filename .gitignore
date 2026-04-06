@@ -21,5 +21,6 @@ classes/
 # Clojure tooling
 .cpcache/
 .clj-kondo/.cache/
+.lsp/
 .nrepl-port
 .lein-repl-history
