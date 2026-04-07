@@ -70,7 +70,7 @@
     " works this way — pure data in, image out."]])
 
 (defn install-code []
-  "io.github.leifericf/eido {:git/tag \"v1.0.0-alpha5\" :git/sha \"UPDATE_AFTER_TAG\"}")
+  "io.github.leifericf/eido {:git/tag \"v1.0.0-alpha5\" :git/sha \"03b38ab\"}")
 
 ;; --- Docs page ---
 ;; Docs are organized into categories, each containing sections.
