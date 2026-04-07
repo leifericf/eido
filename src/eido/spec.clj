@@ -74,12 +74,16 @@
 (s/def :transform/shear-y
   (s/and vector? (s/cat :tag #{:transform/shear-y} :sy number?)))
 
+(s/def :transform/distort
+  (s/and vector? (s/cat :tag #{:transform/distort} :opts map?)))
+
 (s/def ::transform
   (s/or :translate :transform/translate
         :rotate :transform/rotate
         :scale :transform/scale
         :shear-x :transform/shear-x
-        :shear-y :transform/shear-y))
+        :shear-y :transform/shear-y
+        :distort :transform/distort))
 
 (s/def :node/transform (s/coll-of ::transform :kind vector?))
 
@@ -134,9 +138,21 @@
 ;; --- styles ---
 
 (s/def ::style-color ::color)
+(s/def ::hatch-fill
+  (s/and map? #(= :hatch (:fill/type %))))
+
+(s/def ::stipple-fill
+  (s/and map? #(= :stipple (:fill/type %))))
+
+(s/def ::pattern-fill
+  (s/and map? #(= :pattern (:fill/type %))))
+
 (s/def :style/fill (s/or :color-vec ::color
                          :color-map (s/keys :req-un [::color])
-                         :gradient ::gradient))
+                         :gradient ::gradient
+                         :hatch ::hatch-fill
+                         :stipple ::stipple-fill
+                         :pattern ::pattern-fill))
 (s/def ::width ::pos-number)
 (s/def ::cap #{:butt :round :square})
 (s/def ::join #{:miter :round :bevel})
@@ -197,27 +213,33 @@
 
 (defmethod node-type :shape/rect [_]
   (s/keys :req [:node/type :rect/xy :rect/size]
-          :opt [:rect/corner-radius :style/fill :style/stroke :node/opacity :node/transform]))
+          :opt [:rect/corner-radius :style/fill :style/stroke :node/opacity :node/transform
+                :effect/shadow :effect/glow]))
 
 (defmethod node-type :shape/circle [_]
   (s/keys :req [:node/type :circle/center :circle/radius]
-          :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+          :opt [:style/fill :style/stroke :node/opacity :node/transform
+                :effect/shadow :effect/glow]))
 
 (defmethod node-type :shape/arc [_]
   (s/keys :req [:node/type :arc/center :arc/rx :arc/ry :arc/start :arc/extent]
-          :opt [:arc/mode :style/fill :style/stroke :node/opacity :node/transform]))
+          :opt [:arc/mode :style/fill :style/stroke :node/opacity :node/transform
+                :effect/shadow :effect/glow]))
 
 (defmethod node-type :shape/line [_]
   (s/keys :req [:node/type :line/from :line/to]
-          :opt [:style/stroke :node/opacity :node/transform]))
+          :opt [:style/stroke :node/opacity :node/transform
+                :effect/shadow :effect/glow]))
 
 (defmethod node-type :shape/ellipse [_]
   (s/keys :req [:node/type :ellipse/center :ellipse/rx :ellipse/ry]
-          :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+          :opt [:style/fill :style/stroke :node/opacity :node/transform
+                :effect/shadow :effect/glow]))
 
 (defmethod node-type :shape/path [_]
   (s/keys :req [:node/type :path/commands]
-          :opt [:path/fill-rule :style/fill :style/stroke :node/opacity :node/transform]))
+          :opt [:path/fill-rule :style/fill :style/stroke :node/opacity :node/transform
+                :stroke/profile :effect/shadow :effect/glow]))
 
 (defmethod node-type :group [_]
   (s/keys :req [:node/type :group/children]
@@ -241,6 +263,14 @@
           :opt [:text/offset :text/spacing
                 :style/fill :style/stroke :node/opacity :node/transform
                 :group/composite :group/filter]))
+
+(defmethod node-type :scatter [_]
+  (s/keys :req [:node/type :scatter/shape :scatter/positions]
+          :opt [:scatter/jitter :node/opacity :node/transform]))
+
+(defmethod node-type :path/decorated [_]
+  (s/keys :req [:node/type :path/commands :decorator/shape :decorator/spacing]
+          :opt [:decorator/rotate? :node/opacity :node/transform]))
 
 (defmethod node-type :default [_]
   (s/with-gen

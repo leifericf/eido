@@ -1,7 +1,7 @@
 (ns eido.render
   (:import
     [java.awt AlphaComposite BasicStroke Color Graphics2D LinearGradientPaint
-              RadialGradientPaint RenderingHints]
+              RadialGradientPaint RenderingHints TexturePaint]
     [java.awt.geom Arc2D$Double Ellipse2D$Double GeneralPath Point2D$Float
                     Rectangle2D$Double RoundRectangle2D$Double]
     [java.awt.image BufferedImage]))
@@ -35,13 +35,39 @@
                   (float r)
                   fractions colors)))))
 
+(declare render-ir-op)
+
+(defn- pattern->paint
+  "Renders pattern tile ops to a BufferedImage and creates a TexturePaint."
+  [pattern-fill]
+  (let [[tw th] (:pattern/size pattern-fill)
+        tile-img (BufferedImage. (int tw) (int th) BufferedImage/TYPE_INT_ARGB)
+        tile-g   (.createGraphics tile-img)]
+    (.setRenderingHint tile-g
+                       RenderingHints/KEY_ANTIALIASING
+                       RenderingHints/VALUE_ANTIALIAS_ON)
+    (doseq [op (:pattern/ops pattern-fill)]
+      (render-ir-op tile-g tile-img [(int tw) (int th)] op))
+    (.dispose tile-g)
+    (TexturePaint. tile-img
+                   (Rectangle2D$Double. 0.0 0.0 (double tw) (double th)))))
+
 (defn- apply-fill [^Graphics2D g shape fill]
   (when fill
-    (if (:gradient/type fill)
+    (cond
+      (:gradient/type fill)
       (let [saved-paint (.getPaint g)]
         (.setPaint g (gradient->paint fill))
         (.fill g shape)
         (.setPaint g saved-paint))
+
+      (= :pattern (:fill/type fill))
+      (let [saved-paint (.getPaint g)]
+        (.setPaint g (pattern->paint fill))
+        (.fill g shape)
+        (.setPaint g saved-paint))
+
+      :else
       (do (.setColor g (->awt-color fill))
           (.fill g shape)))))
 
@@ -347,8 +373,6 @@
             (aset dst-data i
               (unchecked-int (pack-argb fa fr fg fb)))))))
     (.setRGB dst 0 0 w h dst-data 0 w)))
-
-(declare render-ir-op)
 
 (defn- render-buffer-op
   "Renders a compositing group: children to off-screen buffer, then onto g."

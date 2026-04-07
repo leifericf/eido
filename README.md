@@ -2449,6 +2449,171 @@ No special primitive — composable from blur + offset + opacity:
 | `eido.particle/smoke` | Smoke preset (data map) |
 | `eido.particle/fountain` | Fountain preset (data map) |
 
+## Artistic Expression Gallery
+
+Eido includes an artistic toolkit for expressive, stylized rendering — hatching, stippling, variable-width strokes, path distortion, pattern fills, drop shadows, glow effects, path decorators, scatter instancing, noise functions, and color palettes. All features are data-first and compose with every other Eido feature.
+
+<p align="center">
+  <img src="images/art-ink-landscape.png" width="400" alt="Ink landscape with hatching and calligraphic strokes" />
+  <img src="images/art-starfield.png" width="400" alt="Starfield with scatter, glow, and nebula" />
+</p>
+<p align="center">
+  <img src="images/art-polka-pop.png" width="300" alt="Pop art polka dot circles" />
+  <img src="images/art-stipple-spheres.png" width="300" alt="Stippled spheres with shadows" />
+</p>
+<p align="center">
+  <img src="images/art-calligraphy-flow.gif" width="400" alt="Animated calligraphic waves" />
+</p>
+<p align="center">
+  <img src="images/art-decorative-frame.png" width="300" alt="Decorative frame with diamonds, hatching, and stipple accents" />
+  <img src="images/art-noise-garden.gif" width="300" alt="Animated swaying garden" />
+</p>
+
+### Ink Landscape
+
+Combines cross-hatching fill, path distortion (roughen), and variable-width calligraphic strokes to achieve a pen-and-ink aesthetic.
+
+```clojure
+(require '[eido.core :as eido])
+
+(eido/render
+  {:image/size [600 400]
+   :image/background [:color/rgb 245 235 220]
+   :image/nodes
+   [;; Sun with horizontal hatching
+    {:node/type :shape/circle
+     :circle/center [480.0 80.0]
+     :circle/radius 30.0
+     :style/fill {:fill/type :hatch
+                  :hatch/angle 0
+                  :hatch/spacing 3
+                  :hatch/stroke-width 0.8
+                  :hatch/color [:color/rgb 40 30 20]
+                  :hatch/background [:color/rgb 245 235 220]}
+     :style/stroke {:color [:color/rgb 40 30 20] :width 1.5}}
+    ;; Mountain with cross-hatching and roughened edges
+    {:node/type :shape/path
+     :path/commands [[:move-to [0.0 300.0]]
+                     [:line-to [220.0 90.0]]
+                     [:line-to [380.0 80.0]]
+                     [:line-to [600.0 260.0]]
+                     [:line-to [600.0 400.0]]
+                     [:line-to [0.0 400.0]]
+                     [:close]]
+     :style/fill {:fill/type :hatch
+                  :hatch/layers [{:angle 45 :spacing 6}
+                                 {:angle -30 :spacing 8}]
+                  :hatch/stroke-width 0.7
+                  :hatch/color [:color/rgb 40 30 20]}
+     :style/stroke {:color [:color/rgb 30 20 10] :width 2}
+     :node/transform [[:transform/distort {:type :roughen :amount 2 :seed 42}]]}
+    ;; Calligraphic foreground stroke
+    {:node/type :shape/path
+     :path/commands [[:move-to [0.0 350.0]]
+                     [:curve-to [200.0 310.0] [400.0 330.0] [600.0 330.0]]]
+     :stroke/profile :brush
+     :style/stroke {:color [:color/rgb 30 20 10] :width 8}}]}
+  {:output "ink-landscape.png"})
+```
+
+<img src="images/art-ink-landscape.png" width="500" alt="Ink landscape" />
+
+### Pop Art Polka Dots
+
+Pattern fills (tiled mini-scenes) combined with neon palette, white outlines, and drop shadows for a bold pop-art look.
+
+```clojure
+(require '[eido.core :as eido]
+         '[eido.palette :as palette])
+
+(eido/render
+  {:image/size [400 400]
+   :image/background [:color/rgb 20 20 20]
+   :image/nodes
+   [{:node/type :shape/circle
+     :circle/center [200.0 200.0]
+     :circle/radius 90.0
+     :style/fill {:fill/type :pattern
+                  :pattern/size [14 14]
+                  :pattern/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [0.0 0.0]
+                    :rect/size [14.0 14.0]
+                    :style/fill [:color/rgb 0 255 136]}
+                   {:node/type :shape/circle
+                    :circle/center [7.0 7.0]
+                    :circle/radius 3.0
+                    :style/fill [:color/rgb 20 20 20]}]}
+     :style/stroke {:color [:color/rgb 255 255 255] :width 3}
+     :effect/shadow {:dx 5 :dy 5 :blur 10
+                     :color [:color/rgb 0 0 0]
+                     :opacity 0.5}}]}
+  {:output "polka-pop.png"})
+```
+
+<img src="images/art-polka-pop.png" width="350" alt="Pop art polka dots" />
+
+### Calligraphic Waves (Animated)
+
+Variable-width strokes with `:pointed` profile animate along sine waves using the sunset palette.
+
+```clojure
+(require '[eido.core :as eido]
+         '[eido.animate :as anim]
+         '[eido.palette :as palette])
+
+(eido/render
+  (anim/frames 60
+    (fn [t]
+      {:image/size [600 450]
+       :image/background [:color/rgb 25 20 30]
+       :image/nodes
+       (vec (for [i (range 5)]
+              (let [base-y (+ 80 (* i 70))
+                    pts (for [x (range 20 581 10)]
+                          [x (+ base-y (* 40 (Math/sin (+ (* x 0.015)
+                                                          (* t 2 Math/PI)))))])]
+                {:node/type :shape/path
+                 :path/commands (into [[:move-to (first pts)]]
+                                      (mapv (fn [p] [:line-to p]) (rest pts)))
+                 :stroke/profile :pointed
+                 :style/stroke {:color (nth (:sunset palette/palettes) (mod i 5))
+                                :width (+ 6 (* 2 i))}})))}))
+  {:output "calligraphy-flow.gif" :fps 30})
+```
+
+<img src="images/art-calligraphy-flow.gif" width="500" alt="Calligraphic waves" />
+
+### Artistic Toolkit API Reference
+
+| Function / Key | Description |
+|---|---|
+| `eido.noise/perlin2d` | 2D Perlin noise, seeded, deterministic |
+| `eido.noise/perlin3d` | 3D Perlin noise (use time as z for animation) |
+| `eido.noise/fbm` | Fractal Brownian motion (layered noise) |
+| `eido.noise/turbulence` | Turbulence (absolute-value fbm) |
+| `eido.noise/ridge` | Ridged multifractal noise |
+| `eido.palette/complementary` | Complementary color (180° opposite) |
+| `eido.palette/analogous` | N colors across a 60° arc |
+| `eido.palette/triadic` | 3 colors at 120° intervals |
+| `eido.palette/split-complementary` | Base + two flanking its complement |
+| `eido.palette/tetradic` | 4 colors at 90° intervals |
+| `eido.palette/monochromatic` | N colors varying lightness |
+| `eido.palette/gradient-palette` | N colors interpolated between two |
+| `eido.palette/palettes` | Map of 9 curated palettes |
+| `:stroke/profile` | Variable-width stroke (`:pointed`, `:chisel`, `:brush`, or custom `[[t w] ...]`) |
+| `:transform/distort` | Path distortion (`:noise`, `:wave`, `:roughen`, `:jitter`) |
+| `:fill/type :hatch` | Hatching fill with angle, spacing, cross-hatch layers |
+| `:fill/type :stipple` | Stipple fill with Poisson disk sampling |
+| `:fill/type :pattern` | Tiled pattern fill from mini-scene |
+| `:effect/shadow` | Drop shadow (`{:dx :dy :blur :color :opacity}`) |
+| `:effect/glow` | Glow effect (`{:blur :color :opacity}`) |
+| `:path/decorated` | Place shapes along a path at intervals |
+| `:scatter` | Instance shapes at positions with optional jitter |
+| `eido.scatter/grid` | Regular grid positions |
+| `eido.scatter/poisson-disk` | Poisson disk sampling positions |
+| `eido.scatter/noise-field` | Noise-biased random positions |
+
 ## Running Tests
 
 ```sh

@@ -2,8 +2,16 @@
   (:refer-clojure :exclude [compile])
   (:require
     [eido.color :as color]
+    [eido.decorator :as decorator]
+    [eido.distort :as distort]
+    [eido.hatch :as hatch]
+    [eido.scatter :as scatter]
+    [eido.stipple :as stipple]
+    [eido.stroke :as stroke]
     [eido.text :as text]
     [eido.validate :as validate]))
+
+(declare pattern-fill?)
 
 (defn- resolve-gradient
   "Resolves colors within gradient stops, passes through coordinates."
@@ -15,14 +23,23 @@
                         [pos (color/resolve-color color-vec)])
                       stops)))))
 
+(declare compile-tile-ops)
+
 (defn- resolve-fill
-  "Resolves a fill value — color vector, map with :color, or gradient."
+  "Resolves a fill value — color vector, map with :color, gradient, or pattern."
   [fill]
   (when fill
     (cond
       (vector? fill)              (color/resolve-color fill)
       (:gradient/type fill)       (resolve-gradient fill)
-      (:color fill)               (color/resolve-color (:color fill)))))
+      (:color fill)               (color/resolve-color (:color fill))
+      (pattern-fill? fill)        (let [[tw th] (:pattern/size fill)
+                                        tile-nodes (:pattern/nodes fill)]
+                                    {:fill/type    :pattern
+                                     :pattern/size [tw th]
+                                     :pattern/ops  (compile-tile-ops tile-nodes tw th)})
+      ;; hatch/stipple fills pass through — handled in expand-node
+      (:fill/type fill)           nil)))
 
 (defn- compile-style
   "Extracts fill and stroke from a node, resolving colors."
@@ -127,9 +144,12 @@
   (into [(keyword (name k))] args))
 
 (defn- accumulate-transforms
-  "Concatenates node's transforms onto inherited transforms."
+  "Concatenates node's transforms onto inherited transforms.
+  Filters out :transform/distort which is consumed during expansion."
   [inherited node]
-  (into inherited (mapv simplify-transform
+  (into inherited (keep (fn [t]
+                          (when (not= :transform/distort (first t))
+                            (simplify-transform t)))
                         (or (:node/transform node) []))))
 
 (defn- compile-tree
@@ -165,16 +185,235 @@
       [(cond-> (assoc (compile-node styled-node) :transforms transforms)
          (:clip ctx) (assoc :clip (:clip ctx)))])))
 
+(defn- compile-tile-ops
+  "Compiles pattern tile nodes into IR ops for rendering."
+  [nodes tw th]
+  (into []
+        (mapcat #(compile-tree % default-ctx))
+        nodes))
+
+(defn- apply-distort-transforms
+  "Applies :transform/distort entries to a path node's commands,
+  removing them from the transform list."
+  [node]
+  (if-let [transforms (:node/transform node)]
+    (let [distorts (filterv #(= :transform/distort (first %)) transforms)
+          others   (filterv #(not= :transform/distort (first %)) transforms)]
+      (if (seq distorts)
+        (let [cmds (reduce (fn [cmds [_ opts]] (distort/distort-commands cmds opts))
+                           (:path/commands node)
+                           distorts)]
+          (-> node
+              (assoc :path/commands cmds)
+              (assoc :node/transform (when (seq others) others))))
+        node))
+    node))
+
+(defn- expand-stroke-profile
+  "Expands a path node with :stroke/profile into a group containing
+  the original (fill-only) plus a filled outline path for the stroke."
+  [node]
+  (let [profile    (:stroke/profile node)
+        stroke     (:style/stroke node)
+        max-width  (or (:width stroke) 1.0)
+        stroke-clr (or (:color stroke) (:style/fill node))
+        outline    (stroke/outline-commands (:path/commands node) profile max-width)]
+    (if outline
+      {:node/type :group
+       :group/children
+       [(-> node
+            (dissoc :stroke/profile)
+            (dissoc :style/stroke))
+        {:node/type      :shape/path
+         :path/commands  outline
+         :style/fill     stroke-clr}]}
+      (dissoc node :stroke/profile))))
+
+(defn- hatch-fill?
+  "Returns true if a fill spec is a hatch fill."
+  [fill]
+  (and (map? fill) (= :hatch (:fill/type fill))))
+
+(defn- stipple-fill?
+  "Returns true if a fill spec is a stipple fill."
+  [fill]
+  (and (map? fill) (= :stipple (:fill/type fill))))
+
+(defn- pattern-fill?
+  "Returns true if a fill spec is a pattern fill."
+  [fill]
+  (and (map? fill) (= :pattern (:fill/type fill))))
+
+(defn- shape-bounds
+  "Returns [x y w h] bounding box for common shape types."
+  [node]
+  (case (:node/type node)
+    :shape/rect   (let [[x y] (:rect/xy node)
+                        [w h] (:rect/size node)]
+                    [x y w h])
+    :shape/circle (let [[cx cy] (:circle/center node)
+                        r       (:circle/radius node)]
+                    [(- cx r) (- cy r) (* 2 r) (* 2 r)])
+    :shape/ellipse (let [[cx cy] (:ellipse/center node)
+                         rx      (:ellipse/rx node)
+                         ry      (:ellipse/ry node)]
+                     [(- cx rx) (- cy ry) (* 2 rx) (* 2 ry)])
+    :shape/path   (let [pts (keep (fn [[cmd & args]]
+                                    (when (#{:move-to :line-to} cmd)
+                                      (first args)))
+                                  (:path/commands node))
+                        xs  (map first pts)
+                        ys  (map second pts)]
+                    (when (seq xs)
+                      [(apply min xs) (apply min ys)
+                       (- (apply max xs) (apply min xs))
+                       (- (apply max ys) (apply min ys))]))
+    nil))
+
+(defn- expand-hatch-fill
+  "Expands a node with a hatch fill into a group with:
+  - The shape as a clip mask with optional background fill
+  - Hatch lines clipped inside."
+  [node]
+  (let [fill-spec (:style/fill node)
+        [bx by bw bh] (shape-bounds node)
+        bg-fill   (:hatch/background fill-spec)
+        clip-node (-> node
+                      (dissoc :style/fill)
+                      (dissoc :style/stroke)
+                      (dissoc :node/opacity)
+                      (dissoc :node/transform))
+        hatch-nodes (hatch/hatch-fill->nodes bx by bw bh fill-spec)]
+    {:node/type      :group
+     :node/opacity   (get node :node/opacity 1.0)
+     :node/transform (:node/transform node)
+     :group/clip     clip-node
+     :group/children (cond-> (if bg-fill
+                               (into [(-> node
+                                          (assoc :style/fill bg-fill)
+                                          (dissoc :style/stroke)
+                                          (dissoc :node/opacity)
+                                          (dissoc :node/transform))]
+                                     hatch-nodes)
+                               (vec hatch-nodes))
+                       (:style/stroke node)
+                       (conj (-> node
+                                 (dissoc :style/fill)
+                                 (dissoc :node/opacity)
+                                 (dissoc :node/transform))))}))
+
+(defn- expand-stipple-fill
+  "Expands a node with a stipple fill into a group with:
+  - The shape as a clip mask with optional background fill
+  - Stipple dots clipped inside."
+  [node]
+  (let [fill-spec (:style/fill node)
+        [bx by bw bh] (shape-bounds node)
+        bg-fill   (:stipple/background fill-spec)
+        clip-node (-> node
+                      (dissoc :style/fill)
+                      (dissoc :style/stroke)
+                      (dissoc :node/opacity)
+                      (dissoc :node/transform))
+        dot-nodes (stipple/stipple-fill->nodes bx by bw bh fill-spec)]
+    {:node/type      :group
+     :node/opacity   (get node :node/opacity 1.0)
+     :node/transform (:node/transform node)
+     :group/clip     clip-node
+     :group/children (cond-> (if bg-fill
+                               (into [(-> node
+                                          (assoc :style/fill bg-fill)
+                                          (dissoc :style/stroke)
+                                          (dissoc :node/opacity)
+                                          (dissoc :node/transform))]
+                                     dot-nodes)
+                               (vec dot-nodes))
+                       (:style/stroke node)
+                       (conj (-> node
+                                 (dissoc :style/fill)
+                                 (dissoc :node/opacity)
+                                 (dissoc :node/transform))))}))
+
+(defn- make-shadow-node
+  "Creates a shadow/glow copy of a node."
+  [node {:keys [dx dy blur color opacity] :or {dx 0 dy 0 blur 5 opacity 0.5}}]
+  (let [shadow-node (-> node
+                        (dissoc :effect/shadow :effect/glow)
+                        (assoc :style/fill color)
+                        (dissoc :style/stroke))]
+    {:node/type      :group
+     :group/composite :src-over
+     :group/filter    [:blur blur]
+     :node/opacity   opacity
+     :node/transform [[:transform/translate dx dy]]
+     :group/children [shadow-node]}))
+
+(defn- make-glow-node
+  "Creates a glow copy of a node (shadow with no offset)."
+  [node {:keys [blur color opacity] :or {blur 8 opacity 0.7}}]
+  (make-shadow-node node {:dx 0 :dy 0 :blur blur :color color :opacity opacity}))
+
+(defn- expand-effects
+  "Wraps a node with shadow/glow effect layers if present."
+  [node]
+  (let [shadow (:effect/shadow node)
+        glow   (:effect/glow node)]
+    (if (or shadow glow)
+      (let [clean-node (-> node (dissoc :effect/shadow :effect/glow))
+            children   (cond-> []
+                         shadow (conj (make-shadow-node clean-node shadow))
+                         glow   (conj (make-glow-node clean-node glow))
+                         true   (conj clean-node))]
+        {:node/type      :group
+         :group/children children})
+      node)))
+
 (defn- expand-node
   "Expands high-level nodes into primitive nodes.
   Text nodes become groups of path nodes. Other nodes pass through."
   [node]
-  (case (:node/type node)
-    :shape/text         (text/text-node->group node)
-    :shape/text-glyphs  (text/text-glyphs-node->group node)
-    :shape/text-on-path (text/text-on-path-node->group node)
-    :group              (update node :group/children #(mapv expand-node %))
-    node))
+  (let [node (case (:node/type node)
+               :shape/text         (text/text-node->group node)
+               :shape/text-glyphs  (text/text-glyphs-node->group node)
+               :shape/text-on-path (text/text-on-path-node->group node)
+               :scatter            (let [children (scatter/scatter->nodes
+                                                     (:scatter/shape node)
+                                                     (:scatter/positions node)
+                                                     (:scatter/jitter node))]
+                                     (cond-> {:node/type      :group
+                                              :group/children children}
+                                       (:node/opacity node)
+                                       (assoc :node/opacity (:node/opacity node))
+                                       (:node/transform node)
+                                       (assoc :node/transform (:node/transform node))))
+               :path/decorated     (let [children (decorator/decorate-path
+                                                     (:path/commands node)
+                                                     (:decorator/shape node)
+                                                     (get node :decorator/spacing 20)
+                                                     (get node :decorator/rotate? true))]
+                                     (cond-> {:node/type      :group
+                                              :group/children children}
+                                       (:node/opacity node)
+                                       (assoc :node/opacity (:node/opacity node))
+                                       (:node/transform node)
+                                       (assoc :node/transform (:node/transform node))))
+               :group              (update node :group/children #(mapv expand-node %))
+               node)]
+    (let [node (cond
+                 (hatch-fill? (:style/fill node))
+                 (expand-hatch-fill node)
+
+                 (stipple-fill? (:style/fill node))
+                 (expand-stipple-fill node)
+
+                 (= :shape/path (:node/type node))
+                 (let [node (apply-distort-transforms node)]
+                   (if (:stroke/profile node)
+                     (expand-stroke-profile node)
+                     node))
+
+                 :else node)]
+      (expand-effects node))))
 
 (defn compile
   "Compiles a scene map into an intermediate representation.
