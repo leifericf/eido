@@ -26,6 +26,7 @@ The approach is inspired by Christian Johansen's [Replicant](https://github.com/
 - **One function.** `render` takes a scene (or a sequence of scenes) and produces output. That's the API.
 - **Description, not instruction.** You declare what the image contains; eido decides how to draw it. A compile step separates your description from the renderer's execution.
 - **Animations are sequences.** 60 frames = 60 maps in a vector. No timeline, no keyframes, no mutation.
+- **Particle simulation.** Physics-based effects (fire, snow, sparks) configured as data — emitters, forces, and lifetime curves. Deterministic via seeded PRNG.
 - **No state, no framework.** Every function takes data and returns data. You bring your own workflow.
 - **Zero dependencies.** Just Clojure and the standard library.
 
@@ -538,6 +539,40 @@ The `eido.animate` namespace provides pure functions for building frame sequence
 Eight easing curves compared — each dot follows a different curve:
 
 <img src="images/easings.gif" width="300" alt="Eight easing functions compared" />
+
+### Particle Simulation
+
+For physics-based animations, `eido.particle/simulate` runs a deterministic particle simulation and returns a lazy sequence of node vectors — one per frame:
+
+```clojure
+(require '[eido.particle :as particle])
+
+;; Pre-compute 60 frames of fire particles
+(let [frames (vec (particle/simulate
+                    (particle/with-position particle/fire [200 350])
+                    60 {:fps 30}))]
+  ;; Compose with other scene elements using standard Clojure
+  (eido/render
+    (anim/frames 60
+      (fn [t]
+        {:image/size [400 400]
+         :image/background [:color/rgb 20 15 10]
+         :image/nodes (nth frames (int (* t 59)))}))
+    {:output "fire.gif" :fps 30}))
+```
+
+Particle configs are plain maps — customize presets with `assoc`/`update`:
+
+```clojure
+(-> particle/fire
+    (particle/with-position [200 350])
+    (assoc :particle/seed 99)
+    (update :particle/forces conj {:force/type :wind
+                                    :force/direction [1 0]
+                                    :force/strength 20}))
+```
+
+See the [Particle Gallery](#particle-gallery) for full examples including 3D particles.
 
 ## 2D Gallery
 
@@ -1642,6 +1677,45 @@ A shaded 3D planet with 2D orbital ellipses, trailing moons, and a twinkling sta
 
 Eido includes a data-driven particle system in `eido.particle`. Particle effects are configured as plain maps — emitter shape, forces, and over-lifetime curves — and `simulate` returns a lazy sequence of node vectors that compose naturally with any other scene elements.
 
+### Configuration
+
+A particle system is a plain map. Every key is optional except the emitter:
+
+```clojure
+{:particle/emitter  {:emitter/type :point         ;; :point :line :circle :area :sphere (3D)
+                     :emitter/position [x y]      ;; or [x y z] for 3D
+                     :emitter/rate 20             ;; particles/sec (continuous)
+                     :emitter/burst 50            ;; one-shot count (instead of rate)
+                     :emitter/direction [0 -1]    ;; base emission direction
+                     :emitter/spread 0.5          ;; angular spread (radians)
+                     :emitter/speed [50 150]}     ;; [min max] initial speed
+ :particle/lifetime [0.5 2.0]                     ;; [min max] seconds
+ :particle/forces   [{:force/type :gravity :force/acceleration [0 98]}
+                     {:force/type :drag    :force/coefficient 0.1}
+                     {:force/type :wind    :force/direction [1 0]
+                                           :force/strength 30}]
+ :particle/size     [8 4 1]                       ;; over-lifetime curve (lerped)
+ :particle/opacity  [0.0 1.0 1.0 0.0]            ;; over-lifetime curve
+ :particle/color    [[:color/rgb 255 200 0]       ;; over-lifetime (via color/lerp)
+                     [:color/rgb 255 0 0]]
+ :particle/colors   [c1 c2 c3]                    ;; or: random color per particle
+ :particle/shape    :circle                       ;; :circle or :rect
+ :particle/projection (s3d/perspective {...})      ;; 3D: project through scene3d
+ :particle/seed     42                            ;; deterministic PRNG seed
+ :particle/max-count 500}                         ;; particle cap
+```
+
+Presets are also just maps — customize with `assoc`, `update`, or `merge`:
+
+| Preset | Effect |
+|--------|--------|
+| `particle/fire` | Upward flames, orange-to-red |
+| `particle/confetti` | Colorful burst, gravity + drag |
+| `particle/snow` | Gentle drift from line emitter |
+| `particle/sparks` | Fast bright burst, short-lived |
+| `particle/smoke` | Slow rise, expanding gray clouds |
+| `particle/fountain` | Upward spray, gravity arc |
+
 ### Campfire
 
 Fire and ember particles over log silhouettes with a pulsing glow.
@@ -1803,6 +1877,117 @@ Gentle snow drifting over moonlit mountain silhouettes.
 ```
 
 <img src="images/particle-snowfall.gif" width="300" alt="Snowfall — snow drifting over moonlit mountains" />
+
+### 3D Fountain with Orbiting Camera
+
+Particles simulated in 3D space, projected through a perspective camera that orbits the scene. Uses `states` and `render-frame` to re-project each frame with a different camera angle. Static 3D pillars make the orbit visible.
+
+```clojure
+(require '[eido.scene3d :as s3d]
+         '[eido.math3d :as m3])
+
+(let [config {:particle/emitter {:emitter/type :circle
+                                  :emitter/position [0.0 0.0 0.0]
+                                  :emitter/radius 0.3
+                                  :emitter/rate 50
+                                  :emitter/direction [0 1 0]
+                                  :emitter/spread 0.25
+                                  :emitter/speed [3 6]}
+              :particle/lifetime [1.0 2.0]
+              :particle/forces [{:force/type :gravity
+                                 :force/acceleration [0 -5 0]}]
+              :particle/size [2 4 3 1]
+              :particle/opacity [0.3 0.9 0.6 0.0]
+              :particle/color [[:color/rgb 150 220 255]
+                               [:color/rgb 80 160 255]
+                               [:color/rgb 30 80 200]]
+              :particle/seed 42
+              :particle/max-count 300}
+      ;; Simulate once — raw states with 3D positions
+      sim-states (vec (particle/states config 90 {:fps 30}))
+      pillar-positions [[3 0 0] [-3 0 0] [0 0 3] [0 0 -3]
+                        [2.1 0 2.1] [-2.1 0 2.1]
+                        [2.1 0 -2.1] [-2.1 0 -2.1]]]
+  (eido/render
+    (anim/frames 90
+      (fn [t]
+        (let [i    (int (* t 89))
+              ;; Camera orbits a full circle
+              proj (s3d/perspective {:scale 45 :origin [200 270]
+                                     :yaw (* t 2.0 Math/PI)
+                                     :pitch -0.4 :distance 10})
+              light {:light/direction [0.5 0.8 0.4]
+                     :light/ambient 0.25 :light/intensity 0.75}
+              ;; Re-render particles with this frame's projection
+              particles (particle/render-frame
+                          (nth sim-states i) config
+                          {:projection proj})
+              ;; Static 3D pillars
+              pillars (mapv
+                        (fn [pos]
+                          (s3d/cylinder proj pos 0.25 2.5
+                            {:style {:style/fill [:color/rgb 140 120 100]
+                                     :style/stroke {:color [:color/rgb 80 70 60]
+                                                    :width 0.3}}
+                             :light light :segments 8}))
+                        pillar-positions)]
+          {:image/size [400 400]
+           :image/background [:color/rgb 8 8 20]
+           :image/nodes (into (vec pillars) particles)})))
+    {:output "fountain-3d.gif" :fps 30}))
+```
+
+<img src="images/particle-fountain-3d.gif" width="300" alt="3D fountain with orbiting camera and pillars" />
+
+### Volcanic Eruption
+
+3D lava and smoke particles erupting from a `scene3d` cone mesh.
+
+```clojure
+(let [proj  (s3d/perspective {:scale 50 :origin [200 340]
+                               :yaw 0.3 :pitch -0.2 :distance 10})
+      light {:light/direction [0.5 0.8 0.3]
+             :light/ambient 0.3 :light/intensity 0.7}
+
+      lava (vec (particle/simulate
+                  {:particle/emitter {:emitter/type :sphere
+                                      :emitter/position [0 3.5 0]
+                                      :emitter/radius 0.4
+                                      :emitter/rate 35
+                                      :emitter/direction [0 1 0]
+                                      :emitter/spread 0.5
+                                      :emitter/speed [3 8]}
+                   :particle/lifetime [0.6 1.8]
+                   :particle/forces [{:force/type :gravity
+                                      :force/acceleration [0 -4 0]}]
+                   :particle/size [3 5 4 2]
+                   :particle/opacity [0.5 1.0 0.8 0.0]
+                   :particle/color [[:color/rgb 255 255 150]
+                                    [:color/rgb 255 200 20]
+                                    [:color/rgb 255 60 0]
+                                    [:color/rgb 150 20 0]]
+                   :particle/projection proj
+                   :particle/seed 42
+                   :particle/max-count 250}
+                  90 {:fps 30}))
+
+      volcano (s3d/cone proj [0 0 0] 3.0 3.5
+                {:style {:style/fill [:color/rgb 80 50 30]
+                         :style/stroke {:color [:color/rgb 60 35 20]
+                                        :width 0.5}}
+                 :light light :segments 16})]
+
+  (eido/render
+    (anim/frames 90
+      (fn [t]
+        {:image/size [400 400]
+         :image/background [:color/rgb 12 8 18]
+         :image/nodes (into [volcano]
+                            (nth lava (int (* t 89))))}))
+    {:output "volcano.gif" :fps 30}))
+```
+
+<img src="images/particle-volcano-3d.gif" width="300" alt="Volcanic eruption — 3D lava particles over cone mesh" />
 
 ## Compositing
 
@@ -2007,6 +2192,8 @@ No special primitive — composable from blur + offset + opacity:
 | `eido.animate/ease-{in,out,in-out}-bounce` | Bounce easing |
 | `eido.animate/stagger` | Per-element staggered progress |
 | `eido.particle/simulate` | Run particle simulation, returns lazy seq of node vectors |
+| `eido.particle/states` | Run simulation, returns lazy seq of raw particle states |
+| `eido.particle/render-frame` | Render a state to nodes (optional projection override) |
 | `eido.particle/with-position` | Reposition a particle system config |
 | `eido.particle/with-seed` | Change the random seed of a config |
 | `eido.particle/fire` | Fire preset (data map) |

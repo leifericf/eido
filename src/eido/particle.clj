@@ -1,27 +1,38 @@
 (ns eido.particle
   (:require
     [eido.animate :as anim]
-    [eido.color :as color]))
+    [eido.color :as color]
+    [eido.math3d :as m3]))
 
-;; --- private 2D vector math ---
+;; --- private vector math (2D and 3D) ---
 
-(defn- v+ [[x1 y1] [x2 y2]]
-  [(+ (double x1) x2) (+ (double y1) y2)])
+(defn- v+ [a b]
+  (mapv + a b))
 
-(defn- v- [[x1 y1] [x2 y2]]
-  [(- (double x1) x2) (- (double y1) y2)])
+(defn- v- [a b]
+  (mapv - a b))
 
-(defn- v* [[x y] s]
-  [(* (double x) s) (* (double y) s)])
+(defn- v* [v s]
+  (mapv #(* (double %) s) v))
 
-(defn- v-mag [[x y]]
-  (Math/sqrt (+ (* (double x) x) (* (double y) y))))
+(defn- v-mag [v]
+  (Math/sqrt (double (reduce + (map #(* (double %) %) v)))))
 
-(defn- v-normalize [[x y]]
-  (let [m (v-mag [x y])]
+(defn- v-normalize [v]
+  (let [m (v-mag v)]
     (if (< m 1e-10)
-      [0.0 0.0]
-      [(/ x m) (/ y m)])))
+      (vec (repeat (count v) 0.0))
+      (mapv #(/ % m) v))))
+
+(defn- v-zero
+  "Returns a zero vector of the given dimension."
+  [dim]
+  (vec (repeat dim 0.0)))
+
+(defn- dims
+  "Returns the dimensionality of a particle system config (2 or 3)."
+  [config]
+  (count (get-in config [:particle/emitter :emitter/position] [0 0])))
 
 ;; --- seeded PRNG (pure, deterministic) ---
 
@@ -41,35 +52,71 @@
   (+ (double mn) (* (rng-double rng) (- (double mx) mn))))
 
 (defn- rng-direction
-  "Returns a unit vector within spread radians of base-dir."
-  [^java.util.Random rng [bx by] spread]
-  (let [base-angle (Math/atan2 by bx)
-        offset (* (- (* 2.0 (rng-double rng)) 1.0) (double spread))
-        angle (+ base-angle offset)]
-    [(Math/cos angle) (Math/sin angle)]))
+  "Returns a unit vector within spread radians of base-dir.
+  Works for both 2D and 3D base directions."
+  [^java.util.Random rng base-dir spread]
+  (if (= 3 (count base-dir))
+    ;; 3D: perturb direction within a cone
+    (let [[bx by bz] base-dir
+          base-theta (Math/atan2 bx bz)
+          base-phi   (Math/asin (max -1.0 (min 1.0 (double by))))
+          dtheta (* (- (* 2.0 (rng-double rng)) 1.0) (double spread))
+          dphi   (* (- (* 2.0 (rng-double rng)) 1.0) (double spread))
+          theta  (+ base-theta dtheta)
+          phi    (max (- (/ Math/PI -2.0)) (min (/ Math/PI 2.0) (+ base-phi dphi)))
+          cp     (Math/cos phi)]
+      [(* cp (Math/sin theta))
+       (Math/sin phi)
+       (* cp (Math/cos theta))])
+    ;; 2D
+    (let [[bx by] base-dir
+          base-angle (Math/atan2 by bx)
+          offset (* (- (* 2.0 (rng-double rng)) 1.0) (double spread))
+          angle (+ base-angle offset)]
+      [(Math/cos angle) (Math/sin angle)])))
 
 ;; --- emitter ---
 
 (defn- spawn-position
-  "Returns a spawn position for the given emitter type."
+  "Returns a spawn position for the given emitter type.
+  Works for both 2D ([x y]) and 3D ([x y z]) positions."
   [^java.util.Random rng emitter]
   (case (:emitter/type emitter)
     :point (:emitter/position emitter)
-    :line  (let [[x1 y1] (:emitter/position emitter)
-                 [x2 y2] (:emitter/position-to emitter)
-                 t (rng-double rng)]
-             [(+ x1 (* t (- x2 x1)))
-              (+ y1 (* t (- y2 y1)))])
-    :circle (let [[cx cy] (:emitter/position emitter)
-                  r (:emitter/radius emitter)
+    :line  (let [p1 (:emitter/position emitter)
+                 p2 (:emitter/position-to emitter)
+                 t  (rng-double rng)]
+             (v+ p1 (v* (v- p2 p1) t)))
+    :circle (let [pos (:emitter/position emitter)
+                  r   (:emitter/radius emitter)
                   angle (* (rng-double rng) 2.0 Math/PI)
                   dist (* (Math/sqrt (rng-double rng)) r)]
-              [(+ cx (* dist (Math/cos angle)))
-               (+ cy (* dist (Math/sin angle)))])
-    :area  (let [[cx cy] (:emitter/position emitter)
-                 [w h] (:emitter/size emitter)]
-             [(+ (- cx (/ w 2.0)) (rng-range rng 0 w))
-              (+ (- cy (/ h 2.0)) (rng-range rng 0 h))])))
+              (if (= 3 (count pos))
+                ;; 3D: circle in the XZ plane by default
+                (v+ pos [(* dist (Math/cos angle)) 0.0 (* dist (Math/sin angle))])
+                ;; 2D
+                (v+ pos [(* dist (Math/cos angle)) (* dist (Math/sin angle))])))
+    :sphere (let [pos (:emitter/position emitter)
+                  r   (:emitter/radius emitter)
+                  ;; Uniform point in sphere via rejection-free method
+                  theta (* (rng-double rng) 2.0 Math/PI)
+                  phi   (Math/acos (- 1.0 (* 2.0 (rng-double rng))))
+                  dist  (* (Math/cbrt (rng-double rng)) r)]
+              (v+ pos [(* dist (Math/sin phi) (Math/cos theta))
+                       (* dist (Math/cos phi))
+                       (* dist (Math/sin phi) (Math/sin theta))]))
+    :area  (let [pos  (:emitter/position emitter)
+                 size (:emitter/size emitter)]
+             (if (= 3 (count pos))
+               ;; 3D: area in XZ plane
+               (let [[w _ d] size]
+                 (v+ pos [(rng-range rng (/ w -2.0) (/ w 2.0))
+                          0.0
+                          (rng-range rng (/ d -2.0) (/ d 2.0))]))
+               ;; 2D
+               (let [[w h] size]
+                 (v+ pos [(rng-range rng (/ w -2.0) (/ w 2.0))
+                          (rng-range rng (/ h -2.0) (/ h 2.0))]))))))
 
 (defn- spawn-particle
   "Creates a new particle from emitter config."
@@ -114,7 +161,8 @@
 ;; --- forces ---
 
 (defn- apply-force
-  "Computes acceleration from a single force on a particle."
+  "Computes acceleration from a single force on a particle.
+  Returns a vector matching the particle's dimensionality."
   [force particle]
   (case (:force/type force)
     :gravity (:force/acceleration force)
@@ -123,13 +171,13 @@
                (v* vel (- coeff)))
     :wind    (v* (v-normalize (:force/direction force))
                  (:force/strength force))
-    [0.0 0.0]))
+    (v-zero (count (:pos particle)))))
 
 (defn- net-acceleration
   "Sums all forces into a net acceleration vector."
   [forces particle]
   (reduce (fn [acc f] (v+ acc (apply-force f particle)))
-          [0.0 0.0]
+          (v-zero (count (:pos particle)))
           forces))
 
 ;; --- integration and lifecycle ---
@@ -201,11 +249,20 @@
 
 ;; --- rendering ---
 
+(defn- project-pos
+  "Projects a particle position to 2D screen coordinates.
+  For 2D particles, returns the position as-is.
+  For 3D particles, projects through the config's :particle/projection."
+  [pos config]
+  (if (= 3 (count pos))
+    (m3/project (:particle/projection config) pos)
+    pos))
+
 (defn- render-particle
   "Converts an internal particle to an Eido node map."
   [particle config]
   (let [lf      (life-fraction particle)
-        [px py] (:pos particle)
+        [px py] (project-pos (:pos particle) config)
         radius  (or (sample-curve (:particle/size config) lf) 4.0)
         opacity (or (sample-curve (:particle/opacity config) lf) 1.0)
         fill    (if-let [palette (:particle/colors config)]
@@ -231,6 +288,41 @@
 
 ;; --- public API ---
 
+(defn states
+  "Runs a particle simulation and returns a lazy seq of raw simulation states.
+  Each state contains :particles (internal particle maps with :pos, :vel, :age, etc.).
+
+  Use this when you need per-frame control over rendering, e.g. orbiting cameras
+  for 3D particles. Pair with render-frame to convert states to nodes.
+
+  config: particle system configuration map
+  n:      number of frames to produce
+  opts:   {:fps 30} — frames per second (determines time step)
+
+  Returns a lazy seq of n state maps."
+  [config n opts]
+  (let [fps  (or (:fps opts) 30)
+        dt   (/ 1.0 (double fps))
+        seed (or (:particle/seed config) 42)
+        init {:particles [] :rng (make-rng seed) :next-id 0 :time 0.0}]
+    (->> (iterate (partial step config dt) init)
+         (rest)
+         (take n))))
+
+(defn render-frame
+  "Renders a simulation state to a vector of Eido node maps.
+  Optionally override the projection for this frame (useful for orbiting cameras).
+
+  state:  a simulation state from `states`
+  config: the particle system configuration map
+  opts:   optional {:projection proj} to override :particle/projection for this frame"
+  ([state config]
+   (render-particles (:particles state) config))
+  ([state config opts]
+   (if-let [proj (:projection opts)]
+     (render-particles (:particles state) (assoc config :particle/projection proj))
+     (render-particles (:particles state) config))))
+
 (defn simulate
   "Runs a particle simulation and returns a lazy seq of node-vectors.
   Each element is a vector of Eido node maps ready for :image/nodes.
@@ -241,14 +333,7 @@
 
   Returns a lazy seq of n vectors. Use vec to realize for indexed access."
   [config n opts]
-  (let [fps  (or (:fps opts) 30)
-        dt   (/ 1.0 (double fps))
-        seed (or (:particle/seed config) 42)
-        init {:particles [] :rng (make-rng seed) :next-id 0 :time 0.0}]
-    (->> (iterate (partial step config dt) init)
-         (rest)
-         (take n)
-         (map #(render-particles (:particles %) config)))))
+  (map #(render-frame % config) (states config n opts)))
 
 (defn with-position
   "Returns config with the emitter repositioned."

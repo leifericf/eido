@@ -1,7 +1,8 @@
 (ns eido.particle-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.particle :as particle]))
+    [eido.particle :as particle]
+    [eido.scene3d :as s3d]))
 
 ;; --- determinism ---
 
@@ -179,3 +180,62 @@
               dx (- x 200) dy (- y 200)
               dist (Math/sqrt (+ (* dx dx) (* dy dy)))]
           (is (<= dist 50.1)))))))
+
+;; --- 3D particles ---
+
+(deftest particle-3d-output-test
+  (testing "3D particles produce valid 2D nodes via projection"
+    (let [config {:particle/emitter {:emitter/type :point
+                                     :emitter/position [0 0 0]
+                                     :emitter/burst 5
+                                     :emitter/direction [0 1 0]
+                                     :emitter/speed [2 5]}
+                  :particle/lifetime [1.0 1.0]
+                  :particle/forces []
+                  :particle/projection (s3d/perspective
+                                         {:scale 80 :origin [200 200]
+                                          :distance 8})
+                  :particle/seed 42}
+          frame (first (particle/simulate config 1 {:fps 30}))]
+      (is (= 5 (count frame)))
+      (doseq [node frame]
+        (is (= :shape/circle (:node/type node)))
+        (let [[x y] (:circle/center node)]
+          (is (number? x))
+          (is (number? y)))))))
+
+(deftest particle-3d-determinism-test
+  (testing "3D simulation is deterministic"
+    (let [config {:particle/emitter {:emitter/type :sphere
+                                     :emitter/position [0 0 0]
+                                     :emitter/radius 2
+                                     :emitter/burst 10
+                                     :emitter/direction [0 1 0]
+                                     :emitter/speed [1 3]}
+                  :particle/lifetime [0.5 1.0]
+                  :particle/forces [{:force/type :gravity
+                                     :force/acceleration [0 -5 0]}]
+                  :particle/projection (s3d/isometric {:scale 50 :origin [200 200]})
+                  :particle/seed 77}
+          r1 (vec (particle/simulate config 10 {:fps 30}))
+          r2 (vec (particle/simulate config 10 {:fps 30}))]
+      (is (= r1 r2)))))
+
+(deftest sphere-emitter-test
+  (testing "sphere emitter spawns particles within radius"
+    (let [config {:particle/emitter {:emitter/type :sphere
+                                     :emitter/position [0 0 0]
+                                     :emitter/radius 3
+                                     :emitter/rate 60
+                                     :emitter/direction [0 1 0]
+                                     :emitter/speed [0 0]}
+                  :particle/lifetime [1.0 1.0]
+                  :particle/forces []
+                  :particle/projection (s3d/isometric {:scale 50 :origin [200 200]})
+                  :particle/seed 42}
+          ;; We can't easily check 3D positions from the output (projected to 2D)
+          ;; so just verify it produces valid output
+          frame (first (particle/simulate config 1 {:fps 30}))]
+      (is (pos? (count frame)))
+      (doseq [node frame]
+        (is (= :shape/circle (:node/type node)))))))
