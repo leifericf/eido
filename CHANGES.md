@@ -1,6 +1,63 @@
 # Changes
 
-## Unreleased
+## v1.0.0-alpha5 — Artistic Toolkit, Gallery Website
+
+### Artistic toolkit
+
+- Add `eido.noise` namespace: Perlin noise 2D/3D, fractal brownian motion, turbulence, ridge noise
+- Add `eido.palette` namespace: curated palettes, gradient-map, palette generation
+- Add `eido.stroke` namespace: variable-width strokes with calligraphic profiles (brush, pointed)
+- Add `eido.hatch` namespace: hatching and cross-hatching fill styles
+- Add `eido.stipple` namespace: stippling fill style with Poisson disk sampling
+- Add `eido.scatter` namespace: scatter/instancing with Poisson disk, grid, noise field distributions
+- Add `eido.distort` namespace: path distortion transforms (noise, wave, roughen, jitter)
+- Add `eido.decorator` namespace: path decorators for placing shapes along paths
+- Add tiled pattern fills via `:fill/type :pattern`
+- Add drop shadow and glow effects via `:effect/shadow` and `:effect/glow`
+
+### Compositional features
+
+- Add `eido.contour` namespace: contour line generation via marching squares
+- Add `eido.flow` namespace: flow field streamline generation from noise vector fields
+- Add `eido.voronoi` namespace: Voronoi tessellation and Delaunay triangulation
+- Add `eido.lsystem` namespace: L-system grammar-based shape generation
+- Add `eido.morph` namespace: shape morphing and path resampling
+- Add `eido.warp` namespace: envelope warp for group-level coordinate transforms (wave, twist, bend)
+- Add `eido.vary` namespace: per-instance variation for scatter, symmetry, voronoi, flow, decorator
+- Add `eido.path` namespace: path boolean operations (union, intersection, difference, xor)
+- Add symmetry systems via `:symmetry/type` (radial, bilateral, grid)
+- Add gradient-map for continuous scalar-to-color mapping
+- Add post-processing filters: grain, posterize, duotone, halftone
+
+### Typography
+
+- Add `eido.text` namespace: text-to-path conversion, font resolution, glyph extraction
+- Add `:shape/text`, `:shape/text-glyphs`, `:shape/text-on-path` node types
+- Add `text-outline` and `text-clip` convenience functions in `eido.scene`
+- Add 3D extruded text via `eido.scene3d`
+- Add per-glyph styling for creative typography
+
+### Gallery website
+
+- Add static site generator using Hiccup + Garden (`:gallery` deps.edn alias)
+- Add gallery website at eido.leifericf.com with landing page, gallery, docs, and API reference
+- Move 62 examples from README/dev into `examples/gallery/` as pure functions with `:example` metadata
+- Add GitHub Actions workflow for artifact-based Pages deployment
+- Add image lightbox, source code lightbox with syntax highlighting, copy-to-clipboard
+- Add categorized docs page with rich beginner-friendly guides
+- Add auto-generated API reference from source metadata
+- Slim README from 2,657 to 84 lines
+- Remove 80 images from repo (rendered by CI, served via GitHub Pages)
+
+## v1.0.0-alpha4 — Particle Simulation
+
+- Add `eido.particle` namespace: deterministic physics-based particle simulation
+  - Emitter configuration: position, rate, spread, lifetime, colors, sizes
+  - Force system: gravity, wind, turbulence, drag
+  - Built-in presets: fire, snow, sparks, confetti, smoke, fountain
+- Add 3D particle support with depth sorting
+- Add Particle Gallery with campfire, fireworks, snowfall, fountain, volcano examples
+- Add 2D/3D mixed gallery with three animated examples
 
 ## v1.0.0-alpha3 — 3D Rendering, Compositing & Blend Modes
 
