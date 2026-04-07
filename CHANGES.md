@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### 3D rendering
+
+- Add `eido.math3d` namespace: 3D vector math, rotations, and projection functions
+- Add `eido.scene3d` namespace: 3D shape helpers projected into 2D scene nodes
+  - Projection types: isometric, orthographic, perspective (with roll support)
+  - Mesh constructors: `cube-mesh`, `prism-mesh`, `cylinder-mesh`, `sphere-mesh`, `torus-mesh`, `cone-mesh`, `extrude-mesh`
+  - Mesh transforms: `translate-mesh`, `rotate-mesh`, `scale-mesh`
+  - Mesh utilities: `merge-meshes`, `mesh-bounds`, `mesh-center`
+  - Camera utilities: `look-at`, `orbit`, `fov->distance`
+  - Rendering: `render-mesh` with back-face culling, depth sorting, diffuse shading, and wireframe mode
+  - Convenience functions: `cube`, `prism`, `cylinder`, `sphere`, `torus`, `cone`
+- Add `eido.obj` namespace: Wavefront OBJ/MTL parser (`parse-obj`, `parse-mtl`)
+- Fix anti-aliasing gaps between adjacent 3D faces via polygon expansion
+
+### Compositing, filters & blend modes
+
+- Add group compositing via `:group/composite` (Porter-Duff rules: `:src-over`, `:src-in`, `:src-out`, `:dst-over`, `:xor`)
+- Add blend modes: `:multiply`, `:screen`, `:overlay` via `:group/composite`
+- Add color filters via `:group/filter`: `:grayscale`, `:sepia`, `:invert`
+- Add Gaussian blur filter via `[:blur radius]`
+
 ## v1.0.0-alpha2 — Colors, Gradients & Easings
 
 - Add `:color/name` with all 148 CSS Color Level 4 named colors (case-insensitive)
