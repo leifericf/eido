@@ -9,6 +9,10 @@
     [eido.palette :as palette]
     [eido.scatter :as scatter]
     [eido.scene :as scene]
+    [eido.lsystem :as lsystem]
+    [eido.morph :as morph]
+    [eido.path :as path]
+    [eido.vary :as vary]
     [eido.voronoi :as voronoi]))
 
 ;; --- 1. Ink Landscape — hatching + distortion + variable-width strokes ---
@@ -544,6 +548,238 @@
 
 ;; --- run all ---
 
+;; ===================================================================
+;; Phase 3 Gallery — Per-Instance, L-Systems, Morphing, Warp, Booleans
+;; ===================================================================
+
+;; --- 15. Chromatic Scatter — per-instance variation + noise ---
+
+(defn chromatic-scatter []
+  (let [pts (scatter/poisson-disk 30 30 540 340 18 42)
+        stops [[0.0 [:color/rgb 20 0 80]]
+               [0.3 [:color/rgb 180 0 100]]
+               [0.6 [:color/rgb 255 120 0]]
+               [1.0 [:color/rgb 255 230 80]]]
+        overrides (vary/by-noise pts 0.012 42
+                    (fn [v]
+                      (let [t (+ 0.5 (* 0.5 v))]
+                        {:style/fill (palette/gradient-map stops t)
+                         :node/opacity (+ 0.5 (* 0.5 t))})))]
+    (eido/render
+      {:image/size [600 400]
+       :image/background [:color/rgb 10 8 20]
+       :image/nodes
+       [{:node/type :scatter
+         :scatter/shape {:node/type :shape/circle
+                         :circle/center [0.0 0.0]
+                         :circle/radius 7.0}
+         :scatter/positions pts
+         :scatter/overrides overrides}]}
+      {:output "images/art-chromatic-scatter.png"})))
+
+;; --- 16. Fractal Forest — L-systems + distort + brush strokes ---
+
+(defn fractal-forest []
+  (eido/render
+    {:image/size [600 400]
+     :image/background [:color/rgb 220 230 210]
+     :image/nodes
+     [;; Ground
+      {:node/type :shape/rect
+       :rect/xy [0.0 340.0]
+       :rect/size [600.0 60.0]
+       :style/fill [:color/rgb 80 60 40]}
+      ;; Tree 1 — tall binary
+      {:node/type :lsystem
+       :lsystem/axiom "F"
+       :lsystem/rules {"F" "FF+[+F-F-F]-[-F+F+F]"}
+       :lsystem/iterations 4
+       :lsystem/angle 22.5
+       :lsystem/length 3.5
+       :lsystem/origin [150 340]
+       :lsystem/heading -90.0
+       :style/stroke {:color [:color/rgb 60 40 20] :width 1}
+       :node/transform [[:transform/distort {:type :roughen :amount 1.5 :seed 42}]]}
+      ;; Tree 2 — bushy
+      {:node/type :lsystem
+       :lsystem/axiom "F"
+       :lsystem/rules {"F" "F[+F]F[-F][F]"}
+       :lsystem/iterations 4
+       :lsystem/angle 20.0
+       :lsystem/length 4.0
+       :lsystem/origin [350 340]
+       :lsystem/heading -90.0
+       :style/stroke {:color [:color/rgb 40 60 25] :width 1}
+       :node/transform [[:transform/distort {:type :roughen :amount 1 :seed 99}]]}
+      ;; Tree 3 — fern-like
+      {:node/type :lsystem
+       :lsystem/axiom "F"
+       :lsystem/rules {"F" "F[-F]F[+F]F"}
+       :lsystem/iterations 4
+       :lsystem/angle 25.7
+       :lsystem/length 3.0
+       :lsystem/origin [500 340]
+       :lsystem/heading -90.0
+       :style/stroke {:color [:color/rgb 50 80 30] :width 0.8}
+       :node/transform [[:transform/distort {:type :roughen :amount 1.2 :seed 77}]]}]}
+    {:output "images/art-fractal-forest.png"}))
+
+;; --- 17. Shape Breath — morphing circle ↔ star ---
+
+(defn shape-breath []
+  (let [circle-cmds (:path/commands (scene/regular-polygon [200.0 200.0] 80.0 60))
+        star-cmds   (:path/commands (scene/star [200.0 200.0] 100.0 40.0 8))
+        frames
+        (anim/frames 40
+          (fn [t]
+            (let [t-morph (anim/ping-pong t)
+                  eased   (anim/ease-in-out-cubic t-morph)
+                  cmds    (morph/morph-auto circle-cmds star-cmds eased)
+                  ;; Color shifts from blue to coral
+                  color   (palette/gradient-map
+                            [[0.0 [:color/rgb 50 100 220]]
+                             [1.0 [:color/rgb 230 80 80]]]
+                            eased)]
+              {:image/size [400 400]
+               :image/background [:color/rgb 15 15 25]
+               :image/nodes
+               [{:node/type :shape/path
+                 :path/commands cmds
+                 :style/fill color
+                 :effect/glow {:blur 15
+                               :color color
+                               :opacity 0.3}}]})))]
+    (eido/render frames {:output "images/art-shape-breath.gif" :fps 24})))
+
+;; --- 18. Wavy Text — warp + text ---
+
+(defn wavy-text []
+  (eido/render
+    {:image/size [500 250]
+     :image/background [:color/rgb 15 10 30]
+     :image/nodes
+     [{:node/type :group
+       :group/warp {:type :wave :axis :y :amplitude 20 :wavelength 120}
+       :group/children
+       [(scene/text-outline "WAVES" {:font/family "Serif" :font/size 100
+                                      :font/weight :bold} [30 160])
+        (-> (scene/text-outline "WAVES" {:font/family "Serif" :font/size 100
+                                          :font/weight :bold} [30 160])
+            (assoc :style/fill {:gradient/type :linear
+                                :gradient/from [0 -100]
+                                :gradient/to [500 0]
+                                :gradient/stops [[0.0 [:color/rgb 255 50 100]]
+                                                 [0.5 [:color/rgb 255 200 50]]
+                                                 [1.0 [:color/rgb 50 200 255]]]}))]}]}
+    {:output "images/art-wavy-text.png"}))
+
+;; --- 19. Landscape Typography — text clip mask ---
+
+(defn landscape-type []
+  (eido/render
+    {:image/size [600 250]
+     :image/background [:color/rgb 15 15 25]
+     :image/nodes
+     [(scene/text-clip "NATURE"
+        {:font/family "SansSerif" :font/size 150 :font/weight :bold}
+        [15 185]
+        [;; Sky gradient (local coords: text baseline at y=0, glyphs go up)
+         {:node/type :shape/rect
+          :rect/xy [-20.0 -180.0]
+          :rect/size [620.0 200.0]
+          :style/fill {:gradient/type :linear
+                       :gradient/from [0 -180]
+                       :gradient/to [0 0]
+                       :gradient/stops [[0.0 [:color/rgb 20 20 60]]
+                                        [0.4 [:color/rgb 80 40 120]]
+                                        [0.7 [:color/rgb 200 100 50]]
+                                        [1.0 [:color/rgb 40 80 30]]]}}
+         ;; Stars via scatter
+         {:node/type :scatter
+          :scatter/shape {:node/type :shape/circle
+                          :circle/center [0.0 0.0]
+                          :circle/radius 1.5
+                          :style/fill [:color/rgb 255 255 220]}
+          :scatter/positions (scatter/poisson-disk -10 -180 610 120 25 42)
+          :scatter/jitter {:x 3 :y 3 :seed 11}}])]}
+    {:output "images/art-landscape-type.png"}))
+
+;; --- 20. Venn Booleans — path boolean operations ---
+
+(defn venn-booleans []
+  (let [circle-a (:path/commands (scene/regular-polygon [160.0 180.0] 100.0 60))
+        circle-b (:path/commands (scene/regular-polygon [260.0 180.0] 100.0 60))
+        circle-c (:path/commands (scene/regular-polygon [210.0 110.0] 100.0 60))
+        ;; Boolean regions
+        ab-only (path/intersection circle-a circle-b)
+        ac-only (path/intersection circle-a circle-c)
+        bc-only (path/intersection circle-b circle-c)
+        abc     (path/intersection ab-only circle-c)]
+    (eido/render
+      {:image/size [420 350]
+       :image/background [:color/rgb 245 240 230]
+       :image/nodes
+       [;; Base circles (light fills)
+        {:node/type :shape/path :path/commands circle-a
+         :style/fill [:color/rgba 220 60 60 0.4]
+         :style/stroke {:color [:color/rgb 180 40 40] :width 2}}
+        {:node/type :shape/path :path/commands circle-b
+         :style/fill [:color/rgba 60 60 220 0.4]
+         :style/stroke {:color [:color/rgb 40 40 180] :width 2}}
+        {:node/type :shape/path :path/commands circle-c
+         :style/fill [:color/rgba 60 180 60 0.4]
+         :style/stroke {:color [:color/rgb 40 140 40] :width 2}}
+        ;; Triple intersection — highlighted
+        {:node/type :shape/path :path/commands abc
+         :style/fill [:color/rgb 255 255 255]}]}
+      {:output "images/art-venn-booleans.png"})))
+
+;; --- 21. Organic Mandala — L-system + symmetry + variation ---
+
+(defn organic-mandala []
+  (let [branch-cmds (lsystem/lsystem->path-cmds
+                      "F" {"F" "F[-F]F[+F]F"} 3 25.7 4.0 [300 300] -90.0)
+        n 10
+        overrides (vary/by-index n
+                    (fn [i] {:style/stroke
+                             {:color (palette/gradient-map
+                                       [[0.0 [:color/rgb 180 60 30]]
+                                        [0.5 [:color/rgb 255 180 50]]
+                                        [1.0 [:color/rgb 60 180 80]]]
+                                       (/ (double i) n))
+                              :width 0.8}}))]
+    (eido/render
+      {:image/size [600 600]
+       :image/background [:color/rgb 15 12 20]
+       :image/nodes
+       [{:node/type :symmetry
+         :symmetry/type :radial
+         :symmetry/n n
+         :symmetry/center [300 300]
+         :symmetry/overrides overrides
+         :group/children
+         [{:node/type :shape/path
+           :path/commands branch-cmds
+           :style/stroke {:color [:color/rgb 200 100 50] :width 0.8}}]}]}
+      {:output "images/art-organic-mandala.png"})))
+
+(defn render-phase3! []
+  (println "Rendering chromatic scatter...")
+  (chromatic-scatter)
+  (println "Rendering fractal forest...")
+  (fractal-forest)
+  (println "Rendering shape breath...")
+  (shape-breath)
+  (println "Rendering wavy text...")
+  (wavy-text)
+  (println "Rendering landscape typography...")
+  (landscape-type)
+  (println "Rendering venn booleans...")
+  (venn-booleans)
+  (println "Rendering organic mandala...")
+  (organic-mandala)
+  (println "Phase 3 done!"))
+
 (defn render-phase2! []
   (println "Rendering mandala...")
   (mandala)
@@ -572,16 +808,18 @@
   (noise-garden)
   (println "--- Phase 2 ---")
   (render-phase2!)
+  (println "--- Phase 3 ---")
+  (render-phase3!)
   (println "All done!"))
 
 (comment
   (render-all!)
-  (render-phase2!)
-  (mandala)
-  (van-gogh-swirls)
-  (topo-map)
-  (stained-glass)
-  (risograph)
-  (thermal)
-  (flow-mandala)
+  (render-phase3!)
+  (chromatic-scatter)
+  (fractal-forest)
+  (shape-breath)
+  (wavy-text)
+  (landscape-type)
+  (venn-booleans)
+  (organic-mandala)
   )
