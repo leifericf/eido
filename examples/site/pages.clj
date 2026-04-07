@@ -59,7 +59,7 @@
   [{:id    "shapes"
     :title "Shapes"
     :content
-    [:<>
+    [:div
      [:p "Eido supports circles, rectangles, ellipses, lines, polygons, stars, and arbitrary paths."]
      [:pre [:code
             "{:node/type     :shape/circle
@@ -83,7 +83,7 @@
    {:id    "text"
     :title "Text"
     :content
-    [:<>
+    [:div
      [:p "Text is rendered as vector paths — no font rasterization. Every text feature composes with gradients, transforms, and 3D."]
      [:pre [:code
             "{:node/type    :shape/text
@@ -95,7 +95,7 @@
    {:id    "composition"
     :title "Composition"
     :content
-    [:<>
+    [:div
      [:p "Group nodes to apply shared transforms, opacity, and clipping:"]
      [:pre [:code
             "{:node/type :group
@@ -106,7 +106,7 @@
    {:id    "stroke-styling"
     :title "Stroke Styling"
     :content
-    [:<>
+    [:div
      [:p "Strokes support width, dash patterns, line caps, and line joins:"]
      [:pre [:code
             ":style/stroke {:color [:color/rgb 0 0 0]
@@ -118,7 +118,7 @@
    {:id    "clipping"
     :title "Clipping"
     :content
-    [:<>
+    [:div
      [:p "Clip groups to any shape — the clip shape masks everything inside:"]
      [:pre [:code
             "{:node/type :group
@@ -130,7 +130,7 @@
    {:id    "colors"
     :title "Colors"
     :content
-    [:<>
+    [:div
      [:p "RGB, HSL, and named colors:"]
      [:pre [:code
             "[:color/rgb 255 100 50]
@@ -140,7 +140,7 @@
    {:id    "gradients"
     :title "Gradient Fills"
     :content
-    [:<>
+    [:div
      [:p "Linear and radial gradients as fill values:"]
      [:pre [:code
             ":style/fill {:fill/type :gradient/linear
@@ -152,7 +152,7 @@
    {:id    "patterns"
     :title "Generative Patterns"
     :content
-    [:<>
+    [:div
      [:p "Hatching, stippling, and custom pattern fills — all data-driven:"]
      [:pre [:code
             ":style/fill {:fill/type :hatch
@@ -164,7 +164,7 @@
    {:id    "transforms"
     :title "Transforms"
     :content
-    [:<>
+    [:div
      [:p "Translate, rotate, and scale any node or group:"]
      [:pre [:code
             "{:node/type :shape/rect
@@ -178,7 +178,7 @@
    {:id    "animation"
     :title "Animation"
     :content
-    [:<>
+    [:div
      [:p "Animations are sequences of scene maps. Use " [:code "eido.animate/frames"] " to generate them:"]
      [:pre [:code
             "(require '[eido.animate :as anim])
@@ -198,7 +198,7 @@
    {:id    "particles"
     :title "Particle Simulation"
     :content
-    [:<>
+    [:div
      [:p "Physics-based particle effects configured as data:"]
      [:pre [:code
             "(require '[eido.particle :as particle])
@@ -210,7 +210,7 @@
    {:id    "3d"
     :title "3D Scenes"
     :content
-    [:<>
+    [:div
      [:p "3D primitives projected to 2D with lighting and shading:"]
      [:pre [:code
             "(require '[eido.scene3d :as s3d])
@@ -226,7 +226,7 @@
    {:id    "contours"
     :title "Path Contours"
     :content
-    [:<>
+    [:div
      [:p "Generate contour paths from shapes for decorative effects:"]
      [:pre [:code
             "(require '[eido.contour :as contour])
@@ -236,7 +236,7 @@
    {:id    "compositing"
     :title "Compositing"
     :content
-    [:<>
+    [:div
      [:p "Blend modes, masks, and group opacity for layered compositions:"]
      [:pre [:code
             "{:node/type :group
@@ -247,7 +247,7 @@
    {:id    "export"
     :title "Export"
     :content
-    [:<>
+    [:div
      [:p "Render to PNG, JPEG, SVG, animated GIF, or frame sequences:"]
      [:pre [:code
             "(eido/render scene {:output \"out.png\"})
@@ -259,7 +259,7 @@
    {:id    "validation"
     :title "Validation"
     :content
-    [:<>
+    [:div
      [:p "Validate scene data before rendering:"]
      [:pre [:code
             "(require '[eido.validate :as validate])

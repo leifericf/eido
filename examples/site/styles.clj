@@ -159,8 +159,71 @@
               :color     (:link colors)
               :font-size "0.85rem"}]
    ["summary:hover" {:color (:link-hover colors)}]
-   ["details pre" {:margin-top "0.5rem"
-                   :font-size  "0.8rem"}]])
+   ["details pre" {:margin-top  "0.5rem"
+                   :font-size   "0.8rem"
+                   :max-height  "200px"
+                   :overflow-y  "auto"}]
+   [:.gallery-card>img {:cursor "pointer"}]
+   ["#lightbox" {:display         "none"
+                 :position        "fixed"
+                 :top             0
+                 :left            0
+                 :width           "100vw"
+                 :height          "100vh"
+                 :background      "rgba(0,0,0,0.92)"
+                 :z-index         1000
+                 :cursor          "pointer"
+                 :justify-content "center"
+                 :align-items     "center"
+                 :flex-direction  "column"}]
+   ["#lightbox.active" {:display "flex"}]
+   ["#lightbox-img" {:max-width  "90vw"
+                     :max-height "85vh"
+                     :object-fit "contain"
+                     :border-radius "6px"}]
+   ["#lightbox-caption" {:color      (:text-muted colors)
+                         :margin-top "0.75rem"
+                         :font-size  "0.9rem"}]
+   ;; Code lightbox
+   ["#code-lightbox" {:display         "none"
+                      :position        "fixed"
+                      :top             0
+                      :left            0
+                      :width           "100vw"
+                      :height          "100vh"
+                      :background      "rgba(0,0,0,0.92)"
+                      :z-index         1000
+                      :justify-content "center"
+                      :align-items     "center"}]
+   ["#code-lightbox.active" {:display "flex"}]
+   ["#code-lightbox-inner" {:background    (:bg-code colors)
+                            :border        (str "1px solid " (:border colors))
+                            :border-radius "10px"
+                            :width         "min(90vw, 800px)"
+                            :max-height    "85vh"
+                            :display       "flex"
+                            :flex-direction "column"
+                            :overflow      "hidden"}]
+   ["#code-lightbox-header" {:display         "flex"
+                             :justify-content "space-between"
+                             :align-items     "center"
+                             :padding         "0.75rem 1rem"
+                             :border-bottom   (str "1px solid " (:border colors))}]
+   ["#code-lightbox-title" {:font-weight "600"
+                            :font-size   "0.95rem"}]
+   ["#code-lightbox-pre" {:margin     0
+                          :border     "none"
+                          :border-radius 0
+                          :overflow-y "auto"
+                          :flex       1
+                          :padding    "1rem"}]
+   ;; Syntax highlighting
+   [:.clj-keyword {:color "#c792ea"}]
+   [:.clj-string {:color "#c3e88d"}]
+   [:.clj-comment {:color "#546e7a" :font-style "italic"}]
+   [:.clj-number {:color "#f78c6c"}]
+   [:.clj-special {:color "#89ddff"}]
+   [:.clj-builtin {:color "#82aaff"}]])
 
 ;; --- Docs ---
 

@@ -114,38 +114,41 @@
 ;; --- HTML generation ---
 
 (defn html-page
-  "Wraps content in a full HTML page with nav, footer, and styles."
-  [{:keys [title active-page]} & body]
-  (str
-    "<!DOCTYPE html>\n"
-    (h/html
-      [:html {:lang "en"}
-       [:head
-        [:meta {:charset "utf-8"}]
-        [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-        [:title (str title " — Eido")]
-        [:style (h/raw (styles/site-css))]]
-       [:body
-        [:div.container
-         [:nav.nav
-          [:a.nav-logo {:href "/"} "Eido"]
-          [:ul.nav-links
-           [:li [:a {:href "/"
-                     :style (when (= active-page :home) "color: #e0ddd5")}
-                 "Home"]]
-           [:li [:a {:href "/gallery/"
-                     :style (when (= active-page :gallery) "color: #e0ddd5")}
-                 "Gallery"]]
-           [:li [:a {:href "/docs/"
-                     :style (when (= active-page :docs) "color: #e0ddd5")}
-                 "Docs"]]
-           [:li [:a {:href "/api/"
-                     :style (when (= active-page :api) "color: #e0ddd5")}
-                 "API"]]
-           [:li [:a {:href "https://github.com/leifericf/eido"} "GitHub"]]]]
-         [:main body]
-         [:footer.footer
-          [:p "Eido — declarative, data-driven image language for Clojure"]]]]])))
+  "Wraps content in a full HTML page with nav, footer, and styles.
+  :depth controls relative path prefix (0 = root, 1 = one dir deep)."
+  [{:keys [title active-page depth] :or {depth 0}} & body]
+  (let [prefix (if (zero? depth) "." "..")]
+    (str
+      "<!DOCTYPE html>\n"
+      (h/html
+        [:html {:lang "en"}
+         [:head
+          [:meta {:charset "utf-8"}]
+          [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+          [:title (str title " — Eido")]
+          [:style (h/raw (styles/site-css))]]
+         [:body
+          [:div.container
+           [:nav.nav
+            [:a.nav-logo {:href (str prefix "/index.html")} "Eido"]
+            [:ul.nav-links
+             [:li [:a {:href (str prefix "/index.html")
+                       :style (when (= active-page :home) "color: #e0ddd5")}
+                   "Home"]]
+             [:li [:a {:href (str prefix "/gallery/index.html")
+                       :style (when (= active-page :gallery) "color: #e0ddd5")}
+                   "Gallery"]]
+             [:li [:a {:href (str prefix "/docs/index.html")
+                       :style (when (= active-page :docs) "color: #e0ddd5")}
+                   "Docs"]]
+             [:li [:a {:href (str prefix "/api/index.html")
+                       :style (when (= active-page :api) "color: #e0ddd5")}
+                   "API"]]
+             [:li [:a {:href "https://github.com/leifericf/eido"} "GitHub"]]]]
+           [:main body]
+           [:footer.footer
+            [:p "Eido — declarative, data-driven image language for Clojure"]]
+           ]]]))))
 
 ;; --- Landing page ---
 
@@ -153,16 +156,16 @@
   "Generates the landing page HTML."
   [examples-by-category]
   (let [hero-images (pages/hero-images)]
-    (html-page {:title "Eido" :active-page :home}
+    (html-page {:title "Eido" :active-page :home :depth 0}
       [:section.hero
        [:h1.hero-title "Eido"]
        [:p.hero-tagline "Describe what you see as plain data"]
        [:div.hero-images
         (for [img hero-images]
-          [:img {:src (str "/images/" img) :alt "" :loading "lazy"}])]
+          [:img {:src (str "./images/" img) :alt "" :loading "lazy"}])]
        [:div.hero-links
-        [:a.hero-link.hero-link--primary {:href "/gallery/"} "Browse Gallery"]
-        [:a.hero-link.hero-link--secondary {:href "/docs/"} "Read the Docs"]]]
+        [:a.hero-link.hero-link--primary {:href "./gallery/index.html"} "Browse Gallery"]
+        [:a.hero-link.hero-link--secondary {:href "./docs/index.html"} "Read the Docs"]]]
       [:section.features
        (for [{:keys [title desc]} (pages/features)]
          [:div.feature
@@ -180,23 +183,27 @@
 (defn gallery-card
   "Renders a single gallery card with image, title, desc, and collapsible source."
   [example]
-  (let [src (example-source example)]
+  (let [src (example-source example)
+        card-id (str "src-" (hash (:output example)))]
     [:div.gallery-card
-     [:img {:src (str "/images/" (:output example))
+     [:img {:src (str "../images/" (:output example))
             :alt (:title example)
-            :loading "lazy"}]
+            :loading "lazy"
+            :onclick "openLightbox(this.src, this.alt)"}]
      [:div.gallery-card-body
       [:div.gallery-card-title (:title example)]
       [:div.gallery-card-desc (:desc example)]
       (when src
-        [:details
-         [:summary "View source"]
-         [:pre [:code src]]])]]))
+        [:div
+         [:a.view-source {:href "#"
+                          :onclick (str "openCodeLightbox('" card-id "'); return false;")}
+          "View source"]
+         [:pre {:id card-id :style "display:none"} [:code src]]])]]))
 
 (defn generate-gallery-html
   "Generates the gallery page HTML."
   [examples-by-category]
-  (html-page {:title "Gallery" :active-page :gallery}
+  (html-page {:title "Gallery" :active-page :gallery :depth 1}
     [:h1.page-title "Gallery"]
     [:p.page-subtitle "Every example renders from code — what you see is what the data describes."]
     (for [{:keys [category examples]} examples-by-category]
@@ -204,7 +211,77 @@
        [:h2.gallery-section-title category]
        [:div.gallery-grid
         (for [example examples]
-          (gallery-card example))]])))
+          (gallery-card example))]])
+    ;; Image lightbox
+    [:div#lightbox {:onclick "closeLightbox()"}
+     [:img#lightbox-img]
+     [:div#lightbox-caption]]
+    ;; Code lightbox
+    [:div#code-lightbox {:onclick "closeCodeLightbox()"}
+     [:div#code-lightbox-inner {:onclick "event.stopPropagation()"}
+      [:div#code-lightbox-header
+       [:span#code-lightbox-title]
+       [:div {:style "display: flex; gap: 0.75rem; align-items: center;"}
+        [:a#copy-btn {:href "#" :onclick "copyCode(); return false;"
+                      :title "Copy to clipboard"
+                      :style "color: #9090a0; font-size: 0.85rem; text-decoration: none; display: flex; align-items: center; gap: 0.3rem; line-height: 1;"}
+         [:svg {:width "14" :height "14" :viewBox "0 0 24 24" :fill "none"
+                :stroke "currentColor" :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"}
+          [:rect {:x "9" :y "9" :width "13" :height "13" :rx "2" :ry "2"}]
+          [:path {:d "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"}]]
+         "Copy"]
+        [:a {:href "#" :onclick "closeCodeLightbox(); return false;"
+             :style "color: #9090a0; font-size: 1.2rem; text-decoration: none; line-height: 1; display: flex; align-items: center;"} "\u00d7"]]]
+      [:pre#code-lightbox-pre [:code#code-lightbox-code]]]]
+    [:script (h/raw "
+function openLightbox(src, alt) {
+  var lb = document.getElementById('lightbox');
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox-caption').textContent = alt;
+  lb.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+  document.body.style.overflow = '';
+}
+function highlightClj(code) {
+  return code
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/(;;[^\\n]*)/g, '<span class=\"clj-comment\">$1</span>')
+    .replace(/(\"(?:[^\"\\\\]|\\\\.)*\")/g, '<span class=\"clj-string\">$1</span>')
+    .replace(/(:[a-zA-Z][a-zA-Z0-9_\\-.*+!?\\/<>]*)/g, '<span class=\"clj-keyword\">$1</span>')
+    .replace(/\\b(\\d+\\.?\\d*)\\b/g, '<span class=\"clj-number\">$1</span>')
+    .replace(/(?<=\\()\\b(defn-?|def|let|fn|if|when|cond|do|loop|recur|for|doseq|mapv|map|filter|reduce|into|concat|vec|assoc|merge|require|ns)\\b/g, '<span class=\"clj-special\">$1</span>');
+}
+function openCodeLightbox(id) {
+  var src = document.getElementById(id);
+  var code = src.querySelector('code').textContent;
+  var title = src.closest('.gallery-card').querySelector('.gallery-card-title').textContent;
+  document.getElementById('code-lightbox-code').innerHTML = highlightClj(code);
+  document.getElementById('code-lightbox-code').dataset.raw = code;
+  document.getElementById('code-lightbox-title').textContent = title;
+  document.getElementById('copy-btn').querySelector('span') || null;
+  document.getElementById('code-lightbox').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function copyCode() {
+  var code = document.getElementById('code-lightbox-code').dataset.raw;
+  navigator.clipboard.writeText(code).then(function() {
+    var btn = document.getElementById('copy-btn');
+    var orig = btn.lastChild.textContent;
+    btn.lastChild.textContent = 'Copied!';
+    setTimeout(function() { btn.lastChild.textContent = orig; }, 1500);
+  });
+}
+function closeCodeLightbox() {
+  document.getElementById('code-lightbox').classList.remove('active');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { closeLightbox(); closeCodeLightbox(); }
+});
+")]))
 
 ;; --- Docs page ---
 
@@ -212,7 +289,7 @@
   "Generates the feature docs page HTML."
   []
   (let [sections (pages/docs-sections)]
-    (html-page {:title "Docs" :active-page :docs}
+    (html-page {:title "Docs" :active-page :docs :depth 1}
       [:h1.page-title "Documentation"]
       [:p.page-subtitle "Feature reference for eido's declarative image language."]
       [:nav.docs-toc
@@ -254,7 +331,7 @@
                                 :ns-doc  (:doc (meta ns-obj))
                                 :vars    publics})))
                      (remove #(empty? (:vars %))))]
-    (html-page {:title "API Reference" :active-page :api}
+    (html-page {:title "API Reference" :active-page :api :depth 1}
       [:h1.page-title "API Reference"]
       [:p.page-subtitle "Auto-generated from source metadata."]
       [:div.api-layout
