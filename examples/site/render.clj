@@ -17,15 +17,15 @@
 (def highlight-clj-js
   "function highlightClj(code) {
   // HTML-escape first
-  code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  code = code.replace(/&/g, '&amp;').replace(/\\x3c/g, '&lt;').replace(/>/g, '&gt;');
   // Extract comments and strings into placeholders so they don't interfere
   var tokens = [];
-  code = code.replace(/(;;[^\\n]*)/g, function(m) { tokens.push('<span class=\"clj-comment\">' + m + '</span>'); return '\\x00T' + (tokens.length-1) + 'T\\x00'; });
-  code = code.replace(/(\"(?:[^\"\\\\]|\\\\.)*\")/g, function(m) { tokens.push('<span class=\"clj-string\">' + m + '</span>'); return '\\x00T' + (tokens.length-1) + 'T\\x00'; });
+  code = code.replace(/(;;[^\\n]*)/g, function(m) { tokens.push('\\x3cspan class=\"clj-comment\">' + m + '\\x3c/span>'); return '\\x00T' + (tokens.length-1) + 'T\\x00'; });
+  code = code.replace(/(\"(?:[^\"\\\\]|\\\\.)*\")/g, function(m) { tokens.push('\\x3cspan class=\"clj-string\">' + m + '\\x3c/span>'); return '\\x00T' + (tokens.length-1) + 'T\\x00'; });
   // Highlight remaining tokens
-  code = code.replace(/(:[a-zA-Z][a-zA-Z0-9_\\-.*+!?\\/<>]*)/g, '<span class=\"clj-keyword\">$1</span>');
-  code = code.replace(/\\b(\\d+\\.?\\d*)\\b/g, '<span class=\"clj-number\">$1</span>');
-  code = code.replace(/(?<=\\()\\b(defn-?|def|let|fn|if|when|cond|do|loop|recur|for|doseq|mapv|map|filter|reduce|into|concat|vec|assoc|merge|require|ns)\\b/g, '<span class=\"clj-special\">$1</span>');
+  code = code.replace(/(:[a-zA-Z][a-zA-Z0-9_\\-.*+!?\\/<>]*)/g, '\\x3cspan class=\"clj-keyword\">$1\\x3c/span>');
+  code = code.replace(/\\b(\\d+\\.?\\d*)\\b/g, '\\x3cspan class=\"clj-number\">$1\\x3c/span>');
+  code = code.replace(/(?<=\\()\\b(defn-?|def|let|fn|if|when|cond|do|loop|recur|for|doseq|mapv|map|filter|reduce|into|concat|vec|assoc|merge|require|ns)\\b/g, '\\x3cspan class=\"clj-special\">$1\\x3c/span>');
   // Restore placeholders
   code = code.replace(/\\x00T(\\d+)T\\x00/g, function(_, i) { return tokens[parseInt(i)]; });
   return code;
@@ -173,15 +173,17 @@
 (defn generate-landing-html
   "Generates the landing page HTML."
   [examples-by-category]
-  (let [hero-images (pages/hero-images)]
+  (let [all-images (->> examples-by-category
+                       (mapcat :examples)
+                       (mapv :output))]
     (html-page {:title "Eido" :active-page :home :depth 0}
+      [:div.alpha-banner
+       "Early alpha — under heavy development. Expect some breaking changes between releases."]
       [:section.hero
        [:h1.hero-title "Eido"]
        [:p.hero-tagline "Describe what you see as plain data"]
-       [:p {:style "color: #6a6a7a; font-size: 0.85rem; margin-top: 0.3rem; font-style: italic;"} "From Greek " [:em "eido"] " — \"I see\""]
-       [:div.hero-images
-        (for [img hero-images]
-          [:img {:src (str "./images/" img) :alt "" :loading "lazy"}])]
+       [:p {:style "color: #6a6a7a; font-size: 0.85rem; margin-top: 0.3rem; font-style: italic;"} "From Greek " [:em "eido"] " \u2014 \"I see\""]
+       [:div#hero-images.hero-images]
        [:div.hero-links
         [:a.hero-link.hero-link--primary {:href "./gallery/index.html"} "Browse Gallery"]
         [:a.hero-link.hero-link--secondary {:href "./docs/index.html"} "Read the Docs"]]]
@@ -202,7 +204,32 @@
 document.querySelectorAll('pre code').forEach(function(el) {
   el.innerHTML = highlightClj(el.textContent);
 });
-"))])))
+var allImages = [" (str/join ", " (map #(str "\"" % "\"") all-images)) "];
+var shuffled = allImages.sort(function() { return 0.5 - Math.random(); });
+var container = document.getElementById('hero-images');
+shuffled.slice(0, 6).forEach(function(img) {
+  var el = document.createElement('img');
+  el.src = './images/' + img;
+  el.alt = '';
+  el.loading = 'lazy';
+  el.style.cursor = 'pointer';
+  el.onclick = function() { openLightbox(this.src, this.alt); };
+  container.appendChild(el);
+});
+function openLightbox(src, alt) {
+  var lb = document.getElementById('lightbox');
+  document.getElementById('lightbox-img').src = src;
+  lb.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLightbox(); });
+"))]
+      [:div#lightbox {:onclick "closeLightbox()"}
+       [:img#lightbox-img]])))
 
 ;; --- Gallery page ---
 
