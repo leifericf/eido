@@ -264,6 +264,34 @@
                 :style/fill :style/stroke :node/opacity :node/transform
                 :group/composite :group/filter]))
 
+(defmethod node-type :lsystem [_]
+  (s/keys :req [:node/type :lsystem/axiom :lsystem/rules]
+          :opt [:lsystem/iterations :lsystem/angle :lsystem/length
+                :lsystem/origin :lsystem/heading
+                :style/fill :style/stroke :node/opacity :node/transform]))
+
+(defmethod node-type :voronoi [_]
+  (s/keys :req [:node/type :voronoi/points :voronoi/bounds]
+          :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+
+(defmethod node-type :delaunay [_]
+  (s/keys :req [:node/type :delaunay/points :delaunay/bounds]
+          :opt [:style/stroke :node/opacity :node/transform]))
+
+(defmethod node-type :contour [_]
+  (s/keys :req [:node/type :contour/bounds]
+          :opt [:contour/fn :contour/opts :style/stroke :node/opacity :node/transform]))
+
+(defmethod node-type :flow-field [_]
+  (s/keys :req [:node/type :flow/bounds]
+          :opt [:flow/opts :style/fill :style/stroke :node/opacity :node/transform]))
+
+(defmethod node-type :symmetry [_]
+  (s/keys :req [:node/type :symmetry/type :group/children]
+          :opt [:symmetry/n :symmetry/center :symmetry/axis
+                :symmetry/cols :symmetry/rows :symmetry/spacing
+                :node/opacity :node/transform]))
+
 (defmethod node-type :scatter [_]
   (s/keys :req [:node/type :scatter/shape :scatter/positions]
           :opt [:scatter/jitter :node/opacity :node/transform]))

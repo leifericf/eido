@@ -1,4 +1,6 @@
 (ns eido.render
+  (:require
+    [eido.color :as color])
   (:import
     [java.awt AlphaComposite BasicStroke Color Graphics2D LinearGradientPaint
               RadialGradientPaint RenderingHints TexturePaint]
@@ -323,13 +325,122 @@
         (box-blur-pass src dst w h (int radius)))
       (.setRGB img 0 0 w h src 0 w))))
 
+(defn- apply-grain
+  "Adds procedural film grain to a BufferedImage."
+  [^BufferedImage img amount seed]
+  (let [w (.getWidth img)
+        h (.getHeight img)
+        ^ints data (.getRGB img 0 0 w h nil 0 w)
+        rng (java.util.Random. (long (or seed 0)))
+        amt (double amount)]
+    (dotimes [i (alength data)]
+      (let [px    (aget data i)
+            a     (argb-a px)
+            noise (int (* amt (- (* 2.0 (.nextDouble rng)) 1.0) 128))]
+        (when (pos? a)
+          (aset data i
+            (unchecked-int
+              (pack-argb a
+                (max 0 (min 255 (+ (argb-r px) noise)))
+                (max 0 (min 255 (+ (argb-g px) noise)))
+                (max 0 (min 255 (+ (argb-b px) noise)))))))))
+    (.setRGB img 0 0 w h data 0 w)))
+
+(defn- apply-posterize
+  "Quantizes each color channel to n levels."
+  [^BufferedImage img levels]
+  (let [w (.getWidth img)
+        h (.getHeight img)
+        ^ints data (.getRGB img 0 0 w h nil 0 w)
+        levels (int levels)
+        step (/ 255.0 (dec levels))]
+    (dotimes [i (alength data)]
+      (let [px (aget data i)
+            a  (argb-a px)]
+        (when (pos? a)
+          (aset data i
+            (unchecked-int
+              (pack-argb a
+                (int (* (Math/round (/ (double (argb-r px)) step)) step))
+                (int (* (Math/round (/ (double (argb-g px)) step)) step))
+                (int (* (Math/round (/ (double (argb-b px)) step)) step))))))))
+    (.setRGB img 0 0 w h data 0 w)))
+
+(defn- apply-duotone
+  "Maps luminance through two colors: c1 for dark, c2 for light."
+  [^BufferedImage img color1 color2]
+  (let [w  (.getWidth img)
+        h  (.getHeight img)
+        ^ints data (.getRGB img 0 0 w h nil 0 w)
+        c1 (color/resolve-color color1)
+        c2 (color/resolve-color color2)]
+    (dotimes [i (alength data)]
+      (let [px  (aget data i)
+            a   (argb-a px)]
+        (when (pos? a)
+          (let [lum (/ (+ (* 0.299 (argb-r px))
+                          (* 0.587 (argb-g px))
+                          (* 0.114 (argb-b px)))
+                       255.0)
+                r (int (+ (* (- 1.0 lum) (:r c1)) (* lum (:r c2))))
+                g (int (+ (* (- 1.0 lum) (:g c1)) (* lum (:g c2))))
+                b (int (+ (* (- 1.0 lum) (:b c1)) (* lum (:b c2))))]
+            (aset data i
+              (unchecked-int (pack-argb a r g b)))))))
+    (.setRGB img 0 0 w h data 0 w)))
+
+(defn- apply-halftone
+  "Converts image to halftone dot pattern."
+  [^BufferedImage img dot-size angle]
+  (let [w (.getWidth img)
+        h (.getHeight img)
+        ^ints src-data (.getRGB img 0 0 w h nil 0 w)
+        out (BufferedImage. w h BufferedImage/TYPE_INT_ARGB)
+        ^Graphics2D g (.createGraphics out)
+        dot-size (double (or dot-size 6))
+        angle-rad (* (double (or angle 0)) (/ Math/PI 180.0))
+        cos-a (Math/cos angle-rad)
+        sin-a (Math/sin angle-rad)
+        half (/ dot-size 2.0)
+        diag (Math/sqrt (+ (* w w) (* h h)))
+        steps (int (Math/ceil (/ diag dot-size)))]
+    (.setColor g (Color. 255 255 255))
+    (.fillRect g 0 0 w h)
+    (.setColor g (Color. 0 0 0))
+    (.setRenderingHint g RenderingHints/KEY_ANTIALIASING
+                       RenderingHints/VALUE_ANTIALIAS_ON)
+    (doseq [gi (range (- steps) (inc steps))
+            gj (range (- steps) (inc steps))]
+      (let [gx (* gi dot-size)
+            gy (* gj dot-size)
+            cx (+ (* gx cos-a) (* gy (- sin-a)) (/ w 2.0))
+            cy (+ (* gx sin-a) (* gy cos-a) (/ h 2.0))
+            ix (int cx) iy (int cy)]
+        (when (and (>= ix 0) (< ix w) (>= iy 0) (< iy h))
+          (let [px  (aget src-data (+ (* iy w) ix))
+                lum (/ (+ (* 0.299 (argb-r px))
+                          (* 0.587 (argb-g px))
+                          (* 0.114 (argb-b px)))
+                       255.0)
+                r (* half (- 1.0 lum))]
+            (when (> r 0.3)
+              (.fill g (Ellipse2D$Double.
+                         (- cx r) (- cy r) (* 2.0 r) (* 2.0 r))))))))
+    (.dispose g)
+    (let [^ints out-data (.getRGB out 0 0 w h nil 0 w)]
+      (.setRGB img 0 0 w h out-data 0 w))))
+
 (defn- apply-filter
   "Applies a filter to a BufferedImage in place."
   [^BufferedImage img filter-spec]
   (if (vector? filter-spec)
     (let [[filter-type & args] filter-spec]
       (case filter-type
-        :blur (box-blur img (first args))))
+        :blur      (box-blur img (first args))
+        :grain     (apply-grain img (first args) (second args))
+        :posterize (apply-posterize img (first args))
+        :duotone   (apply-duotone img (first args) (second args))
+        :halftone  (apply-halftone img (first args) (second args))))
     (apply-pixel-filter img filter-spec)))
 
 (def ^:private blend-modes

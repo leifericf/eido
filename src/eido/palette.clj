@@ -101,6 +101,29 @@
                  [:color/rgb 222 211 183]
                  [:color/rgb 143 115 72]]})
 
+(defn gradient-map
+  "Interpolates through color stops at parameter t (0-1).
+  stops: [[pos color] ...] sorted ascending by pos.
+  Returns a color vector."
+  [stops t]
+  (let [t (max 0.0 (min 1.0 (double t)))
+        n (count stops)]
+    (cond
+      (<= n 0) [:color/rgb 0 0 0]
+      (= n 1)  (second (first stops))
+      (<= t (ffirst stops)) (second (first stops))
+      (>= t (first (nth stops (dec n)))) (second (nth stops (dec n)))
+      :else
+      (loop [i 0]
+        (if (>= i (dec n))
+          (second (nth stops (dec n)))
+          (let [[p0 c0] (nth stops i)
+                [p1 c1] (nth stops (inc i))]
+            (if (<= p0 t p1)
+              (let [seg-t (if (== p0 p1) 0.0 (/ (- t p0) (- p1 p0)))]
+                (color/lerp c0 c1 seg-t))
+              (recur (inc i)))))))))
+
 (comment
   (complementary [:color/rgb 255 0 0])
   (analogous [:color/rgb 255 0 0] 5)

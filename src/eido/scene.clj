@@ -1,4 +1,6 @@
-(ns eido.scene)
+(ns eido.scene
+  (:require
+    [eido.text :as text]))
 
 (defn grid
   "Generates a vector of nodes by calling f for each cell in a cols x rows grid.
@@ -156,6 +158,28 @@
    (mapv (fn [layer]
            (merge (text content origin font-spec) layer))
          layers)})
+
+(defn text-outline
+  "Returns text as a path node — the vector outline of the glyphs.
+  Useful as a clip mask, for boolean ops, or as a standalone shape."
+  [content font-spec [ox oy]]
+  (let [cmds (text/text->path-commands content font-spec)]
+    {:node/type     :shape/path
+     :path/commands cmds
+     :path/fill-rule :even-odd
+     :node/transform [[:transform/translate ox oy]]}))
+
+(defn text-clip
+  "Creates a group clipped to text outlines. Children are clipped to the
+  text shape — anything inside the letters shows through."
+  [content font-spec [ox oy] children]
+  (let [cmds (text/text->path-commands content font-spec)]
+    {:node/type      :group
+     :group/clip     {:node/type     :shape/path
+                      :path/commands cmds
+                      :path/fill-rule :even-odd}
+     :node/transform [[:transform/translate ox oy]]
+     :group/children (vec children)}))
 
 (comment
   (grid 3 2 (fn [c r]

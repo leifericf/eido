@@ -88,3 +88,39 @@
     (doseq [[_name pal] palette/palettes]
       (is (vector? pal))
       (is (every? vector? pal)))))
+
+;; --- gradient-map ---
+
+(deftest gradient-map-endpoints-test
+  (testing "t=0 returns first stop color"
+    (is (= [:color/rgb 0 0 0]
+           (palette/gradient-map [[0.0 [:color/rgb 0 0 0]]
+                                  [1.0 [:color/rgb 255 255 255]]] 0.0))))
+  (testing "t=1 returns last stop color"
+    (is (= [:color/rgb 255 255 255]
+           (palette/gradient-map [[0.0 [:color/rgb 0 0 0]]
+                                  [1.0 [:color/rgb 255 255 255]]] 1.0)))))
+
+(deftest gradient-map-midpoint-test
+  (testing "t=0.5 interpolates to gray"
+    (let [[_ r g b] (palette/gradient-map [[0.0 [:color/rgb 0 0 0]]
+                                            [1.0 [:color/rgb 255 255 255]]] 0.5)]
+      (is (< (Math/abs (- 128 (long r))) 2)))))
+
+(deftest gradient-map-multi-stop-test
+  (testing "multi-stop interpolation"
+    (let [stops [[0.0 [:color/rgb 255 0 0]]
+                 [0.5 [:color/rgb 0 255 0]]
+                 [1.0 [:color/rgb 0 0 255]]]
+          [_ r g _b] (palette/gradient-map stops 0.25)]
+      (is (> r 100) "near red-green midpoint, r should be high")
+      (is (> g 100) "near red-green midpoint, g should be high"))))
+
+(deftest gradient-map-clamp-test
+  (testing "t out of range is clamped"
+    (is (= [:color/rgb 0 0 0]
+           (palette/gradient-map [[0.0 [:color/rgb 0 0 0]]
+                                  [1.0 [:color/rgb 255 255 255]]] -0.5)))
+    (is (= [:color/rgb 255 255 255]
+           (palette/gradient-map [[0.0 [:color/rgb 0 0 0]]
+                                  [1.0 [:color/rgb 255 255 255]]] 1.5)))))

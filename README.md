@@ -2613,6 +2613,38 @@ Variable-width strokes with `:pointed` profile animate along sine waves using th
 | `eido.scatter/grid` | Regular grid positions |
 | `eido.scatter/poisson-disk` | Poisson disk sampling positions |
 | `eido.scatter/noise-field` | Noise-biased random positions |
+| `eido.palette/gradient-map` | Map scalar t (0-1) through multi-stop color ramp |
+| `:symmetry` | Radial, bilateral, or grid symmetry group |
+| `:flow-field` | Streamlines from noise vector field |
+| `:contour` | Iso-lines from noise via marching squares |
+| `:voronoi` | Voronoi tessellation from seed points |
+| `:delaunay` | Delaunay triangulation edges |
+| `[:grain amount seed]` | Film grain post-processing filter |
+| `[:posterize levels]` | Color quantization filter |
+| `[:duotone c1 c2]` | Two-color luminance mapping filter |
+| `[:halftone dot-size angle]` | Halftone dot pattern filter |
+| `eido.flow/flow-field` | Generate flow field path nodes |
+| `eido.contour/contour-lines` | Generate contour path nodes |
+| `eido.voronoi/voronoi-cells` | Generate Voronoi cell paths |
+| `eido.voronoi/delaunay-edges` | Generate Delaunay edge lines |
+
+### Phase 2 Gallery
+
+<p align="center">
+  <img src="images/art-mandala.png" width="300" alt="12-fold mandala with hatching and stippling" />
+  <img src="images/art-stained-glass.png" width="300" alt="Voronoi stained glass" />
+</p>
+<p align="center">
+  <img src="images/art-van-gogh-swirls.png" width="400" alt="Van Gogh-style flow field swirls" />
+</p>
+<p align="center">
+  <img src="images/art-topo-map.png" width="300" alt="Topographic contour map" />
+  <img src="images/art-thermal.png" width="300" alt="Thermal imaging gradient map" />
+</p>
+<p align="center">
+  <img src="images/art-risograph.png" width="250" alt="Risograph print style" />
+  <img src="images/art-flow-mandala.gif" width="250" alt="Animated flow mandala" />
+</p>
 
 ## Running Tests
 
