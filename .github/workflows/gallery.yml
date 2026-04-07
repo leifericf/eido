@@ -1,0 +1,46 @@
+name: Gallery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['examples/**', 'src/**']
+
+permissions:
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeLaGuardo/setup-clojure@13
+        with:
+          cli: latest
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ hashFiles('deps.edn') }}
+
+      - name: Build site
+        run: clj -X:gallery
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

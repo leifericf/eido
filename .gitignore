@@ -24,3 +24,6 @@ classes/
 .lsp/
 .nrepl-port
 .lein-repl-history
+
+# Site build output
+_site/

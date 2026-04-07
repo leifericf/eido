@@ -1,0 +1,256 @@
+(ns site.styles
+  "Garden CSS definitions for the eido website."
+  (:require
+    [garden.core :as garden]
+    [garden.stylesheet :refer [at-media]]))
+
+;; --- Colors ---
+
+(def colors
+  {:bg         "#0a0a12"
+   :bg-card    "#13131f"
+   :bg-code    "#1a1a2e"
+   :text       "#e0ddd5"
+   :text-muted "#9090a0"
+   :accent     "#c850c0"
+   :accent-alt "#4158d0"
+   :border     "#2a2a3e"
+   :link       "#7eb8f0"
+   :link-hover "#a0d0ff"})
+
+;; --- Shared styles ---
+
+(def base-styles
+  [[:* {:box-sizing "border-box"
+        :margin     0
+        :padding    0}]
+   [:html {:font-size "16px"}]
+   [:body {:font-family "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+           :background  (:bg colors)
+           :color       (:text colors)
+           :line-height "1.6"}]
+   [:a {:color           (:link colors)
+        :text-decoration "none"}]
+   ["a:hover" {:color (:link-hover colors)}]
+   [:code {:font-family "'JetBrains Mono', 'Fira Code', monospace"
+           :font-size   "0.875rem"}]
+   [:pre {:background    (:bg-code colors)
+          :border        (str "1px solid " (:border colors))
+          :border-radius "8px"
+          :padding       "1rem"
+          :overflow-x    "auto"
+          :line-height   "1.5"}]
+   ["pre code" {:background "none"
+                :padding    0}]
+   [:code {:background    (:bg-code colors)
+           :padding       "0.15rem 0.4rem"
+           :border-radius "4px"}]])
+
+;; --- Layout ---
+
+(def layout-styles
+  [[:.container {:max-width "1100px"
+                 :margin    "0 auto"
+                 :padding   "0 1.5rem"}]
+   [:.nav {:display         "flex"
+           :align-items     "center"
+           :justify-content "space-between"
+           :padding         "1rem 0"
+           :border-bottom   (str "1px solid " (:border colors))}]
+   [:.nav-logo {:font-size   "1.25rem"
+                :font-weight "700"
+                :color       (:text colors)}]
+   [:.nav-links {:display  "flex"
+                 :gap      "1.5rem"
+                 :list-style "none"}]
+   [:.nav-links>li>a {:color     (:text-muted colors)
+                      :font-size "0.9rem"}]
+   [".nav-links li a:hover" {:color (:text colors)}]
+   [:.footer {:margin-top  "4rem"
+              :padding     "2rem 0"
+              :border-top  (str "1px solid " (:border colors))
+              :text-align  "center"
+              :color       (:text-muted colors)
+              :font-size   "0.85rem"}]])
+
+;; --- Hero (landing page) ---
+
+(def hero-styles
+  [[:.hero {:text-align "center"
+            :padding    "4rem 0 2rem"}]
+   [:.hero-title {:font-size   "3rem"
+                  :font-weight "800"
+                  :background  (str "linear-gradient(135deg, " (:accent colors) ", " (:accent-alt colors) ")")
+                  :-webkit-background-clip "text"
+                  :-webkit-text-fill-color "transparent"
+                  :background-clip         "text"}]
+   [:.hero-tagline {:font-size  "1.25rem"
+                    :color      (:text-muted colors)
+                    :margin-top "0.5rem"}]
+   [:.hero-images {:display         "flex"
+                   :flex-wrap       "wrap"
+                   :justify-content "center"
+                   :gap             "0.75rem"
+                   :margin-top      "2rem"}]
+   [:.hero-images>img {:border-radius "8px"
+                       :width         "140px"
+                       :height        "140px"
+                       :object-fit    "cover"}]
+   [:.hero-links {:display         "flex"
+                  :justify-content "center"
+                  :gap             "1rem"
+                  :margin-top      "2rem"}]
+   [:.hero-link {:display       "inline-block"
+                 :padding       "0.6rem 1.5rem"
+                 :border-radius "6px"
+                 :font-weight   "600"
+                 :font-size     "0.95rem"}]
+   [:.hero-link--primary {:background (:accent colors)
+                          :color      "#fff"}]
+   [:.hero-link--secondary {:border "1px solid"
+                            :border-color (:border colors)
+                            :color (:text colors)}]])
+
+;; --- Features (landing page) ---
+
+(def feature-styles
+  [[:.features {:display   "grid"
+                :grid-template-columns "repeat(auto-fit, minmax(280px, 1fr))"
+                :gap       "1.5rem"
+                :margin    "3rem 0"}]
+   [:.feature {:background    (:bg-card colors)
+               :border        (str "1px solid " (:border colors))
+               :border-radius "8px"
+               :padding       "1.5rem"}]
+   [:.feature-title {:font-size   "1rem"
+                     :font-weight "600"
+                     :margin-bottom "0.5rem"}]
+   [:.feature-desc {:color     (:text-muted colors)
+                    :font-size "0.9rem"}]])
+
+;; --- Gallery ---
+
+(def gallery-styles
+  [[:.gallery-section {:margin-top "3rem"}]
+   [:.gallery-section-title {:font-size     "1.5rem"
+                             :font-weight   "700"
+                             :margin-bottom "1.5rem"
+                             :padding-bottom "0.5rem"
+                             :border-bottom (str "1px solid " (:border colors))}]
+   [:.gallery-grid {:display   "grid"
+                    :grid-template-columns "repeat(auto-fill, minmax(280px, 1fr))"
+                    :gap       "1.5rem"}]
+   [:.gallery-card {:background    (:bg-card colors)
+                    :border        (str "1px solid " (:border colors))
+                    :border-radius "8px"
+                    :overflow      "hidden"}]
+   [:.gallery-card>img {:width      "100%"
+                        :height     "220px"
+                        :object-fit "cover"
+                        :display    "block"}]
+   [:.gallery-card-body {:padding "1rem"}]
+   [:.gallery-card-title {:font-size   "1rem"
+                          :font-weight "600"}]
+   [:.gallery-card-desc {:color     (:text-muted colors)
+                         :font-size "0.85rem"
+                         :margin-top "0.25rem"}]
+   [:details {:margin-top "0.75rem"}]
+   [:summary {:cursor    "pointer"
+              :color     (:link colors)
+              :font-size "0.85rem"}]
+   ["summary:hover" {:color (:link-hover colors)}]
+   ["details pre" {:margin-top "0.5rem"
+                   :font-size  "0.8rem"}]])
+
+;; --- Docs ---
+
+(def docs-styles
+  [[:.docs-toc {:background    (:bg-card colors)
+                :border        (str "1px solid " (:border colors))
+                :border-radius "8px"
+                :padding       "1.5rem"
+                :margin-bottom "2rem"}]
+   [:.docs-toc-title {:font-size     "1rem"
+                      :font-weight   "600"
+                      :margin-bottom "0.75rem"}]
+   [:.docs-toc>ul {:list-style  "none"
+                   :columns     "2"}]
+   [:.docs-toc>ul>li {:margin-bottom "0.35rem"}]
+   [:.docs-toc>ul>li>a {:color     (:text-muted colors)
+                        :font-size "0.9rem"}]
+   [:.docs-section {:margin-top "3rem"}]
+   [:.docs-section>h2 {:font-size      "1.5rem"
+                       :padding-bottom "0.5rem"
+                       :border-bottom  (str "1px solid " (:border colors))
+                       :margin-bottom  "1rem"}]
+   [:.docs-section>h3 {:font-size    "1.1rem"
+                       :margin-top   "1.5rem"
+                       :margin-bottom "0.5rem"}]
+   [:.docs-section>p {:color     (:text-muted colors)
+                      :font-size "0.95rem"
+                      :margin-bottom "0.75rem"}]])
+
+;; --- API reference ---
+
+(def api-styles
+  [[:.api-ns {:margin-top "2.5rem"}]
+   [:.api-ns-title {:font-size      "1.35rem"
+                    :padding-bottom "0.5rem"
+                    :border-bottom  (str "1px solid " (:border colors))
+                    :margin-bottom  "0.5rem"}]
+   [:.api-ns-doc {:color       (:text-muted colors)
+                  :font-size   "0.9rem"
+                  :margin-bottom "1rem"}]
+   [:.api-var {:background    (:bg-card colors)
+               :border        (str "1px solid " (:border colors))
+               :border-radius "8px"
+               :padding       "1rem"
+               :margin-bottom "0.75rem"}]
+   [:.api-var-name {:font-family "'JetBrains Mono', monospace"
+                    :font-weight "600"
+                    :color       (:accent colors)}]
+   [:.api-var-args {:font-family "'JetBrains Mono', monospace"
+                    :font-size   "0.85rem"
+                    :color       (:text-muted colors)
+                    :margin-left "0.5rem"}]
+   [:.api-var-doc {:margin-top "0.5rem"
+                   :font-size  "0.9rem"
+                   :color      (:text-muted colors)
+                   :white-space "pre-wrap"}]
+   [:.api-sidebar {:position   "sticky"
+                   :top        "1rem"
+                   :max-height "calc(100vh - 2rem)"
+                   :overflow-y "auto"
+                   :font-size  "0.85rem"}]
+   [:.api-sidebar>ul {:list-style "none"}]
+   [:.api-sidebar>ul>li {:margin-bottom "0.5rem"}]
+   [:.api-sidebar>ul>li>a {:color (:text-muted colors)}]
+   [:.api-layout {:display               "grid"
+                  :grid-template-columns  "200px 1fr"
+                  :gap                    "2rem"}]
+   (at-media {:max-width "768px"}
+     [:.api-layout {:grid-template-columns "1fr"}]
+     [:.api-sidebar {:display "none"}])])
+
+;; --- Page title ---
+
+(def page-title-styles
+  [[:.page-title {:font-size   "2rem"
+                  :font-weight "700"
+                  :margin      "2rem 0 0.5rem"}]
+   [:.page-subtitle {:color       (:text-muted colors)
+                     :font-size   "1.1rem"
+                     :margin-bottom "2rem"}]])
+
+;; --- Combined CSS generation ---
+
+(defn site-css []
+  (garden/css
+    (concat base-styles
+            layout-styles
+            hero-styles
+            feature-styles
+            gallery-styles
+            docs-styles
+            api-styles
+            page-title-styles)))
