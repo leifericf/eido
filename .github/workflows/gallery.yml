@@ -33,7 +33,7 @@ jobs:
           key: m2-${{ hashFiles('deps.edn') }}
 
       - name: Build site
-        run: clj -X:gallery
+        run: clojure -X:gallery
 
       - uses: actions/configure-pages@v5
 
