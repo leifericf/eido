@@ -14,6 +14,18 @@
 
 (def site-url "https://eido.leifericf.com")
 
+(def highlight-clj-js
+  "function highlightClj(code) {
+  return code
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/(;;[^\\n]*)/g, '<span class=\"clj-comment\">$1</span>')
+    .replace(/(\"(?:[^\"\\\\]|\\\\.)*\")/g, '<span class=\"clj-string\">$1</span>')
+    .replace(/(:[a-zA-Z][a-zA-Z0-9_\\-.*+!?\\/<>]*)/g, '<span class=\"clj-keyword\">$1</span>')
+    .replace(/\\b(\\d+\\.?\\d*)\\b/g, '<span class=\"clj-number\">$1</span>')
+    .replace(/(?<=\\()\\b(defn-?|def|let|fn|if|when|cond|do|loop|recur|for|doseq|mapv|map|filter|reduce|into|concat|vec|assoc|merge|require|ns)\\b/g, '<span class=\"clj-special\">$1</span>');
+}")
+
+
 (def example-namespaces
   "Namespaces to scan for example functions."
   '[gallery.art
@@ -172,11 +184,16 @@
           [:div.feature-title title]
           [:div.feature-desc desc]])]
       [:section {:style "margin-top: 3rem"}
-       [:h2 {:style "font-size: 1.5rem; margin-bottom: 1rem"} "Quick Start"]
-       [:pre [:code (h/raw (pages/quick-start-code))]]]
+       [:h2 {:style "font-size: 1.5rem; margin-bottom: 1rem"} "How it works"]
+       (pages/quick-start-content)]
       [:section {:style "margin-top: 2rem"}
        [:h2 {:style "font-size: 1.5rem; margin-bottom: 1rem"} "Installation"]
-       [:pre [:code (pages/install-code)]]])))
+       [:pre [:code (pages/install-code)]]]
+      [:script (h/raw (str highlight-clj-js "
+document.querySelectorAll('pre code').forEach(function(el) {
+  el.innerHTML = highlightClj(el.textContent);
+});
+"))])))
 
 ;; --- Gallery page ---
 
@@ -233,7 +250,7 @@
         [:a {:href "#" :onclick "closeCodeLightbox(); return false;"
              :style "color: #9090a0; font-size: 1.2rem; text-decoration: none; line-height: 1; display: flex; align-items: center;"} "\u00d7"]]]
       [:pre#code-lightbox-pre [:code#code-lightbox-code]]]]
-    [:script (h/raw "
+    [:script (h/raw (str highlight-clj-js "
 function openLightbox(src, alt) {
   var lb = document.getElementById('lightbox');
   document.getElementById('lightbox-img').src = src;
@@ -244,15 +261,6 @@ function openLightbox(src, alt) {
 function closeLightbox() {
   document.getElementById('lightbox').classList.remove('active');
   document.body.style.overflow = '';
-}
-function highlightClj(code) {
-  return code
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/(;;[^\\n]*)/g, '<span class=\"clj-comment\">$1</span>')
-    .replace(/(\"(?:[^\"\\\\]|\\\\.)*\")/g, '<span class=\"clj-string\">$1</span>')
-    .replace(/(:[a-zA-Z][a-zA-Z0-9_\\-.*+!?\\/<>]*)/g, '<span class=\"clj-keyword\">$1</span>')
-    .replace(/\\b(\\d+\\.?\\d*)\\b/g, '<span class=\"clj-number\">$1</span>')
-    .replace(/(?<=\\()\\b(defn-?|def|let|fn|if|when|cond|do|loop|recur|for|doseq|mapv|map|filter|reduce|into|concat|vec|assoc|merge|require|ns)\\b/g, '<span class=\"clj-special\">$1</span>');
 }
 function openCodeLightbox(id) {
   var src = document.getElementById(id);
@@ -281,26 +289,39 @@ function closeCodeLightbox() {
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') { closeLightbox(); closeCodeLightbox(); }
 });
-")]))
+"))]))
 
 ;; --- Docs page ---
 
 (defn generate-docs-html
   "Generates the feature docs page HTML."
   []
-  (let [sections (pages/docs-sections)]
+  (let [categories (pages/docs-categories)]
     (html-page {:title "Docs" :active-page :docs :depth 1}
       [:h1.page-title "Documentation"]
       [:p.page-subtitle "Feature reference for eido's declarative image language."]
-      [:nav.docs-toc
-       [:div.docs-toc-title "Contents"]
-       [:ul
-        (for [{:keys [id title]} sections]
-          [:li [:a {:href (str "#" id)} title]])]]
-      (for [{:keys [id title content]} sections]
-        [:section.docs-section {:id id}
-         [:h2 title]
-         content]))))
+      [:div.docs-layout
+       [:nav.docs-sidebar
+        (for [{:keys [category id sections]} categories]
+          [:div.docs-sidebar-category
+           [:div.docs-sidebar-category-title
+            [:a {:href (str "#" id)} category]]
+           [:ul
+            (for [{sec-id :id sec-title :title} sections]
+              [:li [:a {:href (str "#" sec-id)} sec-title]])]])]
+       [:div.docs-content
+        (for [{:keys [category id sections]} categories]
+          [:div.docs-category {:id id}
+           [:h2.docs-category-title category]
+           (for [{sec-id :id sec-title :title content :content} sections]
+             [:section.docs-section {:id sec-id}
+              [:h3 sec-title]
+              content])])]
+       [:script (h/raw (str highlight-clj-js "
+document.querySelectorAll('pre code').forEach(function(el) {
+  el.innerHTML = highlightClj(el.textContent);
+});
+"))]])))
 
 ;; --- API page ---
 

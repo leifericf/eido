@@ -44,7 +44,15 @@
                 :padding    0}]
    [:code {:background    (:bg-code colors)
            :padding       "0.15rem 0.4rem"
-           :border-radius "4px"}]])
+           :border-radius "4px"}]
+   ;; Global content flow — paragraphs and code blocks get breathing room
+   [:p {:margin-bottom "0.75rem"
+        :line-height   "1.7"}]
+   ["p + pre" {:margin-top "0.5rem"}]
+   ["pre + p" {:margin-top "1rem"}]
+   ["pre + pre" {:margin-top "0.75rem"}]
+   [:h4 {:margin-top    "1.25rem"
+         :margin-bottom "0.5rem"}]])
 
 ;; --- Layout ---
 
@@ -228,47 +236,86 @@
 ;; --- Docs ---
 
 (def docs-styles
-  [[:.docs-toc {:background    (:bg-card colors)
-                :border        (str "1px solid " (:border colors))
-                :border-radius "8px"
-                :padding       "1.5rem"
-                :margin-bottom "2rem"}]
-   [:.docs-toc-title {:font-size     "1rem"
-                      :font-weight   "600"
-                      :margin-bottom "0.75rem"}]
-   [:.docs-toc>ul {:list-style  "none"
-                   :columns     "2"}]
-   [:.docs-toc>ul>li {:margin-bottom "0.35rem"}]
-   [:.docs-toc>ul>li>a {:color     (:text-muted colors)
-                        :font-size "0.9rem"}]
-   [:.docs-section {:margin-top "3rem"}]
-   [:.docs-section>h2 {:font-size      "1.5rem"
-                       :padding-bottom "0.5rem"
-                       :border-bottom  (str "1px solid " (:border colors))
-                       :margin-bottom  "1rem"}]
-   [:.docs-section>h3 {:font-size    "1.1rem"
-                       :margin-top   "1.5rem"
-                       :margin-bottom "0.5rem"}]
-   [:.docs-section>p {:color     (:text-muted colors)
-                      :font-size "0.95rem"
-                      :margin-bottom "0.75rem"}]])
+  [[:.docs-layout {:display              "grid"
+                   :grid-template-columns "220px 1fr"
+                   :gap                   "2.5rem"
+                   :margin-top            "2rem"}]
+   (at-media {:max-width "768px"}
+     [:.docs-layout {:grid-template-columns "1fr"}]
+     [:.docs-sidebar {:display "none"}])
+   ;; Sidebar
+   [:.docs-sidebar {:position   "sticky"
+                    :top        "1rem"
+                    :max-height "calc(100vh - 2rem)"
+                    :overflow-y "auto"
+                    :padding-right "1rem"}]
+   [:.docs-sidebar-category {:margin-bottom "1.25rem"}]
+   [:.docs-sidebar-category-title {:font-size   "0.75rem"
+                                   :font-weight "700"
+                                   :text-transform "uppercase"
+                                   :letter-spacing "0.06em"
+                                   :color       (:accent colors)
+                                   :margin-bottom "0.4rem"}]
+   [".docs-sidebar-category-title a" {:color (:accent colors)
+                                      :text-decoration "none"}]
+   [".docs-sidebar-category-title a:hover" {:color (:accent-alt colors)}]
+   [:.docs-sidebar-category>ul {:list-style "none"
+                                :margin     0
+                                :padding    0}]
+   [".docs-sidebar-category ul li" {:margin-bottom "0.2rem"}]
+   [".docs-sidebar-category ul li a" {:color       (:text-muted colors)
+                                      :font-size   "0.85rem"
+                                      :text-decoration "none"
+                                      :padding     "0.15rem 0"
+                                      :display     "block"
+                                      :transition  "color 0.15s"}]
+   [".docs-sidebar-category ul li a:hover" {:color (:text colors)}]
+   ;; Content area
+   [:.docs-content {:min-width 0}]
+   [:.docs-category {:margin-bottom "4rem"}]
+   [:.docs-category-title {:font-size      "1.5rem"
+                           :font-weight    "700"
+                           :padding-bottom "0.75rem"
+                           :border-bottom  (str "1px solid " (:border colors))
+                           :margin-bottom  "2rem"}]
+   [:.docs-section {:margin-bottom  "2.5rem"
+                    :background     (:bg-card colors)
+                    :border         (str "1px solid " (:border colors))
+                    :border-radius  "8px"
+                    :padding        "1.5rem"}]
+   [:.docs-section>h3 {:font-size     "1.15rem"
+                       :font-weight   "600"
+                       :margin-bottom "0.75rem"
+                       :color         (:text colors)}]
+   [:.docs-section>h4 {:font-size     "0.95rem"
+                       :font-weight   "600"
+                       :margin-top    "1.25rem"
+                       :margin-bottom "0.5rem"
+                       :color         (:text colors)}]
+   [".docs-section p" {:color         (:text-muted colors)
+                       :font-size     "0.95rem"
+                       :line-height   "1.7"
+                       :margin-bottom "0.75rem"}]
+   [".docs-section pre" {:margin-bottom "1rem"}]])
 
 ;; --- API reference ---
 
 (def api-styles
-  [[:.api-ns {:margin-top "2.5rem"}]
-   [:.api-ns-title {:font-size      "1.35rem"
-                    :padding-bottom "0.5rem"
+  [[:.api-ns {:margin-top "4rem"}]
+   [:.api-ns-title {:font-size      "1.5rem"
+                    :font-weight    "700"
+                    :padding-bottom "0.75rem"
                     :border-bottom  (str "1px solid " (:border colors))
-                    :margin-bottom  "0.5rem"}]
+                    :margin-bottom  "1.5rem"}]
    [:.api-ns-doc {:color       (:text-muted colors)
                   :font-size   "0.9rem"
-                  :margin-bottom "1rem"}]
+                  :line-height "1.6"
+                  :margin-bottom "1.5rem"}]
    [:.api-var {:background    (:bg-card colors)
                :border        (str "1px solid " (:border colors))
                :border-radius "8px"
-               :padding       "1rem"
-               :margin-bottom "0.75rem"}]
+               :padding       "1.25rem"
+               :margin-bottom "1rem"}]
    [:.api-var-name {:font-family "'JetBrains Mono', monospace"
                     :font-weight "600"
                     :color       (:accent colors)}]
