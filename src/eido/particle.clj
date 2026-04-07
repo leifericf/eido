@@ -29,11 +29,6 @@
   [dim]
   (vec (repeat dim 0.0)))
 
-(defn- dims
-  "Returns the dimensionality of a particle system config (2 or 3)."
-  [config]
-  (count (get-in config [:particle/emitter :emitter/position] [0 0])))
-
 ;; --- seeded PRNG (pure, deterministic) ---
 
 (defn- make-rng
@@ -222,30 +217,25 @@
   [particle]
   (min 1.0 (/ (:age particle) (:lifetime particle))))
 
-(def ^:private sample-curve-memo
-  (memoize
-    (fn [curve t]
-      (cond
-        (nil? curve)       nil
-        (empty? curve)     nil
-        (= 1 (count curve)) (first curve)
-        :else
-        (let [n    (dec (count curve))
-              idx  (* (double t) n)
-              i    (min (int (Math/floor idx)) (dec n))
-              frac (- idx i)
-              a    (nth curve i)
-              b    (nth curve (inc i))]
-          (if (vector? a)
-            (color/lerp a b frac)
-            (anim/lerp a b frac)))))))
-
 (defn- sample-curve
   "Interpolates a value from an over-lifetime curve at position t [0, 1].
   Curves are vectors of stops sampled linearly. Numbers use animate/lerp,
   color vectors use color/lerp."
   [curve t]
-  (sample-curve-memo curve t))
+  (cond
+    (nil? curve)         nil
+    (empty? curve)       nil
+    (= 1 (count curve)) (first curve)
+    :else
+    (let [n    (dec (count curve))
+          idx  (* (double t) n)
+          i    (min (int (Math/floor idx)) (dec n))
+          frac (- idx i)
+          a    (nth curve i)
+          b    (nth curve (inc i))]
+      (if (vector? a)
+        (color/lerp a b frac)
+        (anim/lerp a b frac)))))
 
 ;; --- rendering ---
 
@@ -258,6 +248,14 @@
     (m3/project (:particle/projection config) pos)
     pos))
 
+(defn- particle-depth
+  "Computes depth for a 3D particle using the same metric as render-mesh:
+  dot(position, camera-direction). Returns nil for 2D particles."
+  [particle config]
+  (when (= 3 (count (:pos particle)))
+    (when-let [proj (:particle/projection config)]
+      (m3/dot (:pos particle) (m3/camera-direction proj)))))
+
 (defn- render-particle
   "Converts an internal particle to an Eido node map."
   [particle config]
@@ -268,18 +266,22 @@
         fill    (if-let [palette (:particle/colors config)]
                   (nth palette (mod (:id particle) (count palette)))
                   (or (sample-curve (:particle/color config) lf)
-                      [:color/rgb 255 255 255]))]
-    (case (or (:particle/shape config) :circle)
-      :circle {:node/type     :shape/circle
-               :circle/center [px py]
-               :circle/radius radius
-               :style/fill    fill
-               :node/opacity  opacity}
-      :rect   {:node/type   :shape/rect
-               :rect/xy     [(- px radius) (- py radius)]
-               :rect/size   [(* 2.0 radius) (* 2.0 radius)]
-               :style/fill  fill
-               :node/opacity opacity})))
+                      [:color/rgb 255 255 255]))
+        depth   (particle-depth particle config)
+        base    (case (or (:particle/shape config) :circle)
+                  :circle {:node/type     :shape/circle
+                           :circle/center [px py]
+                           :circle/radius radius
+                           :style/fill    fill
+                           :node/opacity  opacity}
+                  :rect   {:node/type   :shape/rect
+                           :rect/xy     [(- px radius) (- py radius)]
+                           :rect/size   [(* 2.0 radius) (* 2.0 radius)]
+                           :style/fill  fill
+                           :node/opacity opacity})]
+    (if depth
+      (assoc base :node/depth depth)
+      base)))
 
 (defn- render-particles
   "Converts all alive particles to a vector of Eido node maps."

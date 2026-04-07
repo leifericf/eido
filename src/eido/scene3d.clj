@@ -477,7 +477,7 @@
                           (sort-by :depth))]
       {:node/type :group
        :group/children
-       (mapv (fn [{:keys [face facing]}]
+       (mapv (fn [{:keys [face facing depth]}]
                (let [face-style (or (:face/style face) base-style)
                      ;; For back-facing faces (when cull-back is false),
                      ;; flip normal so shading uses the camera-facing side
@@ -487,8 +487,38 @@
                      shaded     (shade-face-style face-style normal light)
                      projected  (mapv #(m/project projection %) (:face/vertices face))
                      expanded   (expand-polygon projected)]
-                 (merge (scene/polygon expanded) shaded)))
+                 (assoc (merge (scene/polygon expanded) shaded)
+                   :node/depth depth)))
              processed)})))
+
+;; --- depth sorting ---
+
+(defn- flatten-node
+  "Flattens a node for depth sorting. Groups are expanded to their children;
+  leaf nodes are returned as single-element vectors."
+  [node]
+  (if (= :group (:node/type node))
+    (:group/children node)
+    [node]))
+
+(defn depth-sort
+  "Sorts a mixed collection of nodes by :node/depth for correct 3D occlusion.
+  Accepts any number of node collections — vectors of nodes, individual group
+  nodes (from render-mesh), or single nodes.
+
+  Groups are flattened into their children before sorting. All nodes are
+  sorted smallest-depth-first (farthest from camera drawn first — painter's
+  algorithm). Nodes without :node/depth are placed at the back.
+
+  Returns a vector of sorted nodes ready for :image/nodes."
+  [& node-colls]
+  (let [nodes (->> node-colls
+                   (mapcat (fn [coll]
+                             (if (map? coll)
+                               (flatten-node coll)
+                               (mapcat flatten-node coll))))
+                   (vec))]
+    (vec (sort-by #(get % :node/depth Double/NEGATIVE_INFINITY) nodes))))
 
 ;; --- convenience functions ---
 

@@ -1880,11 +1880,10 @@ Gentle snow drifting over moonlit mountain silhouettes.
 
 ### 3D Fountain with Orbiting Camera
 
-Particles simulated in 3D space, projected through a perspective camera that orbits the scene. Uses `states` and `render-frame` to re-project each frame with a different camera angle. Static 3D pillars make the orbit visible.
+Particles simulated in 3D space, projected through a perspective camera that orbits the scene. Uses `states` and `render-frame` to re-project each frame with a different camera angle. `depth-sort` interleaves particles with mesh faces so pillars correctly occlude particles behind them.
 
 ```clojure
-(require '[eido.scene3d :as s3d]
-         '[eido.math3d :as m3])
+(require '[eido.scene3d :as s3d])
 
 (let [config {:particle/emitter {:emitter/type :circle
                                   :emitter/position [0.0 0.0 0.0]
@@ -1933,11 +1932,13 @@ Particles simulated in 3D space, projected through a perspective camera that orb
                         pillar-positions)]
           {:image/size [400 400]
            :image/background [:color/rgb 8 8 20]
-           :image/nodes (into (vec pillars) particles)})))
+           ;; depth-sort interleaves particles and mesh faces
+           ;; so pillars occlude particles behind them
+           :image/nodes (s3d/depth-sort pillars particles)})))
     {:output "fountain-3d.gif" :fps 30}))
 ```
 
-<img src="images/particle-fountain-3d.gif" width="300" alt="3D fountain with orbiting camera and pillars" />
+<img src="images/particle-fountain-3d.gif" width="300" alt="3D fountain with orbiting camera and depth-sorted pillars" />
 
 ### Volcanic Eruption
 
@@ -2194,6 +2195,7 @@ No special primitive — composable from blur + offset + opacity:
 | `eido.particle/simulate` | Run particle simulation, returns lazy seq of node vectors |
 | `eido.particle/states` | Run simulation, returns lazy seq of raw particle states |
 | `eido.particle/render-frame` | Render a state to nodes (optional projection override) |
+| `eido.scene3d/depth-sort` | Sort mixed nodes by depth for correct 3D occlusion |
 | `eido.particle/with-position` | Reposition a particle system config |
 | `eido.particle/with-seed` | Change the random seed of a config |
 | `eido.particle/fire` | Fire preset (data map) |

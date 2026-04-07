@@ -272,7 +272,10 @@
       (is (pos? (count (:group/children result)))))
     (testing "each child is a path"
       (doseq [child (:group/children result)]
-        (is (= :shape/path (:node/type child)))))))
+        (is (= :shape/path (:node/type child)))))
+    (testing "each child carries :node/depth"
+      (doseq [child (:group/children result)]
+        (is (number? (:node/depth child)))))))
 
 (deftest render-mesh-applies-style-test
   (let [proj (s3d/isometric {:scale 50 :origin [200 200]})
@@ -343,3 +346,55 @@
         result (s3d/sphere proj [0 0 0] 1 {})]
     (is (= :group (:node/type result)))
     (is (pos? (count (:group/children result))))))
+
+;; --- depth-sort ---
+
+(deftest depth-sort-orders-by-depth-test
+  (testing "nodes are sorted farthest-first by :node/depth"
+    (let [a {:node/type :shape/circle :circle/center [0 0] :circle/radius 1
+             :style/fill [:color/rgb 255 0 0] :node/depth 5.0}
+          b {:node/type :shape/circle :circle/center [0 0] :circle/radius 1
+             :style/fill [:color/rgb 0 255 0] :node/depth 2.0}
+          c {:node/type :shape/circle :circle/center [0 0] :circle/radius 1
+             :style/fill [:color/rgb 0 0 255] :node/depth -1.0}
+          sorted (s3d/depth-sort [a b c])]
+      (is (= [-1.0 2.0 5.0] (mapv :node/depth sorted))))))
+
+(deftest depth-sort-flattens-groups-test
+  (testing "groups are flattened and interleaved with other nodes"
+    (let [group {:node/type :group
+                 :group/children [{:node/type :shape/path :node/depth 3.0
+                                   :path/commands []}
+                                  {:node/type :shape/path :node/depth 1.0
+                                   :path/commands []}]}
+          particles [{:node/type :shape/circle :node/depth 2.0
+                      :circle/center [0 0] :circle/radius 1
+                      :style/fill [:color/rgb 0 0 0]}]
+          sorted (s3d/depth-sort group particles)]
+      (is (= 3 (count sorted)))
+      (is (= [1.0 2.0 3.0] (mapv :node/depth sorted)))
+      (is (= [:shape/path :shape/circle :shape/path]
+             (mapv :node/type sorted))))))
+
+(deftest depth-sort-nodes-without-depth-test
+  (testing "nodes without :node/depth are placed at the back"
+    (let [with-depth {:node/type :shape/circle :node/depth 1.0
+                      :circle/center [0 0] :circle/radius 1
+                      :style/fill [:color/rgb 0 0 0]}
+          without    {:node/type :shape/circle
+                      :circle/center [0 0] :circle/radius 1
+                      :style/fill [:color/rgb 0 0 0]}
+          sorted (s3d/depth-sort [with-depth without])]
+      (is (nil? (:node/depth (first sorted))))
+      (is (= 1.0 (:node/depth (second sorted)))))))
+
+(deftest depth-sort-multiple-collections-test
+  (testing "accepts multiple collections as separate arguments"
+    (let [a [{:node/type :shape/circle :node/depth 3.0
+              :circle/center [0 0] :circle/radius 1
+              :style/fill [:color/rgb 0 0 0]}]
+          b [{:node/type :shape/circle :node/depth 1.0
+              :circle/center [0 0] :circle/radius 1
+              :style/fill [:color/rgb 0 0 0]}]
+          sorted (s3d/depth-sort a b)]
+      (is (= [1.0 3.0] (mapv :node/depth sorted))))))
