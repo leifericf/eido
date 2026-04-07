@@ -36,7 +36,7 @@ If it cannot be represented as plain data, it probably should not be in the libr
 Add eido as a git dependency in your `deps.edn`:
 
 ```clojure
-io.github.leifericf/eido {:git/tag "v1.0.0-alpha2" :git/sha "c60ee7f"}
+io.github.leifericf/eido {:git/tag "v1.0.0-alpha3" :git/sha "2b7db65"}
 ```
 
 ## Quick Start
