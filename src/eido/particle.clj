@@ -320,7 +320,7 @@
                        {:force/type :wind :force/direction [1 0] :force/strength 8}]
    :particle/size     [2 3 4 3 2]
    :particle/opacity  [0.0 0.7 0.8 0.7 0.0]
-   :particle/color    [[:color/rgba 255 255 255 230]]
+   :particle/color    [[:color/rgba 255 255 255 0.9]]
    :particle/shape    :circle
    :particle/seed     42})
 

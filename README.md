@@ -1638,6 +1638,172 @@ A shaded 3D planet with 2D orbital ellipses, trailing moons, and a twinkling sta
 
 <img src="images/mixed-solar-system.gif" width="300" alt="Solar system — 3D planet with 2D orbits and moons" />
 
+## Particle Gallery
+
+Eido includes a data-driven particle system in `eido.particle`. Particle effects are configured as plain maps — emitter shape, forces, and over-lifetime curves — and `simulate` returns a lazy sequence of node vectors that compose naturally with any other scene elements.
+
+### Campfire
+
+Fire and ember particles over log silhouettes with a pulsing glow.
+
+```clojure
+(require '[eido.particle :as particle]
+         '[eido.animate :as anim])
+
+(let [;; Fire rising from the base
+      fire-frames  (vec (particle/simulate
+                          (particle/with-position particle/fire [200 320])
+                          60 {:fps 30}))
+      ;; Slow-rising embers with a separate seed
+      ember-config (-> particle/sparks
+                       (particle/with-position [200 325])
+                       (particle/with-seed 77)
+                       (assoc :particle/emitter
+                              {:emitter/type :area
+                               :emitter/position [200 325]
+                               :emitter/size [60 8]
+                               :emitter/rate 8
+                               :emitter/direction [0 -1]
+                               :emitter/spread 0.6
+                               :emitter/speed [20 60]})
+                       (assoc :particle/lifetime [1.0 3.0])
+                       (assoc :particle/size [1 2 1])
+                       (assoc :particle/opacity [0.0 1.0 0.8 0.0])
+                       (assoc :particle/color [[:color/rgb 255 200 50]
+                                               [:color/rgb 255 120 20]
+                                               [:color/rgb 200 60 0]])
+                       (assoc :particle/forces
+                              [{:force/type :gravity
+                                :force/acceleration [0 -20]}
+                               {:force/type :wind
+                                :force/direction [1 0]
+                                :force/strength 5}]))
+      ember-frames (vec (particle/simulate ember-config 60 {:fps 30}))]
+  (eido/render
+    (anim/frames 60
+      (fn [t]
+        (let [i    (int (* t 59))
+              glow (+ 0.15 (* 0.05 (Math/sin (* t 8 Math/PI))))]
+          {:image/size [400 400]
+           :image/background [:color/rgb 8 5 15]
+           :image/nodes
+           (into
+             [{:node/type :shape/circle
+               :circle/center [200 330]
+               :circle/radius (+ 80 (* 20 (Math/sin (* t 6 Math/PI))))
+               :style/fill [:color/rgb 255 80 0]
+               :node/opacity glow}
+              {:node/type :shape/rect
+               :rect/xy [155 335] :rect/size [90 12]
+               :style/fill [:color/rgb 30 15 5]
+               :node/transform [[:transform/rotate -0.15]]}
+              {:node/type :shape/rect
+               :rect/xy [165 340] :rect/size [80 10]
+               :style/fill [:color/rgb 25 12 3]
+               :node/transform [[:transform/rotate 0.1]]}]
+             (concat (nth fire-frames i)
+                     (nth ember-frames i)))})))
+    {:output "campfire.gif" :fps 30}))
+```
+
+<img src="images/particle-campfire.gif" width="300" alt="Campfire — fire and ember particles with glowing logs" />
+
+### Fireworks
+
+Three staggered bursts in red, blue, and gold — each a spark preset with custom colors.
+
+```clojure
+(let [make-burst
+      (fn [pos seed colors]
+        (vec (particle/simulate
+               (-> particle/sparks
+                   (particle/with-position pos)
+                   (particle/with-seed seed)
+                   (assoc :particle/emitter
+                          {:emitter/type :point
+                           :emitter/position pos
+                           :emitter/burst 60
+                           :emitter/direction [0 -1]
+                           :emitter/spread Math/PI
+                           :emitter/speed [80 250]})
+                   (assoc :particle/lifetime [0.5 1.5])
+                   (assoc :particle/size [3 4 2 1])
+                   (assoc :particle/opacity [1.0 0.9 0.5 0.0])
+                   (assoc :particle/color colors))
+               90 {:fps 30})))
+      burst1 (make-burst [120 150] 11
+               [[:color/rgb 255 100 100] [:color/rgb 255 50 50]
+                [:color/rgb 200 0 0]])
+      burst2 (make-burst [280 120] 22
+               [[:color/rgb 100 200 255] [:color/rgb 50 150 255]
+                [:color/rgb 0 80 200]])
+      burst3 (make-burst [200 180] 33
+               [[:color/rgb 255 220 80] [:color/rgb 255 180 0]
+                [:color/rgb 200 100 0]])]
+  (eido/render
+    (anim/frames 90
+      (fn [t]
+        (let [i (int (* t 89))]
+          {:image/size [400 400]
+           :image/background [:color/rgb 5 5 15]
+           :image/nodes
+           (into []
+             (concat (nth burst1 i)
+                     (if (>= i 10) (nth burst2 (- i 10)) [])
+                     (if (>= i 20) (nth burst3 (- i 20)) [])))})))
+    {:output "fireworks.gif" :fps 30}))
+```
+
+<img src="images/particle-fireworks.gif" width="300" alt="Fireworks — staggered red, blue, and gold bursts" />
+
+### Snowfall
+
+Gentle snow drifting over moonlit mountain silhouettes.
+
+```clojure
+(let [snow-config (-> particle/snow
+                      (assoc-in [:particle/emitter :emitter/position] [-20 -10])
+                      (assoc-in [:particle/emitter :emitter/position-to] [420 -10])
+                      (assoc :particle/max-count 200))
+      snow-frames (vec (particle/simulate snow-config 90 {:fps 30}))
+      mountain1   [[-10 400] [50 280] [120 310] [160 240] [220 290]
+                   [260 220] [300 260] [350 200] [410 300] [410 400]]
+      mountain2   [[-10 400] [30 320] [100 340] [180 280] [250 310]
+                   [320 260] [380 300] [410 340] [410 400]]]
+  (eido/render
+    (anim/frames 90
+      (fn [t]
+        (let [i (int (* t 89))]
+          {:image/size [400 400]
+           :image/background [:color/rgb 15 20 40]
+           :image/nodes
+           (into
+             [{:node/type :shape/path
+               :path/commands (into [[:move-to (first mountain2)]]
+                                (conj (mapv (fn [p] [:line-to p])
+                                            (rest mountain2))
+                                      [:close]))
+               :style/fill [:color/rgb 25 35 55]}
+              {:node/type :shape/path
+               :path/commands (into [[:move-to (first mountain1)]]
+                                (conj (mapv (fn [p] [:line-to p])
+                                            (rest mountain1))
+                                      [:close]))
+               :style/fill [:color/rgb 35 45 70]}
+              {:node/type :shape/circle
+               :circle/center [320 80] :circle/radius 25
+               :style/fill [:color/rgb 220 225 240]
+               :node/opacity 0.8}
+              {:node/type :shape/circle
+               :circle/center [320 80] :circle/radius 50
+               :style/fill [:color/rgb 180 190 220]
+               :node/opacity 0.1}]
+             (nth snow-frames i))})))
+    {:output "snowfall.gif" :fps 30}))
+```
+
+<img src="images/particle-snowfall.gif" width="300" alt="Snowfall — snow drifting over moonlit mountains" />
+
 ## Compositing
 
 Groups with `:group/composite` render children to an off-screen buffer, then composite the buffer onto the canvas. Without the key, groups behave as before (flattened, zero cost).
@@ -1840,6 +2006,15 @@ No special primitive — composable from blur + offset + opacity:
 | `eido.animate/ease-{in,out,in-out}-elastic` | Elastic/spring easing |
 | `eido.animate/ease-{in,out,in-out}-bounce` | Bounce easing |
 | `eido.animate/stagger` | Per-element staggered progress |
+| `eido.particle/simulate` | Run particle simulation, returns lazy seq of node vectors |
+| `eido.particle/with-position` | Reposition a particle system config |
+| `eido.particle/with-seed` | Change the random seed of a config |
+| `eido.particle/fire` | Fire preset (data map) |
+| `eido.particle/confetti` | Confetti burst preset (data map) |
+| `eido.particle/snow` | Snowfall preset (data map) |
+| `eido.particle/sparks` | Sparks burst preset (data map) |
+| `eido.particle/smoke` | Smoke preset (data map) |
+| `eido.particle/fountain` | Fountain preset (data map) |
 
 ## Running Tests
 
