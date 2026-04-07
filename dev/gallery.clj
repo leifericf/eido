@@ -627,8 +627,8 @@
 ;; --- 17. Shape Breath — morphing circle ↔ star ---
 
 (defn shape-breath []
-  (let [circle-cmds (:path/commands (scene/regular-polygon [200.0 200.0] 80.0 60))
-        star-cmds   (:path/commands (scene/star [200.0 200.0] 100.0 40.0 8))
+  (let [circle-cmds (:path/commands (scene/regular-polygon [200.0 200.0] 140.0 60))
+        star-cmds   (:path/commands (scene/star [200.0 200.0] 170.0 65.0 8))
         frames
         (anim/frames 40
           (fn [t]
@@ -655,61 +655,67 @@
 
 (defn wavy-text []
   (eido/render
-    {:image/size [500 250]
+    {:image/size [500 300]
      :image/background [:color/rgb 15 10 30]
      :image/nodes
      [{:node/type :group
-       :group/warp {:type :wave :axis :y :amplitude 20 :wavelength 120}
+       :group/warp {:type :twist :center [250 150] :amount 0.08}
        :group/children
-       [(scene/text-outline "WAVES" {:font/family "Serif" :font/size 100
-                                      :font/weight :bold} [30 160])
-        (-> (scene/text-outline "WAVES" {:font/family "Serif" :font/size 100
-                                          :font/weight :bold} [30 160])
-            (assoc :style/fill {:gradient/type :linear
-                                :gradient/from [0 -100]
-                                :gradient/to [500 0]
-                                :gradient/stops [[0.0 [:color/rgb 255 50 100]]
+       [(-> (scene/text-outline "TWIST" {:font/family "Serif" :font/size 100
+                                          :font/weight :bold} [70 190])
+            (assoc :style/fill {:gradient/type :radial
+                                :gradient/center [250 -50]
+                                :gradient/radius 300
+                                :gradient/stops [[0.0 [:color/rgb 255 100 200]]
                                                  [0.5 [:color/rgb 255 200 50]]
-                                                 [1.0 [:color/rgb 50 200 255]]]}))]}]}
+                                                 [1.0 [:color/rgb 50 200 255]]]})
+            (assoc :style/stroke {:color [:color/rgba 255 255 255 0.3] :width 1}))]}]}
     {:output "images/art-wavy-text.png"}))
 
 ;; --- 19. Landscape Typography — text clip mask ---
 
 (defn landscape-type []
   (eido/render
-    {:image/size [600 250]
-     :image/background [:color/rgb 15 15 25]
+    {:image/size [600 300]
+     :image/background [:color/rgb 10 10 20]
      :image/nodes
-     [(scene/text-clip "NATURE"
-        {:font/family "SansSerif" :font/size 150 :font/weight :bold}
-        [15 185]
-        [;; Sky gradient (local coords: text baseline at y=0, glyphs go up)
+     [(scene/text-clip "EIDO"
+        {:font/family "SansSerif" :font/size 220 :font/weight :bold}
+        [30 230]
+        [;; Sunset sky gradient
          {:node/type :shape/rect
-          :rect/xy [-20.0 -180.0]
-          :rect/size [620.0 200.0]
+          :rect/xy [-40.0 -250.0]
+          :rect/size [640.0 300.0]
           :style/fill {:gradient/type :linear
-                       :gradient/from [0 -180]
-                       :gradient/to [0 0]
-                       :gradient/stops [[0.0 [:color/rgb 20 20 60]]
-                                        [0.4 [:color/rgb 80 40 120]]
-                                        [0.7 [:color/rgb 200 100 50]]
-                                        [1.0 [:color/rgb 40 80 30]]]}}
-         ;; Stars via scatter
+                       :gradient/from [0 -220]
+                       :gradient/to [0 10]
+                       :gradient/stops [[0.0 [:color/rgb 10 10 40]]
+                                        [0.3 [:color/rgb 40 20 80]]
+                                        [0.6 [:color/rgb 200 80 40]]
+                                        [0.85 [:color/rgb 255 180 60]]
+                                        [1.0 [:color/rgb 255 230 150]]]}}
+         ;; Stars in the sky portion
          {:node/type :scatter
           :scatter/shape {:node/type :shape/circle
                           :circle/center [0.0 0.0]
-                          :circle/radius 1.5
-                          :style/fill [:color/rgb 255 255 220]}
-          :scatter/positions (scatter/poisson-disk -10 -180 610 120 25 42)
-          :scatter/jitter {:x 3 :y 3 :seed 11}}])]}
+                          :circle/radius 2.0
+                          :style/fill [:color/rgb 255 255 230]}
+          :scatter/positions (scatter/poisson-disk -30 -230 640 150 20 42)
+          :scatter/jitter {:x 2 :y 2 :seed 11}}
+         ;; Flow field as grass at the bottom
+         {:node/type :flow-field
+          :flow/bounds [-30 -60 640 70]
+          :flow/opts {:density 5 :steps 15 :step-length 1.5
+                      :noise-scale 0.02 :seed 77}
+          :style/stroke {:color [:color/rgba 30 60 20 0.6] :width 0.8}}])]}
     {:output "images/art-landscape-type.png"}))
 
 ;; --- 20. Venn Booleans — path boolean operations ---
 
 (defn venn-booleans []
-  (let [circle-a (:path/commands (scene/regular-polygon [160.0 180.0] 100.0 60))
-        circle-b (:path/commands (scene/regular-polygon [260.0 180.0] 100.0 60))
-        circle-c (:path/commands (scene/regular-polygon [210.0 110.0] 100.0 60))
+  (let [circle-a (:path/commands (scene/regular-polygon [160.0 200.0] 100.0 60))
+        circle-b (:path/commands (scene/regular-polygon [260.0 200.0] 100.0 60))
+        circle-c (:path/commands (scene/regular-polygon [210.0 130.0] 100.0 60))
         ;; Boolean regions
         ab-only (path/intersection circle-a circle-b)
         ac-only (path/intersection circle-a circle-c)
@@ -738,7 +744,7 @@
 
 (defn organic-mandala []
   (let [branch-cmds (lsystem/lsystem->path-cmds
-                      "F" {"F" "F[-F]F[+F]F"} 3 25.7 4.0 [300 300] -90.0)
+                      "F" {"F" "F[-F]F[+F]F"} 3 25.7 8.0 [300 300] -90.0)
         n 10
         overrides (vary/by-index n
                     (fn [i] {:style/stroke
