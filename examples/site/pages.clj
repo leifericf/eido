@@ -21,7 +21,7 @@
    {:title "One function"
     :desc  "render takes a scene (or a sequence of scenes) and produces output. That's the entire API."}
    {:title "Description, not instruction"
-    :desc  "You declare what the image contains — eido decides how to draw it."}
+    :desc  "You declare what the image contains — Eido decides how to draw it."}
    {:title "Animations are sequences"
     :desc  "60 frames = 60 scenes in a list. No timeline, no keyframes, no mutable state."}
    {:title "Particle simulation"
@@ -37,7 +37,7 @@
   "Friendly Quick Start walkthrough for the landing page."
   []
   [:div
-   [:p "In eido, an image is just a description — a plain data structure that says what the image contains. Here's a red circle on a light background:"]
+   [:p "In Eido, an image is just a description — a plain data structure that says what the image contains. Here's a red circle on a light background:"]
    [:pre [:code
           "{:image/size [400 400]                       ;; 400x400 pixels
  :image/background [:color/rgb 245 243 238]  ;; warm off-white
@@ -47,21 +47,23 @@
    :circle/radius 120
    :style/fill    [:color/rgb 200 50 50]}]}  ;; red fill"]]
    [:p "That's it — no drawing commands, no canvas API, no mutable state. You describe "
-    [:em "what you see"] ", and eido renders it. To produce an image file:"]
+    [:em "what you see"] ", and Eido renders it. To produce an image file:"]
    [:pre [:code
           "(eido/render scene {:output \"circle.png\"})"]]
    [:p "Want animation? Return a different scene for each frame. Here's a circle that grows and shifts color over 60 frames:"]
    [:pre [:code
           "(def frames
   (anim/frames 60
-    (fn [t]                                ;; t goes from 0.0 to 1.0
+    (fn [t]                             ;; t goes from 0.0 to 1.0
       {:image/size [400 400]
        :image/background [:color/rgb 30 30 40]
        :image/nodes
        [{:node/type     :shape/circle
          :circle/center [200 200]
-         :circle/radius (* 150 t)          ;; grows over time
-         :style/fill    [:color/hsl (* 360 t) 0.8 0.5]}]})))  ;; hue shifts
+         :circle/radius (* 150 t)       ;; grows over time
+         :style/fill [:color/hsl        ;; hue shifts through
+                      (* 360 t)         ;;   the rainbow
+                      0.8 0.5]}]})))
 
 (eido/render frames {:output \"grow.gif\" :fps 30})"]]
    [:p "Every example in the " [:a {:href "./gallery/index.html"} "gallery"]
@@ -84,7 +86,7 @@
       :title "Shapes"
       :content
       [:div
-       [:p "Everything in eido starts with shapes. You describe a shape as a map — a collection of key-value pairs that says "
+       [:p "Everything in Eido starts with shapes. You describe a shape as a map — a collection of key-value pairs that says "
         [:em "what"] " the shape is, " [:em "where"] " it goes, and " [:em "how"] " it looks. Eido takes care of drawing it."]
        [:p "Here are the basic building blocks:"]
        [:h4 "Rectangle"]
@@ -154,7 +156,7 @@
       :title "Text"
       :content
       [:div
-       [:p "Text in eido is not rasterized pixels — it's converted to vector paths, just like any other shape. That means text works with everything: gradient fills, strokes, transforms, clipping, even 3D extrusion."]
+       [:p "Text in Eido is not rasterized pixels — it's converted to vector paths, just like any other shape. That means text works with everything: gradient fills, strokes, transforms, clipping, even 3D extrusion."]
        [:h4 "Simple text"]
        [:pre [:code
               "{:node/type   :shape/text
@@ -265,7 +267,7 @@
       :title "Pattern Fills"
       :content
       [:div
-       [:p "Beyond solid colors and gradients, eido supports texture-like fills that give shapes a hand-crafted look:"]
+       [:p "Beyond solid colors and gradients, Eido supports texture-like fills that give shapes a hand-crafted look:"]
        [:h4 "Hatching"]
        [:p "Parallel lines drawn across a shape — like pen-and-ink cross-hatching:"]
        [:pre [:code
@@ -421,7 +423,7 @@
       :title "Particles"
       :content
       [:div
-       [:p "Particle systems simulate many small objects (sparks, snowflakes, smoke) moving under physics forces. You configure the behavior as data — emitter position, lifetime, gravity, wind — and eido simulates the result deterministically:"]
+       [:p "Particle systems simulate many small objects (sparks, snowflakes, smoke) moving under physics forces. You configure the behavior as data — emitter position, lifetime, gravity, wind — and Eido simulates the result deterministically:"]
        [:pre [:code
               "(require '[eido.particle :as particle])
 
@@ -449,7 +451,7 @@
       :title "Creating Animations"
       :content
       [:div
-       [:p "An animation in eido is just a sequence of scenes — one per frame. There's no timeline, no keyframe system, no mutable state. You write a function that takes a progress value "
+       [:p "An animation in Eido is just a sequence of scenes — one per frame. There's no timeline, no keyframe system, no mutable state. You write a function that takes a progress value "
         [:code "t"] " (from 0 to 1) and returns a scene. Eido calls it once per frame:"]
        [:pre [:code
               "(require '[eido.animate :as anim])

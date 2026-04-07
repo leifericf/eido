@@ -122,19 +122,32 @@
 ;; --- Features (landing page) ---
 
 (def feature-styles
-  [[:.features {:display   "grid"
-                :grid-template-columns "repeat(auto-fit, minmax(280px, 1fr))"
-                :gap       "1.5rem"
-                :margin    "3rem 0"}]
-   [:.feature {:background    (:bg-card colors)
-               :border        (str "1px solid " (:border colors))
-               :border-radius "8px"
-               :padding       "1.5rem"}]
-   [:.feature-title {:font-size   "1rem"
+  [[:.features {:display               "grid"
+                :grid-template-columns  "1fr 1fr"
+                :gap                    "0"
+                :margin                 "3rem 0"
+                :border-top             (str "1px solid " (:border colors))}]
+   (at-media {:max-width "600px"}
+     [:.features {:grid-template-columns "1fr"}])
+   [:.feature {:padding       "1.25rem 0"
+               :border-bottom (str "1px solid " (:border colors))
+               :display       "flex"
+               :gap           "1rem"
+               :align-items   "baseline"}]
+   [".features > .feature:nth-child(odd)" {:padding-right "2rem"}]
+   [".features > .feature:nth-child(even)" {:padding-left "2rem"
+                                            :border-left  (str "1px solid " (:border colors))}]
+   [:.feature-marker {:color       (:accent colors)
+                      :font-size   "1.1rem"
+                      :line-height "1"
+                      :flex-shrink "0"}]
+   [:.feature-body {:flex 1}]
+   [:.feature-title {:font-size   "0.95rem"
                      :font-weight "600"
-                     :margin-bottom "0.5rem"}]
+                     :margin-bottom "0.2rem"}]
    [:.feature-desc {:color     (:text-muted colors)
-                    :font-size "0.9rem"}]])
+                    :font-size "0.85rem"
+                    :line-height "1.5"}]])
 
 ;; --- Gallery ---
 
@@ -152,10 +165,26 @@
                     :border        (str "1px solid " (:border colors))
                     :border-radius "8px"
                     :overflow      "hidden"}]
-   [:.gallery-card>img {:width      "100%"
-                        :height     "220px"
-                        :object-fit "cover"
-                        :display    "block"}]
+   [:.gallery-card-img-wrap {:position "relative"
+                             :cursor   "pointer"
+                             :overflow "hidden"}]
+   [".gallery-card-img-wrap img" {:width      "100%"
+                                  :height     "220px"
+                                  :object-fit "cover"
+                                  :display    "block"
+                                  :transition "transform 0.2s"}]
+   [".gallery-card-img-wrap:hover img" {:transform "scale(1.03)"}]
+   [:.gallery-card-expand {:position      "absolute"
+                           :top           "0.5rem"
+                           :right         "0.5rem"
+                           :background    "rgba(0,0,0,0.55)"
+                           :color         "#fff"
+                           :border-radius "4px"
+                           :padding       "0.3rem"
+                           :display       "flex"
+                           :opacity       0
+                           :transition    "opacity 0.2s"}]
+   [".gallery-card-img-wrap:hover .gallery-card-expand" {:opacity 1}]
    [:.gallery-card-body {:padding "1rem"}]
    [:.gallery-card-title {:font-size   "1rem"
                           :font-weight "600"}]
@@ -207,7 +236,7 @@
    ["#code-lightbox-inner" {:background    (:bg-code colors)
                             :border        (str "1px solid " (:border colors))
                             :border-radius "10px"
-                            :width         "min(90vw, 800px)"
+                            :width         "min(94vw, 1100px)"
                             :max-height    "85vh"
                             :display       "flex"
                             :flex-direction "column"

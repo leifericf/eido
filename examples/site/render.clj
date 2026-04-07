@@ -16,13 +16,19 @@
 
 (def highlight-clj-js
   "function highlightClj(code) {
-  return code
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/(;;[^\\n]*)/g, '<span class=\"clj-comment\">$1</span>')
-    .replace(/(\"(?:[^\"\\\\]|\\\\.)*\")/g, '<span class=\"clj-string\">$1</span>')
-    .replace(/(:[a-zA-Z][a-zA-Z0-9_\\-.*+!?\\/<>]*)/g, '<span class=\"clj-keyword\">$1</span>')
-    .replace(/\\b(\\d+\\.?\\d*)\\b/g, '<span class=\"clj-number\">$1</span>')
-    .replace(/(?<=\\()\\b(defn-?|def|let|fn|if|when|cond|do|loop|recur|for|doseq|mapv|map|filter|reduce|into|concat|vec|assoc|merge|require|ns)\\b/g, '<span class=\"clj-special\">$1</span>');
+  // HTML-escape first
+  code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Extract comments and strings into placeholders so they don't interfere
+  var tokens = [];
+  code = code.replace(/(;;[^\\n]*)/g, function(m) { tokens.push('<span class=\"clj-comment\">' + m + '</span>'); return '\\x00T' + (tokens.length-1) + 'T\\x00'; });
+  code = code.replace(/(\"(?:[^\"\\\\]|\\\\.)*\")/g, function(m) { tokens.push('<span class=\"clj-string\">' + m + '</span>'); return '\\x00T' + (tokens.length-1) + 'T\\x00'; });
+  // Highlight remaining tokens
+  code = code.replace(/(:[a-zA-Z][a-zA-Z0-9_\\-.*+!?\\/<>]*)/g, '<span class=\"clj-keyword\">$1</span>');
+  code = code.replace(/\\b(\\d+\\.?\\d*)\\b/g, '<span class=\"clj-number\">$1</span>');
+  code = code.replace(/(?<=\\()\\b(defn-?|def|let|fn|if|when|cond|do|loop|recur|for|doseq|mapv|map|filter|reduce|into|concat|vec|assoc|merge|require|ns)\\b/g, '<span class=\"clj-special\">$1</span>');
+  // Restore placeholders
+  code = code.replace(/\\x00T(\\d+)T\\x00/g, function(_, i) { return tokens[parseInt(i)]; });
+  return code;
 }")
 
 
@@ -159,7 +165,7 @@
              [:li [:a {:href "https://github.com/leifericf/eido"} "GitHub"]]]]
            [:main body]
            [:footer.footer
-            [:p "Eido — declarative, data-driven image language for Clojure"]]
+            [:p "Eido (from Greek " [:em "eido"] ", \"I see\") — describe what you see as plain data"]]
            ]]]))))
 
 ;; --- Landing page ---
@@ -172,6 +178,7 @@
       [:section.hero
        [:h1.hero-title "Eido"]
        [:p.hero-tagline "Describe what you see as plain data"]
+       [:p {:style "color: #6a6a7a; font-size: 0.85rem; margin-top: 0.3rem; font-style: italic;"} "From Greek " [:em "eido"] " — \"I see\""]
        [:div.hero-images
         (for [img hero-images]
           [:img {:src (str "./images/" img) :alt "" :loading "lazy"}])]
@@ -181,8 +188,10 @@
       [:section.features
        (for [{:keys [title desc]} (pages/features)]
          [:div.feature
-          [:div.feature-title title]
-          [:div.feature-desc desc]])]
+          [:div.feature-marker "\u2022"]
+          [:div.feature-body
+           [:div.feature-title title]
+           [:div.feature-desc desc]]])]
       [:section {:style "margin-top: 3rem"}
        [:h2 {:style "font-size: 1.5rem; margin-bottom: 1rem"} "How it works"]
        (pages/quick-start-content)]
@@ -203,10 +212,17 @@ document.querySelectorAll('pre code').forEach(function(el) {
   (let [src (example-source example)
         card-id (str "src-" (hash (:output example)))]
     [:div.gallery-card
-     [:img {:src (str "../images/" (:output example))
-            :alt (:title example)
-            :loading "lazy"
-            :onclick "openLightbox(this.src, this.alt)"}]
+     [:div.gallery-card-img-wrap {:onclick "openLightbox(this.querySelector('img').src, this.querySelector('img').alt)"}
+      [:img {:src (str "../images/" (:output example))
+             :alt (:title example)
+             :loading "lazy"}]
+      [:div.gallery-card-expand
+       [:svg {:width "18" :height "18" :viewBox "0 0 24 24" :fill "none"
+              :stroke "currentColor" :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"}
+        [:polyline {:points "15 3 21 3 21 9"}]
+        [:polyline {:points "9 21 3 21 3 15"}]
+        [:line {:x1 "21" :y1 "3" :x2 "14" :y2 "10"}]
+        [:line {:x1 "3" :y1 "21" :x2 "10" :y2 "14"}]]]]
      [:div.gallery-card-body
       [:div.gallery-card-title (:title example)]
       [:div.gallery-card-desc (:desc example)]
@@ -299,7 +315,7 @@ document.addEventListener('keydown', function(e) {
   (let [categories (pages/docs-categories)]
     (html-page {:title "Docs" :active-page :docs :depth 1}
       [:h1.page-title "Documentation"]
-      [:p.page-subtitle "Feature reference for eido's declarative image language."]
+      [:p.page-subtitle "Feature reference for Eido's declarative image language."]
       [:div.docs-layout
        [:nav.docs-sidebar
         (for [{:keys [category id sections]} categories]
