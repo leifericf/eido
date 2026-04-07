@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [compile])
   (:require
     [eido.color :as color]
+    [eido.text :as text]
     [eido.validate :as validate]))
 
 (defn- resolve-gradient
@@ -164,6 +165,17 @@
       [(cond-> (assoc (compile-node styled-node) :transforms transforms)
          (:clip ctx) (assoc :clip (:clip ctx)))])))
 
+(defn- expand-node
+  "Expands high-level nodes into primitive nodes.
+  Text nodes become groups of path nodes. Other nodes pass through."
+  [node]
+  (case (:node/type node)
+    :shape/text         (text/text-node->group node)
+    :shape/text-glyphs  (text/text-glyphs-node->group node)
+    :shape/text-on-path (text/text-on-path-node->group node)
+    :group              (update node :group/children #(mapv expand-node %))
+    node))
+
 (defn compile
   "Compiles a scene map into an intermediate representation.
   Validates the scene first; throws ex-info with :errors on failure."
@@ -171,10 +183,11 @@
   (when-let [errors (validate/validate scene)]
     (throw (ex-info "Invalid scene"
                     {:errors errors})))
-  {:ir/size       (:image/size scene)
-   :ir/background (color/resolve-color (:image/background scene))
-   :ir/ops        (into [] (mapcat #(compile-tree % default-ctx))
-                         (:image/nodes scene))})
+  (let [expanded (update scene :image/nodes #(mapv expand-node %))]
+    {:ir/size       (:image/size expanded)
+     :ir/background (color/resolve-color (:image/background expanded))
+     :ir/ops        (into [] (mapcat #(compile-tree % default-ctx))
+                           (:image/nodes expanded))}))
 
 (comment
   (compile {:image/size [800 600]

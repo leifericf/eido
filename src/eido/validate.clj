@@ -38,8 +38,11 @@
     (some #{:eido/version} via)
     "version string matching \"X.Y\" (e.g. \"1.0\")"
 
+    (some #{:eido.spec/font-spec} via)
+    "font map with :font/family (string) and :font/size (positive number)"
+
     (some #{:eido.spec/node} via)
-    "valid node (type must be :shape/rect, :shape/circle, :shape/ellipse, :shape/arc, :shape/line, :shape/path, or :group)"
+    "valid node (type must be :shape/rect, :shape/circle, :shape/ellipse, :shape/arc, :shape/line, :shape/path, :shape/text, :shape/text-glyphs, :shape/text-on-path, or :group)"
 
     :else
     (pr-str pred)))

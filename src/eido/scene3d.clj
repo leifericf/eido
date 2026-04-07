@@ -1,7 +1,8 @@
 (ns eido.scene3d
   (:require
     [eido.math3d :as m]
-    [eido.scene :as scene]))
+    [eido.scene :as scene]
+    [eido.text :as text]))
 
 ;; --- projection constructors ---
 
@@ -565,3 +566,159 @@
   (let [mesh (-> (cone-mesh radius height (get opts :segments 16))
                  (translate-mesh position))]
     (render-mesh projection mesh opts)))
+
+;; --- text mesh ---
+
+(defn- contour->points
+  "Extracts [x y] points from a contour (flattened path commands)."
+  [contour]
+  (into []
+    (keep (fn [[cmd & args]]
+            (case cmd
+              :move-to (first args)
+              :line-to (first args)
+              nil)))
+    contour))
+
+(defn- extrude-walls
+  "Creates only side-wall faces (no caps) for a contour extrusion."
+  [path-points direction]
+  (let [pts (vec path-points)
+        n   (count pts)
+        dir (mapv double direction)
+        base (mapv (fn [[x z]] [(double x) 0.0 (double z)]) pts)
+        top  (mapv #(m/v+ % dir) base)]
+    (for [i (range n)
+          :let [j (mod (inc i) n)]]
+      (make-face [(nth base i) (nth top i)
+                  (nth top j) (nth base j)]))))
+
+(defn- offset-path-commands
+  "Offsets all coordinates in path commands by [dx dy]."
+  [commands dx dy]
+  (mapv (fn [[cmd & args]]
+          (case cmd
+            :move-to  [:move-to [(+ dx ((first args) 0))
+                                  (+ dy ((first args) 1))]]
+            :line-to  [:line-to [(+ dx ((first args) 0))
+                                  (+ dy ((first args) 1))]]
+            :quad-to  [:quad-to
+                        [(+ dx ((first args) 0))
+                         (+ dy ((first args) 1))]
+                        [(+ dx ((second args) 0))
+                         (+ dy ((second args) 1))]]
+            :curve-to [:curve-to
+                        [(+ dx ((first args) 0))
+                         (+ dy ((first args) 1))]
+                        [(+ dx ((second args) 0))
+                         (+ dy ((second args) 1))]
+                        [(+ dx ((nth args 2) 0))
+                         (+ dy ((nth args 2) 1))]]
+            :close [:close]))
+        commands))
+
+(defn text-mesh
+  "Creates side-wall faces for extruded text (no caps).
+  content: string. font-spec: font map. depth: extrusion depth along Y axis.
+  opts: :flatness (curve approximation, default 1.0)."
+  [content font-spec depth opts]
+  (let [flatness   (get opts :flatness 1.0)
+        glyph-data (text/text->glyph-paths content font-spec)
+        all-faces
+        (mapcat
+          (fn [{:keys [commands position]}]
+            (let [[gx gy] position
+                  offset-cmds (offset-path-commands commands gx gy)
+                  flat (text/flatten-commands offset-cmds flatness)
+                  contours (text/glyph-contours flat)]
+              (mapcat (fn [contour]
+                        (let [pts (contour->points contour)]
+                          (when (>= (count pts) 3)
+                            (extrude-walls pts [0 depth 0]))))
+                      contours)))
+          glyph-data)]
+    (vec all-faces)))
+
+(defn- project-path-commands
+  "Projects 2D path commands (in XZ plane) through a 3D projection.
+  The commands are first placed in 3D as [x, y-offset, z] then projected."
+  [projection commands y-offset center]
+  (mapv (fn [[cmd & args]]
+          (case cmd
+            :move-to  (let [[x z] (first args)
+                            p3d (m/v- [(double x) y-offset (double z)] center)]
+                        [:move-to (m/project projection p3d)])
+            :line-to  (let [[x z] (first args)
+                            p3d (m/v- [(double x) y-offset (double z)] center)]
+                        [:line-to (m/project projection p3d)])
+            :quad-to  (let [[cx cz] (first args)
+                            [x z]   (second args)
+                            cp3d (m/v- [(double cx) y-offset (double cz)] center)
+                            p3d  (m/v- [(double x) y-offset (double z)] center)]
+                        [:quad-to (m/project projection cp3d)
+                                  (m/project projection p3d)])
+            :curve-to (let [[c1x c1z] (first args)
+                            [c2x c2z] (second args)
+                            [x z]     (nth args 2)
+                            cp1 (m/v- [(double c1x) y-offset (double c1z)] center)
+                            cp2 (m/v- [(double c2x) y-offset (double c2z)] center)
+                            p3d (m/v- [(double x) y-offset (double z)] center)]
+                        [:curve-to (m/project projection cp1)
+                                   (m/project projection cp2)
+                                   (m/project projection p3d)])
+            :close [:close]))
+        commands))
+
+(defn text-3d
+  "Creates 3D extruded text projected into 2D, returned as a :group node.
+  projection: projection map. content: string. font-spec: font map.
+  depth: extrusion depth. opts: same as render-mesh plus :flatness.
+  The mesh is centered at the origin for natural rotation.
+  Front/back caps use even-odd fill to correctly render letter holes."
+  [projection content font-spec depth opts]
+  (let [mesh     (text-mesh content font-spec depth opts)
+        center   (mesh-center mesh)
+        centered (translate-mesh mesh (mapv - center))
+        ;; Render side walls
+        walls    (render-mesh projection centered opts)
+        ;; Build cap path commands from all glyphs combined
+        glyph-data (text/text->glyph-paths content font-spec)
+        cap-cmds (into []
+                   (mapcat (fn [{:keys [commands position]}]
+                             (let [[gx gy] position]
+                               (offset-path-commands commands gx gy))))
+                   glyph-data)
+        ;; Compute cap depth for sorting
+        cam-dir  (m/camera-direction projection)
+        front-center (m/v- [0.0 0.0 0.0] center)
+        back-center  (m/v- [0.0 (double depth) 0.0] center)
+        front-depth (m/dot front-center cam-dir)
+        back-depth  (m/dot back-center cam-dir)
+        ;; Determine which cap faces the camera
+        front-facing (> (m/dot [0.0 -1.0 0.0] cam-dir) 0)
+        back-facing  (> (m/dot [0.0 1.0 0.0] cam-dir) 0)
+        ;; Shade cap faces
+        light    (:light opts)
+        base-style (:style opts)
+        ;; Project cap paths and create nodes
+        caps (cond-> []
+               front-facing
+               (conj (merge {:node/type      :shape/path
+                             :path/commands  (project-path-commands
+                                               projection cap-cmds 0.0 center)
+                             :path/fill-rule :even-odd
+                             :node/depth     front-depth}
+                            (shade-face-style base-style [0.0 -1.0 0.0] light)))
+               back-facing
+               (conj (merge {:node/type      :shape/path
+                             :path/commands  (project-path-commands
+                                               projection cap-cmds
+                                               (double depth) center)
+                             :path/fill-rule :even-odd
+                             :node/depth     back-depth}
+                            (shade-face-style base-style [0.0 1.0 0.0] light))))
+        ;; Merge caps into wall children and re-sort by depth
+        all-nodes (into (:group/children walls) caps)
+        sorted    (vec (sort-by #(get % :node/depth Double/NEGATIVE_INFINITY)
+                                all-nodes))]
+    (assoc walls :group/children sorted)))

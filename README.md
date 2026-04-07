@@ -27,6 +27,7 @@ The approach is inspired by Christian Johansen's [Replicant](https://github.com/
 - **Description, not instruction.** You declare what the image contains; eido decides how to draw it. A compile step separates your description from the renderer's execution.
 - **Animations are sequences.** 60 frames = 60 maps in a vector. No timeline, no keyframes, no mutation.
 - **Particle simulation.** Physics-based effects (fire, snow, sparks) configured as data — emitters, forces, and lifetime curves. Deterministic via seeded PRNG.
+- **Typography as paths.** Text is declared as data and compiled to vector paths — compatible with every feature: gradients, transforms, filters, 3D extrusion. Per-glyph styling, text on curves, and extruded 3D letterforms — all without additional dependencies.
 - **No state, no framework.** Every function takes data and returns data. You bring your own workflow.
 - **Zero dependencies.** Just Clojure and the standard library.
 
@@ -143,6 +144,43 @@ Primitives: rectangles, circles, ellipses, arcs, lines, and paths.
 ```
 
 <img src="images/shapes.png" width="400" alt="Rectangle, circle, and path" />
+
+## Text
+
+Text is declared as data and compiled to vector path outlines. Three node types cover different use cases:
+
+```clojure
+;; Simple text — entire string as one path
+{:node/type   :shape/text
+ :text/content "Hello"
+ :text/font   {:font/family "Serif" :font/size 48 :font/weight :bold}
+ :text/origin [50 100]       ;; baseline-left anchor
+ :text/align  :center        ;; :left (default), :center, :right
+ :style/fill  [:color/rgb 0 0 0]}
+
+;; Per-glyph control — style each character independently
+{:node/type    :shape/text-glyphs
+ :text/content "COLOR"
+ :text/font    {:font/family "SansSerif" :font/size 64}
+ :text/origin  [50 100]
+ :text/glyphs  [{:glyph/index 0 :style/fill [:color/rgb 255 0 0]}
+                 {:glyph/index 1 :style/fill [:color/rgb 0 255 0]}]
+ :style/fill   [:color/rgb 100 100 100]}  ;; default for unlisted glyphs
+
+;; Text on path — glyphs follow a curve
+{:node/type    :shape/text-on-path
+ :text/content "ALONG A CURVE"
+ :text/font    {:font/family "SansSerif" :font/size 24}
+ :text/path    [[:move-to [50 200]]
+                [:curve-to [150 50] [350 50] [450 200]]]
+ :text/offset  10             ;; start distance along path
+ :text/spacing 1              ;; extra inter-glyph spacing
+ :style/fill   [:color/rgb 0 0 0]}
+```
+
+Text works with everything: gradient fills, strokes, transforms, filters, clipping, compositing, and 3D extrusion. Since text compiles to paths, the examples in the [Typography Gallery](#typography-gallery) show what's possible.
+
+Fonts reference system fonts by name (`:font/family`) or custom TTF/OTF files (`:font/file`). Java logical fonts — `"Serif"`, `"SansSerif"`, `"Monospaced"` — are available on every JDK.
 
 ## Composition
 
@@ -1990,6 +2028,198 @@ Particles simulated in 3D space, projected through a perspective camera that orb
 
 <img src="images/particle-volcano-3d.gif" width="300" alt="Volcanic eruption — 3D lava particles over cone mesh" />
 
+## Typography Gallery
+
+Text in Eido is declared as data and compiled to vector path outlines. This means text works with every existing feature — gradient fills, per-glyph styling, filters, transforms, clipping, compositing, and 3D extrusion — all without additional dependencies.
+
+<p align="center">
+  <img src="images/text-gradient-shadow.png" width="300" alt="Gradient text with shadow" />
+  <img src="images/text-neon-glow.png" width="300" alt="Neon glow text effect" />
+</p>
+<p align="center">
+  <img src="images/text-rainbow-glyphs.png" width="300" alt="Per-glyph rainbow text" />
+  <img src="images/text-3d-rotate.gif" width="300" alt="Rotating 3D extruded text" />
+</p>
+<p align="center">
+  <img src="images/text-circular.gif" width="200" alt="Text orbiting a circle" />
+</p>
+
+### Gradient Text with Shadow
+
+Layered text using `text-stack` — a shadow layer offset by a few pixels, then a gradient fill on top.
+
+```clojure
+(require '[eido.core :as eido]
+         '[eido.scene :as scene])
+
+(eido/render
+  {:image/size [500 200]
+   :image/background [:color/rgb 15 15 25]
+   :image/nodes
+   [(scene/text-stack "Typography" [40 140]
+      {:font/family "Serif" :font/size 72 :font/weight :bold}
+      [;; shadow layer
+       {:style/fill [:color/rgba 0 0 0 0.4]
+        :node/transform [[:transform/translate 3 3]]}
+       ;; gradient fill
+       {:style/fill {:gradient/type :linear
+                     :gradient/from [0 60]
+                     :gradient/to   [500 140]
+                     :gradient/stops [[0.0 [:color/rgb 255 100 120]]
+                                      [0.5 [:color/rgb 255 220 100]]
+                                      [1.0 [:color/rgb 100 200 255]]]}}])]}
+  {:output "gradient-text.png"})
+```
+
+<img src="images/text-gradient-shadow.png" width="400" alt="Gradient text with shadow" />
+
+### Per-Glyph Rainbow
+
+Each glyph styled independently using `:shape/text-glyphs` — here cycling hue by 40° per character.
+
+```clojure
+(eido/render
+  {:image/size [600 160]
+   :image/background [:color/rgb 20 20 35]
+   :image/nodes
+   [{:node/type    :shape/text-glyphs
+     :text/content "CHROMATIC"
+     :text/font    {:font/family "SansSerif" :font/size 64 :font/weight :bold}
+     :text/origin  [20 110]
+     :text/glyphs  (vec (map-indexed
+                          (fn [i _]
+                            {:glyph/index i
+                             :style/fill [:color/hsl (mod (* i 40) 360) 0.85 0.6]})
+                          "CHROMATIC"))
+     :style/fill   [:color/rgb 255 255 255]}]}
+  {:output "rainbow.png"})
+```
+
+<img src="images/text-rainbow-glyphs.png" width="400" alt="Per-glyph rainbow text" />
+
+### Neon Glow
+
+A blurred copy behind crisp text creates a glow effect — using `:group/filter [:blur 8]`.
+
+```clojure
+(eido/render
+  {:image/size [500 200]
+   :image/background [:color/rgb 10 10 20]
+   :image/nodes
+   [;; glow layer (blurred)
+    {:node/type :group
+     :group/composite :src-over
+     :group/filter [:blur 8]
+     :group/children
+     [{:node/type   :shape/text
+       :text/content "NEON"
+       :text/font   {:font/family "SansSerif" :font/size 80 :font/weight :bold}
+       :text/origin [70 130]
+       :style/fill  [:color/rgb 0 255 200]}]}
+    ;; crisp text on top
+    {:node/type   :shape/text
+     :text/content "NEON"
+     :text/font   {:font/family "SansSerif" :font/size 80 :font/weight :bold}
+     :text/origin [70 130]
+     :style/fill  [:color/rgb 200 255 240]}]}
+  {:output "neon.png"})
+```
+
+<img src="images/text-neon-glow.png" width="400" alt="Neon glow text effect" />
+
+### Animated Circular Text
+
+Text following a circular path, rotating around a gradient sphere. Each frame recomputes the path as a polygon approximating a circle at a different starting angle.
+
+```clojure
+(require '[eido.animate :as anim])
+
+(eido/render
+  (anim/frames 90
+    (fn [t]
+      (let [r 130 cx 200 cy 200]
+        {:image/size [400 400]
+         :image/background [:color/rgb 245 243 238]
+         :image/nodes
+         [{:node/type :shape/text-on-path
+           :text/content "EIDO\u00B7DATA\u00B7ART\u00B7"
+           :text/font {:font/family "SansSerif" :font/size 20 :font/weight :bold}
+           :text/path (let [steps 64
+                            offset (* t 2 Math/PI)]
+                        (into [[:move-to [(+ cx (* r (Math/cos offset)))
+                                          (+ cy (* r (Math/sin offset)))]]]
+                              (map (fn [i]
+                                     (let [a (+ offset (* (/ (inc i) steps)
+                                                           2 Math/PI))]
+                                       [:line-to [(+ cx (* r (Math/cos a)))
+                                                   (+ cy (* r (Math/sin a)))]]))
+                                   (range steps))))
+           :text/spacing 2
+           :style/fill [:color/rgb 60 60 80]}
+          {:node/type :shape/circle
+           :circle/center [cx cy]
+           :circle/radius 80
+           :style/fill {:gradient/type :radial
+                        :gradient/center [cx cy]
+                        :gradient/radius 80
+                        :gradient/stops [[0.0 [:color/rgb 255 120 100]]
+                                          [1.0 [:color/rgb 200 60 120]]]}}]})))
+  {:output "circular-text.gif" :fps 30})
+```
+
+<img src="images/text-circular.gif" width="300" alt="Text orbiting a circle" />
+
+### Rotating 3D Extruded Text
+
+Each letter is a separate `text-3d` call so they can move independently. Two phase-shifted sine waves drive the vertical bounce and pitch rock, creating a fluid, organic motion.
+
+```clojure
+(require '[eido.scene3d :as s3d]
+         '[eido.text :as text])
+
+(let [letters "EIDO"
+      font {:font/family "SansSerif" :font/size 36 :font/weight :bold}
+      glyph-data (text/text->glyph-paths letters font)
+      advance (text/text-advance letters font)
+      half-w (/ advance 2.0)
+      letter-xs (mapv (fn [i]
+                        (let [[gx] (:position (nth glyph-data i))
+                              next-gx (if (< i (dec (count letters)))
+                                        ((:position (nth glyph-data (inc i))) 0)
+                                        advance)]
+                          (* 3.0 (- (+ gx (/ (- next-gx gx) 2.0)) half-w))))
+                      (range (count letters)))
+      frames
+      (anim/frames 60
+        (fn [t]
+          {:image/size [600 350]
+           :image/background [:color/rgb 20 22 35]
+           :image/nodes
+           (vec (map-indexed
+                  (fn [i c]
+                    (let [;; vertical wave (2 cycles)
+                          wave (* 20.0 (Math/sin (- (* t 2 Math/PI 2) (* i 1.0))))
+                          ;; pitch rock (2 cycles, offset phase)
+                          rock (* 0.4 (Math/sin (+ (* t 2 Math/PI 2)
+                                                    (* i 1.5) (* Math/PI 0.5))))
+                          proj (s3d/perspective
+                                 {:scale 3.0
+                                  :origin [(+ 300 (nth letter-xs i))
+                                           (- 175 wave)]
+                                  :yaw 0.0
+                                  :pitch (+ (* Math/PI 0.5) rock)
+                                  :distance 250})]
+                      (s3d/text-3d proj (str c) font 12
+                        {:style {:style/fill [:color/rgb 255 140 60]}
+                         :light {:light/direction [0 -1 0.5]
+                                 :light/ambient 0.25
+                                 :light/intensity 0.75}})))
+                  letters))}))]
+  (eido/render frames {:output "3d-text.gif" :fps 30}))
+```
+
+<img src="images/text-3d-rotate.gif" width="400" alt="Rotating 3D extruded text" />
+
 ## Compositing
 
 Groups with `:group/composite` render children to an off-screen buffer, then composite the buffer onto the canvas. Without the key, groups behave as before (flattened, zero cost).
@@ -2132,6 +2362,18 @@ No special primitive — composable from blur + offset + opacity:
 | `eido.scene/smooth-path` | Smooth curve through points (Catmull-Rom) |
 | `eido.scene/regular-polygon` | Create regular n-sided polygon |
 | `eido.scene/star` | Create n-pointed star with inner/outer radii |
+| `eido.scene/text` | Create text node (rendered as vector paths) |
+| `eido.scene/text-glyphs` | Create per-glyph text node with individual styling |
+| `eido.scene/text-on-path` | Create text that follows a path |
+| `eido.scene/text-stack` | Create layered text (shadow + outline + fill) |
+| `eido.text/text->path-commands` | Convert text string to Eido path commands |
+| `eido.text/text->glyph-paths` | Convert text to per-glyph path data |
+| `eido.text/text-advance` | Total advance width of rendered text |
+| `eido.text/resolve-font` | Resolve font-spec map to java.awt.Font (cached) |
+| `eido.text/path-length` | Total arc length of path commands |
+| `eido.text/point-at` | Point and tangent angle at distance along path |
+| `eido.text/flatten-commands` | Approximate curves as line segments |
+| `eido.text/glyph-contours` | Split path commands into closed contours |
 | `eido.scene3d/isometric` | Create isometric projection map |
 | `eido.scene3d/orthographic` | Create orthographic projection map |
 | `eido.scene3d/perspective` | Create perspective projection map |
@@ -2158,6 +2400,8 @@ No special primitive — composable from blur + offset + opacity:
 | `eido.scene3d/sphere` | Convenience: sphere-mesh + render-mesh |
 | `eido.scene3d/torus` | Convenience: torus-mesh + render-mesh |
 | `eido.scene3d/cone` | Convenience: cone-mesh + render-mesh |
+| `eido.scene3d/text-mesh` | Extrude glyph outlines into 3D mesh |
+| `eido.scene3d/text-3d` | Convenience: text-mesh + render-mesh (centered) |
 | `eido.obj/parse-obj` | Parse Wavefront OBJ text to mesh data |
 | `eido.obj/parse-mtl` | Parse MTL text to material style maps |
 | `eido.math3d/v+` | 3D vector addition |

@@ -116,6 +116,47 @@
                [x y])]
     (polygon pts)))
 
+;; --- text helpers ---
+
+(defn text
+  "Creates a text node rendered as vector paths."
+  [content origin font-spec]
+  {:node/type    :shape/text
+   :text/content content
+   :text/origin  origin
+   :text/font    font-spec})
+
+(defn text-glyphs
+  "Creates a per-glyph text node. glyph-overrides is a vector of maps,
+  each with :glyph/index and optional :style/fill, :style/stroke,
+  :node/transform, :node/opacity."
+  [content origin font-spec glyph-overrides]
+  {:node/type    :shape/text-glyphs
+   :text/content content
+   :text/origin  origin
+   :text/font    font-spec
+   :text/glyphs  glyph-overrides})
+
+(defn text-on-path
+  "Creates text that follows a path. path-commands uses the same format
+  as :shape/path — [[:move-to [x y]] [:curve-to ...] ...]."
+  [content font-spec path-commands]
+  {:node/type    :shape/text-on-path
+   :text/content content
+   :text/font    font-spec
+   :text/path    path-commands})
+
+(defn text-stack
+  "Creates layered text (e.g. shadow + outline + fill).
+  layers is a vector of style maps applied to copies of the same text.
+  Earlier layers render behind later ones."
+  [content origin font-spec layers]
+  {:node/type :group
+   :group/children
+   (mapv (fn [layer]
+           (merge (text content origin font-spec) layer))
+         layers)})
+
 (comment
   (grid 3 2 (fn [c r]
               {:node/type :shape/circle
@@ -127,4 +168,6 @@
       {:node/type :shape/circle
        :circle/center [x y]
        :circle/radius 20}))
+
+  (text "Hello" [100 200] {:font/family "SansSerif" :font/size 48})
   )

@@ -145,6 +145,32 @@
                               :opt-un [::cap ::join ::dash]))
 (s/def :node/opacity ::unit-val)
 
+;; --- fonts ---
+
+(s/def :font/family string?)
+(s/def :font/size ::pos-number)
+(s/def :font/weight #{:normal :bold})
+(s/def :font/style #{:normal :italic})
+(s/def :font/file string?)
+(s/def ::font-spec (s/keys :req [:font/family :font/size]
+                           :opt [:font/weight :font/style :font/file]))
+
+;; --- text ---
+
+(s/def :text/content string?)
+(s/def :text/font ::font-spec)
+(s/def :text/origin ::point)
+(s/def :text/spacing number?)
+(s/def :text/align #{:left :center :right})
+(s/def :text/offset number?)
+(s/def :text/path :path/commands)
+
+(s/def :glyph/index (s/and int? #(>= % 0)))
+(s/def ::glyph-override
+  (s/keys :req [:glyph/index]
+          :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+(s/def :text/glyphs (s/coll-of ::glyph-override :kind vector?))
+
 ;; --- nodes ---
 
 (s/def :rect/xy ::point)
@@ -198,10 +224,30 @@
           :opt [:style/fill :style/stroke :node/opacity :node/transform
                 :group/composite :group/filter]))
 
+(defmethod node-type :shape/text [_]
+  (s/keys :req [:node/type :text/content :text/font :text/origin]
+          :opt [:text/spacing :text/align
+                :style/fill :style/stroke :node/opacity :node/transform
+                :group/composite :group/filter]))
+
+(defmethod node-type :shape/text-glyphs [_]
+  (s/keys :req [:node/type :text/content :text/font :text/origin]
+          :opt [:text/glyphs :text/spacing :text/align
+                :style/fill :style/stroke :node/opacity :node/transform
+                :group/composite :group/filter]))
+
+(defmethod node-type :shape/text-on-path [_]
+  (s/keys :req [:node/type :text/content :text/font :text/path]
+          :opt [:text/offset :text/spacing
+                :style/fill :style/stroke :node/opacity :node/transform
+                :group/composite :group/filter]))
+
 (defmethod node-type :default [_]
   (s/with-gen
     (s/and (s/keys :req [:node/type])
-           #(contains? #{:shape/rect :shape/circle :shape/ellipse :shape/arc :shape/line :shape/path :group}
+           #(contains? #{:shape/rect :shape/circle :shape/ellipse :shape/arc
+                         :shape/line :shape/path :group
+                         :shape/text :shape/text-glyphs :shape/text-on-path}
                        (:node/type %)))
     #(s/gen #{:shape/rect})))
 
