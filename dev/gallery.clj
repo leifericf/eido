@@ -2,11 +2,14 @@
   "Artistic expression gallery — showcasing the new toolkit features."
   (:require
     [eido.animate :as anim]
+    [eido.contour :as contour]
     [eido.core :as eido]
+    [eido.flow :as flow]
     [eido.noise :as noise]
     [eido.palette :as palette]
     [eido.scatter :as scatter]
-    [eido.scene :as scene]))
+    [eido.scene :as scene]
+    [eido.voronoi :as voronoi]))
 
 ;; --- 1. Ink Landscape — hatching + distortion + variable-width strokes ---
 
@@ -330,32 +333,255 @@
                :image/nodes (vec (concat stems flowers))})))]
     (eido/render frames {:output "images/art-noise-garden.gif" :fps 30})))
 
+;; ===================================================================
+;; Phase 2 Gallery — Symmetry, Flow Fields, Contours, Voronoi, Filters
+;; ===================================================================
+
+;; --- 8. Mandala — radial symmetry + hatching + stippling (Islamic geometric) ---
+
+(defn mandala []
+  (eido/render
+    {:image/size [600 600]
+     :image/background [:color/rgb 245 235 215]
+     :image/nodes
+     [{:node/type :symmetry
+       :symmetry/type :radial
+       :symmetry/n 12
+       :symmetry/center [300 300]
+       :group/children
+       [;; Outer petal — hatched
+        {:node/type :shape/path
+         :path/commands [[:move-to [300.0 290.0]]
+                         [:curve-to [330.0 200.0] [360.0 120.0] [300.0 50.0]]
+                         [:curve-to [240.0 120.0] [270.0 200.0] [300.0 290.0]]]
+         :style/fill {:fill/type :hatch
+                      :hatch/angle 60
+                      :hatch/spacing 4
+                      :hatch/stroke-width 0.6
+                      :hatch/color [:color/rgb 140 60 30]}
+         :style/stroke {:color [:color/rgb 140 60 30] :width 0.8}}
+        ;; Inner accent line
+        {:node/type :shape/path
+         :path/commands [[:move-to [300.0 270.0]]
+                         [:curve-to [315.0 200.0] [325.0 140.0] [300.0 80.0]]]
+         :stroke/profile :pointed
+         :style/stroke {:color [:color/rgb 180 80 30] :width 6}}]}
+      ;; Center circle with stipple
+      {:node/type :shape/circle
+       :circle/center [300.0 300.0]
+       :circle/radius 40.0
+       :style/fill {:fill/type :stipple
+                    :stipple/density 0.6
+                    :stipple/radius 1.0
+                    :stipple/seed 42
+                    :stipple/color [:color/rgb 140 60 30]
+                    :stipple/background [:color/rgb 245 235 215]}
+       :style/stroke {:color [:color/rgb 140 60 30] :width 2}}]}
+    {:output "images/art-mandala.png"}))
+
+;; --- 9. Van Gogh Swirls — flow fields + variable strokes + warm palette ---
+
+(defn van-gogh-swirls []
+  (let [pal (:fire palette/palettes)
+        paths (flow/flow-field 0 0 600 400
+                {:density 6 :steps 80 :step-length 1.5
+                 :noise-scale 0.004 :seed 77})]
+    (eido/render
+      {:image/size [600 400]
+       :image/background [:color/rgb 15 15 40]
+       :image/nodes
+       (vec (map-indexed
+              (fn [i path]
+                (-> path
+                    (assoc :stroke/profile :brush)
+                    (assoc :style/stroke
+                           {:color (nth pal (mod i 5))
+                            :width (+ 3 (* 2 (noise/perlin2d (* i 0.1) 0.5)))})))
+              paths))}
+      {:output "images/art-van-gogh-swirls.png"})))
+
+;; --- 10. Topographic Map — contour lines colored by elevation ---
+
+(defn topo-map []
+  (let [thresholds (mapv #(- (* % 0.15) 0.6) (range 9))
+        pal (palette/gradient-palette [:color/rgb 30 80 30] [:color/rgb 200 170 120] 9)]
+    (eido/render
+      {:image/size [500 400]
+       :image/background [:color/rgb 210 225 210]
+       :image/nodes
+       (vec (map-indexed
+              (fn [i threshold]
+                {:node/type :contour
+                 :contour/bounds [0 0 500 400]
+                 :contour/opts {:thresholds [threshold]
+                                :resolution 3
+                                :noise-scale 0.012
+                                :seed 42}
+                 :style/stroke {:color (nth pal i) :width (if (zero? (mod i 3)) 1.5 0.7)}})
+              thresholds))}
+      {:output "images/art-topo-map.png"})))
+
+;; --- 11. Stained Glass — Voronoi + colored cells + dark outlines ---
+
+(defn stained-glass []
+  (let [pts (scatter/poisson-disk 20 20 460 360 50 42)
+        cells (voronoi/voronoi-cells pts 0 0 500 400)
+        rng (java.util.Random. 42)
+        warm-colors [[:color/rgb 200 50 50]
+                     [:color/rgb 50 80 180]
+                     [:color/rgb 220 180 40]
+                     [:color/rgb 60 160 80]
+                     [:color/rgb 180 60 160]
+                     [:color/rgb 200 120 40]
+                     [:color/rgb 80 180 200]]]
+    (eido/render
+      {:image/size [500 400]
+       :image/background [:color/rgb 30 20 15]
+       :image/nodes
+       (vec (map-indexed
+              (fn [i cell]
+                (-> cell
+                    (assoc :style/fill (nth warm-colors (mod (.nextInt rng 100) (count warm-colors))))
+                    (assoc :style/stroke {:color [:color/rgb 20 15 10] :width 4})
+                    (assoc :node/opacity 0.85)))
+              cells))}
+      {:output "images/art-stained-glass.png"})))
+
+;; --- 12. Risograph Print — posterize + grain + bold shapes ---
+
+(defn risograph []
+  (eido/render
+    {:image/size [400 400]
+     :image/background [:color/rgb 240 235 220]
+     :image/nodes
+     [{:node/type :group
+       :group/composite :src-over
+       :group/filter [:grain 0.15 42]
+       :group/children
+       [{:node/type :group
+         :group/composite :src-over
+         :group/filter [:posterize 4]
+         :group/children
+         [;; Background circle
+          {:node/type :shape/circle
+           :circle/center [200.0 200.0]
+           :circle/radius 160.0
+           :style/fill [:color/rgb 230 80 60]}
+          ;; Overlapping shapes
+          {:node/type :shape/rect
+           :rect/xy [120.0 100.0]
+           :rect/size [180.0 200.0]
+           :style/fill [:color/rgba 40 80 180 0.7]}
+          {:node/type :shape/circle
+           :circle/center [250.0 250.0]
+           :circle/radius 100.0
+           :style/fill [:color/rgba 255 200 40 0.6]}]}]}]}
+    {:output "images/art-risograph.png"}))
+
+;; --- 13. Thermal Imaging — gradient-map on noise field ---
+
+(defn thermal []
+  (let [thermal-stops [[0.0 [:color/rgb 0 0 30]]
+                       [0.2 [:color/rgb 20 0 100]]
+                       [0.4 [:color/rgb 180 0 80]]
+                       [0.6 [:color/rgb 255 100 0]]
+                       [0.8 [:color/rgb 255 220 50]]
+                       [1.0 [:color/rgb 255 255 200]]]
+        ;; Create a grid of colored circles based on noise
+        cols 60 rows 40
+        cell-w (/ 600.0 cols)
+        cell-h (/ 400.0 rows)]
+    (eido/render
+      {:image/size [600 400]
+       :image/background [:color/rgb 0 0 0]
+       :image/nodes
+       (vec (for [row (range rows)
+                  col (range cols)]
+              (let [x (* col cell-w)
+                    y (* row cell-h)
+                    v (noise/fbm noise/perlin2d (* x 0.008) (* y 0.008)
+                        {:octaves 4 :seed 42})
+                    t (+ 0.5 (* 0.5 v))
+                    color (palette/gradient-map thermal-stops t)]
+                {:node/type :shape/rect
+                 :rect/xy [x y]
+                 :rect/size [cell-w cell-h]
+                 :style/fill color})))}
+      {:output "images/art-thermal.png"})))
+
+;; --- 14. Animated Flow Mandala — flow field + symmetry + animation ---
+
+(defn flow-mandala []
+  (let [frames
+        (anim/frames 40
+          (fn [t]
+            (let [paths (flow/flow-field 0 0 400 400
+                          {:density 14 :steps 30 :step-length 2
+                           :noise-scale (+ 0.004 (* 0.002 (Math/sin (* t 2 Math/PI))))
+                           :seed 42})]
+              {:image/size [400 400]
+               :image/background [:color/rgb 10 10 20]
+               :image/nodes
+               [{:node/type :symmetry
+                 :symmetry/type :radial
+                 :symmetry/n 6
+                 :symmetry/center [200 200]
+                 :group/children
+                 (vec (map-indexed
+                        (fn [i path]
+                          (-> path
+                              (assoc :style/stroke
+                                     {:color (palette/gradient-map
+                                               [[0.0 [:color/rgb 80 40 200]]
+                                                [0.5 [:color/rgb 200 50 150]]
+                                                [1.0 [:color/rgb 255 200 80]]]
+                                               (mod (* i 0.03) 1.0))
+                                      :width 0.6})
+                              (assoc :node/opacity
+                                     (+ 0.4 (* 0.4 (Math/sin (+ (* t 4 Math/PI) (* i 0.2))))))))
+                        paths))}]})))]
+    (eido/render frames {:output "images/art-flow-mandala.gif" :fps 30})))
+
 ;; --- run all ---
 
+(defn render-phase2! []
+  (println "Rendering mandala...")
+  (mandala)
+  (println "Rendering Van Gogh swirls...")
+  (van-gogh-swirls)
+  (println "Rendering topo map...")
+  (topo-map)
+  (println "Rendering stained glass...")
+  (stained-glass)
+  (println "Rendering risograph...")
+  (risograph)
+  (println "Rendering thermal...")
+  (thermal)
+  (println "Rendering flow mandala...")
+  (flow-mandala)
+  (println "Phase 2 done!"))
+
 (defn render-all! []
-  (println "Rendering ink landscape...")
+  (println "--- Phase 1 ---")
   (ink-landscape)
-  (println "Rendering starfield...")
   (starfield)
-  (println "Rendering stipple spheres...")
   (stipple-spheres)
-  (println "Rendering polka pop...")
   (polka-pop)
-  (println "Rendering calligraphy flow...")
   (calligraphy-flow)
-  (println "Rendering decorative frame...")
   (decorative-frame)
-  (println "Rendering noise garden...")
   (noise-garden)
-  (println "Done!"))
+  (println "--- Phase 2 ---")
+  (render-phase2!)
+  (println "All done!"))
 
 (comment
   (render-all!)
-  (ink-landscape)
-  (starfield)
-  (stipple-spheres)
-  (polka-pop)
-  (calligraphy-flow)
-  (decorative-frame)
-  (noise-garden)
+  (render-phase2!)
+  (mandala)
+  (van-gogh-swirls)
+  (topo-map)
+  (stained-glass)
+  (risograph)
+  (thermal)
+  (flow-mandala)
   )
