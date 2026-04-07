@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.0.0-alpha3 — 3D Rendering, Compositing & Blend Modes
+
 ### 3D rendering
 
 - Add `eido.math3d` namespace: 3D vector math, rotations, and projection functions
