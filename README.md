@@ -1644,4 +1644,4 @@ clj -X:test
 
 ## Status
 
-v1.0.0-alpha2 — The API is still evolving and may change without notice.
+v1.0.0-alpha3 — The API is still evolving and may change without notice.
