@@ -392,3 +392,150 @@
           [re _ _] (pixel-rgb img 5 100)]
       (is (> rc 200) "center should be bright")
       (is (< re rc) "edge should be darker than center"))))
+
+;; --- compositing group tests ---
+
+(deftest render-buffer-true-group-opacity-test
+  (testing "composite group renders children as unit, then applies opacity"
+    (let [;; Two overlapping red circles in a composite group at 0.5 opacity
+          ;; Over a black background, the overlap region should be the same
+          ;; color as the non-overlap region (both 50% red over black = 128)
+          ir {:ir/size [200 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :buffer
+                         :composite :src-over
+                         :opacity 0.5
+                         :transforms []
+                         :clip nil
+                         :ops [{:op :circle :cx 60 :cy 50 :r 40
+                                :fill {:r 255 :g 0 :b 0 :a 1.0}
+                                :stroke-color nil :stroke-width nil
+                                :opacity 1.0 :transforms []}
+                               {:op :circle :cx 100 :cy 50 :r 40
+                                :fill {:r 255 :g 0 :b 0 :a 1.0}
+                                :stroke-color nil :stroke-width nil
+                                :opacity 1.0 :transforms []}]}]}
+          img (render/render ir)
+          ;; Overlap region center
+          overlap-r (first (pixel-rgb img 80 50))
+          ;; Non-overlap region (left circle only)
+          single-r (first (pixel-rgb img 40 50))]
+      (is (= overlap-r single-r)
+          "overlap and non-overlap should be identical (true group opacity)"))))
+
+(deftest render-buffer-without-composite-is-per-child-test
+  (testing "without composite, overlapping shapes at 0.5 opacity bleed through"
+    (let [ir {:ir/size [200 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :circle :cx 60 :cy 50 :r 40
+                        :fill {:r 255 :g 0 :b 0 :a 1.0}
+                        :stroke-color nil :stroke-width nil
+                        :opacity 0.5 :transforms []}
+                       {:op :circle :cx 100 :cy 50 :r 40
+                        :fill {:r 255 :g 0 :b 0 :a 1.0}
+                        :stroke-color nil :stroke-width nil
+                        :opacity 0.5 :transforms []}]}
+          img (render/render ir)
+          overlap-r (first (pixel-rgb img 80 50))
+          single-r (first (pixel-rgb img 40 50))]
+      (is (> overlap-r single-r)
+          "overlap should be darker than single (per-child opacity bleed)"))))
+
+;; --- filter tests ---
+
+(deftest render-filter-grayscale-test
+  (testing "grayscale filter converts red circle to gray"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :buffer
+                         :composite :src-over
+                         :filter :grayscale
+                         :opacity 1.0
+                         :transforms []
+                         :clip nil
+                         :ops [{:op :circle :cx 50 :cy 50 :r 40
+                                :fill {:r 255 :g 0 :b 0 :a 1.0}
+                                :stroke-color nil :stroke-width nil
+                                :opacity 1.0 :transforms []}]}]}
+          img (render/render ir)
+          [r g b] (pixel-rgb img 50 50)]
+      (is (= r g b) "grayscale should have equal RGB channels"))))
+
+(deftest render-filter-invert-test
+  (testing "invert filter inverts colors"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :buffer
+                         :composite :src-over
+                         :filter :invert
+                         :opacity 1.0
+                         :transforms []
+                         :clip nil
+                         :ops [{:op :circle :cx 50 :cy 50 :r 40
+                                :fill {:r 255 :g 0 :b 0 :a 1.0}
+                                :stroke-color nil :stroke-width nil
+                                :opacity 1.0 :transforms []}]}]}
+          img (render/render ir)
+          [r g b] (pixel-rgb img 50 50)]
+      (is (< r 10) "red should be inverted to near-zero")
+      (is (> g 240) "green should be inverted to near-255")
+      (is (> b 240) "blue should be inverted to near-255"))))
+
+(deftest render-filter-sepia-test
+  (testing "sepia filter produces warm tones"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :buffer
+                         :composite :src-over
+                         :filter :sepia
+                         :opacity 1.0
+                         :transforms []
+                         :clip nil
+                         :ops [{:op :circle :cx 50 :cy 50 :r 40
+                                :fill {:r 100 :g 100 :b 100 :a 1.0}
+                                :stroke-color nil :stroke-width nil
+                                :opacity 1.0 :transforms []}]}]}
+          img (render/render ir)
+          [r g b] (pixel-rgb img 50 50)]
+      (is (> r g) "sepia red > green")
+      (is (> g b) "sepia green > blue"))))
+
+;; --- blend mode tests ---
+
+(deftest render-blend-multiply-test
+  (testing "multiply darkens: white src preserves dst, black src produces black"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 200 :g 100 :b 50 :a 1.0}
+              :ir/ops [{:op :buffer
+                         :composite :multiply
+                         :filter nil
+                         :opacity 1.0
+                         :transforms []
+                         :clip nil
+                         :ops [{:op :rect :x 0 :y 0 :w 100 :h 100
+                                :fill {:r 255 :g 255 :b 255 :a 1.0}
+                                :stroke-color nil :stroke-width nil
+                                :opacity 1.0 :transforms []}]}]}
+          img (render/render ir)
+          [r g b] (pixel-rgb img 50 50)]
+      (is (< (abs (- r 200)) 2) "white multiply preserves red")
+      (is (< (abs (- g 100)) 2) "white multiply preserves green"))))
+
+(deftest render-blend-screen-test
+  (testing "screen brightens: black src preserves dst"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 100 :g 50 :b 25 :a 1.0}
+              :ir/ops [{:op :buffer
+                         :composite :screen
+                         :filter nil
+                         :opacity 1.0
+                         :transforms []
+                         :clip nil
+                         :ops [{:op :rect :x 0 :y 0 :w 100 :h 100
+                                :fill {:r 0 :g 0 :b 0 :a 1.0}
+                                :stroke-color nil :stroke-width nil
+                                :opacity 1.0 :transforms []}]}]}
+          img (render/render ir)
+          [r g b] (pixel-rgb img 50 50)]
+      (is (< (abs (- r 100)) 2) "black screen preserves red")
+      (is (< (abs (- g 50)) 2) "black screen preserves green"))))

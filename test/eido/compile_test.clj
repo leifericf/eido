@@ -665,3 +665,74 @@
       (is (= :radial (:gradient/type fill)))
       (is (= [100 100] (:gradient/center fill)))
       (is (= 100 (:gradient/radius fill))))))
+
+;; --- group composite tests ---
+
+(deftest compile-composite-group-emits-buffer-test
+  (testing "group with :group/composite produces :buffer IR op"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :group
+                   :group/composite :src-over
+                   :group/children
+                   [{:node/type :shape/rect
+                     :rect/xy [0 0]
+                     :rect/size [50 50]
+                     :style/fill [:color/rgb 255 0 0]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= :buffer (:op op)))
+      (is (= :src-over (:composite op)))
+      (is (= 1.0 (:opacity op)))
+      (is (= 1 (count (:ops op))))
+      (is (= :rect (:op (first (:ops op))))))))
+
+(deftest compile-composite-group-opacity-test
+  (testing "group opacity applies to buffer, children render at full opacity"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :group/composite :src-over
+                   :node/opacity 0.5
+                   :group/children
+                   [{:node/type :shape/rect
+                     :rect/xy [0 0]
+                     :rect/size [50 50]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= :buffer (:op op)))
+      (is (= 0.5 (:opacity op)))
+      (is (= 1.0 (:opacity (first (:ops op))))))))
+
+(deftest compile-composite-group-nested-opacity-test
+  (testing "parent opacity multiplies with composite group opacity"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :node/opacity 0.5
+                   :group/children
+                   [{:node/type :group
+                     :group/composite :src-in
+                     :node/opacity 0.5
+                     :group/children
+                     [{:node/type :shape/rect
+                       :rect/xy [0 0]
+                       :rect/size [50 50]}]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= :buffer (:op op)))
+      (is (= :src-in (:composite op)))
+      (is (= 0.25 (:opacity op))))))
+
+(deftest compile-no-composite-flattens-test
+  (testing "group without :group/composite still flattens normally"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes
+                 [{:node/type :group
+                   :group/children
+                   [{:node/type :shape/rect
+                     :rect/xy [0 0]
+                     :rect/size [50 50]}]}]}
+          op (first (:ir/ops (compile/compile scene)))]
+      (is (= :rect (:op op))))))

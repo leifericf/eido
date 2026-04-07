@@ -141,8 +141,21 @@
                         (update :transforms accumulate-transforms node)
                         (cond-> (:group/clip node)
                           (assoc :clip (compile-node (:group/clip node)))))]
-      (into [] (mapcat #(compile-tree % child-ctx))
-            (:group/children node)))
+      (if (or (:group/composite node) (:group/filter node))
+        ;; Compositing boundary: render children to buffer, then composite
+        (let [buffer-ctx (assoc child-ctx :opacity 1.0)
+              child-ops  (into [] (mapcat #(compile-tree % buffer-ctx))
+                                (:group/children node))]
+          [{:op         :buffer
+            :composite  (or (:group/composite node) :src-over)
+            :filter     (:group/filter node)
+            :opacity    (* (:opacity ctx) (get node :node/opacity 1.0))
+            :transforms (accumulate-transforms (:transforms ctx) node)
+            :clip       (:clip ctx)
+            :ops        child-ops}])
+        ;; No composite: flatten as before
+        (into [] (mapcat #(compile-tree % child-ctx))
+              (:group/children node))))
     (let [effective-opacity (* (:opacity ctx)
                                (get node :node/opacity 1.0))
           transforms (accumulate-transforms (:transforms ctx) node)

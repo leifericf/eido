@@ -195,7 +195,8 @@
 
 (defmethod node-type :group [_]
   (s/keys :req [:node/type :group/children]
-          :opt [:style/fill :style/stroke :node/opacity :node/transform]))
+          :opt [:style/fill :style/stroke :node/opacity :node/transform
+                :group/composite :group/filter]))
 
 (defmethod node-type :default [_]
   (s/with-gen
