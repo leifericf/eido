@@ -58,7 +58,7 @@
           dtheta (* (- (* 2.0 (rng-double rng)) 1.0) (double spread))
           dphi   (* (- (* 2.0 (rng-double rng)) 1.0) (double spread))
           theta  (+ base-theta dtheta)
-          phi    (max (- (/ Math/PI -2.0)) (min (/ Math/PI 2.0) (+ base-phi dphi)))
+          phi    (max (/ Math/PI -2.0) (min (/ Math/PI 2.0) (+ base-phi dphi)))
           cp     (Math/cos phi)]
       [(* cp (Math/sin theta))
        (Math/sin phi)
@@ -146,12 +146,12 @@
       [])
     ;; Continuous: emit based on rate
     (let [rate     (or (:emitter/rate emitter) 10)
-          count    (int (* rate dt))
+          n        (int (* rate dt))
           ;; Use fractional accumulation for sub-frame emission
-          frac     (- (* rate dt) count)
-          count    (if (< (rng-double rng) frac) (inc count) count)]
+          frac     (- (* rate dt) n)
+          n        (if (< (rng-double rng) frac) (inc n) n)]
       (mapv #(spawn-particle rng emitter config (+ next-id %))
-            (range count)))))
+            (range n)))))
 
 ;; --- forces ---
 
@@ -192,7 +192,7 @@
       :age (+ (:age particle) dt))))
 
 (defn- step
-  "Advances the simulation by one time step. Pure function."
+  "Advances the simulation by one time step."
   [config dt state]
   (let [emitter  (:particle/emitter config)
         forces   (or (:particle/forces config) [])
@@ -223,8 +223,7 @@
   color vectors use color/lerp."
   [curve t]
   (cond
-    (nil? curve)         nil
-    (empty? curve)       nil
+    (not (seq curve))    nil
     (= 1 (count curve)) (first curve)
     :else
     (let [n    (dec (count curve))
