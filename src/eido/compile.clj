@@ -20,6 +20,8 @@
 
 (declare pattern-fill?)
 
+(declare pattern-fill?)
+
 (defn- resolve-gradient
   "Resolves colors within gradient stops, passes through coordinates."
   [gradient]
@@ -199,6 +201,13 @@
                             (assoc :node/opacity effective-opacity))]
         [(cond-> (assoc (compile-node styled-node) :transforms transforms)
            (:clip ctx) (assoc :clip (:clip ctx)))]))))
+
+(defn- compile-tile-ops
+  "Compiles pattern tile nodes into IR ops for rendering."
+  [nodes tw th]
+  (into []
+        (mapcat #(compile-tree % default-ctx))
+        nodes))
 
 (defn- compile-tile-ops
   "Compiles pattern tile nodes into IR ops for rendering."
