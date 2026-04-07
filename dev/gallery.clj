@@ -675,40 +675,40 @@
 ;; --- 19. Landscape Typography — text clip mask ---
 
 (defn landscape-type []
-  (eido/render
-    {:image/size [600 300]
-     :image/background [:color/rgb 10 10 20]
-     :image/nodes
-     [(scene/text-clip "EIDO"
-        {:font/family "SansSerif" :font/size 220 :font/weight :bold}
-        [30 230]
-        [;; Sunset sky gradient
-         {:node/type :shape/rect
-          :rect/xy [-40.0 -250.0]
-          :rect/size [640.0 300.0]
-          :style/fill {:gradient/type :linear
-                       :gradient/from [0 -220]
-                       :gradient/to [0 10]
-                       :gradient/stops [[0.0 [:color/rgb 10 10 40]]
-                                        [0.3 [:color/rgb 40 20 80]]
-                                        [0.6 [:color/rgb 200 80 40]]
-                                        [0.85 [:color/rgb 255 180 60]]
-                                        [1.0 [:color/rgb 255 230 150]]]}}
-         ;; Stars in the sky portion
-         {:node/type :scatter
-          :scatter/shape {:node/type :shape/circle
-                          :circle/center [0.0 0.0]
-                          :circle/radius 2.0
-                          :style/fill [:color/rgb 255 255 230]}
-          :scatter/positions (scatter/poisson-disk -30 -230 640 150 20 42)
-          :scatter/jitter {:x 2 :y 2 :seed 11}}
-         ;; Flow field as grass at the bottom
-         {:node/type :flow-field
-          :flow/bounds [-30 -60 640 70]
-          :flow/opts {:density 5 :steps 15 :step-length 1.5
-                      :noise-scale 0.02 :seed 77}
-          :style/stroke {:color [:color/rgba 30 60 20 0.6] :width 0.8}}])]}
-    {:output "images/art-landscape-type.png"}))
+  (let [;; Voronoi cells as abstract mosaic inside the text
+        pts (scatter/poisson-disk -30 -240 640 290 35 42)
+        cells (voronoi/voronoi-cells pts -30 -240 640 290)
+        ;; Color each cell with a sunset gradient based on y position
+        colored-cells (vec (map-indexed
+                             (fn [i cell]
+                               (let [[_ py] (nth pts i)
+                                     t (/ (+ py 240.0) 290.0)
+                                     color (palette/gradient-map
+                                             [[0.0 [:color/rgb 10 10 50]]
+                                              [0.25 [:color/rgb 60 20 100]]
+                                              [0.5 [:color/rgb 200 60 40]]
+                                              [0.75 [:color/rgb 255 160 30]]
+                                              [1.0 [:color/rgb 255 240 180]]]
+                                             t)]
+                                 (assoc cell :style/fill color)))
+                             cells))]
+    (eido/render
+      {:image/size [600 300]
+       :image/background [:color/rgb 10 10 20]
+       :image/nodes
+       [(scene/text-clip "EIDO"
+          {:font/family "SansSerif" :font/size 220 :font/weight :bold}
+          [30 230]
+          (conj colored-cells
+                ;; Stars scattered in the dark top area
+                {:node/type :scatter
+                 :scatter/shape {:node/type :shape/circle
+                                 :circle/center [0.0 0.0]
+                                 :circle/radius 2.0
+                                 :style/fill [:color/rgb 255 255 230]}
+                 :scatter/positions (scatter/poisson-disk -20 -230 630 120 22 77)
+                 :scatter/jitter {:x 2 :y 2 :seed 33}}))]}
+      {:output "images/art-landscape-type.png"})))
 
 ;; --- 20. Venn Booleans — path boolean operations ---
 
