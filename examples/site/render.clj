@@ -39,7 +39,8 @@
     gallery.scenes-3d
     gallery.mixed
     gallery.particles
-    gallery.typography])
+    gallery.typography
+    gallery.showcase])
 
 (def eido-namespaces
   "Eido source namespaces for API doc generation."
