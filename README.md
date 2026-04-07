@@ -2,8 +2,8 @@
 
 **Eido — describe what you see**
 
-Eido is a declarative, EDN-based language for creating 2D images.
-Describe the image as data, not drawing instructions.
+Eido is a declarative, data-driven image language for Clojure.
+Describe what you see as plain data — not drawing instructions.
 
 <p align="center">
   <img src="images/galaxy.gif" width="200" alt="Particle galaxy" />
@@ -20,7 +20,7 @@ Describe the image as data, not drawing instructions.
 
 This project has been on my mind since I discovered Clojure in 2020. As a graphics nerd, describing images as plain data — not issuing drawing commands — felt like the natural thing to build.
 
-The approach is inspired by Christian Johansen's [Replicant](https://github.com/cjohansen/replicant), which showed how far a minimal, data-first approach to rendering can go. Eido applies similar thinking to 2D image generation.
+The approach is inspired by Christian Johansen's [Replicant](https://github.com/cjohansen/replicant), which showed how far a minimal, data-first approach to rendering can go. Eido applies that thinking to image generation — 2D shapes, 3D scenes, and animations alike.
 
 - **Images are values.** A scene is a plain Clojure map — printable, serializable, diffable. Nothing opaque.
 - **One function.** `render` takes a scene (or a sequence of scenes) and produces output. That's the API.
@@ -940,11 +940,77 @@ Rotating gradient stars with staggered pulsing, using `scene/star`, radial gradi
 
 A recursive fractal tree that grows from trunk to full canopy, then sways in the wind. Leaves appear at the tips once fully grown.
 
+```clojure
+(defn tree-branches [x y len angle depth max-depth growth sway]
+  (when (and (pos? depth) (> growth 0))
+    (let [g (min 1.0 (* growth (+ 1.0 (* 0.3 depth))))
+          sway-amt (* sway 0.05 depth (Math/sin (* depth 2.3)))
+          a (+ angle sway-amt)
+          x2 (+ x (* len g (Math/sin a)))
+          y2 (- y (* len g (Math/cos a)))
+          thickness (max 1 (* 2.5 depth g))
+          brown-g (max 0 (min 255 (int (+ 60 (* 15 depth)))))
+          branch {:node/type :shape/line
+                  :line/from [x y] :line/to [x2 y2]
+                  :style/stroke {:color [:color/rgb 90 brown-g 30]
+                                 :width thickness :cap :round}}
+          left  (tree-branches x2 y2 (* len 0.7) (- a 0.45)
+                  (dec depth) max-depth growth sway)
+          right (tree-branches x2 y2 (* len 0.7) (+ a 0.45)
+                  (dec depth) max-depth growth sway)
+          leaf (when (and (<= depth 2) (> g 0.8))
+                 [{:node/type :shape/circle
+                   :circle/center [x2 y2]
+                   :circle/radius (* 3 (- g 0.5))
+                   :style/fill [:color/rgb (+ 30 (rand-int 60))
+                                (+ 140 (rand-int 80))
+                                (+ 20 (rand-int 40))]}])]
+      (concat [branch] left right leaf))))
+
+(eido/render
+  (anim/frames 90
+    (fn [t]
+      (let [rng (java.util.Random. 42)
+            _ (set! *rand* rng)
+            growth (* t 3.0)
+            sway (* (max 0 (- t 0.4)) 8.0 (Math/sin (* t 6 Math/PI)))]
+        {:image/size [450 450]
+         :image/background [:color/rgb 20 20 30]
+         :image/nodes (vec (tree-branches 225 420 90 0 9 9 growth sway))})))
+  {:output "tree.gif" :fps 24})
+```
+
 <img src="images/tree.gif" width="300" alt="Blooming fractal tree" />
 
 ### Sierpinski Triangle
 
 The classic fractal, built up one recursion depth at a time with shifting colors.
+
+```clojure
+(defn sierpinski [ax ay bx by cx cy depth hue-offset t]
+  (if (zero? depth)
+    (let [hue (mod (+ hue-offset (* t 360)) 360)
+          c (color/resolve-color [:color/hsl hue 0.75 0.5])]
+      [{:node/type :shape/path
+        :path/commands [[:move-to [ax ay]] [:line-to [bx by]]
+                        [:line-to [cx cy]] [:close]]
+        :style/fill [:color/rgb (:r c) (:g c) (:b c)]}])
+    (let [abx (* 0.5 (+ ax bx)) aby (* 0.5 (+ ay by))
+          bcx (* 0.5 (+ bx cx)) bcy (* 0.5 (+ by cy))
+          acx (* 0.5 (+ ax cx)) acy (* 0.5 (+ ay cy))]
+      (concat (sierpinski ax ay abx aby acx acy (dec depth) hue-offset t)
+              (sierpinski abx aby bx by bcx bcy (dec depth) (+ hue-offset 25) t)
+              (sierpinski acx acy bcx bcy cx cy (dec depth) (+ hue-offset 50) t)))))
+
+(eido/render
+  (anim/frames 60
+    (fn [t]
+      (let [depth (int (Math/floor (+ 1 (* t 6))))]
+        {:image/size [500 450]
+         :image/background [:color/rgb 20 20 30]
+         :image/nodes (vec (sierpinski 250 30 460 410 40 410 depth 0 t))})))
+  {:output "sierpinski.gif" :fps 10})
+```
 
 <img src="images/sierpinski.gif" width="300" alt="Sierpinski triangle" />
 
@@ -952,7 +1018,539 @@ The classic fractal, built up one recursion depth at a time with shifting colors
 
 A Koch snowflake that gains detail with each frame, the boundary growing ever more intricate.
 
+```clojure
+(defn koch-edge [[x1 y1] [x2 y2] depth]
+  (if (zero? depth)
+    [[x1 y1] [x2 y2]]
+    (let [dx (- x2 x1) dy (- y2 y1)
+          ax (+ x1 (/ dx 3)) ay (+ y1 (/ dy 3))
+          bx (- x2 (/ dx 3)) by (- y2 (/ dy 3))
+          px (+ (* 0.5 (+ ax bx)) (* (/ (Math/sqrt 3) 6) (- y1 y2)))
+          py (+ (* 0.5 (+ ay by)) (* (/ (Math/sqrt 3) 6) (- x2 x1)))]
+      (concat (koch-edge [x1 y1] [ax ay] (dec depth))
+              (koch-edge [ax ay] [px py] (dec depth))
+              (koch-edge [px py] [bx by] (dec depth))
+              (koch-edge [bx by] [x2 y2] (dec depth))))))
+
+(defn koch-snowflake [cx cy r depth]
+  (let [pts (for [i (range 3)]
+              (let [a (- (* i (/ (* 2 Math/PI) 3)) (/ Math/PI 2))]
+                [(+ cx (* r (Math/cos a))) (+ cy (* r (Math/sin a)))]))
+        edges (mapcat #(koch-edge (nth pts %) (nth pts (mod (inc %) 3)) depth)
+                      (range 3))
+        commands (into [[:move-to (first edges)]]
+                       (conj (mapv (fn [p] [:line-to p]) (rest edges))
+                             [:close]))]
+    {:node/type :shape/path :path/commands commands}))
+
+(eido/render
+  (anim/frames 60
+    (fn [t]
+      (let [depth (int (Math/floor (+ 0.5 (* t 5))))
+            c (color/resolve-color [:color/hsl (* t 40) 0.8 0.5])]
+        {:image/size [450 450]
+         :image/background [:color/rgb 20 20 30]
+         :image/nodes
+         [(assoc (koch-snowflake 225 235 180 depth)
+            :style/fill [:color/rgb (:r c) (:g c) (:b c)])]})))
+  {:output "koch.gif" :fps 10})
+```
+
 <img src="images/koch.gif" width="300" alt="Koch snowflake" />
+
+## 3D Gallery
+
+Eido can project 3D shapes into 2D space — no WebGL, no external dependencies, just math. The `eido.scene3d` module builds meshes from pure data and projects them through isometric, orthographic, or perspective projections. The output is ordinary `:shape/path` and `:group` nodes that render through the existing pipeline.
+
+### Utah Teapot
+
+The classic computer graphics test model, loaded from a Wavefront OBJ file via `eido.obj/parse-obj`. The 3,200-quad mesh is centered, scaled, rotated to Y-up, and rendered with an orbiting orthographic camera.
+
+```clojure
+(require '[eido.scene3d :as s3d]
+         '[eido.obj :as obj]
+         '[eido.animate :as anim])
+
+(def teapot
+  (-> (obj/parse-obj (slurp "resources/teapot.obj") {})
+      (s3d/translate-mesh [-1.085 0.0 -7.875])
+      (s3d/scale-mesh 0.1)
+      (s3d/rotate-mesh :x (- (/ Math/PI 2)))))
+
+;; Static render
+(eido/render
+  {:image/size [400 400]
+   :image/background [:color/rgb 245 243 238]
+   :image/nodes
+   [(s3d/render-mesh
+      (s3d/isometric {:scale 90 :origin [200 210]})
+      (s3d/rotate-mesh teapot :y 0.8)
+      {:style {:style/fill [:color/rgb 175 185 195]
+               :style/stroke {:color [:color/rgb 135 145 155] :width 0.15}}
+       :light {:light/direction [1 2 1]
+               :light/ambient 0.3
+               :light/intensity 0.7}
+       :cull-back false})]}
+  {:output "teapot.png"})
+
+;; Orbiting camera animation (camera moves, light stays fixed)
+(eido/render
+  (anim/frames 90
+    (fn [t]
+      (let [proj (s3d/orbit (s3d/orthographic {:scale 90 :origin [200 190]})
+                            (s3d/mesh-center teapot) 4
+                            (* t 2.0 Math/PI) -0.45)]
+        {:image/size [400 400]
+         :image/background [:color/rgb 245 243 238]
+         :image/nodes
+         [(s3d/render-mesh proj teapot
+            {:style {:style/fill [:color/rgb 175 185 195]
+                     :style/stroke {:color [:color/rgb 135 145 155] :width 0.15}}
+             :light {:light/direction [1 2 1]
+                     :light/ambient 0.3
+                     :light/intensity 0.7}
+             :cull-back false})]})))
+  {:output "teapot.gif" :fps 30})
+```
+
+<img src="images/3d-teapot.png" width="300" alt="Utah teapot loaded from OBJ" />
+<img src="images/3d-teapot-spin.gif" width="300" alt="Utah teapot with orbiting camera" />
+
+### Rotating Torus
+
+A parametric torus spinning on its axis. Each frame rebuilds the mesh with a new rotation angle — 60 frames rendered as an animated GIF.
+
+```clojure
+(def frames
+  (anim/frames 60
+    (fn [t]
+      (let [proj (s3d/isometric {:scale 55 :origin [200 200]})
+            mesh (-> (s3d/torus-mesh 1.8 0.7 24 12)
+                     (s3d/rotate-mesh :x 0.4)
+                     (s3d/rotate-mesh :y (* t 2.0 Math/PI)))]
+        {:image/size [400 400]
+         :image/background [:color/rgb 20 20 30]
+         :image/nodes
+         [(s3d/render-mesh proj mesh
+            {:style {:style/fill [:color/rgb 220 160 60]
+                     :style/stroke {:color [:color/rgb 160 110 30] :width 0.5}}
+             :light {:light/direction [1 2 1]
+                     :light/ambient 0.2
+                     :light/intensity 0.8}
+             :cull-back false})]}))))
+
+(eido/render frames {:output "torus.gif" :fps 30})
+```
+
+<img src="images/3d-rotating-torus.gif" width="300" alt="Rotating torus with diffuse shading" />
+
+### Isometric Scene
+
+Three primitives in a single isometric scene — a cube, cylinder, and sphere — each with independent colors and shared directional lighting.
+
+```clojure
+(let [proj  (s3d/isometric {:scale 35 :origin [200 210]})
+      light {:light/direction [1 2 0.5] :light/ambient 0.3 :light/intensity 0.7}]
+  (eido/render
+    {:image/size [400 400]
+     :image/background [:color/rgb 245 243 238]
+     :image/nodes
+     [(s3d/cube proj [-1.5 0 -1.5] 2
+        {:style {:style/fill [:color/rgb 90 140 200]
+                 :style/stroke {:color [:color/rgb 50 80 130] :width 0.5}}
+         :light light})
+      (s3d/cylinder proj [2 0 -1.5] 0.9 2.2
+        {:style {:style/fill [:color/rgb 200 100 80]
+                 :style/stroke {:color [:color/rgb 130 55 40] :width 0.5}}
+         :light light :segments 20})
+      (s3d/sphere proj [0 1.3 1.8] 1.0
+        {:style {:style/fill [:color/rgb 100 180 100]
+                 :style/stroke {:color [:color/rgb 50 110 50] :width 0.3}}
+         :light light :segments 16 :rings 8})]}
+    {:output "scene.png"}))
+```
+
+<img src="images/3d-scene.png" width="300" alt="Isometric scene with cube, cylinder, and sphere" />
+
+### Rotating Cube
+
+A cube tumbling in space, rendered as an animated GIF. The mesh is rebuilt each frame with new rotation angles applied via `rotate-mesh`.
+
+```clojure
+(def frames
+  (anim/frames 60
+    (fn [t]
+      (let [proj  (s3d/isometric {:scale 70 :origin [200 200]})
+            mesh  (-> (s3d/cube-mesh [-1 -1 -1] 2)
+                      (s3d/rotate-mesh :y (* t 2.0 Math/PI))
+                      (s3d/rotate-mesh :x (* t 0.7 Math/PI)))]
+        {:image/size [400 400]
+         :image/background [:color/rgb 20 20 30]
+         :image/nodes
+         [(s3d/render-mesh proj mesh
+            {:style {:style/fill [:color/rgb 70 130 210]
+                     :style/stroke {:color [:color/rgb 140 180 240] :width 1}}
+             :light {:light/direction [1 2 0.5]
+                     :light/ambient 0.25
+                     :light/intensity 0.75}})]}))))
+
+(eido/render frames {:output "cube.gif" :fps 30})
+```
+
+<img src="images/3d-rotating-cube.gif" width="300" alt="Tumbling cube animation" />
+
+### Isometric City
+
+An 8x8 grid of buildings with randomized heights and hue-shifted colors. All 384 faces are combined into a single mesh so the painter's algorithm sorts them correctly across buildings.
+
+```clojure
+(let [n 6  spacing 2.4  offset (* -0.5 n spacing)
+      proj  (s3d/isometric {:scale 22 :origin [200 220]})
+      light {:light/direction [1 3 0.5] :light/ambient 0.3 :light/intensity 0.7}
+      rng   (java.util.Random. 42)
+      mesh
+      (into []
+        (for [gx (range n) gz (range n)
+              :let [x (+ offset (* gx spacing))
+                    z (+ offset (* gz spacing))
+                    h (+ 0.8 (* 4.0 (.nextDouble rng)))
+                    hue (* 360.0 (/ (+ gx gz) (* 2.0 n)))
+                    r (int (+ 110 (* 70 (Math/sin (* hue 0.0174)))))
+                    g (int (+ 120 (* 50 (Math/sin (* (+ hue 120) 0.0174)))))
+                    b (int (+ 140 (* 60 (Math/sin (* (+ hue 240) 0.0174)))))
+                    building (-> (s3d/cube-mesh [0 0 0] 1)
+                                 (s3d/scale-mesh [2.0 h 2.0])
+                                 (s3d/translate-mesh [x 0 z]))]
+              face building]
+          (assoc face :face/style
+            {:style/fill [:color/rgb r g b]
+             :style/stroke {:color [:color/rgb (- r 35) (- g 35) (- b 35)]
+                            :width 0.3}})))]
+  (eido/render
+    {:image/size [400 400]
+     :image/background [:color/rgb 225 230 238]
+     :image/nodes [(s3d/render-mesh proj mesh {:light light})]}
+    {:output "city.png"}))
+```
+
+<img src="images/3d-city.png" width="300" alt="Isometric city with randomized building heights" />
+
+### Torus (static)
+
+A golden torus rendered with fine mesh detail, showing the smooth shading gradient across a curved surface.
+
+```clojure
+(let [proj (s3d/isometric {:scale 55 :origin [200 200]})
+      mesh (-> (s3d/torus-mesh 1.8 0.7 32 16)
+               (s3d/rotate-mesh :x 0.6))]
+  (eido/render
+    {:image/size [400 400]
+     :image/background [:color/rgb 245 243 238]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:style {:style/fill [:color/rgb 220 170 60]}
+         :light {:light/direction [1 2 1]
+                 :light/ambient 0.25
+                 :light/intensity 0.75}
+         :cull-back false})]}
+    {:output "torus.png"}))
+```
+
+<img src="images/3d-torus.png" width="300" alt="Golden torus with Lambertian shading" />
+
+### Wireframe
+
+Any mesh can be rendered as wireframe by passing `:wireframe true` to `render-mesh`. Edges are extracted, deduplicated, and depth-sorted automatically.
+
+```clojure
+(eido/render
+  {:image/size [400 400]
+   :image/background [:color/rgb 245 243 238]
+   :image/nodes
+   [(s3d/render-mesh
+      (s3d/look-at (s3d/orthographic {:scale 55 :origin [200 200]})
+                   [3 2.5 4] [0 0 0])
+      (s3d/torus-mesh 1.5 0.6 20 10)
+      {:wireframe true
+       :style {:style/stroke {:color [:color/rgb 60 80 120] :width 0.5}}})]}
+  {:output "wireframe.png"})
+```
+
+<img src="images/3d-wireframe.png" width="300" alt="Wireframe torus" />
+
+### Camera Controls
+
+The same multi-object scene rendered three ways using the camera utilities — `look-at`, `orbit`, and `fov->distance`. All three functions return ordinary projection maps; no new primitives.
+
+```clojure
+;; Shared scene: ground plane + three objects rendered as separate layers.
+;; Nodes earlier in :image/nodes draw first (behind), later nodes on top.
+(def light {:light/direction [1 2 0.5] :light/ambient 0.3 :light/intensity 0.7})
+
+(defn ground-mesh [size subdivisions]
+  (let [half (/ (double size) 2.0)
+        step (/ (double size) subdivisions)]
+    (into []
+      (for [i (range subdivisions) j (range subdivisions)
+            :let [x0 (+ (- half) (* i step))
+                  z0 (+ (- half) (* j step))
+                  x1 (+ x0 step)
+                  z1 (+ z0 step)]]
+        (s3d/make-face [[x0 0.0 z1] [x1 0.0 z1] [x1 0.0 z0] [x0 0.0 z0]])))))
+
+(def ground (ground-mesh 7 12))
+(def ground-style {:style/fill   [:color/rgb 180 175 165]
+                   :style/stroke {:color [:color/rgb 165 160 150] :width 0.2}})
+
+(def objects
+  (s3d/merge-meshes
+    [(s3d/cube-mesh [-1.2 0 -1.2] 1.5)
+     {:style/fill [:color/rgb 70 130 200]
+      :style/stroke {:color [:color/rgb 40 80 140] :width 0.5}}]
+    [(-> (s3d/cylinder-mesh 0.6 2.0 48)
+         (s3d/translate-mesh [2.0 0.0 -0.5]))
+     {:style/fill [:color/rgb 200 90 70]
+      :style/stroke {:color [:color/rgb 200 90 70] :width 0.5}}]
+    [(-> (s3d/sphere-mesh 0.7 16 8)
+         (s3d/translate-mesh [0.0 0.7 2.0]))
+     {:style/fill [:color/rgb 80 180 100]
+      :style/stroke {:color [:color/rgb 40 110 50] :width 0.3}}]))
+
+(defn render-scene [proj]
+  [(s3d/render-mesh proj ground  {:style ground-style :light light})
+   (s3d/render-mesh proj objects {:light light})])
+```
+
+**`look-at`** — point the camera from a position toward a target. No manual yaw/pitch math.
+
+```clojure
+(eido/render
+  {:image/size [400 400]
+   :image/background [:color/rgb 245 243 238]
+   :image/nodes
+   (render-scene
+     (s3d/look-at (s3d/orthographic {:scale 55 :origin [200 210]})
+                  [4 3.5 6] [0 0.5 0]))}
+  {:output "look-at.png"})
+```
+
+<img src="images/3d-look-at.png" width="300" alt="Scene rendered with look-at camera" />
+
+**`orbit`** — camera on a sphere around a target. Pitch convention matches the projection constructors.
+
+```clojure
+(eido/render
+  (anim/frames 90
+    (fn [t]
+      {:image/size [400 400]
+       :image/background [:color/rgb 245 243 238]
+       :image/nodes
+       (render-scene
+         (s3d/orbit (s3d/orthographic {:scale 55 :origin [200 210]})
+                    [0 0.5 0] 8 (* t 2.0 Math/PI) -0.4))}))
+  {:output "orbit.gif" :fps 30})
+```
+
+<img src="images/3d-orbit.gif" width="300" alt="Orbiting camera animation" />
+
+**`fov->distance` + perspective** — field-of-view control for perspective projection. Objects closer to the camera appear larger.
+
+```clojure
+(eido/render
+  {:image/size [400 400]
+   :image/background [:color/rgb 245 243 238]
+   :image/nodes
+   (render-scene
+     (s3d/look-at
+       (s3d/perspective {:scale 55 :origin [200 210]
+                         :distance (s3d/fov->distance (/ Math/PI 3) (/ 200.0 55))})
+       [4 4 7] [0 0.5 0]))}
+  {:output "perspective.png"})
+```
+
+<img src="images/3d-perspective-fov.png" width="300" alt="Perspective projection with FOV control" />
+
+### New Primitives
+
+Cone and torus meshes, combined with `merge-meshes` for multi-object scenes.
+
+```clojure
+(let [light {:light/direction [1 2 0.5] :light/ambient 0.3 :light/intensity 0.7}
+      proj  (s3d/look-at
+              (s3d/perspective {:scale 55 :origin [200 210]
+                                :distance (s3d/fov->distance (/ Math/PI 3) (/ 200.0 55))})
+              [3 3 5] [0 0.8 0])]
+  (eido/render
+    {:image/size [400 400]
+     :image/background [:color/rgb 245 243 238]
+     :image/nodes
+     [(s3d/render-mesh proj
+        (s3d/merge-meshes
+          [(s3d/cone-mesh 0.8 2.0 48)
+           {:style/fill [:color/rgb 220 160 60]}]
+          [(-> (s3d/torus-mesh 1.2 0.3 48 24)
+               (s3d/translate-mesh [0 0.3 0]))
+           {:style/fill [:color/rgb 70 130 200]}]
+          [(-> (s3d/sphere-mesh 0.5 32 16)
+               (s3d/translate-mesh [-2.0 0.5 0.5]))
+           {:style/fill [:color/rgb 200 80 80]}])
+        {:light light})]}
+    {:output "cone-torus.png"}))
+```
+
+<img src="images/3d-cone-torus.png" width="300" alt="Cone, torus, and sphere with perspective" />
+
+### Wireframe Overlay
+
+Solid shading and wireframe can be combined using composite group opacity. The wireframe layer renders at 40% opacity over the solid torus.
+
+```clojure
+(eido/render
+  (anim/frames 60
+    (fn [t]
+      (let [proj (s3d/orbit (s3d/orthographic {:scale 50 :origin [200 200]})
+                            [0 0 0] 5 (* t 2.0 Math/PI) -0.3)
+            mesh (s3d/torus-mesh 1.5 0.6 20 10)]
+        {:image/size [400 400]
+         :image/background [:color/rgb 20 20 30]
+         :image/nodes
+         [(s3d/render-mesh proj mesh
+            {:style {:style/fill [:color/rgb 60 100 160]}
+             :light {:light/direction [1 2 1]
+                     :light/ambient 0.2
+                     :light/intensity 0.8}
+             :cull-back false})
+          {:node/type :group
+           :group/composite :src-over
+           :node/opacity 0.4
+           :group/children
+           [(s3d/render-mesh proj mesh
+              {:wireframe true
+               :style {:style/stroke {:color [:color/rgb 180 210 255]
+                                      :width 0.4}}})]}]})))
+  {:output "wireframe-overlay.gif" :fps 30})
+```
+
+<img src="images/3d-torus-wireframe-overlay.gif" width="300" alt="Orbiting torus with wireframe overlay" />
+
+## Compositing
+
+Groups with `:group/composite` render children to an off-screen buffer, then composite the buffer onto the canvas. Without the key, groups behave as before (flattened, zero cost).
+
+### True Group Opacity
+
+Overlapping shapes in a composite group are treated as a single unit — no bleed-through between siblings.
+
+```clojure
+{:node/type :group
+ :group/composite :src-over
+ :node/opacity 0.7
+ :group/children
+ [{:node/type :shape/circle
+   :circle/center [160 100] :circle/radius 60
+   :style/fill [:color/rgb 255 80 80]}
+  {:node/type :shape/circle
+   :circle/center [200 100] :circle/radius 60
+   :style/fill [:color/rgb 80 180 255]}
+  {:node/type :shape/circle
+   :circle/center [240 100] :circle/radius 60
+   :style/fill [:color/rgb 80 255 120]}]}
+```
+
+<img src="images/composite-group-opacity.png" width="300" alt="True group opacity with overlapping circles" />
+
+### Masking with `:src-in`
+
+A colored grid masked by a circle — the grid is only visible where the circle was drawn. The outer `:src-over` group isolates from the background; the inner `:src-in` group composites against the circle.
+
+```clojure
+{:node/type :group
+ :group/composite :src-over
+ :group/children
+ [{:node/type :shape/circle
+   :circle/center [200 200] :circle/radius 150
+   :style/fill [:color/rgb 255 255 255]}
+  {:node/type :group
+   :group/composite :src-in
+   :group/children [...colored grid...]}]}
+```
+
+<img src="images/composite-mask.png" width="300" alt="Grid masked by circle using src-in compositing" />
+
+### Composite Modes
+
+| Mode | Effect |
+|------|--------|
+| `:src-over` | True group opacity — render as unit, then blend |
+| `:src-in` | Masking — visible only where destination has pixels |
+| `:src-out` | Knockout — visible only where destination is empty |
+| `:dst-over` | Draw behind existing content |
+| `:xor` | XOR compositing |
+
+### Blend Modes
+
+Custom pixel-by-pixel blending — same `:group/composite` key with blend keywords.
+
+```clojure
+;; Screen blend: colored light circles over a 3D scene
+{:node/type :group
+ :group/composite :screen
+ :group/children
+ [{:node/type :shape/circle :circle/center [140 180] :circle/radius 120
+   :style/fill [:color/rgb 255 60 30] :node/opacity 0.5}
+  {:node/type :shape/circle :circle/center [260 160] :circle/radius 100
+   :style/fill [:color/rgb 30 100 255] :node/opacity 0.5}]}
+```
+
+<img src="images/blend-screen-3d.png" width="300" alt="Screen blend over 3D scene" />
+
+| Mode | Effect |
+|------|--------|
+| `:multiply` | Darkens — `src * dst` per channel |
+| `:screen` | Brightens — `1 - (1-src)(1-dst)` |
+| `:overlay` | Multiply or screen based on destination brightness |
+
+### Filters
+
+`:group/filter` applies pixel-level transforms to the compositing buffer. Either key alone triggers buffer creation; both can be combined.
+
+```clojure
+;; Animated filter cycle: original → grayscale → sepia → invert
+(anim/frames 90
+  (fn [t]
+    (let [filter-spec (case (int (mod (* t 4) 4))
+                        0 nil, 1 :grayscale, 2 :sepia, 3 :invert)]
+      {:image/size [400 300]
+       :image/background [:color/rgb 245 243 238]
+       :image/nodes
+       [(cond-> {:node/type :group
+                 :group/children [...colored circles...]}
+          filter-spec (assoc :group/filter filter-spec))]})))
+```
+
+<img src="images/filter-cycle.gif" width="300" alt="Animated filter cycle" />
+
+| Filter | Effect |
+|--------|--------|
+| `:grayscale` | Luminance conversion |
+| `:sepia` | Warm-toned monochrome |
+| `:invert` | Color negation |
+| `[:blur radius]` | Gaussian blur approximation |
+
+### Drop Shadow
+
+No special primitive — composable from blur + offset + opacity:
+
+```clojure
+;; Blurred shadow behind a spinning 3D torus
+{:node/type :group
+ :group/filter [:blur 6]
+ :node/opacity 0.3
+ :node/transform [[:transform/translate 4 6]]
+ :group/children [(s3d/render-mesh proj mesh {:style {:style/fill [:color/rgb 0 0 0]}})]}
+```
+
+<img src="images/3d-torus-shadow.gif" width="300" alt="3D torus with drop shadow" />
 
 ## API
 
@@ -977,6 +1575,44 @@ A Koch snowflake that gains detail with each frame, the boundary growing ever mo
 | `eido.scene/smooth-path` | Smooth curve through points (Catmull-Rom) |
 | `eido.scene/regular-polygon` | Create regular n-sided polygon |
 | `eido.scene/star` | Create n-pointed star with inner/outer radii |
+| `eido.scene3d/isometric` | Create isometric projection map |
+| `eido.scene3d/orthographic` | Create orthographic projection map |
+| `eido.scene3d/perspective` | Create perspective projection map |
+| `eido.scene3d/look-at` | Orient projection from eye position toward target |
+| `eido.scene3d/orbit` | Place camera on sphere around target at yaw/pitch |
+| `eido.scene3d/fov->distance` | Convert field-of-view angle to perspective :distance |
+| `eido.scene3d/cube-mesh` | 6-face cube mesh at position with size |
+| `eido.scene3d/prism-mesh` | Prism from 2D polygon base + height |
+| `eido.scene3d/cylinder-mesh` | Cylinder mesh with configurable segments |
+| `eido.scene3d/sphere-mesh` | Sphere mesh with lat/lon subdivision |
+| `eido.scene3d/torus-mesh` | Torus mesh with major/minor radius |
+| `eido.scene3d/cone-mesh` | Cone mesh with base radius and height |
+| `eido.scene3d/extrude-mesh` | Extrude 2D polygon along 3D vector |
+| `eido.scene3d/make-face` | Create face map from vertices (auto-normal) |
+| `eido.scene3d/translate-mesh` | Translate all vertices by offset |
+| `eido.scene3d/rotate-mesh` | Rotate mesh around :x, :y, or :z axis |
+| `eido.scene3d/scale-mesh` | Scale uniformly or per-axis |
+| `eido.scene3d/merge-meshes` | Combine meshes, optionally with per-mesh styling |
+| `eido.scene3d/mesh-bounds` | Axis-aligned bounding box {:min :max} |
+| `eido.scene3d/mesh-center` | Center point of bounding box |
+| `eido.scene3d/render-mesh` | Project mesh to 2D with sorting, culling, shading, wireframe |
+| `eido.scene3d/cube` | Convenience: cube-mesh + render-mesh |
+| `eido.scene3d/cylinder` | Convenience: cylinder-mesh + render-mesh |
+| `eido.scene3d/sphere` | Convenience: sphere-mesh + render-mesh |
+| `eido.scene3d/torus` | Convenience: torus-mesh + render-mesh |
+| `eido.scene3d/cone` | Convenience: cone-mesh + render-mesh |
+| `eido.obj/parse-obj` | Parse Wavefront OBJ text to mesh data |
+| `eido.obj/parse-mtl` | Parse MTL text to material style maps |
+| `eido.math3d/v+` | 3D vector addition |
+| `eido.math3d/v-` | 3D vector subtraction |
+| `eido.math3d/v*` | 3D scalar multiplication |
+| `eido.math3d/dot` | Dot product |
+| `eido.math3d/cross` | Cross product |
+| `eido.math3d/normalize` | Unit vector |
+| `eido.math3d/rotate-x` | Rotate point around X axis |
+| `eido.math3d/rotate-y` | Rotate point around Y axis |
+| `eido.math3d/rotate-z` | Rotate point around Z axis |
+| `eido.math3d/project` | Project 3D point to 2D screen coordinates |
 | `user/show` | Preview scene in a window (dev) |
 | `user/watch-file` | Auto-reload file on save (dev) |
 | `user/watch-scene` | Auto-reload atom on change (dev) |
