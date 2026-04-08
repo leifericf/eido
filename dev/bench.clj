@@ -204,4 +204,8 @@
   ;;   contour-terrain               118 ms  (was 158, 25% faster)
   ;;   topo-map                       75 ms  (was 103, 27% faster)
   ;;   int-array perm table, split gradient arrays, rem instead of mod
+
+  ;; === After halftone Ellipse2D reuse ===
+  ;;   halftone-layers                91 ms  (was 90, within noise)
+  ;;   Reuse single Ellipse2D$Double with setFrame instead of allocating per dot
   )

@@ -424,23 +424,24 @@
     (.setColor g (Color. 0 0 0))
     (.setRenderingHint g RenderingHints/KEY_ANTIALIASING
                        RenderingHints/VALUE_ANTIALIAS_ON)
-    (doseq [gi (range (- steps) (inc steps))
-            gj (range (- steps) (inc steps))]
-      (let [gx (* gi dot-size)
-            gy (* gj dot-size)
-            cx (+ (* gx cos-a) (* gy (- sin-a)) (/ w 2.0))
-            cy (+ (* gx sin-a) (* gy cos-a) (/ h 2.0))
-            ix (int cx) iy (int cy)]
-        (when (and (>= ix 0) (< ix w) (>= iy 0) (< iy h))
-          (let [px  (aget src-data (+ (* iy w) ix))
-                lum (/ (+ (* 0.299 (argb-r px))
-                          (* 0.587 (argb-g px))
-                          (* 0.114 (argb-b px)))
-                       255.0)
-                r (* half (- 1.0 lum))]
-            (when (> r 0.3)
-              (.fill g (Ellipse2D$Double.
-                         (- cx r) (- cy r) (* 2.0 r) (* 2.0 r))))))))
+    (let [ellipse (Ellipse2D$Double.)]
+      (doseq [gi (range (- steps) (inc steps))
+              gj (range (- steps) (inc steps))]
+        (let [gx (* gi dot-size)
+              gy (* gj dot-size)
+              cx (+ (* gx cos-a) (* gy (- sin-a)) (/ w 2.0))
+              cy (+ (* gx sin-a) (* gy cos-a) (/ h 2.0))
+              ix (int cx) iy (int cy)]
+          (when (and (>= ix 0) (< ix w) (>= iy 0) (< iy h))
+            (let [px  (aget src-data (+ (* iy w) ix))
+                  lum (/ (+ (* 0.299 (argb-r px))
+                            (* 0.587 (argb-g px))
+                            (* 0.114 (argb-b px)))
+                         255.0)
+                  r (* half (- 1.0 lum))]
+              (when (> r 0.3)
+                (.setFrame ellipse (- cx r) (- cy r) (* 2.0 r) (* 2.0 r))
+                (.fill g ellipse)))))))
     (.dispose g)
     (let [^ints out-data (.getRGB out 0 0 w h nil 0 w)]
       (.setRGB img 0 0 w h out-data 0 w))))
