@@ -152,6 +152,23 @@
   ;;   stipple-spheres               154 ms
   ;;   utah-teapot                   126 ms
 
-  ;; === After Phase N ===
-  ;; TODO: paste results here
+  ;; === After optimization (Phases 1-3, 2026-04-08) ===
+  ;;
+  ;; Math3D Microbenchmarks (10,000 iterations):
+  ;;   project (perspective)          0.76 ms  (was 0.79)
+  ;;   project (isometric)            0.54 ms  (was 0.60)
+  ;;   project (orthographic)         0.72 ms  (was 0.81)
+  ;;   normalize                      0.32 ms  (was 0.45)
+  ;;   dot                            0.28 ms  (was 0.31)
+  ;;
+  ;; render-mesh (with JIT warmup):
+  ;;   torus (288 faces)              0.25 ms  (was 1.10, ~4.4x faster)
+  ;;   sphere (192 faces)             0.17 ms  (was 0.51, ~3x faster)
+  ;;
+  ;; Gallery highlights (selected):
+  ;;   van-gogh-swirls              4111 ms  (was 4838, ~15% faster)
+  ;;   ink-landscape                  31 ms  (was 60, ~2x faster)
+  ;;   utah-teapot                   116 ms  (was 126)
+  ;;   stained-glass                   6 ms  (was 12, ~2x faster)
+  ;;   isometric-scene                 3 ms  (was 4)
   )
