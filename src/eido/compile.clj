@@ -608,108 +608,196 @@
      :ir/ops        (into [] (mapcat #(compile-tree % default-ctx))
                            (:image/nodes expanded))}))
 
+(def ^:private generator-node-types
+  "Node types that map to generator descriptors in the semantic IR."
+  #{:flow-field :contour :scatter :voronoi :delaunay :path/decorated :lsystem})
+
 (defn- normalize-node
-  "Like expand-node but preserves hatch/stipple fills and effects as
-  semantic data instead of expanding them to geometry.
+  "Like expand-node but preserves semantic constructs as data instead of
+  expanding them to geometry. Generators, hatch/stipple fills, and effects
+  are kept as-is for semantic lowering.
   Other node types are expanded normally via expand-node."
   [node]
-  (let [fill (:style/fill node)]
+  (let [fill      (:style/fill node)
+        node-type (:node/type node)]
     (cond
-      ;; Hatch and stipple fills — preserve as-is (semantic lowering handles them)
+      ;; Generator node types — preserve for semantic lowering
+      (generator-node-types node-type)
+      node
+
+      ;; Hatch and stipple fills — preserve as-is
       (hatch-fill? fill)
       node
 
       (stipple-fill? fill)
       node
 
+      ;; Symmetry — expand children with normalize-node
+      (= :symmetry node-type)
+      (expand-node (update node :group/children #(mapv normalize-node %)))
+
+      ;; Groups — normalize children
+      (= :group node-type)
+      (let [expanded (update node :group/children #(mapv normalize-node %))]
+        (if-let [warp-spec (:group/warp expanded)]
+          (-> (warp/warp-node expanded warp-spec)
+              (dissoc :group/warp))
+          expanded))
+
       ;; Everything else goes through the legacy expand-node
       :else
       (expand-node node))))
 
+(defn- node->fill-descriptor
+  "Converts a scene-level fill to a semantic fill descriptor."
+  [fill]
+  (cond
+    (nil? fill)                                          nil
+    (and (map? fill) (#{:hatch :stipple} (:fill/type fill))) fill
+    (vector? fill)                                       {:fill/type :fill/solid :color fill}
+    (:gradient/type fill)                                (merge {:fill/type :fill/gradient} fill)
+    (:color fill)                                        {:fill/type :fill/solid :color (:color fill)}
+    :else                                                fill))
+
+(defn- node->effects
+  "Extracts effect descriptors from a scene node."
+  [node]
+  (cond-> []
+    (:effect/shadow node)
+    (conj (let [s (:effect/shadow node)]
+            {:effect/type    :effect/shadow
+             :effect/dx      (:dx s)
+             :effect/dy      (:dy s)
+             :effect/blur    (:blur s)
+             :effect/color   (:color s)
+             :effect/opacity (:opacity s)}))
+    (:effect/glow node)
+    (conj (let [g (:effect/glow node)]
+            {:effect/type    :effect/glow
+             :effect/blur    (:blur g)
+             :effect/color   (:color g)
+             :effect/opacity (:opacity g)}))))
+
+(defn- node->generator
+  "Converts a generator-type scene node to a generator descriptor."
+  [node]
+  (case (:node/type node)
+    :flow-field
+    {:generator/type   :generator/flow-field
+     :generator/bounds (:flow/bounds node)
+     :generator/opts   (or (:flow/opts node) {})
+     :generator/style  (when (or (:style/fill node) (:style/stroke node))
+                         (cond-> {}
+                           (:style/fill node) (assoc :fill (:style/fill node))
+                           (:style/stroke node) (assoc :stroke (:style/stroke node))))
+     :generator/overrides (:flow/overrides node)}
+
+    :contour
+    {:generator/type   :generator/contour
+     :generator/bounds (:contour/bounds node)
+     :generator/opts   (or (:contour/opts node) {})
+     :generator/style  (when (or (:style/fill node) (:style/stroke node))
+                         (cond-> {}
+                           (:style/fill node) (assoc :fill (:style/fill node))
+                           (:style/stroke node) (assoc :stroke (:style/stroke node))))}
+
+    :scatter
+    {:generator/type      :generator/scatter
+     :generator/shape     (:scatter/shape node)
+     :generator/positions (:scatter/positions node)
+     :generator/jitter    (:scatter/jitter node)
+     :generator/overrides (:scatter/overrides node)}
+
+    :voronoi
+    {:generator/type      :generator/voronoi
+     :generator/points    (:voronoi/points node)
+     :generator/bounds    (:voronoi/bounds node)
+     :generator/style     (when (or (:style/fill node) (:style/stroke node))
+                            (cond-> {}
+                              (:style/fill node) (assoc :fill (:style/fill node))
+                              (:style/stroke node) (assoc :stroke (:style/stroke node))))
+     :generator/overrides (:voronoi/overrides node)}
+
+    :delaunay
+    {:generator/type   :generator/delaunay
+     :generator/points (:delaunay/points node)
+     :generator/bounds (:delaunay/bounds node)
+     :generator/style  (when (or (:style/fill node) (:style/stroke node))
+                         (cond-> {}
+                           (:style/fill node) (assoc :fill (:style/fill node))
+                           (:style/stroke node) (assoc :stroke (:style/stroke node))))}
+
+    :path/decorated
+    {:generator/type          :generator/decorator
+     :generator/path-commands (:decorator/path node)
+     :generator/shape         (:decorator/shape node)
+     :generator/spacing       (get node :decorator/spacing 20)
+     :generator/rotate?       (get node :decorator/rotate? true)
+     :generator/overrides     (:decorator/overrides node)}
+
+    :lsystem
+    nil ;; L-systems still go through legacy (complex parameter passing)
+
+    nil))
+
 (defn- scene-node->draw-item
   "Converts a normalized scene node to a semantic IR draw item.
-  Handles the mapping from scene-level keys to item-level keys."
+  Handles shapes, generators, and the mapping from scene-level keys."
   [node]
-  (let [geom (case (:node/type node)
-               :shape/rect
-               {:geometry/type       :rect
-                :rect/xy             (:rect/xy node)
-                :rect/size           (:rect/size node)
-                :rect/corner-radius  (:rect/corner-radius node)}
+  (let [node-type (:node/type node)]
+    ;; Generator nodes
+    (if-let [gen (and (generator-node-types node-type)
+                      (node->generator node))]
+      {:item/generator gen}
+      ;; Shape nodes
+      (let [geom (case node-type
+                   :shape/rect
+                   {:geometry/type       :rect
+                    :rect/xy             (:rect/xy node)
+                    :rect/size           (:rect/size node)
+                    :rect/corner-radius  (:rect/corner-radius node)}
 
-               :shape/circle
-               {:geometry/type   :circle
-                :circle/center   (:circle/center node)
-                :circle/radius   (:circle/radius node)}
+                   :shape/circle
+                   {:geometry/type   :circle
+                    :circle/center   (:circle/center node)
+                    :circle/radius   (:circle/radius node)}
 
-               :shape/ellipse
-               {:geometry/type    :ellipse
-                :ellipse/center   (:ellipse/center node)
-                :ellipse/rx       (:ellipse/rx node)
-                :ellipse/ry       (:ellipse/ry node)}
+                   :shape/ellipse
+                   {:geometry/type    :ellipse
+                    :ellipse/center   (:ellipse/center node)
+                    :ellipse/rx       (:ellipse/rx node)
+                    :ellipse/ry       (:ellipse/ry node)}
 
-               :shape/arc
-               {:geometry/type :arc
-                :arc/center    (:arc/center node)
-                :arc/rx        (:arc/rx node)
-                :arc/ry        (:arc/ry node)
-                :arc/start     (:arc/start node)
-                :arc/extent    (:arc/extent node)
-                :arc/mode      (get node :arc/mode :open)}
+                   :shape/arc
+                   {:geometry/type :arc
+                    :arc/center    (:arc/center node)
+                    :arc/rx        (:arc/rx node)
+                    :arc/ry        (:arc/ry node)
+                    :arc/start     (:arc/start node)
+                    :arc/extent    (:arc/extent node)
+                    :arc/mode      (get node :arc/mode :open)}
 
-               :shape/line
-               {:geometry/type :line
-                :line/from     (:line/from node)
-                :line/to       (:line/to node)}
+                   :shape/line
+                   {:geometry/type :line
+                    :line/from     (:line/from node)
+                    :line/to       (:line/to node)}
 
-               :shape/path
-               {:geometry/type  :path
-                :path/commands  (:path/commands node)
-                :path/fill-rule (:path/fill-rule node)}
+                   :shape/path
+                   {:geometry/type  :path
+                    :path/commands  (:path/commands node)
+                    :path/fill-rule (:path/fill-rule node)}
 
-               ;; Groups and other complex nodes — fall back to legacy compile
-               nil)
-        fill    (:style/fill node)
-        stroke  (:style/stroke node)
-        opacity (:node/opacity node)
-        effects (cond-> []
-                  (:effect/shadow node)
-                  (conj (merge {:effect/type :effect/shadow}
-                               (let [s (:effect/shadow node)]
-                                 {:effect/dx      (:dx s)
-                                  :effect/dy      (:dy s)
-                                  :effect/blur    (:blur s)
-                                  :effect/color   (:color s)
-                                  :effect/opacity (:opacity s)})))
-                  (:effect/glow node)
-                  (conj (merge {:effect/type :effect/glow}
-                               (let [g (:effect/glow node)]
-                                 {:effect/blur    (:blur g)
-                                  :effect/color   (:color g)
-                                  :effect/opacity (:opacity g)}))))
-        transforms (:node/transform node)]
-    (when geom
-      (cond-> {:item/geometry geom}
-        fill       (assoc :item/fill
-                     (cond
-                       ;; Hatch/stipple — keep as-is
-                       (and (map? fill) (#{:hatch :stipple} (:fill/type fill)))
-                       fill
-                       ;; Color vector
-                       (vector? fill)
-                       {:fill/type :fill/solid :color fill}
-                       ;; Gradient
-                       (:gradient/type fill)
-                       (merge {:fill/type :fill/gradient} fill)
-                       ;; Color map
-                       (:color fill)
-                       {:fill/type :fill/solid :color (:color fill)}
-                       ;; Pass through
-                       :else fill))
-        stroke     (assoc :item/stroke stroke)
-        opacity    (assoc :item/opacity opacity)
-        (seq effects)   (assoc :item/effects effects)
-        transforms (assoc :item/transforms transforms)))))
+                   ;; Groups and other complex nodes → fall back to legacy
+                   nil)
+            effects    (node->effects node)
+            transforms (:node/transform node)]
+        (when geom
+          (cond-> {:item/geometry geom}
+            (:style/fill node)   (assoc :item/fill (node->fill-descriptor (:style/fill node)))
+            (:style/stroke node) (assoc :item/stroke (:style/stroke node))
+            (:node/opacity node) (assoc :item/opacity (:node/opacity node))
+            (seq effects)        (assoc :item/effects effects)
+            transforms           (assoc :item/transforms transforms)))))))
 
 (defn compile-semantic
   "Compiles a scene map into a semantic IR container.

@@ -140,3 +140,63 @@
           img      (render/render concrete {})]
       (is (= [200 0 0] (pixel-rgb img 50 50)))
       (is (= [0 200 0] (pixel-rgb img 220 100))))))
+
+;; --- generator integration tests ---
+
+(deftest compile-semantic-flow-field-test
+  (testing "flow field node compiles through semantic path"
+    (let [scene {:eido/validate false
+                 :image/size [200 200]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type  :flow-field
+                   :flow/bounds [0 0 200 200]
+                   :flow/opts {:density 30 :steps 20 :seed 42}
+                   :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}
+          semantic (compile/compile-semantic scene)
+          item     (first (:pass/items (first (:ir/passes semantic))))]
+      ;; Should be a generator item
+      (is (= :generator/flow-field
+             (get-in item [:item/generator :generator/type])))
+      ;; Should lower and render
+      (let [concrete (lower/lower semantic)
+            img      (render/render concrete {})]
+        (is (some? img))))))
+
+(deftest compile-semantic-voronoi-test
+  (testing "voronoi node compiles through semantic path"
+    (let [scene {:eido/validate false
+                 :image/size [200 200]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type     :voronoi
+                   :voronoi/points [[40 40] [160 40] [100 160]]
+                   :voronoi/bounds [0 0 200 200]
+                   :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}
+          semantic (compile/compile-semantic scene)
+          item     (first (:pass/items (first (:ir/passes semantic))))]
+      (is (= :generator/voronoi
+             (get-in item [:item/generator :generator/type])))
+      (let [concrete (lower/lower semantic)
+            img      (render/render concrete {})]
+        (is (some? img))))))
+
+(deftest compile-semantic-scatter-test
+  (testing "scatter node compiles through semantic path"
+    (let [scene {:eido/validate false
+                 :image/size [200 200]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type         :scatter
+                   :scatter/shape     {:node/type :shape/circle
+                                       :circle/center [0 0]
+                                       :circle/radius 5
+                                       :style/fill [:color/rgb 200 0 0]}
+                   :scatter/positions [[50 50] [100 100] [150 150]]}]}
+          semantic (compile/compile-semantic scene)
+          item     (first (:pass/items (first (:ir/passes semantic))))]
+      (is (= :generator/scatter
+             (get-in item [:item/generator :generator/type])))
+      (let [concrete (lower/lower semantic)
+            img      (render/render concrete {})]
+        (is (some? img))))))
