@@ -241,4 +241,25 @@
   ;; (map lookups, sequence traversal, GC) and Java2D rasterization.
   ;; Further gains would require architectural changes (records vs maps,
   ;; batched rendering) or JVM tuning (GC flags, JIT thresholds)
+  ;;
+  ;; === Round 3 optimizations (warmed comparison) ===
+  ;;
+  ;; Example                     before R3   after R3   change
+  ;; -------                     ---------   --------   ------
+  ;; van-gogh-swirls                  2008       1529    -24%
+  ;;   compile only                    294        277     -6%
+  ;; utah-teapot                       142        108    -24%
+  ;; stipple-spheres                   125        124      0%
+  ;; polka-pop                         192        152    -21%
+  ;; contour-terrain                    84         60    -29%
+  ;; topo-map                           45         39    -13%
+  ;; pointillist-landscape              34         29    -15%
+  ;; sumi-e-bamboo                      20         16    -20%
+  ;; thermal                            22         18    -18%
+  ;;
+  ;; Changes: compile-node + render-op multimethods → case, conditional
+  ;; save/restore in render-single-op, compile-tree destructuring,
+  ;; compile-command + build-path + flatten-commands seq allocation removal,
+  ;; SVG fmt regex → manual trim, ensure-double-coords eliminated,
+  ;; animation frame validation skip
   )
