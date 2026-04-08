@@ -1,5 +1,59 @@
 # Changes
 
+## v1.0.0-alpha6 — Performance
+
+### Rendering pipeline
+
+- Add `make-projector` for precomputed 3D→2D projection with inlined rotation matrix
+- Replace `project`, `compile-node`, `render-op`, `op->svg` multimethods with `case` dispatch
+- Eliminate redundant `normalize` calls in `render-mesh` and `shade-face-style`
+- Pre-normalize light direction once per render instead of per face
+- Add offscreen buffer pooling for shadow/glow compositing groups
+- Add `BasicStroke` caching to avoid repeated allocation in stroke-heavy scenes
+- Skip redundant `Graphics2D` state changes (opacity, transform save/restore)
+- Convert IR ops from maps to records for O(1) field access
+- Move spec validation from `compile` to API boundary (validate once, compile fast)
+- Support `:eido/validate false` on scene maps to skip validation for known-good scenes
+- Skip validation for animation frames after the first
+
+### Pixel operations
+
+- Enable `unchecked-math` for pixel processing functions (blur, grain, blend, halftone)
+- Eliminate per-pixel vector allocation in box-blur inner loop
+- Reuse `Ellipse2D` object in halftone rendering loop
+- Memoize pattern tile rendering by spec
+
+### Noise and contour
+
+- Cache seeded permutation tables instead of regenerating per noise call
+- Convert permutation table and gradient vectors to primitive int-arrays
+- Use `rem` instead of `mod` for primitive long division in noise
+- Replace O(n²) contour segment connection with O(n) spatial hashing
+- Convert contour grid sampling to flat `double-array` with `aget` access
+
+### Stroke and text
+
+- Deduplicate normal computation in stroke outline (compute once, use for both sides)
+- Convert cumulative distances to `double-array`
+- Remove redundant `ensure-double-coords` pass before path flattening
+- Fix reflection in `flatten-commands` (type hints for `GeneralPath`, `PathIterator`)
+- Eliminate `[cmd & args]` seq allocation in `compile-command`, `build-path`, `flatten-commands`
+
+### Other
+
+- Use `ArrayList` with swap-remove for O(1) Poisson disk active list removal
+- Fix reflection warnings in `render.clj` and `stipple.clj`
+- Replace SVG `fmt` regex with manual character trimming
+- Destructure node keys once in `compile-tree` to reduce map lookups
+
+### Infrastructure
+
+- Add visual regression tests (`test/eido/visual_test.clj`) with pixel-diff against committed reference PNGs
+- Add CI workflow (`.github/workflows/test.yml`) for tests on PRs and pushes
+- Add REPL benchmarks (`dev/bench.clj`) with full gallery timing suite
+- Add `clj-async-profiler` as dev dependency with profiling helpers (`dev/profile.clj`)
+- Add `:perf` deps.edn alias with JVM tuning flags for throughput rendering
+
 ## v1.0.0-alpha5 — Artistic Toolkit, Gallery Website
 
 ### Artistic toolkit
