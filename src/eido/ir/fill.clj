@@ -51,10 +51,10 @@
 
 ;; --- geometry → scene node reconstruction ---
 
-(defn geometry->scene-node
+(defn- geometry->scene-node
   "Reconstructs a scene-level node from a semantic geometry map.
-  Used by fill and effect lowering to pass through the existing
-  compile expansion pipeline."
+  Used internally for converting IR geometry to scene nodes for
+  hatch/stipple generators and procedural fill lowering."
   [geom fill stroke opacity]
   (let [base (case (:geometry/type geom)
                :rect

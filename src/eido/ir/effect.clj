@@ -13,8 +13,9 @@
   Effects are stored as descriptors in draw items and expanded
   to BufferOp wrappers during lowering."
   (:require
-    [eido.compile :as compile]
-    [eido.ir.fill :as fill]))
+    [eido.color :as color]
+    [eido.ir :as ir]))
+  ;; NOTE: no dependency on eido.compile — effect lowering is self-sufficient
 
 ;; --- effect constructors ---
 
@@ -60,35 +61,72 @@
 ;; --- effect classification ---
 
 (defn- geometry-effect?
-  "Returns true for effects that create additional geometry (shadow/glow)."
   [effect]
   (#{:effect/shadow :effect/glow} (:effect/type effect)))
 
 (defn- filter-effect?
-  "Returns true for effects that apply image-space filters."
   [effect]
   (#{:effect/blur :effect/grain :effect/posterize
      :effect/duotone :effect/halftone} (:effect/type effect)))
 
-;; --- effect lowering ---
+;; --- concrete op construction ---
 
-(defn- effect->scene-keys
-  "Converts an effect descriptor to the scene-node keys the existing
-  compile expansion expects."
-  [effect]
-  (case (:effect/type effect)
-    :effect/shadow {:effect/shadow {:dx      (:effect/dx effect)
-                                    :dy      (:effect/dy effect)
-                                    :blur    (:effect/blur effect)
-                                    :color   (:effect/color effect)
-                                    :opacity (:effect/opacity effect)}}
-    :effect/glow   {:effect/glow {:blur    (:effect/blur effect)
-                                  :color   (:effect/color effect)
-                                  :opacity (:effect/opacity effect)}}))
+(defn- item->base-op
+  "Converts a draw item to a concrete op (simplified — for shadow/glow copies).
+  Handles basic geometry types with fill, stroke, opacity."
+  [geom fill stroke opacity]
+  (let [resolved-fill (when fill
+                        (cond
+                          (vector? fill)                          (color/resolve-color fill)
+                          (:color fill)                           (color/resolve-color (:color fill))
+                          (and (:r fill) (:g fill) (:b fill))     fill
+                          :else                                   nil))
+        stroke-color  (some-> stroke :color color/resolve-color)
+        stroke-width  (when stroke (:width stroke))
+        stroke-cap    (:cap stroke)
+        stroke-join   (:join stroke)
+        stroke-dash   (:dash stroke)]
+    (case (:geometry/type geom)
+      :rect
+      (let [[x y] (:rect/xy geom)
+            [w h] (:rect/size geom)]
+        (ir/->RectOp :rect x y w h (:rect/corner-radius geom)
+                      resolved-fill stroke-color stroke-width opacity
+                      stroke-cap stroke-join stroke-dash nil nil))
+      :circle
+      (let [[cx cy] (:circle/center geom)]
+        (ir/->CircleOp :circle cx cy (:circle/radius geom)
+                        resolved-fill stroke-color stroke-width opacity
+                        stroke-cap stroke-join stroke-dash nil nil))
+      :ellipse
+      (let [[cx cy] (:ellipse/center geom)]
+        (ir/->EllipseOp :ellipse cx cy
+                         (:ellipse/rx geom) (:ellipse/ry geom)
+                         resolved-fill stroke-color stroke-width opacity
+                         stroke-cap stroke-join stroke-dash nil nil))
+      :path
+      (ir/->PathOp :path
+                    (mapv ir/compile-command (:path/commands geom))
+                    (:path/fill-rule geom)
+                    resolved-fill stroke-color stroke-width opacity
+                    stroke-cap stroke-join stroke-dash nil nil)
+      :line
+      (let [[x1 y1] (:line/from geom)
+            [x2 y2] (:line/to geom)]
+        (ir/->LineOp :line x1 y1 x2 y2
+                      resolved-fill stroke-color stroke-width opacity
+                      stroke-cap stroke-join stroke-dash nil nil))
+      :arc
+      (let [[cx cy] (:arc/center geom)]
+        (ir/->ArcOp :arc cx cy
+                     (:arc/rx geom) (:arc/ry geom)
+                     (:arc/start geom) (:arc/extent geom)
+                     (get geom :arc/mode :open)
+                     resolved-fill stroke-color stroke-width opacity
+                     stroke-cap stroke-join stroke-dash nil nil)))))
 
 (defn- effect->filter-spec
-  "Converts a filter effect descriptor to the filter spec vector
-  that render.clj/apply-filter expects."
+  "Converts a filter effect descriptor to a filter spec vector."
   [effect]
   (case (:effect/type effect)
     :effect/blur      [:blur (:effect/radius effect)]
@@ -97,42 +135,46 @@
     :effect/duotone   [:duotone (:effect/color-a effect) (:effect/color-b effect)]
     :effect/halftone  [:halftone (:effect/dot-size effect) (:effect/angle effect)]))
 
+;; --- effect lowering ---
+
 (defn lower-effects
   "Lowers a draw item with effects to concrete ops.
-  Handles both geometry effects (shadow/glow) and filter effects
-  (blur/grain/posterize/duotone/halftone)."
+  Builds BufferOp wrappers directly for shadow/glow and filter effects."
   [item]
-  (let [effects     (:item/effects item)
-        geom-fx     (filter geometry-effect? effects)
-        filter-fx   (filter filter-effect? effects)
-        geom        (:item/geometry item)
-        scene-node  (fill/geometry->scene-node
-                      geom
-                      (:item/fill item)
-                      (:item/stroke item)
-                      (:item/opacity item))
-        ;; Build base node with geometry effects (shadow/glow)
-        with-geom-fx (reduce (fn [node effect]
-                               (merge node (effect->scene-keys effect)))
-                             scene-node
-                             geom-fx)
-        shadow      (:effect/shadow with-geom-fx)
-        glow        (:effect/glow with-geom-fx)
-        clean       (dissoc with-geom-fx :effect/shadow :effect/glow)
-        children    (cond-> []
-                      shadow (conj (compile/make-shadow-node clean shadow))
-                      glow   (conj (compile/make-glow-node clean glow))
-                      true   (conj clean))
-        ;; Wrap in group for geometry effects
-        base-group  (if (seq geom-fx)
-                      {:node/type      :group
-                       :group/children children}
-                      scene-node)
-        ;; Wrap in filter groups for each filter effect
-        with-filters (reduce (fn [node fx]
-                               {:node/type      :group
-                                :group/filter   (effect->filter-spec fx)
-                                :group/children [node]})
-                             base-group
-                             filter-fx)]
-    (compile/compile-tree with-filters compile/default-ctx)))
+  (let [effects    (:item/effects item)
+        geom-fx    (filter geometry-effect? effects)
+        filter-fx  (filter filter-effect? effects)
+        geom       (:item/geometry item)
+        fill       (:item/fill item)
+        stroke     (:item/stroke item)
+        opacity    (or (:item/opacity item) 1.0)
+        ;; Base op for the item itself
+        base-op    (item->base-op geom fill stroke opacity)
+        ;; Build shadow/glow ops
+        shadow-ops (mapcat
+                     (fn [fx]
+                       (let [shadow-fill (:effect/color fx)
+                             shadow-op   (item->base-op geom shadow-fill nil 1.0)
+                             dx          (get fx :effect/dx 0)
+                             dy          (get fx :effect/dy 0)
+                             blur-r      (:effect/blur fx)
+                             fx-opacity  (get fx :effect/opacity 0.5)
+                             translate   (when (or (not= 0 dx) (not= 0 dy))
+                                           [[:translate dx dy]])]
+                         [(ir/->BufferOp :buffer :src-over
+                                         [:blur blur-r]
+                                         fx-opacity
+                                         translate nil
+                                         [shadow-op])]))
+                     geom-fx)
+        ;; Combine: shadow ops first, then the base item
+        all-ops    (into (vec shadow-ops) [base-op])
+        ;; Wrap in filter BufferOps for each filter effect
+        result     (reduce (fn [ops fx]
+                             [(ir/->BufferOp :buffer :src-over
+                                             (effect->filter-spec fx)
+                                             1.0 nil nil
+                                             (vec ops))])
+                           all-ops
+                           filter-fx)]
+    (if (vector? result) result [result])))
