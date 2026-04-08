@@ -3,6 +3,7 @@
   {:category "3D Scenes"}
   (:require
     [eido.animate :as anim]
+    [eido.ir.material :as material]
     [eido.obj :as obj]
     [eido.scene3d :as s3d]))
 
@@ -334,6 +335,107 @@
                                                :width 0.4}}})]}]})))
    :fps 30})
 
+;; --- 14. Specular Spheres ---
+
+(defn ^{:example {:output "3d-specular-spheres.png"
+                  :title  "Specular Spheres"
+                  :desc   "Three spheres with increasing specular highlights demonstrating Blinn-Phong materials."}}
+  specular-spheres []
+  (let [proj  (s3d/perspective {:scale 80 :origin [300 200]
+                                :yaw 0.2 :pitch -0.25 :distance 10})
+        light {:light/direction [1 2 1]
+               :light/ambient 0.12
+               :light/intensity 0.88}
+        mesh  (s3d/sphere-mesh 1.2 20 12)]
+    {:image/size [600 400]
+     :image/background [:color/rgb 18 20 28]
+     :image/nodes
+     [;; Matte sphere (no specular)
+      (s3d/render-mesh proj
+        (s3d/translate-mesh mesh [-3 0 0])
+        {:style {:style/fill [:color/rgb 180 60 60]
+                 :material (material/phong
+                             :specular 0.0 :shininess 1.0)}
+         :light light})
+      ;; Medium specular
+      (s3d/render-mesh proj mesh
+        {:style {:style/fill [:color/rgb 60 120 180]
+                 :material (material/phong
+                             :specular 0.4 :shininess 32.0)}
+         :light light})
+      ;; High specular (glossy)
+      (s3d/render-mesh proj
+        (s3d/translate-mesh mesh [3 0 0])
+        {:style {:style/fill [:color/rgb 200 180 60]
+                 :material (material/phong
+                             :specular 0.8 :shininess 128.0)}
+         :light light})]}))
+
+;; --- 15. Glossy Torus ---
+
+(defn ^{:example {:output "3d-glossy-torus.gif"
+                  :title  "Glossy Torus"
+                  :desc   "A rotating torus with specular highlights catching the light as it turns."}}
+  glossy-torus []
+  {:frames (anim/frames 60
+             (fn [t]
+               (let [proj (s3d/orbit (s3d/orthographic {:scale 55 :origin [200 200]})
+                                     [0 0 0] 5 (* t 2.0 Math/PI) -0.35)
+                     mesh (-> (s3d/torus-mesh 1.5 0.6 24 12)
+                              (s3d/rotate-mesh :x 0.3))]
+                 {:image/size [400 400]
+                  :image/background [:color/rgb 15 15 22]
+                  :image/nodes
+                  [(s3d/render-mesh proj mesh
+                     {:style {:style/fill [:color/rgb 160 80 200]
+                              :material (material/phong
+                                          :specular 0.5
+                                          :shininess 48.0)
+                              :style/stroke {:color [:color/rgb 100 40 140]
+                                             :width 0.3}}
+                      :light {:light/direction [1 2 0.5]
+                              :light/ambient 0.15
+                              :light/intensity 0.85}
+                      :cull-back false})]})))
+   :fps 30})
+
+;; --- 16. Material Showcase ---
+
+(defn ^{:example {:output "3d-material-showcase.png"
+                  :title  "Material Showcase"
+                  :desc   "Four primitives with different Blinn-Phong material properties — matte, satin, glossy, and mirror-like."}}
+  material-showcase []
+  (let [proj  (s3d/isometric {:scale 30 :origin [300 220]})
+        light {:light/direction [1 1.5 0.8]
+               :light/ambient 0.15
+               :light/intensity 0.85}]
+    {:image/size [600 400]
+     :image/background [:color/rgb 30 32 38]
+     :image/nodes
+     [(s3d/render-mesh proj
+        (s3d/cube-mesh [-5 0 -1] 2.5)
+        {:style {:style/fill [:color/rgb 200 80 60]
+                 :material (material/phong :specular 0.0 :shininess 1.0)}
+         :light light})
+      (s3d/render-mesh proj
+        (s3d/sphere-mesh 1.4 16 10)
+        {:style {:style/fill [:color/rgb 60 160 120]
+                 :material (material/phong :specular 0.3 :shininess 16.0)}
+         :light light})
+      (s3d/render-mesh proj
+        (-> (s3d/cylinder-mesh 1.0 2.5 16)
+            (s3d/translate-mesh [4 0 -1]))
+        {:style {:style/fill [:color/rgb 80 120 200]
+                 :material (material/phong :specular 0.6 :shininess 64.0)}
+         :light light})
+      (s3d/render-mesh proj
+        (-> (s3d/torus-mesh 1.2 0.5 20 10)
+            (s3d/translate-mesh [0 0 4])
+            (s3d/rotate-mesh :x 0.5))
+        {:style {:style/fill [:color/rgb 200 180 60]
+                 :material (material/phong :specular 0.9 :shininess 256.0)}
+         :light light})]}))
+
 (comment
   ;; Evaluate individual examples at the REPL:
   (utah-teapot)
@@ -348,4 +450,7 @@
   (camera-orbit)
   (camera-perspective-fov)
   (new-primitives)
-  (wireframe-overlay))
+  (wireframe-overlay)
+  (specular-spheres)
+  (glossy-torus)
+  (material-showcase))
