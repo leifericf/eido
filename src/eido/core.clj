@@ -33,9 +33,11 @@
   (validate/validate scene))
 
 (defn- validated-compile
-  "Validates then compiles a scene."
+  "Validates then compiles a scene.
+  Skips validation if the scene has :eido/validate false."
   [scene]
-  (compile/validate-scene! scene)
+  (when-not (false? (:eido/validate scene))
+    (compile/validate-scene! scene))
   (compile/compile scene))
 
 (defn- render-image

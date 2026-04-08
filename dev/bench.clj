@@ -282,4 +282,18 @@
   ;; after warmup. Records primarily help cold-start and GC pressure.
   ;; BasicStroke caching and opacity tracking reduce per-op overhead.
   ;; :perf alias (clojure -M:perf) provides JVM tuning for batch renders.
+  ;;
+  ;; === Optional validation skip (:eido/validate false) ===
+  ;;
+  ;; Validation cost scales with node count:
+  ;;   polka-pop (5 nodes)       0.08 ms  (negligible)
+  ;;   contour-terrain           0.25 ms  (negligible)
+  ;;   utah-teapot (~1600 faces)  73 ms   (63% of render time)
+  ;;   van-gogh-swirls (6683)  1238 ms   (76% of render time)
+  ;;
+  ;; With :eido/validate false on scene map:
+  ;;   van-gogh-swirls         455 ms  (was 1579, 3.5x faster)
+  ;;   utah-teapot              43 ms  (was 125, 2.9x faster)
+  ;;
+  ;; Default behavior unchanged — validation runs unless explicitly opted out.
   )
