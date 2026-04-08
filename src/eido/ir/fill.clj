@@ -171,8 +171,7 @@
   [item]
   (let [geom  (:item/geometry item)
         ;; Determine bounds for evaluation
-        [bx by bw bh] (compile/shape-bounds
-                         (geometry->scene-node geom nil nil nil))
+        [bx by bw bh] (ir/geometry-bounds geom)
         w     (max 1 (long (Math/ceil (double bw))))
         h     (max 1 (long (Math/ceil (double bh))))
         ;; Evaluate program over bounds → BufferedImage

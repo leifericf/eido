@@ -126,6 +126,34 @@
                   [:quad-to cpx cpy x y])
       :close    [:close])))
 
+;; --- geometry bounds ---
+
+(defn geometry-bounds
+  "Returns [x y w h] bounding box for an IR geometry map."
+  [geom]
+  (case (:geometry/type geom)
+    :rect   (let [[x y] (:rect/xy geom)
+                  [w h] (:rect/size geom)]
+              [x y w h])
+    :circle (let [[cx cy] (:circle/center geom)
+                  r       (:circle/radius geom)]
+              [(- cx r) (- cy r) (* 2 r) (* 2 r)])
+    :ellipse (let [[cx cy] (:ellipse/center geom)
+                   rx      (:ellipse/rx geom)
+                   ry      (:ellipse/ry geom)]
+               [(- cx rx) (- cy ry) (* 2 rx) (* 2 ry)])
+    :path   (let [pts (keep (fn [[cmd & args]]
+                              (when (#{:move-to :line-to} cmd)
+                                (first args)))
+                            (:path/commands geom))
+                  xs  (map first pts)
+                  ys  (map second pts)]
+              (when (seq xs)
+                [(apply min xs) (apply min ys)
+                 (- (apply max xs) (apply min xs))
+                 (- (apply max ys) (apply min ys))]))
+    nil))
+
 ;; --- draw item ---
 
 (defn draw-item

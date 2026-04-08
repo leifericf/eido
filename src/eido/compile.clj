@@ -247,30 +247,24 @@
   (and (map? fill) (= :pattern (:fill/type fill))))
 
 (defn shape-bounds
-  "Returns [x y w h] bounding box for common shape types."
+  "Returns [x y w h] bounding box for common shape types.
+  Delegates to ir/geometry-bounds by mapping scene node keys."
   [node]
-  (case (:node/type node)
-    :shape/rect   (let [[x y] (:rect/xy node)
-                        [w h] (:rect/size node)]
-                    [x y w h])
-    :shape/circle (let [[cx cy] (:circle/center node)
-                        r       (:circle/radius node)]
-                    [(- cx r) (- cy r) (* 2 r) (* 2 r)])
-    :shape/ellipse (let [[cx cy] (:ellipse/center node)
-                         rx      (:ellipse/rx node)
-                         ry      (:ellipse/ry node)]
-                     [(- cx rx) (- cy ry) (* 2 rx) (* 2 ry)])
-    :shape/path   (let [pts (keep (fn [[cmd & args]]
-                                    (when (#{:move-to :line-to} cmd)
-                                      (first args)))
-                                  (:path/commands node))
-                        xs  (map first pts)
-                        ys  (map second pts)]
-                    (when (seq xs)
-                      [(apply min xs) (apply min ys)
-                       (- (apply max xs) (apply min xs))
-                       (- (apply max ys) (apply min ys))]))
-    nil))
+  (let [geom (case (:node/type node)
+               :shape/rect    {:geometry/type :rect
+                                :rect/xy (:rect/xy node)
+                                :rect/size (:rect/size node)}
+               :shape/circle  {:geometry/type :circle
+                                :circle/center (:circle/center node)
+                                :circle/radius (:circle/radius node)}
+               :shape/ellipse {:geometry/type :ellipse
+                                :ellipse/center (:ellipse/center node)
+                                :ellipse/rx (:ellipse/rx node)
+                                :ellipse/ry (:ellipse/ry node)}
+               :shape/path    {:geometry/type :path
+                                :path/commands (:path/commands node)}
+               nil)]
+    (when geom (ir/geometry-bounds geom))))
 
 (defn expand-hatch-fill
   "Expands a node with a hatch fill into a group with:
