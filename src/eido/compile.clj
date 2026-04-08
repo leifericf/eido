@@ -20,8 +20,6 @@
 
 (declare pattern-fill?)
 
-(declare pattern-fill?)
-
 (defn- resolve-gradient
   "Resolves colors within gradient stops, passes through coordinates."
   [gradient]
