@@ -349,7 +349,7 @@
                                  (dissoc :node/opacity)
                                  (dissoc :node/transform))))}))
 
-(defn- make-shadow-node
+(defn make-shadow-node
   "Creates a shadow/glow copy of a node."
   [node {:keys [dx dy blur color opacity] :or {dx 0 dy 0 blur 5 opacity 0.5}}]
   (let [shadow-node (-> node
@@ -363,7 +363,7 @@
      :node/transform [[:transform/translate dx dy]]
      :group/children [shadow-node]}))
 
-(defn- make-glow-node
+(defn make-glow-node
   "Creates a glow copy of a node (shadow with no offset)."
   [node {:keys [blur color opacity] :or {blur 8 opacity 0.7}}]
   (make-shadow-node node {:dx 0 :dy 0 :blur blur :color color :opacity opacity}))

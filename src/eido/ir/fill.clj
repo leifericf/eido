@@ -37,9 +37,9 @@
 
 ;; --- geometry → scene node reconstruction ---
 
-(defn- geometry->scene-node
+(defn geometry->scene-node
   "Reconstructs a scene-level node from a semantic geometry map.
-  Needed for lowering hatch/stipple fills through the existing
+  Used by fill and effect lowering to pass through the existing
   compile expansion pipeline."
   [geom fill stroke opacity]
   (let [base (case (:geometry/type geom)

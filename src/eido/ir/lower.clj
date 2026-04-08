@@ -7,6 +7,7 @@
   (:require
     [eido.color :as color]
     [eido.ir :as ir]
+    [eido.ir.effect :as effect]
     [eido.ir.fill :as fill]))
 
 ;; --- fill resolution ---
@@ -148,13 +149,23 @@
 
 (defn- lower-item
   "Lowers a semantic draw item to a vector of concrete ops.
-  Simple fills produce one op; semantic fills (hatch, stipple) expand to many."
+  Dispatches to specialized lowering for semantic fills and effects."
   [item]
-  (let [item-fill (:item/fill item)]
-    (if (fill/semantic-fill? item-fill)
+  (let [item-fill (:item/fill item)
+        effects   (:item/effects item)]
+    (cond
+      ;; Semantic fills (hatch/stipple) expand to many ops
+      (fill/semantic-fill? item-fill)
       (case (:fill/type item-fill)
         (:hatch :fill/hatch)     (fill/lower-hatch item)
         (:stipple :fill/stipple) (fill/lower-stipple item))
+
+      ;; Effects wrap the item in shadow/glow buffer groups
+      (seq effects)
+      (effect/lower-effects item)
+
+      ;; Simple geometry with simple fill → single op
+      :else
       [(lower-simple-item item)])))
 
 ;; --- container lowering ---
