@@ -130,6 +130,113 @@
       (throw (ex-info (str "Unknown geometry type: " (:geometry/type geom))
                       {:geometry geom})))))
 
+;; --- scene node → concrete op ---
+
+(defn- resolve-scene-fill
+  "Resolves a scene-level fill (color vector, color map, gradient, or
+  pre-resolved map) to the format concrete ops expect."
+  [fill]
+  (when fill
+    (cond
+      (vector? fill)         (color/resolve-color fill)
+      (:gradient/type fill)  (cond-> {:gradient/type  (:gradient/type fill)
+                                      :gradient/stops (mapv (fn [[pos c]]
+                                                              [pos (color/resolve-color c)])
+                                                            (:gradient/stops fill))}
+                               (:gradient/from fill)   (assoc :gradient/from (:gradient/from fill))
+                               (:gradient/to fill)     (assoc :gradient/to (:gradient/to fill))
+                               (:gradient/center fill) (assoc :gradient/center (:gradient/center fill))
+                               (:gradient/radius fill) (assoc :gradient/radius (:gradient/radius fill)))
+      (:color fill)          (color/resolve-color (:color fill))
+      ;; Pre-resolved fills (procedural-image, pattern, etc.) pass through
+      (:fill/type fill)      fill
+      ;; Already-resolved color map
+      (and (:r fill) (:g fill) (:b fill)) fill)))
+
+(defn lower-scene-node
+  "Converts a simple scene node (path, circle, rect, etc.) to a concrete op.
+  Handles scene-level fill/stroke resolution. For use by IR modules that
+  receive scene nodes from feature modules (hatch, stipple, flow, etc.)."
+  [node]
+  (let [stroke (:style/stroke node)
+        fill   (resolve-scene-fill (:style/fill node))
+        opacity (get node :node/opacity 1.0)
+        transforms (:node/transform node)
+        clip    nil
+        stroke-color (some-> stroke :color color/resolve-color)
+        stroke-width (when stroke (:width stroke))
+        stroke-cap   (:cap stroke)
+        stroke-join  (:join stroke)
+        stroke-dash  (:dash stroke)]
+    (case (:node/type node)
+      :shape/rect
+      (let [[x y] (:rect/xy node)
+            [w h] (:rect/size node)]
+        (ir/->RectOp :rect x y w h (:rect/corner-radius node)
+                      fill stroke-color stroke-width opacity
+                      stroke-cap stroke-join stroke-dash
+                      transforms clip))
+      :shape/circle
+      (let [[cx cy] (:circle/center node)]
+        (ir/->CircleOp :circle cx cy (:circle/radius node)
+                        fill stroke-color stroke-width opacity
+                        stroke-cap stroke-join stroke-dash
+                        transforms clip))
+      :shape/ellipse
+      (let [[cx cy] (:ellipse/center node)]
+        (ir/->EllipseOp :ellipse cx cy
+                         (:ellipse/rx node) (:ellipse/ry node)
+                         fill stroke-color stroke-width opacity
+                         stroke-cap stroke-join stroke-dash
+                         transforms clip))
+      :shape/arc
+      (let [[cx cy] (:arc/center node)]
+        (ir/->ArcOp :arc cx cy
+                     (:arc/rx node) (:arc/ry node)
+                     (:arc/start node) (:arc/extent node)
+                     (get node :arc/mode :open)
+                     fill stroke-color stroke-width opacity
+                     stroke-cap stroke-join stroke-dash
+                     transforms clip))
+      :shape/line
+      (let [[x1 y1] (:line/from node)
+            [x2 y2] (:line/to node)]
+        (ir/->LineOp :line x1 y1 x2 y2
+                      fill stroke-color stroke-width opacity
+                      stroke-cap stroke-join stroke-dash
+                      transforms clip))
+      :shape/path
+      (ir/->PathOp :path
+                    (mapv ir/compile-command (:path/commands node))
+                    (:path/fill-rule node)
+                    fill stroke-color stroke-width opacity
+                    stroke-cap stroke-join stroke-dash
+                    transforms clip)
+
+      ;; Groups — lower children recursively, wrap in BufferOp if needed
+      :group
+      (let [child-ops (into [] (map lower-scene-node) (:group/children node))
+            composite (:group/composite node)
+            filt      (:group/filter node)]
+        (if (or composite filt)
+          (ir/->BufferOp :buffer (or composite :src-over) filt
+                         opacity transforms clip child-ops)
+          ;; Flat group — just return child ops (handled by caller)
+          child-ops))
+
+      (throw (ex-info (str "Cannot lower scene node type: " (:node/type node))
+                      {:node/type (:node/type node)})))))
+
+(defn lower-scene-nodes
+  "Converts a vector of simple scene nodes to a flat vector of concrete ops."
+  [nodes]
+  (into [] (mapcat (fn [node]
+                     (let [result (lower-scene-node node)]
+                       (if (vector? result)
+                         result
+                         [result]))))
+        nodes))
+
 ;; --- item lowering dispatch ---
 
 (defn- apply-item-pre-transforms

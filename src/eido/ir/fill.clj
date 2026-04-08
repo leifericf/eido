@@ -11,9 +11,12 @@
   Hatch and stipple fills preserve their semantic identity in the IR
   and are expanded to concrete geometry during lowering."
   (:require
-    [eido.compile :as compile]
+    [eido.color :as color]
+    [eido.hatch :as hatch]
     [eido.ir :as ir]
-    [eido.ir.program :as program])
+    [eido.ir.program :as program]
+    [eido.stipple :as stipple])
+  ;; NOTE: no dependency on eido.compile — fill lowering is self-sufficient
   (:import
     [java.awt.image BufferedImage]))
 
@@ -81,29 +84,105 @@
       stroke  (assoc :style/stroke stroke)
       opacity (assoc :node/opacity opacity))))
 
+;; --- scene node → concrete op (inline, avoids circular dep with lower) ---
+
+(defn- scene-node->op
+  "Converts a simple scene node to a concrete op.
+  Used by hatch/stipple lowering for the generated line/circle nodes."
+  [node & {:keys [clip]}]
+  (let [stroke (:style/stroke node)
+        fill   (when-let [f (:style/fill node)]
+                 (cond
+                   (vector? f)                          (color/resolve-color f)
+                   (:color f)                           (color/resolve-color (:color f))
+                   (and (:r f) (:g f) (:b f))           f
+                   (:fill/type f)                       f
+                   :else                                nil))
+        opacity    (get node :node/opacity 1.0)
+        stroke-clr (some-> stroke :color color/resolve-color)
+        stroke-w   (when stroke (:width stroke))
+        stroke-cap (:cap stroke)
+        stroke-join (:join stroke)
+        stroke-dash (:dash stroke)]
+    (case (:node/type node)
+      :shape/path
+      (ir/->PathOp :path
+                    (mapv ir/compile-command (:path/commands node))
+                    (:path/fill-rule node)
+                    fill stroke-clr stroke-w opacity
+                    stroke-cap stroke-join stroke-dash
+                    nil clip)
+      :shape/circle
+      (let [[cx cy] (:circle/center node)]
+        (ir/->CircleOp :circle cx cy (:circle/radius node)
+                        fill stroke-clr stroke-w opacity
+                        stroke-cap stroke-join stroke-dash
+                        nil clip))
+      :shape/rect
+      (let [[x y] (:rect/xy node)
+            [w h] (:rect/size node)]
+        (ir/->RectOp :rect x y w h (:rect/corner-radius node)
+                      fill stroke-clr stroke-w opacity
+                      stroke-cap stroke-join stroke-dash
+                      nil clip))
+      ;; Fallback: skip unknown types
+      nil)))
+
+(defn- geometry->clip-op
+  "Creates a clip op from an IR geometry map (shape boundary without fill/stroke)."
+  [geom]
+  (let [node (geometry->scene-node geom nil nil nil)]
+    (scene-node->op node)))
+
 ;; --- hatch/stipple lowering ---
 
 (defn lower-hatch
   "Lowers a draw item with a hatch fill to concrete ops.
-  Uses the existing compile expansion and compilation pipeline."
+  Calls hatch/hatch-fill->nodes directly and converts to concrete ops."
   [item]
-  (let [geom   (:item/geometry item)
-        fill   (:item/fill item)
-        stroke (:item/stroke item)
-        node   (geometry->scene-node geom fill stroke (:item/opacity item))
-        group  (compile/expand-hatch-fill node)]
-    (compile/compile-tree group compile/default-ctx)))
+  (let [geom      (:item/geometry item)
+        fill-spec (:item/fill item)
+        stroke    (:item/stroke item)
+        [bx by bw bh] (ir/geometry-bounds geom)
+        bg-fill   (:hatch/background fill-spec)
+        clip-op   (geometry->clip-op geom)
+        ;; Generate hatch line nodes
+        hatch-nodes (hatch/hatch-fill->nodes bx by bw bh fill-spec)
+        ;; Convert each hatch line to a concrete op with clip
+        hatch-ops (into [] (keep #(scene-node->op % :clip clip-op)) hatch-nodes)
+        ;; Background fill (if specified)
+        bg-ops    (when bg-fill
+                    (let [bg-node (geometry->scene-node geom bg-fill nil nil)]
+                      [(scene-node->op bg-node :clip clip-op)]))
+        ;; Stroke outline (if specified)
+        stroke-ops (when stroke
+                     (let [stroke-node (geometry->scene-node geom nil stroke nil)]
+                       [(scene-node->op stroke-node)]))]
+    (into [] (concat bg-ops hatch-ops stroke-ops))))
 
 (defn lower-stipple
   "Lowers a draw item with a stipple fill to concrete ops.
-  Uses the existing compile expansion and compilation pipeline."
+  Calls stipple/stipple-fill->nodes directly and converts to concrete ops."
   [item]
-  (let [geom   (:item/geometry item)
-        fill   (:item/fill item)
-        stroke (:item/stroke item)
-        node   (geometry->scene-node geom fill stroke (:item/opacity item))
-        group  (compile/expand-stipple-fill node)]
-    (compile/compile-tree group compile/default-ctx)))
+  (let [geom      (:item/geometry item)
+        fill-spec (:item/fill item)
+        stroke    (:item/stroke item)
+        [bx by bw bh] (ir/geometry-bounds geom)
+        bg-fill   (:stipple/background fill-spec)
+        clip-op   (geometry->clip-op geom)
+        ;; Generate stipple dot nodes
+        dot-nodes (stipple/stipple-fill->nodes bx by bw bh fill-spec)
+        ;; Convert each dot to a concrete op with clip
+        dot-ops   (into [] (keep #(scene-node->op % :clip clip-op)) dot-nodes)
+        ;; Background fill (if specified)
+        bg-ops    (when bg-fill
+                    (let [bg-node (geometry->scene-node geom bg-fill nil nil)]
+                      [(scene-node->op bg-node :clip clip-op)]))
+        ;; Stroke outline (if specified)
+        stroke-ops (when stroke
+                     (let [stroke-node (geometry->scene-node geom nil stroke nil)]
+                       [(scene-node->op stroke-node)]))]
+    (into [] (concat bg-ops dot-ops stroke-ops))))
 
 ;; --- procedural fill rendering ---
 
@@ -170,22 +249,16 @@
   Evaluates the program over the item's bounds and creates an image fill."
   [item]
   (let [geom  (:item/geometry item)
-        ;; Determine bounds for evaluation
         [bx by bw bh] (ir/geometry-bounds geom)
         w     (max 1 (long (Math/ceil (double bw))))
         h     (max 1 (long (Math/ceil (double bh))))
-        ;; Evaluate program over bounds → BufferedImage
         img   (evaluate-procedural-fill (:item/fill item) w h)
-        ;; Create a fill that render.clj knows how to paint
         resolved-fill {:fill/type :procedural-image
                        :image     img
                        :offset    [(double bx) (double by)]}
-        ;; Build the node with the resolved fill and compile it
-        node  (geometry->scene-node
-                geom resolved-fill
-                (:item/stroke item)
-                (:item/opacity item))]
-    (compile/compile-tree node compile/default-ctx)))
+        node  (geometry->scene-node geom resolved-fill
+                (:item/stroke item) (:item/opacity item))]
+    [(scene-node->op node)]))
 
 ;; --- fill type dispatch ---
 
