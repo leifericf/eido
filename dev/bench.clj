@@ -218,4 +218,8 @@
   ;;   van-gogh-swirls              1785 ms  (was 2375, 25% faster)
   ;;   compile only                 1589 ms  (was 1820, 13% faster)
   ;;   Compute normals once, single pass for left+right, double-array dists
+
+  ;; === After shadow buffer pooling ===
+  ;;   polka-pop                     155 ms  (was 181, 14% faster)
+  ;;   Reuse offscreen BufferedImage across shadow/glow renders via dynamic var pool
   )
