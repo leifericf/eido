@@ -585,4 +585,17 @@
                 :image/nodes [{:node/type :shape/rect}]})
 ;; => [{:path [:image/nodes 0]
 ;;      :pred \"missing required key :rect/xy\" ...}]"]]
-       [:p "Invalid scenes throw " [:code "ex-info"] " with " [:code ":errors"] " in the exception data, so you always know what went wrong."]]}]}])
+       [:p "For a quick overview at the REPL, use " [:code "explain"] " to print formatted errors:"]
+       [:pre [:code
+              "(eido/explain {:image/size [800 600]
+                :image/background [:color/rgb 255 0]
+                :image/nodes [{:node/type :shape/polygon}]})
+;; 2 validation errors:
+;;
+;;   1. at [:image/background]: integer in 0..255, got: ()
+;;
+;;   2. at [:image/nodes 0]: unknown node type; valid types are:
+;;      :group, :shape/arc, :shape/circle, ..."]]
+       [:p "You can also format error data with " [:code "format-errors"] ":"]
+       [:pre [:code "(eido/format-errors (eido/validate scene))"]]
+       [:p "Invalid scenes throw " [:code "ex-info"] " with " [:code ":errors"] " in the exception data and a human-readable message, so you always know what went wrong."]]}]}])

@@ -63,12 +63,15 @@
       (is (some? errors)))))
 
 (deftest validate-unknown-node-type-test
-  (testing "unknown node type produces error"
+  (testing "unknown node type says 'unknown node type' not 'missing required key'"
     (let [scene {:image/size [100 100]
                  :image/background [:color/rgb 0 0 0]
                  :image/nodes [{:node/type :shape/polygon}]}
           errors (validate/validate scene)]
-      (is (some? errors)))))
+      (is (= 1 (count errors)))
+      (is (re-find #"unknown node type" (:message (first errors))))
+      (is (re-find #":shape/rect" (:message (first errors))))
+      (is (not (re-find #"missing required key" (:message (first errors))))))))
 
 (deftest validate-multiple-errors-test
   (testing "multiple problems produce multiple errors"
@@ -99,3 +102,73 @@
         (is (str/starts-with? (.getMessage e) "Invalid scene"))
         (is (vector? (:errors (ex-data e))))
         (is (pos? (count (:errors (ex-data e)))))))))
+
+;; --- color error deduplication ---
+
+(deftest color-dedup-rgb-test
+  (testing "missing RGB channel produces 1 error, not 8"
+    (let [errors (validate/validate
+                   {:image/size [100 100]
+                    :image/background [:color/rgb 255 0]
+                    :image/nodes []})]
+      (is (= 1 (count errors)))
+      (is (re-find #"0\.\.255" (:message (first errors)))))))
+
+(deftest color-dedup-hsl-test
+  (testing "out-of-range HSL hue produces 1 error mentioning 0..360"
+    (let [errors (validate/validate
+                   {:image/size [100 100]
+                    :image/background [:color/hsl 400 0.5 0.5]
+                    :image/nodes []})]
+      (is (= 1 (count errors)))
+      (is (re-find #"0\.\.360" (:message (first errors)))))))
+
+;; --- format-errors ---
+
+(deftest format-errors-test
+  (testing "formats multiple errors as numbered list"
+    (let [errors [{:message "at [:image/size]: positive number, got: -1"}
+                  {:message "at [:image/nodes 0]: missing required key :rect/xy"}]
+          formatted (validate/format-errors errors)]
+      (is (string? formatted))
+      (is (str/includes? formatted "2 validation errors"))
+      (is (str/includes? formatted "1."))
+      (is (str/includes? formatted "2."))
+      (is (str/includes? formatted "positive number"))))
+
+  (testing "formats single error without plural"
+    (let [formatted (validate/format-errors [{:message "some error"}])]
+      (is (str/includes? formatted "1 validation error:"))
+      (is (not (str/includes? formatted "errors")))))
+
+  (testing "empty errors returns no-errors message"
+    (is (= "No errors." (validate/format-errors [])))))
+
+;; --- explain ---
+
+(deftest explain-test
+  (testing "explain prints formatted errors and returns error vector"
+    (let [scene {:image/size [100 100]
+                 :image/background [:color/rgb 0 0 0]
+                 :image/nodes [{:node/type :shape/rect}]}
+          output (with-out-str
+                   (let [result (validate/explain scene)]
+                     (is (vector? result))
+                     (is (pos? (count result)))))]
+      (is (str/includes? output "validation error"))))
+
+  (testing "explain returns nil for valid scene"
+    (is (nil? (validate/explain valid-scene)))))
+
+;; --- compile default clauses ---
+
+(deftest compile-unknown-node-type-throws-test
+  (testing "compile-node throws on unknown node type when validation skipped"
+    (is (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Unknown node type"
+          ((requiring-resolve 'eido.core/render)
+           {:image/size [100 100]
+            :image/background [:color/rgb 0 0 0]
+            :image/nodes [{:node/type :shape/polygon}]
+            :eido/validate false})))))
