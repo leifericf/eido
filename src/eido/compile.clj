@@ -207,13 +207,6 @@
         (mapcat #(compile-tree % default-ctx))
         nodes))
 
-(defn- compile-tile-ops
-  "Compiles pattern tile nodes into IR ops for rendering."
-  [nodes tw th]
-  (into []
-        (mapcat #(compile-tree % default-ctx))
-        nodes))
-
 (defn- apply-distort-transforms
   "Applies :transform/distort entries to a path node's commands,
   removing them from the transform list."
@@ -602,17 +595,6 @@
   (when-let [errors (validate/validate scene)]
     (throw (ex-info (str "Invalid scene\n" (validate/format-errors errors))
                     {:errors errors}))))
-
-(defn- expand-node
-  "Expands high-level nodes into primitive nodes.
-  Text nodes become groups of path nodes. Other nodes pass through."
-  [node]
-  (case (:node/type node)
-    :shape/text         (text/text-node->group node)
-    :shape/text-glyphs  (text/text-glyphs-node->group node)
-    :shape/text-on-path (text/text-on-path-node->group node)
-    :group              (update node :group/children #(mapv expand-node %))
-    node))
 
 (defn compile
   "Compiles a scene map into an intermediate representation.
