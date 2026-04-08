@@ -180,4 +180,8 @@
   ;; === After box-blur vector allocation removal ===
   ;;   ink-landscape                   33 ms  (was 60, ~45% faster)
   ;;   Eliminated per-pixel vector allocation [sa sr sg sb] in blur inner loop
+
+  ;; === After pattern tile memoization ===
+  ;;   Memoize pattern->paint so identical pattern specs reuse tiles.
+  ;;   polka-pop not helped (each circle has unique pattern + bottleneck is shadow blur)
   )

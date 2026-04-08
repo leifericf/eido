@@ -39,7 +39,7 @@
 
 (declare render-ir-op)
 
-(defn- pattern->paint
+(defn- make-pattern-paint
   "Renders pattern tile ops to a BufferedImage and creates a TexturePaint."
   [pattern-fill]
   (let [[tw th] (:pattern/size pattern-fill)
@@ -53,6 +53,10 @@
     (.dispose tile-g)
     (TexturePaint. tile-img
                    (Rectangle2D$Double. 0.0 0.0 (double tw) (double th)))))
+
+(def ^:private pattern->paint
+  "Cached version of make-pattern-paint — identical pattern specs reuse tiles."
+  (memoize make-pattern-paint))
 
 (defn- apply-fill [^Graphics2D g shape fill]
   (when fill
