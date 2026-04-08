@@ -108,6 +108,28 @@
       (when (seq problems)
         (mapv problem->error problems)))))
 
+(defn format-errors
+  "Formats validation errors as a human-readable string.
+  Takes a vector of error maps as returned by validate."
+  [errors]
+  (if (seq errors)
+    (str (count errors) " validation error"
+         (when (> (count errors) 1) "s") ":\n\n"
+         (str/join "\n\n"
+           (map-indexed
+             (fn [i {:keys [message]}]
+               (str "  " (inc i) ". " message))
+             errors)))
+    "No errors."))
+
+(defn explain
+  "Validates a scene and prints human-readable errors to *out*.
+  Returns the error vector, or nil if valid."
+  [scene]
+  (when-let [errors (validate scene)]
+    (println (format-errors errors))
+    errors))
+
 (comment
   ;; Valid scene returns nil
   (validate {:image/size [800 600]

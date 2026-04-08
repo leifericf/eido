@@ -593,7 +593,7 @@
   "Validates a scene map; throws ex-info with :errors on failure."
   [scene]
   (when-let [errors (validate/validate scene)]
-    (throw (ex-info "Invalid scene"
+    (throw (ex-info (str "Invalid scene\n" (validate/format-errors errors))
                     {:errors errors}))))
 
 (defn compile

@@ -32,6 +32,18 @@
   [scene]
   (validate/validate scene))
 
+(defn format-errors
+  "Formats validation errors as a human-readable string.
+  Takes a vector of error maps as returned by validate."
+  [errors]
+  (validate/format-errors errors))
+
+(defn explain
+  "Validates a scene and prints human-readable errors to *out*.
+  Returns the error vector, or nil if valid."
+  [scene]
+  (validate/explain scene))
+
 (defn- validated-compile
   "Validates then compiles a scene.
   Skips validation if the scene has :eido/validate false."

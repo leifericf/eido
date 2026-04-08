@@ -1,5 +1,6 @@
 (ns eido.validate-test
   (:require
+    [clojure.string :as str]
     [clojure.test :refer [deftest is testing]]
     [eido.validate :as validate]))
 
@@ -95,6 +96,6 @@
       ((requiring-resolve 'eido.compile/validate-scene!) {:bad "scene"})
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
-        (is (= "Invalid scene" (.getMessage e)))
+        (is (str/starts-with? (.getMessage e) "Invalid scene"))
         (is (vector? (:errors (ex-data e))))
         (is (pos? (count (:errors (ex-data e)))))))))
