@@ -1,5 +1,25 @@
 # Changes
 
+## v1.0.0-alpha7 — Docs & Validation
+
+### Website
+
+- Add rendered preview images below 22 code examples on the docs page
+- Preview images render on the fly during CI/CD build (not committed to repo)
+- Add grouped sidebar categories to API reference page (Core, Drawing, Styling, Effects, Generative, Animation, 3D)
+
+### Validation
+
+- Add `format-errors` and `explain` for readable validation output
+- Improve unknown node type error messages with list of valid types
+- Deduplicate color and fill/stroke validation errors
+- Add default clauses to case dispatch in compile/render/svg for clear error messages
+
+### Fixes
+
+- Fix opacity tracking leak across buffer boundaries
+- Remove committed image files from repo (rendered by CI/CD)
+
 ## v1.0.0-alpha6 — Performance
 
 ### Rendering pipeline
