@@ -65,13 +65,36 @@
      :message (format-message in desc val)
      :value   val}))
 
+(def ^:private color-tags
+  #{:color/rgb :color/rgba :color/hsl :color/hsla
+    :color/hsb :color/hsba :color/hex :color/name})
+
+(defn- color-branch-mismatch?
+  "True when a spec problem is a tag-mismatch from a non-matching s/or
+  branch in the ::color spec (e.g. tried :color/rgba but tag was :color/rgb)."
+  [{:keys [pred val via]}]
+  (and (some #{:eido.spec/color} via)
+       (set? pred)
+       (= 1 (count pred))
+       (color-tags (first pred))
+       (keyword? val)
+       (not (pred val))))
+
+(defn- deduplicate-color-problems
+  "Removes tag-mismatch noise from color s/or branches."
+  [problems]
+  (remove color-branch-mismatch? problems))
+
 (defn validate
   "Validates a scene map against the Eido scene spec.
   Returns nil if valid, or a vector of error maps with
   :path, :pred, :message, and :value."
   [scene]
   (when-let [ed (s/explain-data :eido.spec/scene scene)]
-    (mapv problem->error (::s/problems ed))))
+    (let [problems (->> (::s/problems ed)
+                        deduplicate-color-problems)]
+      (when (seq problems)
+        (mapv problem->error problems)))))
 
 (comment
   ;; Valid scene returns nil
