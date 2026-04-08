@@ -249,6 +249,31 @@
                          [result]))))
         nodes))
 
+;; --- context for group lowering ---
+
+(def ^:private default-ctx
+  {:style {} :opacity 1.0 :transforms [] :clip nil})
+
+(defn- inherit-fill
+  "If item has no fill, inherit from context style."
+  [item ctx-style]
+  (if (and (:style/fill ctx-style) (not (:item/fill item)))
+    (let [fill (:style/fill ctx-style)]
+      (assoc item :item/fill
+        (cond
+          (vector? fill)         {:fill/type :fill/solid :color fill}
+          (:gradient/type fill)  (merge {:fill/type :fill/gradient} fill)
+          (:color fill)          {:fill/type :fill/solid :color (:color fill)}
+          :else                  fill)))
+    item))
+
+(defn- inherit-stroke
+  "If item has no stroke, inherit from context style."
+  [item ctx-style]
+  (if (and (:style/stroke ctx-style) (not (:item/stroke item)))
+    (assoc item :item/stroke (:style/stroke ctx-style))
+    item))
+
 ;; --- item lowering dispatch ---
 
 (defn- apply-item-pre-transforms
@@ -262,39 +287,96 @@
         (dissoc :item/pre-transforms))
     item))
 
+(defn- lower-leaf-item
+  "Lowers a geometry item with inherited context applied."
+  [item ctx]
+  (let [item      (-> item
+                      (inherit-fill (:style ctx))
+                      (inherit-stroke (:style ctx))
+                      apply-item-pre-transforms)
+        ;; Apply context: multiply opacity, concatenate transforms, set clip
+        eff-opacity (* (:opacity ctx) (or (:item/opacity item) 1.0))
+        eff-transforms (into (:transforms ctx) (or (:item/transforms item) []))
+        item      (assoc item
+                    :item/opacity eff-opacity
+                    :item/transforms eff-transforms)
+        item      (if (:clip ctx)
+                    (assoc item :item/clip (:clip ctx))
+                    item)
+        item-fill (:item/fill item)
+        effects   (:item/effects item)]
+    (cond
+      ;; Semantic fills
+      (fill/semantic-fill? item-fill)
+      (case (:fill/type item-fill)
+        (:hatch :fill/hatch)       (fill/lower-hatch item)
+        (:stipple :fill/stipple)   (fill/lower-stipple item)
+        :fill/procedural           (fill/lower-procedural item))
+
+      ;; Effects
+      (seq effects)
+      (effect/lower-effects item)
+
+      ;; Simple geometry
+      :else
+      [(lower-simple-item item)])))
+
+(defn- make-clip-op
+  "Creates a clip op from an IR geometry map."
+  [geom]
+  (lower-simple-item {:item/geometry geom :item/opacity 1.0 :item/transforms []}))
+
 (defn- lower-item
   "Lowers a semantic draw item to a vector of concrete ops.
-  Dispatches to specialized lowering for generators, fills, and effects."
-  [item]
-  (cond
-    ;; Pre-lowered ops (from compile-tree for groups) — pass through
-    (:item/ops item)
-    (:item/ops item)
+  Accepts optional context for group inheritance."
+  ([item] (lower-item item default-ctx))
+  ([item ctx]
+   (cond
+     ;; Generator items
+     (:item/generator item)
+     ((requiring-resolve 'eido.ir.generator/expand-generator) (:item/generator item))
 
-    ;; Generator items expand to many ops via feature module functions
-    (:item/generator item)
-    ((requiring-resolve 'eido.ir.generator/expand-generator) (:item/generator item))
+     ;; Group items — thread context to children
+     (:item/group item)
+     (let [group-opacity (or (:item/opacity item) 1.0)
+           group-transforms (or (:item/transforms item) [])
+           group-fill (:item/fill item)
+           group-stroke (:item/stroke item)
+           clip-geom (:item/clip-geom item)
+           composite (:item/composite item)
+           filt (:item/filter item)
+           ;; Build child context
+           child-style (cond-> (:style ctx)
+                         group-fill   (assoc :style/fill
+                                       (let [f group-fill]
+                                         (if (map? f)
+                                           (case (:fill/type f)
+                                             :fill/solid (:color f)
+                                             f)
+                                           f)))
+                         group-stroke (assoc :style/stroke group-stroke))
+           child-clip  (if clip-geom
+                         (make-clip-op clip-geom)
+                         (:clip ctx))
+           child-transforms (into (:transforms ctx) group-transforms)
+           child-opacity (* (:opacity ctx) group-opacity)
+           child-ctx {:style      child-style
+                      :opacity    (if (or composite filt) 1.0 child-opacity)
+                      :transforms (if (or composite filt) [] child-transforms)
+                      :clip       child-clip}
+           child-ops (into [] (mapcat #(lower-item % child-ctx))
+                           (:item/group item))]
+       (if (or composite filt)
+         ;; BufferOp wrapping
+         [(ir/->BufferOp :buffer (or composite :src-over) filt
+                         child-opacity child-transforms (:clip ctx)
+                         child-ops)]
+         ;; Flat group
+         child-ops))
 
-    ;; Geometry items go through transforms, fills, effects
-    :else
-    (let [item      (apply-item-pre-transforms item)
-          item-fill (:item/fill item)
-          effects   (:item/effects item)]
-      (cond
-        ;; Semantic fills (hatch/stipple/procedural) expand to many ops
-        (fill/semantic-fill? item-fill)
-        (case (:fill/type item-fill)
-          (:hatch :fill/hatch)       (fill/lower-hatch item)
-          (:stipple :fill/stipple)   (fill/lower-stipple item)
-          :fill/procedural           (fill/lower-procedural item))
-
-        ;; Effects wrap the item in shadow/glow/filter buffer groups
-        (seq effects)
-        (effect/lower-effects item)
-
-        ;; Simple geometry with simple fill → single op
-        :else
-        [(lower-simple-item item)]))))
+     ;; Leaf geometry items
+     :else
+     (lower-leaf-item item ctx))))
 
 ;; --- pass lowering ---
 
