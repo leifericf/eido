@@ -231,4 +231,9 @@
   ;;     compile                     290 ms  (was 1302, 78% faster)
   ;;   Profiler showed: 8.6% Reflector.getMethods in flatten-commands,
   ;;   ~17% in spec validation (validate/validate walks all 6683 nodes)
+  ;;
+  ;; === After moving validation to API boundary ===
+  ;;   compile/compile alone          294 ms  (was 1820 originally, 6.2x faster)
+  ;;   Full render still ~1560ms (includes validation at eido.core/render)
+  ;;   Validation is correct at API boundary; compile is now pure compilation
   )

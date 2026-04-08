@@ -32,11 +32,17 @@
   [scene]
   (validate/validate scene))
 
+(defn- validated-compile
+  "Validates then compiles a scene."
+  [scene]
+  (compile/validate-scene! scene)
+  (compile/compile scene))
+
 (defn- render-image
   "Renders a single scene to a BufferedImage."
   ([scene] (render-image scene {}))
   ([scene opts]
-   (render/render (compile/compile scene) opts)))
+   (render/render (validated-compile scene) opts)))
 
 (defn render-file
   "Reads an EDN scene file and renders it to a BufferedImage."
@@ -88,7 +94,7 @@
   Opts: :scale, :transparent-background."
   ([scene] (render-to-svg scene {}))
   ([scene opts]
-   (svg/render (compile/compile scene)
+   (svg/render (validated-compile scene)
                (select-keys opts [:scale :transparent-background]))))
 
 (defn render-to-animated-svg-str
@@ -97,7 +103,7 @@
   Opts: :scale, :transparent-background."
   ([scenes fps] (render-to-animated-svg-str scenes fps {}))
   ([scenes fps opts]
-   (let [irs (mapv compile/compile scenes)]
+   (let [irs (mapv validated-compile scenes)]
      (svg/render-animated irs fps
        (select-keys opts [:scale :transparent-background])))))
 

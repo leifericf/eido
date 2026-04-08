@@ -90,9 +90,9 @@
     (is (nil? ((requiring-resolve 'eido.core/validate) valid-scene)))))
 
 (deftest compile-throws-on-invalid-test
-  (testing "compile throws ex-info with :errors for invalid scene"
+  (testing "validate-scene! throws ex-info with :errors for invalid scene"
     (try
-      ((requiring-resolve 'eido.compile/compile) {:bad "scene"})
+      ((requiring-resolve 'eido.compile/validate-scene!) {:bad "scene"})
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
         (is (= "Invalid scene" (.getMessage e)))
