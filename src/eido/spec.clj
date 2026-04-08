@@ -305,7 +305,9 @@
     (s/and (s/keys :req [:node/type])
            #(contains? #{:shape/rect :shape/circle :shape/ellipse :shape/arc
                          :shape/line :shape/path :group
-                         :shape/text :shape/text-glyphs :shape/text-on-path}
+                         :shape/text :shape/text-glyphs :shape/text-on-path
+                         :lsystem :voronoi :delaunay :contour
+                         :flow-field :symmetry :scatter :path/decorated}
                        (:node/type %)))
     #(s/gen #{:shape/rect})))
 

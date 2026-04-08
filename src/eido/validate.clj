@@ -53,9 +53,11 @@
     (some #{:eido.spec/font-spec} via)
     "font map with :font/family (string) and :font/size (positive number)"
 
+    ;; Fallback for ::node via — rarely hit since the contains? set match
+    ;; in the :default multimethod produces a better message above.
     (and (some #{:eido.spec/node} via)
          (= :eido.spec/node (last via)))
-    "valid node (type must be :shape/rect, :shape/circle, :shape/ellipse, :shape/arc, :shape/line, :shape/path, :shape/text, :shape/text-glyphs, :shape/text-on-path, or :group)"
+    "valid node type"
 
     (some #{:style/fill} via)
     "fill (expected a color, gradient, hatch, stipple, or pattern)"
