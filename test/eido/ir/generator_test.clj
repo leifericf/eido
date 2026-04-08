@@ -124,6 +124,22 @@
       (is (vector? ops))
       (is (pos? (count ops))))))
 
+(deftest particle-expand-test
+  (testing "particle generator produces ops at frame 0"
+    (let [config {:particle/emitter {:emitter/type     :point
+                                     :emitter/position [100 100]
+                                     :emitter/rate     20
+                                     :emitter/speed    [30 60]
+                                     :emitter/spread   Math/PI}
+                  :particle/forces  [{:force/type :gravity
+                                      :force/acceleration [0 100]}]
+                  :particle/lifetime [0.5 1.0]
+                  :particle/size [3 1]}
+          g (:item/generator (gen/particle-gen config 5 10))
+          ops (gen/expand-generator g)]
+      (is (vector? ops))
+      (is (pos? (count ops))))))
+
 ;; --- render tests ---
 
 (deftest flow-field-renders-test

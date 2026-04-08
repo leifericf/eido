@@ -19,6 +19,7 @@
     [eido.flow :as flow]
     [eido.ir.vary :as ir-vary]
     [eido.noise :as noise]
+    [eido.particle :as particle]
     [eido.scatter :as scatter]
     [eido.vary :as vary]
     [eido.voronoi :as voronoi]))
@@ -69,6 +70,17 @@
                     :generator/points points
                     :generator/bounds bounds
                     :generator/style style}})
+
+(defn particle-gen
+  "Creates a particle system generator descriptor.
+  config: particle system config map (emitter, forces, lifetime, etc.)
+  frame: which frame to render (0-indexed)
+  n: total frames to simulate."
+  [config frame n]
+  {:item/generator {:generator/type :generator/particle
+                    :particle/config config
+                    :particle/frame  frame
+                    :particle/n      n}})
 
 (defn decorator-gen
   "Creates a decorator generator descriptor."
@@ -164,6 +176,16 @@
             styled (apply-style edges (:generator/style gen-desc))]
         (into [] (mapcat #(compile/compile-tree % compile/default-ctx))
               styled))
+
+      :generator/particle
+      (let [config (:particle/config gen-desc)
+            n      (:particle/n gen-desc)
+            frame  (:particle/frame gen-desc)
+            all-states (particle/states config n {})
+            state  (nth (vec all-states) (min frame (dec n)))
+            nodes  (particle/render-frame state config)]
+        (into [] (mapcat #(compile/compile-tree % compile/default-ctx))
+              nodes))
 
       :generator/decorator
       (let [nodes (decorator/decorate-path
