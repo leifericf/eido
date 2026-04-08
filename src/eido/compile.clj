@@ -12,6 +12,7 @@
     [eido.stipple :as stipple]
     [eido.stroke :as stroke]
     [eido.text :as text]
+    [eido.ir :as ir]
     [eido.validate :as validate]
     [eido.warp :as warp]
     [eido.vary :as vary]
@@ -48,16 +49,17 @@
       (:fill/type fill)           nil)))
 
 (defn- compile-style
-  "Extracts fill and stroke from a node, resolving colors."
+  "Extracts fill and stroke from a node, resolving colors.
+  Returns a map with all style keys (nil for absent optional keys)."
   [node]
   (let [stroke (:style/stroke node)]
-    (cond-> {:fill         (resolve-fill (:style/fill node))
-             :stroke-color (some-> stroke :color color/resolve-color)
-             :stroke-width (when stroke (:width stroke))
-             :opacity      (get node :node/opacity 1.0)}
-      (:cap stroke)  (assoc :stroke-cap (:cap stroke))
-      (:join stroke) (assoc :stroke-join (:join stroke))
-      (:dash stroke) (assoc :stroke-dash (:dash stroke)))))
+    {:fill         (resolve-fill (:style/fill node))
+     :stroke-color (some-> stroke :color color/resolve-color)
+     :stroke-width (when stroke (:width stroke))
+     :opacity      (get node :node/opacity 1.0)
+     :stroke-cap   (:cap stroke)
+     :stroke-join  (:join stroke)
+     :stroke-dash  (:dash stroke)}))
 
 (defn- compile-command
   "Flattens a scene path command into an IR command.
@@ -77,42 +79,54 @@
       :close    [:close])))
 
 (defn- compile-node
-  "Compiles a scene node into a flat IR op map."
+  "Compiles a scene node into an IR op record."
   [node]
-  (case (:node/type node)
-    :shape/rect
-    (let [[x y] (:rect/xy node)
-          [w h] (:rect/size node)]
-      (merge {:op :rect :x x :y y :w w :h h
-              :corner-radius (:rect/corner-radius node)}
-             (compile-style node)))
-    :shape/circle
-    (let [[cx cy] (:circle/center node)]
-      (merge {:op :circle :cx cx :cy cy :r (:circle/radius node)}
-             (compile-style node)))
-    :shape/arc
-    (let [[cx cy] (:arc/center node)]
-      (merge {:op :arc :cx cx :cy cy
-              :rx (:arc/rx node) :ry (:arc/ry node)
-              :start (:arc/start node)
-              :extent (:arc/extent node)
-              :mode (get node :arc/mode :open)}
-             (compile-style node)))
-    :shape/line
-    (let [[x1 y1] (:line/from node)
-          [x2 y2] (:line/to node)]
-      (merge {:op :line :x1 x1 :y1 y1 :x2 x2 :y2 y2}
-             (compile-style node)))
-    :shape/ellipse
-    (let [[cx cy] (:ellipse/center node)]
-      (merge {:op :ellipse :cx cx :cy cy
-              :rx (:ellipse/rx node) :ry (:ellipse/ry node)}
-             (compile-style node)))
-    :shape/path
-    (merge {:op        :path
-            :commands  (mapv compile-command (:path/commands node))
-            :fill-rule (:path/fill-rule node)}
-           (compile-style node))))
+  (let [{:keys [fill stroke-color stroke-width opacity
+                stroke-cap stroke-join stroke-dash]} (compile-style node)]
+    (case (:node/type node)
+      :shape/rect
+      (let [[x y] (:rect/xy node)
+            [w h] (:rect/size node)]
+        (ir/->RectOp :rect x y w h (:rect/corner-radius node)
+                      fill stroke-color stroke-width opacity
+                      stroke-cap stroke-join stroke-dash
+                      nil nil))
+      :shape/circle
+      (let [[cx cy] (:circle/center node)]
+        (ir/->CircleOp :circle cx cy (:circle/radius node)
+                        fill stroke-color stroke-width opacity
+                        stroke-cap stroke-join stroke-dash
+                        nil nil))
+      :shape/arc
+      (let [[cx cy] (:arc/center node)]
+        (ir/->ArcOp :arc cx cy
+                     (:arc/rx node) (:arc/ry node)
+                     (:arc/start node) (:arc/extent node)
+                     (get node :arc/mode :open)
+                     fill stroke-color stroke-width opacity
+                     stroke-cap stroke-join stroke-dash
+                     nil nil))
+      :shape/line
+      (let [[x1 y1] (:line/from node)
+            [x2 y2] (:line/to node)]
+        (ir/->LineOp :line x1 y1 x2 y2
+                      fill stroke-color stroke-width opacity
+                      stroke-cap stroke-join stroke-dash
+                      nil nil))
+      :shape/ellipse
+      (let [[cx cy] (:ellipse/center node)]
+        (ir/->EllipseOp :ellipse cx cy
+                         (:ellipse/rx node) (:ellipse/ry node)
+                         fill stroke-color stroke-width opacity
+                         stroke-cap stroke-join stroke-dash
+                         nil nil))
+      :shape/path
+      (ir/->PathOp :path
+                    (mapv compile-command (:path/commands node))
+                    (:path/fill-rule node)
+                    fill stroke-color stroke-width opacity
+                    stroke-cap stroke-join stroke-dash
+                    nil nil))))
 
 (def ^:private default-ctx
   {:style {} :transforms [] :opacity 1.0})
@@ -168,13 +182,13 @@
           (let [buffer-ctx (assoc child-ctx :opacity 1.0)
                 child-ops  (into [] (mapcat #(compile-tree % buffer-ctx))
                                   children)]
-            [{:op         :buffer
-              :composite  (or composite :src-over)
-              :filter     filt
-              :opacity    (* (:opacity ctx) opacity)
-              :transforms (accumulate-transforms (:transforms ctx) node)
-              :clip       (:clip ctx)
-              :ops        child-ops}])
+            [(ir/->BufferOp :buffer
+                            (or composite :src-over)
+                            filt
+                            (* (:opacity ctx) opacity)
+                            (accumulate-transforms (:transforms ctx) node)
+                            (:clip ctx)
+                            child-ops)])
           (into [] (mapcat #(compile-tree % child-ctx))
                 children)))
       (let [effective-opacity (* (:opacity ctx) opacity)
