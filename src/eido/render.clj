@@ -13,9 +13,7 @@
   ^Color [{:keys [r g b a]}]
   (Color. (int r) (int g) (int b) (int (* a 255))))
 
-(defmulti render-op
-  "Renders a single IR op onto the graphics context."
-  (fn [^Graphics2D _g op] (:op op)))
+(declare render-op)
 
 (defn- gradient->paint
   "Converts a resolved gradient map to a Java2D Paint object."
@@ -101,51 +99,10 @@
                       (BasicStroke. w cap join))))
     (.draw g shape)))
 
-(defmethod render-op :rect
-  [^Graphics2D g {:keys [x y w h fill corner-radius] :as op}]
-  (let [shape (if corner-radius
-                (let [r (double corner-radius)]
-                  (RoundRectangle2D$Double. (double x) (double y)
-                                            (double w) (double h) r r))
-                (Rectangle2D$Double. (double x) (double y)
-                                     (double w) (double h)))]
-    (apply-fill g shape fill)
-    (apply-stroke g shape op)))
-
-(defmethod render-op :circle
-  [^Graphics2D g {:keys [cx cy r fill] :as op}]
-  (let [d (* 2.0 r)
-        shape (Ellipse2D$Double. (double (- cx r)) (double (- cy r))
-                                d d)]
-    (apply-fill g shape fill)
-    (apply-stroke g shape op)))
-
 (def ^:private arc-mode-map
   {:open  Arc2D$Double/OPEN
    :chord Arc2D$Double/CHORD
    :pie   Arc2D$Double/PIE})
-
-(defmethod render-op :arc
-  [^Graphics2D g {:keys [cx cy rx ry start extent mode fill] :as op}]
-  (let [shape (Arc2D$Double. (double (- cx rx)) (double (- cy ry))
-                              (double (* 2.0 rx)) (double (* 2.0 ry))
-                              (double start) (double extent)
-                              (int (get arc-mode-map mode Arc2D$Double/OPEN)))]
-    (apply-fill g shape fill)
-    (apply-stroke g shape op)))
-
-(defmethod render-op :line
-  [^Graphics2D g {:keys [x1 y1 x2 y2] :as op}]
-  (let [shape (java.awt.geom.Line2D$Double. (double x1) (double y1)
-                                             (double x2) (double y2))]
-    (apply-stroke g shape op)))
-
-(defmethod render-op :ellipse
-  [^Graphics2D g {:keys [cx cy rx ry fill] :as op}]
-  (let [shape (Ellipse2D$Double. (double (- cx rx)) (double (- cy ry))
-                                 (double (* 2.0 rx)) (double (* 2.0 ry)))]
-    (apply-fill g shape fill)
-    (apply-stroke g shape op)))
 
 (defn- build-path
   "Builds a GeneralPath from a sequence of IR path commands."
@@ -165,13 +122,52 @@
         :close    (.closePath p)))
     p))
 
-(defmethod render-op :path
-  [^Graphics2D g {:keys [commands fill fill-rule] :as op}]
-  (let [shape (build-path commands)]
-    (when (= :even-odd fill-rule)
-      (.setWindingRule shape GeneralPath/WIND_EVEN_ODD))
-    (apply-fill g shape fill)
-    (apply-stroke g shape op)))
+(defn- render-op
+  "Renders a single IR op onto the graphics context."
+  [^Graphics2D g {:keys [op] :as m}]
+  (case op
+    :rect
+    (let [{:keys [x y w h fill corner-radius]} m
+          shape (if corner-radius
+                  (let [r (double corner-radius)]
+                    (RoundRectangle2D$Double. (double x) (double y)
+                                              (double w) (double h) r r))
+                  (Rectangle2D$Double. (double x) (double y)
+                                       (double w) (double h)))]
+      (apply-fill g shape fill)
+      (apply-stroke g shape m))
+    :circle
+    (let [{:keys [cx cy r fill]} m
+          d (* 2.0 (double r))
+          shape (Ellipse2D$Double. (double (- cx r)) (double (- cy r)) d d)]
+      (apply-fill g shape fill)
+      (apply-stroke g shape m))
+    :arc
+    (let [{:keys [cx cy rx ry start extent mode fill]} m
+          shape (Arc2D$Double. (double (- cx rx)) (double (- cy ry))
+                                (double (* 2.0 rx)) (double (* 2.0 ry))
+                                (double start) (double extent)
+                                (int (get arc-mode-map mode Arc2D$Double/OPEN)))]
+      (apply-fill g shape fill)
+      (apply-stroke g shape m))
+    :line
+    (let [{:keys [x1 y1 x2 y2]} m
+          shape (java.awt.geom.Line2D$Double. (double x1) (double y1)
+                                               (double x2) (double y2))]
+      (apply-stroke g shape m))
+    :ellipse
+    (let [{:keys [cx cy rx ry fill]} m
+          shape (Ellipse2D$Double. (double (- cx rx)) (double (- cy ry))
+                                   (double (* 2.0 rx)) (double (* 2.0 ry)))]
+      (apply-fill g shape fill)
+      (apply-stroke g shape m))
+    :path
+    (let [{:keys [commands fill fill-rule]} m
+          shape (build-path commands)]
+      (when (= :even-odd fill-rule)
+        (.setWindingRule shape GeneralPath/WIND_EVEN_ODD))
+      (apply-fill g shape fill)
+      (apply-stroke g shape m))))
 
 (defn- op->clip-shape
   "Converts a clip IR op to a java.awt.Shape for clipping."
