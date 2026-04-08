@@ -109,11 +109,7 @@
         (rotate-x (- pitch))
         (rotate-z (- roll)))))
 
-(defmulti project
-  "Projects a 3D point to 2D screen coordinates using the given projection."
-  (fn [projection _point] (:projection/type projection)))
-
-(defmethod project :isometric
+(defn- project-isometric
   [{:projection/keys [scale origin]} [x y z]]
   (let [s   (double scale)
         [ox oy] origin
@@ -121,7 +117,7 @@
         sy  (+ oy (* s (- (* (+ x z) sin30) y)))]
     [sx sy]))
 
-(defmethod project :orthographic
+(defn- project-orthographic
   [{:projection/keys [scale origin] :as proj} point]
   (let [s      (double scale)
         [ox oy] origin
@@ -129,7 +125,7 @@
     [(+ ox (* s vx))
      (- oy (* s vy))]))
 
-(defmethod project :perspective
+(defn- project-perspective
   [{:projection/keys [scale origin distance] :as proj} point]
   (let [s      (double scale)
         [ox oy] origin
@@ -138,6 +134,14 @@
         factor (/ d (+ d vz))]
     [(+ ox (* s vx factor))
      (- oy (* s vy factor))]))
+
+(defn project
+  "Projects a 3D point to 2D screen coordinates using the given projection."
+  [projection point]
+  (case (:projection/type projection)
+    :isometric    (project-isometric projection point)
+    :orthographic (project-orthographic projection point)
+    :perspective  (project-perspective projection point)))
 
 ;; --- face utilities ---
 
