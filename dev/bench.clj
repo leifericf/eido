@@ -176,4 +176,8 @@
   ;;   contour-terrain              1391 ms  (was 1540, ~10% faster)
   ;;   topo-map                      926 ms  (was 1048, ~12% faster)
   ;;   connect-segments now O(n) via spatial hashing instead of O(n²)
+
+  ;; === After box-blur vector allocation removal ===
+  ;;   ink-landscape                   33 ms  (was 60, ~45% faster)
+  ;;   Eliminated per-pixel vector allocation [sa sr sg sb] in blur inner loop
   )

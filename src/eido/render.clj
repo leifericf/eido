@@ -268,27 +268,30 @@
       (let [row (* y w)]
         (loop [x 0 sa 0 sr 0 sg 0 sb 0]
           (when (< x w)
-            ;; Add right pixel
             (let [rx (min (dec w) (+ x radius))
                   rv (aget src (+ row rx))
                   sa (+ sa (argb-a rv))
                   sr (+ sr (argb-r rv))
                   sg (+ sg (argb-g rv))
                   sb (+ sb (argb-b rv))
-                  ;; Remove left pixel (outside window)
-                  lx (- x radius 1)
-                  [sa sr sg sb] (if (>= lx 0)
-                                  (let [lv (aget src (+ row lx))]
-                                    [(- sa (argb-a lv))
-                                     (- sr (argb-r lv))
-                                     (- sg (argb-g lv))
-                                     (- sb (argb-b lv))])
-                                  [sa sr sg sb])]
-              (aset dst (+ row x)
-                (unchecked-int
-                  (pack-argb (int (* sa inv)) (int (* sr inv))
-                             (int (* sg inv)) (int (* sb inv)))))
-              (recur (inc x) sa sr sg sb))))))
+                  lx (- x radius 1)]
+              (if (>= lx 0)
+                (let [lv (aget src (+ row lx))
+                      sa (- sa (argb-a lv))
+                      sr (- sr (argb-r lv))
+                      sg (- sg (argb-g lv))
+                      sb (- sb (argb-b lv))]
+                  (aset dst (+ row x)
+                    (unchecked-int
+                      (pack-argb (int (* sa inv)) (int (* sr inv))
+                                 (int (* sg inv)) (int (* sb inv)))))
+                  (recur (inc x) sa sr sg sb))
+                (do
+                  (aset dst (+ row x)
+                    (unchecked-int
+                      (pack-argb (int (* sa inv)) (int (* sr inv))
+                                 (int (* sg inv)) (int (* sb inv)))))
+                  (recur (inc x) sa sr sg sb))))))))
     ;; Vertical pass: dst -> src
     (dotimes [x w]
       (loop [y 0 sa 0 sr 0 sg 0 sb 0]
@@ -299,19 +302,25 @@
                 sr (+ sr (argb-r rv))
                 sg (+ sg (argb-g rv))
                 sb (+ sb (argb-b rv))
-                ly (- y radius 1)
-                [sa sr sg sb] (if (>= ly 0)
-                                (let [lv (aget dst (+ (* ly w) x))]
-                                  [(- sa (argb-a lv))
-                                   (- sr (argb-r lv))
-                                   (- sg (argb-g lv))
-                                   (- sb (argb-b lv))])
-                                [sa sr sg sb])]
-            (aset src (+ (* y w) x)
-              (unchecked-int
-                (pack-argb (int (* sa inv)) (int (* sr inv))
-                           (int (* sg inv)) (int (* sb inv)))))
-            (recur (inc y) sa sr sg sb)))))))
+                ly (- y radius 1)]
+            (if (>= ly 0)
+              (let [lv (aget dst (+ (* ly w) x))
+                    sa (- sa (argb-a lv))
+                    sr (- sr (argb-r lv))
+                    sg (- sg (argb-g lv))
+                    sb (- sb (argb-b lv))]
+                (aset src (+ (* y w) x)
+                  (unchecked-int
+                    (pack-argb (int (* sa inv)) (int (* sr inv))
+                               (int (* sg inv)) (int (* sb inv)))))
+                (recur (inc y) sa sr sg sb))
+              (do
+                (aset src (+ (* y w) x)
+                  (unchecked-int
+                    (pack-argb (int (* sa inv)) (int (* sr inv))
+                               (int (* sg inv)) (int (* sb inv)))))
+                (recur (inc y) sa sr sg sb)))))))))
+
 
 (defn- box-blur
   "Applies a box blur approximation of Gaussian blur (3 passes)."
