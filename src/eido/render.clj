@@ -85,18 +85,32 @@
    :round BasicStroke/JOIN_ROUND
    :bevel BasicStroke/JOIN_BEVEL})
 
+(def ^:private stroke-cache
+  "Caches BasicStroke objects by [width cap join] to avoid repeated allocation."
+  (atom {}))
+
+(defn- get-basic-stroke
+  "Returns a cached BasicStroke for the given params."
+  ^BasicStroke [w cap join dash]
+  (if dash
+    ;; Dashed strokes not cached (float-array identity varies)
+    (BasicStroke. w cap join (float 10.0) (float-array dash) (float 0.0))
+    (let [k [w cap join]]
+      (or (get @stroke-cache k)
+          (let [s (BasicStroke. w cap join)]
+            (swap! stroke-cache assoc k s)
+            s)))))
+
 (defn- apply-stroke [^Graphics2D g shape {:keys [stroke-color stroke-width
                                                   stroke-cap stroke-join
                                                   stroke-dash]}]
   (when stroke-color
     (.setColor g (->awt-color stroke-color))
-    (let [w     (float (or stroke-width 1))
-          cap   (get cap-map stroke-cap BasicStroke/CAP_SQUARE)
-          join  (get join-map stroke-join BasicStroke/JOIN_MITER)
-          dash  (when stroke-dash (float-array stroke-dash))]
-      (.setStroke g (if dash
-                      (BasicStroke. w cap join (float 10.0) dash (float 0.0))
-                      (BasicStroke. w cap join))))
+    (.setStroke g (get-basic-stroke
+                    (float (or stroke-width 1))
+                    (int (get cap-map stroke-cap BasicStroke/CAP_SQUARE))
+                    (int (get join-map stroke-join BasicStroke/JOIN_MITER))
+                    stroke-dash))
     (.draw g shape)))
 
 (def ^:private arc-mode-map
@@ -198,15 +212,22 @@
       :shear-y   (.shear g 0.0 (double (first args)))
       :scale     (.scale g (double (first args)) (double (second args))))))
 
+(def ^:private ^:dynamic *prev-opacity*
+  "Tracks the last opacity set on the Graphics2D to skip redundant calls."
+  -1.0)
+
 (defn- render-single-op
   "Renders a single leaf IR op onto g with transforms, clip, and opacity."
   [^Graphics2D g op]
   (let [transforms (:transforms op)
         clip-op    (:clip op)
-        has-state? (or (seq transforms) clip-op)]
-    (.setComposite g (AlphaComposite/getInstance
-                       AlphaComposite/SRC_OVER
-                       (float (:opacity op))))
+        has-state? (or (seq transforms) clip-op)
+        opacity    (double (:opacity op))]
+    (when (not= opacity *prev-opacity*)
+      (.setComposite g (AlphaComposite/getInstance
+                         AlphaComposite/SRC_OVER
+                         (float opacity)))
+      (set! *prev-opacity* opacity))
     (if has-state?
       (let [saved-transform (.getTransform g)
             saved-clip      (.getClip g)]
@@ -585,8 +606,9 @@
                           AlphaComposite/SRC_OVER 1.0))
        (.setColor g (->awt-color (:ir/background ir)))
        (.fillRect g 0 0 w h))
-     ;; Render ops in order, with buffer pool for shadow/glow reuse
-     (binding [*buffer-pool* nil]
+     ;; Render ops in order, with buffer pool and opacity tracking
+     (binding [*buffer-pool* nil
+               *prev-opacity* -1.0]
        (doseq [op (:ir/ops ir)]
          (render-ir-op g img [w h] op)))
      (.dispose g)
