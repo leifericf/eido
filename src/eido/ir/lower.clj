@@ -8,7 +8,8 @@
     [eido.color :as color]
     [eido.ir :as ir]
     [eido.ir.effect :as effect]
-    [eido.ir.fill :as fill]))
+    [eido.ir.fill :as fill]
+    [eido.ir.transform :as transform]))
 
 ;; --- fill resolution ---
 
@@ -147,11 +148,23 @@
 
 ;; --- item lowering dispatch ---
 
+(defn- apply-item-pre-transforms
+  "If the item has :item/pre-transforms, applies them to the geometry.
+  Returns the item with transformed geometry (always :path type)."
+  [item]
+  (if-let [pre-ts (:item/pre-transforms item)]
+    (-> item
+        (assoc :item/geometry
+               (transform/apply-pre-transforms (:item/geometry item) pre-ts))
+        (dissoc :item/pre-transforms))
+    item))
+
 (defn- lower-item
   "Lowers a semantic draw item to a vector of concrete ops.
   Dispatches to specialized lowering for semantic fills and effects."
   [item]
-  (let [item-fill (:item/fill item)
+  (let [item      (apply-item-pre-transforms item)
+        item-fill (:item/fill item)
         effects   (:item/effects item)]
     (cond
       ;; Semantic fills (hatch/stipple) expand to many ops

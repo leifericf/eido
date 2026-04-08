@@ -97,7 +97,7 @@
 
 ;; --- recursive group warping ---
 
-(defn- shape->path-commands
+(defn shape->path-commands
   "Converts a primitive shape node to path commands."
   [node]
   (case (:node/type node)
