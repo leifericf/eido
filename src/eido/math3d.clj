@@ -42,6 +42,13 @@
       [0.0 0.0 0.0]
       (v* v (/ 1.0 m)))))
 
+(defn smoothstep
+  "Hermite interpolation between edge0 and edge1.
+  Returns 0 when x <= edge0, 1 when x >= edge1, smooth curve between."
+  ^double [^double edge0 ^double edge1 ^double x]
+  (let [t (Math/max 0.0 (Math/min 1.0 (/ (- x edge0) (- edge1 edge0))))]
+    (* t t (- 3.0 (* 2.0 t)))))
+
 ;; --- rotations ---
 
 (defn rotate-x

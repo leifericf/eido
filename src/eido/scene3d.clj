@@ -372,29 +372,37 @@
      (int (Math/round (* (double b) brightness)))]))
 
 (defn- shade-face-style
-  "Applies lighting to a face's style based on its normal and a light.
+  "Applies lighting to a face's style based on its normal and lights.
   norm-normal and norm-light-dir should be pre-normalized to avoid
   redundant computation in hot loops.
   If the style has a :material key, delegates to eido.ir.material/shade-face
-  for Blinn-Phong specular shading (requires cam-dir)."
+  for Blinn-Phong multi-light shading."
   ([style norm-normal norm-light-dir light]
-   (shade-face-style style norm-normal norm-light-dir light nil))
+   (shade-face-style style norm-normal norm-light-dir light nil nil nil))
   ([style norm-normal norm-light-dir light cam-dir]
-   (if (and light (:style/fill style))
-     (if-let [material (:material style)]
-       ;; Material-based shading with specular
-       (let [mat-ns (requiring-resolve 'eido.ir.material/shade-face)]
-         (mat-ns style norm-normal norm-light-dir cam-dir light material))
-       ;; Legacy diffuse-only shading
-       (let [ambient   (double (get light :light/ambient 0.3))
-             intensity (double (get light :light/intensity 0.7))
-             cos-angle (m/dot norm-normal norm-light-dir)
-             brightness (min 1.0 (+ ambient (* intensity (max 0.0 cos-angle))))]
-         (cond-> (assoc style :style/fill (shade-color (:style/fill style) brightness))
-           (:style/stroke style)
-           (assoc-in [:style/stroke :color]
-                     (shade-color (get-in style [:style/stroke :color]) brightness)))))
-     style)))
+   (shade-face-style style norm-normal norm-light-dir light cam-dir nil nil))
+  ([style norm-normal norm-light-dir light cam-dir lights face-centroid]
+   (let [has-light (or light (seq lights))]
+     (if (and has-light (:style/fill style))
+       (if-let [material (:material style)]
+         ;; Material-based shading (supports all light types)
+         (let [mat-fn (requiring-resolve 'eido.ir.material/shade-face)]
+           (mat-fn style norm-normal norm-light-dir cam-dir light material
+                   lights face-centroid))
+         ;; Legacy diffuse-only shading (directional light only)
+         (let [light    (or light (first lights))
+               ambient   (double (get light :light/ambient 0.3))
+               intensity (double (or (:light/multiplier light)
+                                     (:light/intensity light) 0.7))
+               cos-angle (m/dot norm-normal
+                           (or norm-light-dir
+                               (m/normalize (:light/direction light))))
+               brightness (min 1.0 (+ ambient (* intensity (max 0.0 cos-angle))))]
+           (cond-> (assoc style :style/fill (shade-color (:style/fill style) brightness))
+             (:style/stroke style)
+             (assoc-in [:style/stroke :color]
+                       (shade-color (get-in style [:style/stroke :color]) brightness)))))
+       style))))
 
 (defn- expand-polygon
   "Expands projected 2D polygon slightly outward from its centroid
@@ -464,18 +472,22 @@
 
   opts:
     :style     - default style {:style/fill [...] :style/stroke {...}}
-    :light     - light map for diffuse shading (optional)
+    :light     - single light map (backward compatible)
+    :lights    - vector of light maps (multi-light)
     :cull-back - if true, omit back-facing polygons (default true)
     :wireframe - if true, render edges only (no fill, no shading)"
   [projection mesh opts]
   (if (:wireframe opts)
     (render-wireframe projection mesh opts)
     (let [light      (:light opts)
+          lights     (:lights opts)
           cull?      (get opts :cull-back true)
           base-style (:style opts)
           cam-dir    (m/camera-direction projection)
           proj-fn    (m/make-projector projection)
-          norm-light-dir (when light (m/normalize (:light/direction light)))
+          ;; Pre-normalize directional light direction for the common case
+          norm-light-dir (when (and light (:light/direction light))
+                           (m/normalize (:light/direction light)))
           ;; Compute culling and depth in world space using camera direction
           processed  (->> mesh
                           (map (fn [face]
@@ -483,9 +495,10 @@
                                        verts       (:face/vertices face)
                                        norm-normal (m/normalize normal)
                                        facing      (m/dot norm-normal cam-dir)
-                                       depth       (m/dot (m/face-centroid verts) cam-dir)]
+                                       centroid    (m/face-centroid verts)
+                                       depth       (m/dot centroid cam-dir)]
                                    {:face face :facing facing :depth depth
-                                    :norm-normal norm-normal})))
+                                    :norm-normal norm-normal :centroid centroid})))
                           ;; Keep front-facing (normal points toward camera)
                           (filter (fn [{:keys [facing]}]
                                     (if cull? (> facing 0.0) true)))
@@ -493,7 +506,7 @@
                           (sort-by :depth))]
       {:node/type :group
        :group/children
-       (mapv (fn [{:keys [face facing depth norm-normal]}]
+       (mapv (fn [{:keys [face facing depth norm-normal centroid]}]
                (let [face-style (or (:face/style face) base-style)
                      ;; For back-facing faces (when cull-back is false),
                      ;; flip normal so shading uses the camera-facing side
@@ -501,7 +514,8 @@
                                    (m/v* norm-normal -1)
                                    norm-normal)
                      shaded     (shade-face-style face-style norm-normal
-                                                  norm-light-dir light cam-dir)
+                                                  norm-light-dir light cam-dir
+                                                  lights centroid)
                      projected  (mapv proj-fn (:face/vertices face))
                      expanded   (expand-polygon projected)]
                  (assoc (merge (scene/polygon expanded) shaded)
