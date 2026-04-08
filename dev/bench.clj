@@ -208,4 +208,9 @@
   ;; === After halftone Ellipse2D reuse ===
   ;;   halftone-layers                91 ms  (was 90, within noise)
   ;;   Reuse single Ellipse2D$Double with setFrame instead of allocating per dot
+
+  ;; === After contour grid primitive array ===
+  ;;   contour-terrain                73 ms  (was 118, 38% faster)
+  ;;   topo-map                       45 ms  (was 75, 40% faster)
+  ;;   Flat double-array grid with aget instead of nested vectors with get-in
   )

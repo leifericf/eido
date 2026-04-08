@@ -44,41 +44,50 @@
       3 [x0 (+ y0 (* (interp v-tl v-bl threshold) (double res)))])))     ;; left
 
 (defn- sample-grid
-  "Samples noise function on a grid, returns a 2D vector of values."
+  "Samples noise function on a grid, returns a flat double-array
+  with (inc rows) * (inc cols) entries, row-major."
   [noise-fn cols rows bx by res noise-scale seed]
-  (let [opts (when seed {:seed seed})]
-    (mapv (fn [row]
-            (mapv (fn [col]
-                    (let [x (* (+ bx (* col (double res))) (double noise-scale))
-                          y (* (+ by (* row (double res))) (double noise-scale))]
-                      (double (noise-fn x y opts))))
-                  (range (inc cols))))
-          (range (inc rows)))))
+  (let [opts   (when seed {:seed seed})
+        w      (inc (int cols))
+        h      (inc (int rows))
+        ^doubles arr (double-array (* w h))
+        bx     (double bx)
+        by     (double by)
+        res    (double res)
+        ns     (double noise-scale)]
+    (dotimes [row h]
+      (let [row-off (* row w)]
+        (dotimes [col w]
+          (let [x (* (+ bx (* col res)) ns)
+                y (* (+ by (* row res)) ns)]
+            (aset arr (+ row-off col) (double (noise-fn x y opts)))))))
+    arr))
 
 (defn- march-threshold
   "Runs marching squares for a single threshold. Returns line segments."
-  [grid cols rows res threshold bx by]
-  (into []
-        (mapcat
-          (fn [row]
-            (mapcat
-              (fn [col]
-                (let [v-tl (double (get-in grid [row col]))
-                      v-tr (double (get-in grid [row (inc col)]))
-                      v-br (double (get-in grid [(inc row) (inc col)]))
-                      v-bl (double (get-in grid [(inc row) col]))
-                      case-idx (bit-or
-                                 (if (>= v-tl threshold) 1 0)
-                                 (if (>= v-tr threshold) 2 0)
-                                 (if (>= v-br threshold) 4 0)
-                                 (if (>= v-bl threshold) 8 0))
-                      edges (get edge-table case-idx)]
-                  (mapv (fn [[e1 e2]]
-                          [(edge-point e1 col row res v-tl v-tr v-br v-bl threshold bx by)
-                           (edge-point e2 col row res v-tl v-tr v-br v-bl threshold bx by)])
-                        edges)))
-              (range cols)))
-          (range rows))))
+  [^doubles grid cols rows res threshold bx by]
+  (let [w (inc (int cols))]
+    (into []
+          (mapcat
+            (fn [row]
+              (mapcat
+                (fn [col]
+                  (let [v-tl (aget grid (+ (* row w) col))
+                        v-tr (aget grid (+ (* row w) (inc col)))
+                        v-br (aget grid (+ (* (inc row) w) (inc col)))
+                        v-bl (aget grid (+ (* (inc row) w) col))
+                        case-idx (bit-or
+                                   (if (>= v-tl threshold) 1 0)
+                                   (if (>= v-tr threshold) 2 0)
+                                   (if (>= v-br threshold) 4 0)
+                                   (if (>= v-bl threshold) 8 0))
+                        edges (get edge-table case-idx)]
+                    (mapv (fn [[e1 e2]]
+                            [(edge-point e1 col row res v-tl v-tr v-br v-bl threshold bx by)
+                             (edge-point e2 col row res v-tl v-tr v-br v-bl threshold bx by)])
+                          edges)))
+                (range cols)))
+            (range rows)))))
 
 ;; --- segment connection ---
 
