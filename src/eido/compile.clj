@@ -577,16 +577,6 @@
     (throw (ex-info (str "Invalid scene\n" (validate/format-errors errors))
                     {:errors errors}))))
 
-(defn compile
-  "Compiles a scene map into concrete IR (legacy path).
-  Assumes scene has already been validated (call validate-scene! first)."
-  [scene]
-  (let [expanded (update scene :image/nodes #(mapv expand-node %))]
-    {:ir/size       (:image/size expanded)
-     :ir/background (color/resolve-color (:image/background expanded))
-     :ir/ops        (into [] (mapcat #(compile-tree % default-ctx))
-                           (:image/nodes expanded))}))
-
 (def ^:private generator-node-types
   "Node types that map to generator descriptors in the semantic IR."
   #{:flow-field :contour :scatter :voronoi :delaunay :path/decorated :lsystem})
@@ -600,9 +590,14 @@
   (let [fill      (:style/fill node)
         node-type (:node/type node)]
     (cond
-      ;; Generator node types — preserve for semantic lowering
-      (generator-node-types node-type)
+      ;; Generator node types — preserve for semantic lowering (except L-systems)
+      (and (generator-node-types node-type)
+           (not= :lsystem node-type))
       node
+
+      ;; L-systems — expand to path via legacy (complex parameter passing)
+      (= :lsystem node-type)
+      (expand-node node)
 
       ;; Hatch and stipple fills — preserve as-is
       (hatch-fill? fill)
@@ -633,6 +628,7 @@
   (cond
     (nil? fill)                                          nil
     (and (map? fill) (#{:hatch :stipple} (:fill/type fill))) fill
+    (and (map? fill) (= :pattern (:fill/type fill)))     fill
     (vector? fill)                                       {:fill/type :fill/solid :color fill}
     (:gradient/type fill)                                (merge {:fill/type :fill/gradient} fill)
     (:color fill)                                        {:fill/type :fill/solid :color (:color fill)}
@@ -766,34 +762,48 @@
                     :path/commands  (:path/commands node)
                     :path/fill-rule (:path/fill-rule node)}
 
-                   ;; Groups and other complex nodes → fall back to legacy
+                   ;; Unknown leaf types → nil
                    nil)
             effects    (node->effects node)
-            transforms (:node/transform node)]
-        (when geom
+            raw-transforms (:node/transform node)
+            transforms (if (seq raw-transforms)
+                         (mapv (fn [[k & args]]
+                                 (into [(keyword (name k))] args))
+                               (remove #(= :transform/distort (first %))
+                                       raw-transforms))
+                         [])]
+        (if geom
+          ;; Shape node → semantic draw item
           (cond-> {:item/geometry geom}
             (:style/fill node)   (assoc :item/fill (node->fill-descriptor (:style/fill node)))
             (:style/stroke node) (assoc :item/stroke (:style/stroke node))
             (:node/opacity node) (assoc :item/opacity (:node/opacity node))
             (seq effects)        (assoc :item/effects effects)
-            transforms           (assoc :item/transforms transforms)))))))
+            true                 (assoc :item/transforms transforms))
+          ;; Groups → compile via compile-tree, wrap as pre-lowered ops
+          (if (= :group node-type)
+            {:item/ops (compile-tree node default-ctx)}
+            ;; Unknown node type — throw
+            (throw (ex-info (str "Unknown node type: " node-type)
+                            {:node/type node-type}))))))))
 
 (defn compile-semantic
   "Compiles a scene map into a semantic IR container.
-  Preserves hatch/stipple fills and effects as semantic data.
+  Preserves hatch/stipple fills, effects, and generators as semantic data.
+  Groups are compiled via compile-tree and included as pre-lowered ops.
   Use eido.ir.lower/lower to convert to concrete ops."
   [scene]
   (let [bg    (color/resolve-color (:image/background scene))
         size  (:image/size scene)
         nodes (mapv normalize-node (:image/nodes scene))
-        items (keep scene-node->draw-item nodes)
-        ;; Nodes that couldn't be converted (groups, complex types)
-        ;; fall through to the legacy compile path
-        fallback-nodes (filter #(nil? (scene-node->draw-item %)) nodes)
-        fallback-ops   (when (seq fallback-nodes)
-                         (into [] (mapcat #(compile-tree % default-ctx))
-                               fallback-nodes))]
-    (ir/container size bg (vec items))))
+        items (vec (keep scene-node->draw-item nodes))]
+    (ir/container size bg items)))
+
+(defn compile
+  "Compiles a scene map into concrete IR.
+  Routes through the semantic IR layer: normalize → IR container → lower."
+  [scene]
+  ((requiring-resolve 'eido.ir.lower/lower) (compile-semantic scene)))
 
 (comment
   (compile {:image/size [800 600]

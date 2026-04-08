@@ -11,6 +11,8 @@
     [eido.ir.fill :as fill]
     [eido.ir.transform :as transform]))
 
+(declare lower-scene-nodes lower-item)
+
 ;; --- fill resolution ---
 
 (defn- resolve-fill
@@ -30,6 +32,17 @@
         (:gradient/to f)     (assoc :gradient/to (:gradient/to f))
         (:gradient/center f) (assoc :gradient/center (:gradient/center f))
         (:gradient/radius f) (assoc :gradient/radius (:gradient/radius f)))
+
+      ;; Pattern fill — compile tile nodes to ops
+      :fill/pattern
+      (when-let [tile-nodes (:pattern/nodes f)]
+        (let [[tw th] (:pattern/size f)]
+          {:fill/type    :pattern
+           :pattern/size [tw th]
+           :pattern/ops  (lower-scene-nodes tile-nodes)}))
+
+      ;; Pre-resolved fills (procedural-image) pass through
+      :procedural-image f
 
       ;; Already-resolved color map passthrough
       (when (and (:r f) (:g f) (:b f))
@@ -253,10 +266,17 @@
   "Lowers a semantic draw item to a vector of concrete ops.
   Dispatches to specialized lowering for generators, fills, and effects."
   [item]
-  (if-let [gen (:item/generator item)]
+  (cond
+    ;; Pre-lowered ops (from compile-tree for groups) — pass through
+    (:item/ops item)
+    (:item/ops item)
+
     ;; Generator items expand to many ops via feature module functions
-    ((requiring-resolve 'eido.ir.generator/expand-generator) gen)
+    (:item/generator item)
+    ((requiring-resolve 'eido.ir.generator/expand-generator) (:item/generator item))
+
     ;; Geometry items go through transforms, fills, effects
+    :else
     (let [item      (apply-item-pre-transforms item)
           item-fill (:item/fill item)
           effects   (:item/effects item)]
