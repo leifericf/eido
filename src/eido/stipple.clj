@@ -55,7 +55,7 @@
         (when-let [idx (grid-idx x0 y0)]
           (aset grid idx [x0 y0]))
         ;; Use ArrayList for O(1) random removal (swap with last, removeLast)
-        (let [active (java.util.ArrayList. ^java.util.Collection [[x0 y0]])]
+        (let [active (java.util.ArrayList. ^java.util.Collection (vector [x0 y0]))]
           (loop [points [[x0 y0]]]
             (if (.isEmpty active)
               points

@@ -35,7 +35,7 @@
                 (RadialGradientPaint.
                   (Point2D$Float. (float cx) (float cy))
                   (float r)
-                  fractions colors)))))
+                  ^floats fractions ^"[Ljava.awt.Color;" colors)))))
 
 (declare render-ir-op)
 
