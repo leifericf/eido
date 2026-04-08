@@ -139,6 +139,12 @@
 
 ;; --- tests ---
 
+;; Allow small tolerance for cross-platform anti-aliasing differences.
+;; Java2D produces slightly different results on macOS vs Linux due to
+;; FPU behavior and font rendering. Max 2 channel diff, <0.1% of pixels.
+(def ^:private max-channel-tolerance 2)
+(def ^:private max-pixel-diff-pct 0.1)
+
 (deftest visual-regression-test
   (doseq [[scene-name scene-fn] test-scenes]
     (testing (str "visual regression: " scene-name)
@@ -148,9 +154,15 @@
             (str "Reference image missing: " ref-file
                  ". Run (eido.visual-test/regenerate-refs!) to generate."))
         (when ref-img
-          (let [actual (render-scene scene-fn)
-                result (image-diff ref-img actual)]
-            (is (:identical? result)
+          (let [actual  (render-scene scene-fn)
+                result  (image-diff ref-img actual)
+                diff-pct (when (:total-pixels result)
+                           (* 100.0 (/ (:differing-pixels result 0)
+                                       (double (:total-pixels result)))))]
+            (is (or (:identical? result)
+                    (and (<= (:max-channel-diff result) max-channel-tolerance)
+                         (<= diff-pct max-pixel-diff-pct)))
                 (str scene-name " differs from reference: "
-                     (:differing-pixels result) " pixels differ, "
+                     (:differing-pixels result) " pixels differ ("
+                     (format "%.2f" (or diff-pct 0.0)) "%), "
                      "max channel diff = " (:max-channel-diff result)))))))))
