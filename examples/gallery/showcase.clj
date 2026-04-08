@@ -249,25 +249,21 @@
      (fn [t]
        (let [angle (* t 2 Math/PI)
              proj (s3d/perspective
-                    {:scale 120 :origin [200 200]
-                     :yaw angle :pitch -0.4 :distance 4.5})
+                    {:scale 110 :origin [200 200]
+                     :yaw angle :pitch -0.35 :distance 5})
              light {:light/direction [0.8 1.0 0.5]
                     :light/ambient   0.15
                     :light/intensity 0.85}
-             ;; Build a gem shape from two cones meeting at the middle
-             top (-> (s3d/cone-mesh 1.2 1.8 8)
-                     (s3d/rotate-mesh :x Math/PI)
-                     (s3d/translate-mesh [0 0.9 0]))
-             bottom (-> (s3d/cone-mesh 1.2 1.2 8)
-                        (s3d/translate-mesh [0 -0.6 0]))
-             gem (s3d/merge-meshes top bottom)]
+             ;; Torus knot — visually interesting rotating shape
+             torus (-> (s3d/torus-mesh 1.0 0.4 24 12)
+                       (s3d/rotate-mesh :x (* 0.3 (Math/sin (* t Math/PI)))))]
          {:image/size [400 400]
           :image/background [:color/rgb 8 8 18]
           :image/nodes
-          [(s3d/render-mesh proj gem
+          [(s3d/render-mesh proj torus
              {:style {:style/fill   [:color/rgb 80 180 220]
-                      :style/stroke {:color [:color/rgb 120 220 255]
-                                     :width 0.4}}
+                      :style/stroke {:color [:color/rgb 140 230 255]
+                                     :width 0.3}}
               :light light})]})))
    :fps 30})
 
@@ -635,32 +631,50 @@
    (anim/frames 60
      (fn [t]
        (let [proj (s3d/perspective
-                    {:scale 80 :origin [250 250]
-                     :yaw 0.3 :pitch -0.5 :distance 7})
+                    {:scale 90 :origin [250 250]
+                     :yaw 0.3 :pitch -0.45 :distance 6})
              light {:light/direction [0.7 1.0 0.4]
-                    :light/ambient 0.2 :light/intensity 0.8}
+                    :light/ambient 0.25 :light/intensity 0.75}
              angle (* t 2 Math/PI)
+             ;; Orbit trails — fading dots behind each sphere
+             trails
+             (vec
+               (for [i (range 5)
+                     trail (range 8)]
+                 (let [orbit-r (+ 1.8 (* i 0.7))
+                       speed (/ 1.0 (+ 1.0 (* i 0.3)))
+                       a (- (+ (* angle speed) (* i (/ (* 2 Math/PI) 5)))
+                            (* trail 0.08))
+                       x (* orbit-r (Math/cos a))
+                       z (* orbit-r (Math/sin a))
+                       ;; Project to 2D for trail dots
+                       hue (* i 72)
+                       fade (/ 1.0 (+ 1.0 trail))]
+                   {:node/type     :shape/circle
+                    :circle/center [(+ 250 (* 90 x 0.15)) (+ 250 (* 90 z 0.08))]
+                    :circle/radius (* 3 fade)
+                    :node/opacity  (* 0.3 fade)
+                    :style/fill    [:color/hsl hue 0.8 0.6]})))
              spheres
              (for [i (range 5)]
-               (let [orbit-r (+ 1.5 (* i 0.6))
-                     speed (/ 1.0 (+ 1.0 (* i 0.4)))
+               (let [orbit-r (+ 1.8 (* i 0.7))
+                     speed (/ 1.0 (+ 1.0 (* i 0.3)))
                      a (+ (* angle speed) (* i (/ (* 2 Math/PI) 5)))
                      x (* orbit-r (Math/cos a))
                      z (* orbit-r (Math/sin a))
                      hue (* i 72)
-                     mesh (s3d/sphere-mesh 0.35 12 8)]
+                     mesh (s3d/sphere-mesh 0.4 12 8)]
                  (s3d/render-mesh proj
                    (s3d/translate-mesh mesh [x 0 z])
-                   {:style {:style/fill [:color/hsl hue 0.7 0.5]}
+                   {:style {:style/fill [:color/hsl hue 0.8 0.55]}
                     :light light})))
-             ;; Central sphere
              center (s3d/render-mesh proj
-                      (s3d/sphere-mesh 0.5 16 10)
-                      {:style {:style/fill [:color/rgb 240 230 200]}
+                      (s3d/sphere-mesh 0.6 16 10)
+                      {:style {:style/fill [:color/rgb 255 240 200]}
                        :light light})]
          {:image/size [500 500]
-          :image/background [:color/rgb 8 8 15]
-          :image/nodes (into [center] spheres)})))
+          :image/background [:color/rgb 5 5 12]
+          :image/nodes (into (into trails [center]) spheres)})))
    :fps 24})
 
 ;; --- 15. Pixel Dissolve ---
@@ -756,11 +770,12 @@
                        (< phase 0.25) (* -20 (/ (- phase 0.2) 0.05))
                        (< phase 0.35) (* 5 (Math/sin (* (/ (- phase 0.25) 0.1) Math/PI)))
                        :else 0)))
-             pts (for [i (range 200)]
-                   (let [x-norm (/ (double i) 200)
+             ;; Scroll exactly 1 full ECG cycle per loop
+             pts (for [i (range 300)]
+                   (let [x-norm (/ (double i) 300)
                          x (* x-norm w)
-                         wave-x (+ (* x-norm 2.0) (* t 2.0))
-                         y (+ (/ h 2.0) (ecg (mod wave-x 1.0)))]
+                         wave-x (+ (* x-norm 3.0) (* t 3.0))
+                         y (+ (/ h 2.0) (ecg wave-x))]
                      [x y]))
              ;; Trail — fading line
              trail {:node/type :shape/path
@@ -844,26 +859,21 @@
                  (let [n-petals (+ 6 (* layer 2))
                        base-r (+ 30 (* layer 45))
                        r (* base-r (+ 0.7 (* 0.3 eased)))
+                       petal-w (* r 0.15)
+                       hue (mod (+ (* layer 60) (* t 120)) 360)
                        rotation (+ (* layer 0.2) (* t Math/PI 0.5))]
                    {:node/type :symmetry
                     :symmetry/type :radial
                     :symmetry/n n-petals
                     :symmetry/center [cx cy]
                     :group/children
-                    [(let [petal-len (* r 0.6)
-                           petal-w (* r 0.2)
-                           hue (mod (+ (* layer 60) (* t 120)) 360)]
-                       {:node/type :shape/path
-                        :path/commands [[:move-to [cx (- cy (* r 0.3))]]
-                                        [:curve-to [(+ cx petal-w) (- cy (* r 0.5))]
-                                                   [(+ cx petal-w) (- cy r)]
-                                                   [cx (- cy r petal-len)]]
-                                        [:curve-to [(- cx petal-w) (- cy r)]
-                                                   [(- cx petal-w) (- cy (* r 0.5))]
-                                                   [cx (- cy (* r 0.3))]]]
-                        :node/opacity (- 0.6 (* layer 0.1))
-                        :style/fill [:color/hsl hue 0.7 0.5]
-                        :style/stroke {:color [:color/hsl hue 0.5 0.35] :width 0.5}})]
+                    [{:node/type :shape/ellipse
+                      :ellipse/center [cx (- cy (* r 0.6))]
+                      :ellipse/rx petal-w
+                      :ellipse/ry (* r 0.45)
+                      :node/opacity (- 0.6 (* layer 0.1))
+                      :style/fill [:color/hsl hue 0.7 0.5]
+                      :style/stroke {:color [:color/hsl hue 0.5 0.35] :width 0.5}}]
                     :node/transform [[:transform/rotate rotation]]})))
              ;; Center dot
              center {:node/type :shape/circle
@@ -890,15 +900,15 @@
              drops
              (vec
                (for [col (range cols)
-                     row (range 30)]
-                 (let [;; Each column falls at a different speed
-                       rng (java.util.Random. (long col))
-                       speed (+ 0.5 (* (.nextDouble rng) 1.5))
-                       head-y (mod (* (+ t (* col 0.03)) speed h) (* h 1.3))
+                     row (range 25)]
+                 (let [rng (java.util.Random. (long col))
+                       ;; Speed is integer multiple so it loops at t=1
+                       speed (+ 1 (.nextInt rng 3))
+                       offset (* (.nextDouble rng) h)
+                       head-y (mod (+ (* t speed h) offset) h)
                        y (- head-y (* row 16))
                        x (+ 2 (* col col-w))
-                       ;; Fade based on distance from head
-                       fade (max 0 (- 1.0 (* row 0.06)))
+                       fade (max 0 (- 1.0 (* row 0.05)))
                        brightness (if (zero? row) 1.0 (* 0.7 fade))]
                    (when (and (> y -10) (< y (+ h 10)) (> fade 0.05))
                      {:node/type     :shape/rect
