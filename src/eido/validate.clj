@@ -53,8 +53,12 @@
     (some #{:eido.spec/font-spec} via)
     "font map with :font/family (string) and :font/size (positive number)"
 
-    (some #{:eido.spec/node} via)
+    (and (some #{:eido.spec/node} via)
+         (= :eido.spec/node (last via)))
     "valid node (type must be :shape/rect, :shape/circle, :shape/ellipse, :shape/arc, :shape/line, :shape/path, :shape/text, :shape/text-glyphs, :shape/text-on-path, or :group)"
+
+    (some #{:style/fill} via)
+    "fill (expected a color, gradient, hatch, stipple, or pattern)"
 
     :else
     (pr-str pred)))
@@ -97,6 +101,19 @@
   [problems]
   (remove color-branch-mismatch? problems))
 
+(defn- deduplicate-by-path
+  "When multiple s/or branches fail for the same value at the same path,
+  keep only the one with the deepest :via (most specific match)."
+  [problems]
+  (let [grouped (group-by (fn [p] [(:in p) (:val p)]) problems)]
+    (mapcat (fn [[_k ps]]
+              (if (= 1 (count ps))
+                ps
+                ;; Keep only the problem(s) with the deepest :via
+                (let [max-depth (apply max (map #(count (:via %)) ps))]
+                  (filter #(= max-depth (count (:via %))) ps))))
+            grouped)))
+
 (defn validate
   "Validates a scene map against the Eido scene spec.
   Returns nil if valid, or a vector of error maps with
@@ -104,9 +121,20 @@
   [scene]
   (when-let [ed (s/explain-data :eido.spec/scene scene)]
     (let [problems (->> (::s/problems ed)
-                        deduplicate-color-problems)]
+                        deduplicate-color-problems
+                        deduplicate-by-path)]
       (when (seq problems)
-        (mapv problem->error problems)))))
+        (let [errors (mapv problem->error problems)]
+          ;; Deduplicate errors with identical messages (from s/or branches
+          ;; that all translate to the same human-readable description).
+          (->> errors
+               (reduce (fn [acc e]
+                         (if (contains? (::seen (meta acc)) (:message e))
+                           acc
+                           (with-meta (conj acc e)
+                                      {::seen (conj (::seen (meta acc)) (:message e))})))
+                       (with-meta [] {::seen #{}}))
+               vec))))))
 
 (defn format-errors
   "Formats validation errors as a human-readable string.
