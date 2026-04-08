@@ -597,7 +597,7 @@
                     {:errors errors}))))
 
 (defn compile
-  "Compiles a scene map into an intermediate representation.
+  "Compiles a scene map into concrete IR (legacy path).
   Assumes scene has already been validated (call validate-scene! first)."
   [scene]
   (let [expanded (update scene :image/nodes #(mapv expand-node %))]
@@ -605,6 +605,126 @@
      :ir/background (color/resolve-color (:image/background expanded))
      :ir/ops        (into [] (mapcat #(compile-tree % default-ctx))
                            (:image/nodes expanded))}))
+
+(defn- normalize-node
+  "Like expand-node but preserves hatch/stipple fills and effects as
+  semantic data instead of expanding them to geometry.
+  Other node types are expanded normally via expand-node."
+  [node]
+  (let [fill (:style/fill node)]
+    (cond
+      ;; Hatch and stipple fills — preserve as-is (semantic lowering handles them)
+      (hatch-fill? fill)
+      node
+
+      (stipple-fill? fill)
+      node
+
+      ;; Everything else goes through the legacy expand-node
+      :else
+      (expand-node node))))
+
+(defn- scene-node->draw-item
+  "Converts a normalized scene node to a semantic IR draw item.
+  Handles the mapping from scene-level keys to item-level keys."
+  [node]
+  (let [geom (case (:node/type node)
+               :shape/rect
+               {:geometry/type       :rect
+                :rect/xy             (:rect/xy node)
+                :rect/size           (:rect/size node)
+                :rect/corner-radius  (:rect/corner-radius node)}
+
+               :shape/circle
+               {:geometry/type   :circle
+                :circle/center   (:circle/center node)
+                :circle/radius   (:circle/radius node)}
+
+               :shape/ellipse
+               {:geometry/type    :ellipse
+                :ellipse/center   (:ellipse/center node)
+                :ellipse/rx       (:ellipse/rx node)
+                :ellipse/ry       (:ellipse/ry node)}
+
+               :shape/arc
+               {:geometry/type :arc
+                :arc/center    (:arc/center node)
+                :arc/rx        (:arc/rx node)
+                :arc/ry        (:arc/ry node)
+                :arc/start     (:arc/start node)
+                :arc/extent    (:arc/extent node)
+                :arc/mode      (get node :arc/mode :open)}
+
+               :shape/line
+               {:geometry/type :line
+                :line/from     (:line/from node)
+                :line/to       (:line/to node)}
+
+               :shape/path
+               {:geometry/type  :path
+                :path/commands  (:path/commands node)
+                :path/fill-rule (:path/fill-rule node)}
+
+               ;; Groups and other complex nodes — fall back to legacy compile
+               nil)
+        fill    (:style/fill node)
+        stroke  (:style/stroke node)
+        opacity (:node/opacity node)
+        effects (cond-> []
+                  (:effect/shadow node)
+                  (conj (merge {:effect/type :effect/shadow}
+                               (let [s (:effect/shadow node)]
+                                 {:effect/dx      (:dx s)
+                                  :effect/dy      (:dy s)
+                                  :effect/blur    (:blur s)
+                                  :effect/color   (:color s)
+                                  :effect/opacity (:opacity s)})))
+                  (:effect/glow node)
+                  (conj (merge {:effect/type :effect/glow}
+                               (let [g (:effect/glow node)]
+                                 {:effect/blur    (:blur g)
+                                  :effect/color   (:color g)
+                                  :effect/opacity (:opacity g)}))))
+        transforms (:node/transform node)]
+    (when geom
+      (cond-> {:item/geometry geom}
+        fill       (assoc :item/fill
+                     (cond
+                       ;; Hatch/stipple — keep as-is
+                       (and (map? fill) (#{:hatch :stipple} (:fill/type fill)))
+                       fill
+                       ;; Color vector
+                       (vector? fill)
+                       {:fill/type :fill/solid :color fill}
+                       ;; Gradient
+                       (:gradient/type fill)
+                       (merge {:fill/type :fill/gradient} fill)
+                       ;; Color map
+                       (:color fill)
+                       {:fill/type :fill/solid :color (:color fill)}
+                       ;; Pass through
+                       :else fill))
+        stroke     (assoc :item/stroke stroke)
+        opacity    (assoc :item/opacity opacity)
+        (seq effects)   (assoc :item/effects effects)
+        transforms (assoc :item/transforms transforms)))))
+
+(defn compile-semantic
+  "Compiles a scene map into a semantic IR container.
+  Preserves hatch/stipple fills and effects as semantic data.
+  Use eido.ir.lower/lower to convert to concrete ops."
+  [scene]
+  (let [bg    (color/resolve-color (:image/background scene))
+        size  (:image/size scene)
+        nodes (mapv normalize-node (:image/nodes scene))
+        items (keep scene-node->draw-item nodes)
+        ;; Nodes that couldn't be converted (groups, complex types)
+        ;; fall through to the legacy compile path
+        fallback-nodes (filter #(nil? (scene-node->draw-item %)) nodes)
+        fallback-ops   (when (seq fallback-nodes)
+                         (into [] (mapcat #(compile-tree % default-ctx))
+                               fallback-nodes))]
+    (ir/container size bg (vec items))))
 
 (comment
   (compile {:image/size [800 600]
