@@ -59,48 +59,6 @@
       (:join stroke) (assoc :stroke-join (:join stroke))
       (:dash stroke) (assoc :stroke-dash (:dash stroke)))))
 
-(defmulti compile-node
-  "Compiles a scene node into a flat IR op map."
-  :node/type)
-
-(defmethod compile-node :shape/rect
-  [node]
-  (let [[x y] (:rect/xy node)
-        [w h] (:rect/size node)]
-    (merge {:op :rect :x x :y y :w w :h h
-            :corner-radius (:rect/corner-radius node)}
-           (compile-style node))))
-
-(defmethod compile-node :shape/circle
-  [node]
-  (let [[cx cy] (:circle/center node)]
-    (merge {:op :circle :cx cx :cy cy :r (:circle/radius node)}
-           (compile-style node))))
-
-(defmethod compile-node :shape/arc
-  [node]
-  (let [[cx cy] (:arc/center node)]
-    (merge {:op :arc :cx cx :cy cy
-            :rx (:arc/rx node) :ry (:arc/ry node)
-            :start (:arc/start node)
-            :extent (:arc/extent node)
-            :mode (get node :arc/mode :open)}
-           (compile-style node))))
-
-(defmethod compile-node :shape/line
-  [node]
-  (let [[x1 y1] (:line/from node)
-        [x2 y2] (:line/to node)]
-    (merge {:op :line :x1 x1 :y1 y1 :x2 x2 :y2 y2}
-           (compile-style node))))
-
-(defmethod compile-node :shape/ellipse
-  [node]
-  (let [[cx cy] (:ellipse/center node)]
-    (merge {:op :ellipse :cx cx :cy cy
-            :rx (:ellipse/rx node) :ry (:ellipse/ry node)}
-           (compile-style node))))
-
 (defn- compile-command
   "Flattens a scene path command into an IR command.
   Scene: [:move-to [x y]] -> IR: [:move-to x y]"
@@ -117,12 +75,43 @@
                 [:quad-to cpx cpy x y])
     :close    [:close]))
 
-(defmethod compile-node :shape/path
+(defn- compile-node
+  "Compiles a scene node into a flat IR op map."
   [node]
-  (merge {:op        :path
-          :commands  (mapv compile-command (:path/commands node))
-          :fill-rule (:path/fill-rule node)}
-         (compile-style node)))
+  (case (:node/type node)
+    :shape/rect
+    (let [[x y] (:rect/xy node)
+          [w h] (:rect/size node)]
+      (merge {:op :rect :x x :y y :w w :h h
+              :corner-radius (:rect/corner-radius node)}
+             (compile-style node)))
+    :shape/circle
+    (let [[cx cy] (:circle/center node)]
+      (merge {:op :circle :cx cx :cy cy :r (:circle/radius node)}
+             (compile-style node)))
+    :shape/arc
+    (let [[cx cy] (:arc/center node)]
+      (merge {:op :arc :cx cx :cy cy
+              :rx (:arc/rx node) :ry (:arc/ry node)
+              :start (:arc/start node)
+              :extent (:arc/extent node)
+              :mode (get node :arc/mode :open)}
+             (compile-style node)))
+    :shape/line
+    (let [[x1 y1] (:line/from node)
+          [x2 y2] (:line/to node)]
+      (merge {:op :line :x1 x1 :y1 y1 :x2 x2 :y2 y2}
+             (compile-style node)))
+    :shape/ellipse
+    (let [[cx cy] (:ellipse/center node)]
+      (merge {:op :ellipse :cx cx :cy cy
+              :rx (:ellipse/rx node) :ry (:ellipse/ry node)}
+             (compile-style node)))
+    :shape/path
+    (merge {:op        :path
+            :commands  (mapv compile-command (:path/commands node))
+            :fill-rule (:path/fill-rule node)}
+           (compile-style node))))
 
 (def ^:private default-ctx
   {:style {} :transforms [] :opacity 1.0})
