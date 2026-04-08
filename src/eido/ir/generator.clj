@@ -17,6 +17,7 @@
     [eido.contour :as contour]
     [eido.decorator :as decorator]
     [eido.flow :as flow]
+    [eido.ir.vary :as ir-vary]
     [eido.noise :as noise]
     [eido.scatter :as scatter]
     [eido.vary :as vary]
@@ -94,10 +95,14 @@
     nodes))
 
 (defn- apply-overrides
-  "Applies vary overrides to generated nodes if present."
+  "Applies vary overrides to generated nodes if present.
+  Overrides can be a literal vector or a vary descriptor."
   [nodes overrides]
   (if (seq overrides)
-    (vary/apply-overrides nodes overrides)
+    (let [resolved (if (map? overrides)
+                     (ir-vary/resolve-overrides overrides)
+                     overrides)]
+      (vary/apply-overrides nodes resolved))
     nodes))
 
 ;; --- generator expansion ---
