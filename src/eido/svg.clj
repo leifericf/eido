@@ -105,25 +105,6 @@
         (when-let [t (transforms->svg transforms)]
           (str " transform=\"" t "\"")))))
 
-(defmulti op->svg
-  "Converts a single IR op to an SVG element string.
-  Dispatches on :op. Optional second arg is gradient-id for fill."
-  (fn [op & _] (:op op)))
-
-(defmethod op->svg :rect
-  [{:keys [x y w h corner-radius] :as op} & [gradient-id]]
-  (str "<rect x=\"" x "\" y=\"" y
-       "\" width=\"" w "\" height=\"" h "\""
-       (when corner-radius
-         (str " rx=\"" corner-radius "\" ry=\"" corner-radius "\""))
-       " " (style-attrs op gradient-id) "/>"))
-
-(defmethod op->svg :circle
-  [{:keys [cx cy r] :as op} & [gradient-id]]
-  (str "<circle cx=\"" cx "\" cy=\"" cy
-       "\" r=\"" r
-       "\" " (style-attrs op gradient-id) "/>"))
-
 (defn- arc->path-d
   "Converts arc parameters to SVG path d string.
   start/extent in degrees, mode is :open/:chord/:pie."
@@ -149,31 +130,45 @@
            " A " rx " " ry " 0 " large-arc " " sweep
            " " (fmt x2) " " (fmt y2)))))
 
-(defmethod op->svg :arc
-  [{:keys [cx cy rx ry start extent mode] :as op} & [gradient-id]]
-  (str "<path d=\"" (arc->path-d cx cy rx ry start extent mode)
-       "\" " (style-attrs op gradient-id) "/>"))
-
-(defmethod op->svg :line
-  [{:keys [x1 y1 x2 y2] :as op} & [gradient-id]]
-  (str "<line x1=\"" x1 "\" y1=\"" y1
-       "\" x2=\"" x2 "\" y2=\"" y2
-       "\" " (style-attrs op gradient-id) "/>"))
-
-(defmethod op->svg :ellipse
-  [{:keys [cx cy rx ry] :as op} & [gradient-id]]
-  (str "<ellipse cx=\"" cx "\" cy=\"" cy
-       "\" rx=\"" rx "\" ry=\"" ry
-       "\" " (style-attrs op gradient-id) "/>"))
-
-(defmethod op->svg :path
-  [{:keys [commands fill-rule] :as op} & [gradient-id]]
-  (str "<path d=\"" (commands->d commands) "\""
-       (when fill-rule
-         (str " fill-rule=\"" (case fill-rule
-                                :even-odd "evenodd"
-                                :non-zero "nonzero") "\""))
-       " " (style-attrs op gradient-id) "/>"))
+(defn- op->svg
+  "Converts a single IR op to an SVG element string."
+  ([op] (op->svg op nil))
+  ([op gradient-id]
+   (case (:op op)
+     :rect
+     (let [{:keys [x y w h corner-radius]} op]
+       (str "<rect x=\"" x "\" y=\"" y
+            "\" width=\"" w "\" height=\"" h "\""
+            (when corner-radius
+              (str " rx=\"" corner-radius "\" ry=\"" corner-radius "\""))
+            " " (style-attrs op gradient-id) "/>"))
+     :circle
+     (let [{:keys [cx cy r]} op]
+       (str "<circle cx=\"" cx "\" cy=\"" cy
+            "\" r=\"" r
+            "\" " (style-attrs op gradient-id) "/>"))
+     :arc
+     (let [{:keys [cx cy rx ry start extent mode]} op]
+       (str "<path d=\"" (arc->path-d cx cy rx ry start extent mode)
+            "\" " (style-attrs op gradient-id) "/>"))
+     :line
+     (let [{:keys [x1 y1 x2 y2]} op]
+       (str "<line x1=\"" x1 "\" y1=\"" y1
+            "\" x2=\"" x2 "\" y2=\"" y2
+            "\" " (style-attrs op gradient-id) "/>"))
+     :ellipse
+     (let [{:keys [cx cy rx ry]} op]
+       (str "<ellipse cx=\"" cx "\" cy=\"" cy
+            "\" rx=\"" rx "\" ry=\"" ry
+            "\" " (style-attrs op gradient-id) "/>"))
+     :path
+     (let [{:keys [commands fill-rule]} op]
+       (str "<path d=\"" (commands->d commands) "\""
+            (when fill-rule
+              (str " fill-rule=\"" (case fill-rule
+                                     :even-odd "evenodd"
+                                     :non-zero "nonzero") "\""))
+            " " (style-attrs op gradient-id) "/>")))))
 
 (defn- clip-shape->svg
   "Converts a clip IR op to an SVG shape element string (no style)."
