@@ -126,7 +126,9 @@
                     (:path/fill-rule node)
                     fill stroke-color stroke-width opacity
                     stroke-cap stroke-join stroke-dash
-                    nil nil))))
+                    nil nil)
+      (throw (ex-info (str "Unknown node type: " (:node/type node))
+                      {:node/type (:node/type node)})))))
 
 (def ^:private default-ctx
   {:style {} :transforms [] :opacity 1.0})

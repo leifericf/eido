@@ -181,7 +181,8 @@
       (when (= :even-odd fill-rule)
         (.setWindingRule shape GeneralPath/WIND_EVEN_ODD))
       (apply-fill g shape fill)
-      (apply-stroke g shape m))))
+      (apply-stroke g shape m))
+    (throw (ex-info (str "Unknown render op: " op) {:op op}))))
 
 (defn- op->clip-shape
   "Converts a clip IR op to a java.awt.Shape for clipping."
@@ -199,7 +200,8 @@
     :ellipse (let [{:keys [cx cy rx ry]} clip]
                (Ellipse2D$Double. (double (- cx rx)) (double (- cy ry))
                                    (double (* 2.0 rx)) (double (* 2.0 ry))))
-    :path    (build-path (:commands clip))))
+    :path    (build-path (:commands clip))
+    (throw (ex-info (str "Unknown clip op: " op) {:op op}))))
 
 (defn- apply-transforms
   "Applies a sequence of transform ops to the graphics context."

@@ -36,7 +36,8 @@
                :rotate    (str "rotate(" (fmt (* (first args) (/ 180.0 Math/PI))) ")")
                :shear-x   (str "skewX(" (first args) ")")
                :shear-y   (str "skewY(" (first args) ")")
-               :scale     (str "scale(" (first args) "," (second args) ")")))
+               :scale     (str "scale(" (first args) "," (second args) ")")
+               (throw (ex-info (str "Unknown transform type: " t) {:transform t}))))
            transforms))))
 
 (defn- commands->d
@@ -167,8 +168,11 @@
             (when fill-rule
               (str " fill-rule=\"" (case fill-rule
                                      :even-odd "evenodd"
-                                     :non-zero "nonzero") "\""))
-            " " (style-attrs op gradient-id) "/>")))))
+                                     :non-zero "nonzero"
+                                     (throw (ex-info (str "Unknown fill-rule: " fill-rule)
+                                                     {:fill-rule fill-rule}))) "\""))
+            " " (style-attrs op gradient-id) "/>"))
+     (throw (ex-info (str "Unknown SVG op: " (:op op)) {:op (:op op)})))))
 
 (defn- clip-shape->svg
   "Converts a clip IR op to an SVG shape element string (no style)."
@@ -185,7 +189,8 @@
     :ellipse (let [{:keys [cx cy rx ry]} clip]
                (str "<ellipse cx=\"" cx "\" cy=\"" cy
                     "\" rx=\"" rx "\" ry=\"" ry "\"/>"))
-    :path    (str "<path d=\"" (commands->d (:commands clip)) "\"/>")))
+    :path    (str "<path d=\"" (commands->d (:commands clip)) "\"/>")
+    (throw (ex-info (str "Unknown clip op: " op) {:op op}))))
 
 (defn- op-svg-with-clip
   "Renders an op to SVG, adding clip-path and/or gradient defs as needed."
