@@ -198,4 +198,10 @@
   ;; === After Poisson disk active list optimization ===
   ;;   stipple-spheres               144 ms  (was 154, ~7% faster)
   ;;   O(1) removal from active list via ArrayList swap-with-last
+
+  ;; === After noise primitive arrays + rem ===
+  ;;   van-gogh-swirls              2009 ms  (was 2259, 11% faster)
+  ;;   contour-terrain               118 ms  (was 158, 25% faster)
+  ;;   topo-map                       75 ms  (was 103, 27% faster)
+  ;;   int-array perm table, split gradient arrays, rem instead of mod
   )

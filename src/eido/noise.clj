@@ -20,22 +20,25 @@
    61 156 180])
 
 (defn- make-perm
-  "Creates a 512-entry permutation table, doubling perm-base."
-  [seed]
-  (let [base (if (zero? seed)
-               perm-base
-               (let [r (java.util.Random. (long seed))
-                     arr (int-array 256)]
-                 (dotimes [i 256] (aset arr i i))
-                 (loop [i 255]
-                   (when (pos? i)
-                     (let [j (.nextInt r (inc i))
-                           tmp (aget arr i)]
-                       (aset arr i (aget arr j))
-                       (aset arr j tmp)
-                       (recur (dec i)))))
-                 (vec arr)))]
-    (into (vec base) base)))
+  "Creates a 512-entry int-array permutation table, doubling perm-base."
+  ^ints [seed]
+  (let [^ints base (if (zero? seed)
+                     (int-array perm-base)
+                     (let [arr (int-array 256)
+                           r   (java.util.Random. (long seed))]
+                       (dotimes [i 256] (aset arr i i))
+                       (loop [i 255]
+                         (when (pos? i)
+                           (let [j (.nextInt r (inc i))
+                                 tmp (aget arr i)]
+                             (aset arr i (aget arr j))
+                             (aset arr j tmp)
+                             (recur (dec i)))))
+                       arr))
+        result (int-array 512)]
+    (System/arraycopy base 0 result 0 256)
+    (System/arraycopy base 0 result 256 256)
+    result))
 
 (def ^:private default-perm (make-perm 0))
 
@@ -52,25 +55,24 @@
         (swap! perm-cache assoc seed p)
         p)))
 
-(defn- perm-at ^long [perm ^long i]
-  (long (nth perm (bit-and i 255))))
+(defn- perm-at ^long [^ints perm ^long i]
+  (aget perm (bit-and i 255)))
 
 ;; --- gradient vectors ---
+;; Flattened as [gx gy gz, gx gy gz, ...] for direct array access.
 
-(def ^:private grad3
-  "3D gradient vectors for Perlin noise."
-  [[1 1 0] [-1 1 0] [1 -1 0] [-1 -1 0]
-   [1 0 1] [-1 0 1] [1 0 -1] [-1 0 -1]
-   [0 1 1] [0 -1 1] [0 1 -1] [0 -1 -1]])
+(def ^:private grad3-x (int-array [1 -1 1 -1 1 -1 1 -1 0 0 0 0]))
+(def ^:private grad3-y (int-array [1 1 -1 -1 0 0 0 0 1 -1 1 -1]))
+(def ^:private grad3-z (int-array [0 0 0 0 1 1 -1 -1 1 1 -1 -1]))
 
-(defn- dot2 ^double [grad ^double x ^double y]
-  (+ (* (double (nth grad 0)) x)
-     (* (double (nth grad 1)) y)))
+(defn- dot2 ^double [^long gi ^double x ^double y]
+  (+ (* (double (aget ^ints grad3-x gi)) x)
+     (* (double (aget ^ints grad3-y gi)) y)))
 
-(defn- dot3 ^double [grad ^double x ^double y ^double z]
-  (+ (* (double (nth grad 0)) x)
-     (* (double (nth grad 1)) y)
-     (* (double (nth grad 2)) z)))
+(defn- dot3 ^double [^long gi ^double x ^double y ^double z]
+  (+ (* (double (aget ^ints grad3-x gi)) x)
+     (* (double (aget ^ints grad3-y gi)) y)
+     (* (double (aget ^ints grad3-z gi)) z)))
 
 ;; --- fade and lerp ---
 
@@ -99,14 +101,14 @@
          yf (- y yi)
          u  (fade xf)
          v  (fade yf)
-         gi00 (mod (perm-at perm (+ (perm-at perm xi) yi)) 12)
-         gi10 (mod (perm-at perm (+ (perm-at perm (inc xi)) yi)) 12)
-         gi01 (mod (perm-at perm (+ (perm-at perm xi) (inc yi))) 12)
-         gi11 (mod (perm-at perm (+ (perm-at perm (inc xi)) (inc yi))) 12)
-         n00  (dot2 (nth grad3 gi00) xf yf)
-         n10  (dot2 (nth grad3 gi10) (- xf 1.0) yf)
-         n01  (dot2 (nth grad3 gi01) xf (- yf 1.0))
-         n11  (dot2 (nth grad3 gi11) (- xf 1.0) (- yf 1.0))
+         gi00 (rem (perm-at perm (+ (perm-at perm xi) yi)) 12)
+         gi10 (rem (perm-at perm (+ (perm-at perm (inc xi)) yi)) 12)
+         gi01 (rem (perm-at perm (+ (perm-at perm xi) (inc yi))) 12)
+         gi11 (rem (perm-at perm (+ (perm-at perm (inc xi)) (inc yi))) 12)
+         n00  (dot2 gi00 xf yf)
+         n10  (dot2 gi10 (- xf 1.0) yf)
+         n01  (dot2 gi01 xf (- yf 1.0))
+         n11  (dot2 gi11 (- xf 1.0) (- yf 1.0))
          nx0  (nlerp n00 n10 u)
          nx1  (nlerp n01 n11 u)]
      (nlerp nx0 nx1 v))))
@@ -135,25 +137,25 @@
          u  (fade xf)
          v  (fade yf)
          w  (fade zf)
-         aaa (mod (perm-at perm (+ (perm-at perm (+ (perm-at perm xi) yi)) zi)) 12)
-         baa (mod (perm-at perm (+ (perm-at perm (+ (perm-at perm (inc xi)) yi)) zi)) 12)
-         aba (mod (perm-at perm (+ (perm-at perm (+ (perm-at perm xi) (inc yi))) zi)) 12)
-         bba (mod (perm-at perm (+ (perm-at perm (+ (perm-at perm (inc xi)) (inc yi))) zi)) 12)
-         aab (mod (perm-at perm (+ (perm-at perm (+ (perm-at perm xi) yi)) (inc zi))) 12)
-         bab (mod (perm-at perm (+ (perm-at perm (+ (perm-at perm (inc xi)) yi)) (inc zi))) 12)
-         abb (mod (perm-at perm (+ (perm-at perm (+ (perm-at perm xi) (inc yi))) (inc zi))) 12)
-         bbb (mod (perm-at perm (+ (perm-at perm (+ (perm-at perm (inc xi)) (inc yi))) (inc zi))) 12)]
+         aaa (rem (perm-at perm (+ (perm-at perm (+ (perm-at perm xi) yi)) zi)) 12)
+         baa (rem (perm-at perm (+ (perm-at perm (+ (perm-at perm (inc xi)) yi)) zi)) 12)
+         aba (rem (perm-at perm (+ (perm-at perm (+ (perm-at perm xi) (inc yi))) zi)) 12)
+         bba (rem (perm-at perm (+ (perm-at perm (+ (perm-at perm (inc xi)) (inc yi))) zi)) 12)
+         aab (rem (perm-at perm (+ (perm-at perm (+ (perm-at perm xi) yi)) (inc zi))) 12)
+         bab (rem (perm-at perm (+ (perm-at perm (+ (perm-at perm (inc xi)) yi)) (inc zi))) 12)
+         abb (rem (perm-at perm (+ (perm-at perm (+ (perm-at perm xi) (inc yi))) (inc zi))) 12)
+         bbb (rem (perm-at perm (+ (perm-at perm (+ (perm-at perm (inc xi)) (inc yi))) (inc zi))) 12)]
      (nlerp
        (nlerp
-         (nlerp (dot3 (nth grad3 aaa) xf yf zf)
-                (dot3 (nth grad3 baa) (- xf 1.0) yf zf) u)
-         (nlerp (dot3 (nth grad3 aba) xf (- yf 1.0) zf)
-                (dot3 (nth grad3 bba) (- xf 1.0) (- yf 1.0) zf) u) v)
+         (nlerp (dot3 aaa xf yf zf)
+                (dot3 baa (- xf 1.0) yf zf) u)
+         (nlerp (dot3 aba xf (- yf 1.0) zf)
+                (dot3 bba (- xf 1.0) (- yf 1.0) zf) u) v)
        (nlerp
-         (nlerp (dot3 (nth grad3 aab) xf yf (- zf 1.0))
-                (dot3 (nth grad3 bab) (- xf 1.0) yf (- zf 1.0)) u)
-         (nlerp (dot3 (nth grad3 abb) xf (- yf 1.0) (- zf 1.0))
-                (dot3 (nth grad3 bbb) (- xf 1.0) (- yf 1.0) (- zf 1.0)) u) v)
+         (nlerp (dot3 aab xf yf (- zf 1.0))
+                (dot3 bab (- xf 1.0) yf (- zf 1.0)) u)
+         (nlerp (dot3 abb xf (- yf 1.0) (- zf 1.0))
+                (dot3 bbb (- xf 1.0) (- yf 1.0) (- zf 1.0)) u) v)
        w))))
 
 ;; --- fractal noise ---
