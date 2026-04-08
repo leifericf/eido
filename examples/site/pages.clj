@@ -528,6 +528,125 @@
 (s3d/look-at {:eye [3 2 5] :target [0 0 0] :up [0 1 0]
               :scale 100 :origin [200 200]})"]]]}]}
 
+   {:category "Visual Computation"
+    :id       "visual-computation"
+    :sections
+    [{:id    "procedural-fills"
+      :title "Procedural Fills"
+      :content
+      [:div
+       [:p "Procedural fills evaluate a program expression per pixel over a shape's bounds. The program is pure data — no functions, no macros — just nested vectors describing the computation."]
+       [:pre [:code
+              "(require '[eido.ir :as ir])
+(require '[eido.ir.fill :as fill])
+(require '[eido.ir.lower :as lower])
+
+;; A rect filled with noise-driven color
+(def scene
+  (let [semantic
+        (ir/container [400 400]
+          {:r 20 :g 20 :b 30 :a 1.0}
+          [(ir/draw-item
+             (ir/rect-geometry [0 0] [400 400])
+             :fill (fill/procedural
+                     {:program/body
+                      [:color/rgb
+                       [:* 255
+                           [:clamp [:+ 0.5
+                                        [:* 0.5
+                                            [:field/noise
+                                             {:field/type :field/noise
+                                              :field/scale 4.0
+                                              :field/variant :fbm
+                                              :field/seed 42}
+                                             :uv]]]
+                            0.0 1.0]]
+                       100 200]}))])]
+    {:ir (lower/lower semantic)}))"]]
+       [:p "The program receives " [:code ":uv"] " as normalized [0..1] coordinates. It can use arithmetic, math functions, field sampling, color construction, and conditional logic."]
+       [:h4 "Expression Language"]
+       [:pre [:code
+              ";; Arithmetic: [:+ a b], [:- a b], [:* a b], [:/ a b]
+;; Math:       [:abs x], [:sqrt x], [:sin x], [:cos x], [:pow x n]
+;; Vectors:    [:vec2 x y], [:vec3 x y z]
+;; Access:     [:x v], [:y v]
+;; Mixing:     [:mix a b t], [:clamp x lo hi]
+;; Conditional: [:select pred a b]
+;; Fields:     [:field/noise {field-desc} position]
+;; Colors:     [:color/rgb r g b]"]]]}
+
+     {:id    "fields"
+      :title "Fields"
+      :content
+      [:div
+       [:p "A field is a function over 2D space that returns a value. Fields are reusable descriptors that can be consumed by procedural fills, generators, and programs."]
+       [:pre [:code
+              "(require '[eido.ir.field :as field])
+
+;; Noise field — wraps eido.noise with configurable parameters
+(def f (field/noise-field :scale 0.02 :variant :fbm
+                          :seed 42 :octaves 6))
+
+;; Evaluate at a point
+(field/evaluate f 10.0 20.0)  ;; => -0.234...
+
+;; Other field types
+(field/constant-field 0.5)        ;; same value everywhere
+(field/distance-field [100 100])  ;; distance from center"]]
+       [:h4 "Noise Variants"]
+       [:p [:code ":raw"] " — plain Perlin noise, "
+        [:code ":fbm"] " — fractal Brownian motion (default), "
+        [:code ":turbulence"] " — absolute-value fbm, "
+        [:code ":ridge"] " — ridged multifractal."]]}
+
+     {:id    "semantic-fills"
+      :title "Semantic Fills"
+      :content
+      [:div
+       [:p "The semantic IR preserves fill intent as data instead of expanding to geometry immediately. Fill constructors create descriptors that are lowered to concrete drawing operations at render time."]
+       [:pre [:code
+              "(require '[eido.ir.fill :as fill])
+
+;; Solid color
+(fill/solid [:color/rgb 200 50 50])
+
+;; Gradient
+(fill/gradient :linear
+               [[0.0 [:color/rgb 255 0 0]]
+                [1.0 [:color/rgb 0 0 255]]]
+               :from [0 0] :to [200 0])
+
+;; Hatch — preserved as semantic data through the pipeline
+(fill/hatch {:hatch/angle 45 :hatch/spacing 5
+             :hatch/color [:color/rgb 0 0 0]})
+
+;; Stipple
+(fill/stipple {:stipple/density 0.6 :stipple/radius 2
+               :stipple/seed 42 :stipple/color [:color/rgb 0 0 0]})
+
+;; Procedural — per-pixel program evaluation
+(fill/procedural {:program/body [:color/rgb 255 0 0]})"]]]}
+
+     {:id    "semantic-effects"
+      :title "Semantic Effects"
+      :content
+      [:div
+       [:p "Effects are explicit descriptors attached to draw items. They are lowered to buffer compositing operations at render time."]
+       [:pre [:code
+              "(require '[eido.ir :as ir])
+(require '[eido.ir.effect :as effect])
+(require '[eido.ir.fill :as fill])
+
+(ir/draw-item
+  (ir/rect-geometry [50 50] [200 150])
+  :fill (fill/solid [:color/rgb 60 120 200])
+  :effects [(effect/shadow :dx 5 :dy 5 :blur 10
+                           :color [:color/rgb 0 0 0]
+                           :opacity 0.5)
+            (effect/glow :blur 12
+                         :color [:color/rgb 100 200 255]
+                         :opacity 0.6)])"]]]}]}
+
    {:category "Output"
     :id       "output"
     :sections

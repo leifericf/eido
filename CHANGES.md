@@ -1,5 +1,29 @@
 # Changes
 
+## v1.0.0-alpha8 — Semantic IR & Procedural Fills
+
+### Semantic IR
+
+- Add semantic IR layer to `eido.ir` with containers, draw items, and geometry constructors
+- Preserve hatch fills, stipple fills, and effects as semantic data through the pipeline instead of expanding to geometry immediately
+- Add `eido.ir.lower` to convert semantic IR to concrete ops consumed by existing renderers
+- Add `compile-semantic` in `eido.compile` and `:eido/ir :semantic` scene option for opt-in routing
+- Make `expand-hatch-fill`, `expand-stipple-fill`, `compile-tree`, `shape-bounds` public in `eido.compile` for reuse by lowering
+
+### Procedural fills
+
+- Add `:fill/procedural` fill type — per-pixel program evaluation producing image-based fills
+- Programs are pure data: `[:color/rgb [:* 255 [:field/noise {...} :uv]] 100 50]`
+- Add `eido.ir.program` — minimal expression evaluator supporting arithmetic, math, vectors, mix/clamp/select, field sampling, color construction
+- Add `eido.ir.field` — field descriptors for noise (Perlin raw/fbm/turbulence/ridge), constant, and distance fields
+- Add `eido.ir.fill` — fill constructors (solid, gradient, hatch, stipple, procedural) and lowering
+- Add `eido.ir.effect` — effect descriptors (shadow, glow) and lowering to BufferOp wrappers
+- Add `:procedural-image` fill type to renderer for direct image-based fills
+
+### API
+
+- New namespace group: `eido.ir`, `eido.ir.fill`, `eido.ir.effect`, `eido.ir.field`, `eido.ir.program`, `eido.ir.lower`
+
 ## v1.0.0-alpha7 — Docs & Validation
 
 ### Website

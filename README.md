@@ -30,6 +30,7 @@ The approach is inspired by Christian Johansen's [Replicant](https://github.com/
 - **Animations are sequences.** 60 frames = 60 maps in a vector. No timeline, no keyframes, no mutation.
 - **Particle simulation.** Physics-based effects configured as data — emitters, forces, and lifetime curves.
 - **Typography as paths.** Text compiled to vector paths — compatible with gradients, transforms, 3D extrusion.
+- **Procedural fills.** Noise-driven, field-based, and programmatic fills described entirely as data — no shaders, no GPU.
 - **No state, no framework.** Every function takes data and returns data. You bring your own workflow.
 - **Zero dependencies.** Just Clojure and the standard library.
 
