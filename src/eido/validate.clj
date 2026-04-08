@@ -30,10 +30,22 @@
     (str "missing required key " (last pred))
 
     ;; s/keys wraps contains? in (fn [%] (contains? % :key))
+    ;; The :default node-type multimethod wraps it in
+    ;;   (fn [%] (contains? #{:shape/rect ...} (:node/type %)))
+    ;; Distinguish by checking whether the second arg to contains? is a set.
     (and (seq? pred) (= 'clojure.core/fn (first pred))
          (let [body (nth pred 2 nil)]
-           (and (seq? body) (= 'clojure.core/contains? (first body)))))
+           (and (seq? body) (= 'clojure.core/contains? (first body))
+                (not (set? (nth body 1 nil))))))
     (str "missing required key " (last (nth pred 2)))
+
+    (and (seq? pred) (= 'clojure.core/fn (first pred))
+         (let [body (nth pred 2 nil)]
+           (and (seq? body) (= 'clojure.core/contains? (first body))
+                (set? (nth body 1 nil)))))
+    (let [valid-types (nth (nth pred 2) 1)]
+      (str "unknown node type; valid types are: "
+           (str/join ", " (sort (map str valid-types)))))
 
     (some #{:eido/version} via)
     "version string matching \"X.Y\" (e.g. \"1.0\")"
