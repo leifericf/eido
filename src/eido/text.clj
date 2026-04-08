@@ -238,19 +238,25 @@
   "Approximates curves as line segments. flatness controls subdivision."
   ([commands] (flatten-commands commands 1.0))
   ([commands flatness]
-   (let [iter (.getPathIterator
-                (let [p (java.awt.geom.GeneralPath.)]
+   (let [^java.awt.geom.PathIterator
+         iter (.getPathIterator
+                (let [^java.awt.geom.GeneralPath p (java.awt.geom.GeneralPath.)]
                   (doseq [[cmd & args] commands]
                     (case cmd
-                      :move-to  (let [[x y] (first args)] (.moveTo p x y))
-                      :line-to  (let [[x y] (first args)] (.lineTo p x y))
+                      :move-to  (let [[x y] (first args)]
+                                  (.moveTo p (double x) (double y)))
+                      :line-to  (let [[x y] (first args)]
+                                  (.lineTo p (double x) (double y)))
                       :quad-to  (let [[cx cy] (first args)
                                       [x y]   (second args)]
-                                  (.quadTo p cx cy x y))
+                                  (.quadTo p (double cx) (double cy)
+                                             (double x) (double y)))
                       :curve-to (let [[c1x c1y] (first args)
                                       [c2x c2y] (second args)
                                       [x y]     (nth args 2)]
-                                  (.curveTo p c1x c1y c2x c2y x y))
+                                  (.curveTo p (double c1x) (double c1y)
+                                              (double c2x) (double c2y)
+                                              (double x) (double y)))
                       :close    (.closePath p)))
                   p)
                 nil (double flatness))

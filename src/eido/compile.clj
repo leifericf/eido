@@ -582,11 +582,13 @@
 
 (defn compile
   "Compiles a scene map into an intermediate representation.
-  Validates the scene first; throws ex-info with :errors on failure."
+  Validates the scene first; throws ex-info with :errors on failure.
+  Set :eido/skip-validation true in the scene to skip validation."
   [scene]
-  (when-let [errors (validate/validate scene)]
-    (throw (ex-info "Invalid scene"
-                    {:errors errors})))
+  (when-not (:eido/skip-validation scene)
+    (when-let [errors (validate/validate scene)]
+      (throw (ex-info "Invalid scene"
+                      {:errors errors}))))
   (let [expanded (update scene :image/nodes #(mapv expand-node %))]
     {:ir/size       (:image/size expanded)
      :ir/background (color/resolve-color (:image/background expanded))

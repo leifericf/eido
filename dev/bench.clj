@@ -222,4 +222,13 @@
   ;; === After shadow buffer pooling ===
   ;;   polka-pop                     155 ms  (was 181, 14% faster)
   ;;   Reuse offscreen BufferedImage across shadow/glow renders via dynamic var pool
+
+  ;; === After flatten-commands reflection fix + skip-validation ===
+  ;;   van-gogh-swirls              1512 ms  (was 1785, reflection fix alone)
+  ;;     compile                    1302 ms  (was 1589)
+  ;;   With :eido/skip-validation:
+  ;;     van-gogh-swirls             547 ms  (was 1512, 64% faster)
+  ;;     compile                     290 ms  (was 1302, 78% faster)
+  ;;   Profiler showed: 8.6% Reflector.getMethods in flatten-commands,
+  ;;   ~17% in spec validation (validate/validate walks all 6683 nodes)
   )
