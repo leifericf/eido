@@ -54,31 +54,35 @@
             y0 (+ by (* (.nextDouble rng) bh))]
         (when-let [idx (grid-idx x0 y0)]
           (aset grid idx [x0 y0]))
-        (loop [active [[x0 y0]]
-               points [[x0 y0]]]
-          (if (empty? active)
-            (vec points)
-            (let [ri     (.nextInt rng (count active))
-                  [ax ay] (nth active ri)
-                  result (loop [j 0 found nil]
-                           (if (or found (>= j k))
-                             found
-                             (let [angle (* 2.0 Math/PI (.nextDouble rng))
-                                   r     (+ min-dist (* (.nextDouble rng) min-dist))
-                                   nx    (+ ax (* r (Math/cos angle)))
-                                   ny    (+ ay (* r (Math/sin angle)))]
-                               (if (valid? nx ny)
-                                 (recur (inc j) [nx ny])
-                                 (recur (inc j) nil)))))]
-              (if result
-                (let [[nx ny] result]
-                  (when-let [idx (grid-idx nx ny)]
-                    (aset grid idx [nx ny]))
-                  (recur (conj active result)
-                         (conj points result)))
-                (recur (into (subvec active 0 ri)
-                             (subvec active (inc ri)))
-                       points)))))))))
+        ;; Use ArrayList for O(1) random removal (swap with last, removeLast)
+        (let [active (java.util.ArrayList. ^java.util.Collection [[x0 y0]])]
+          (loop [points [[x0 y0]]]
+            (if (.isEmpty active)
+              points
+              (let [ri     (.nextInt rng (.size active))
+                    [ax ay] (.get active ri)
+                    result (loop [j 0 found nil]
+                             (if (or found (>= j k))
+                               found
+                               (let [angle (* 2.0 Math/PI (.nextDouble rng))
+                                     r     (+ min-dist (* (.nextDouble rng) min-dist))
+                                     nx    (+ ax (* r (Math/cos angle)))
+                                     ny    (+ ay (* r (Math/sin angle)))]
+                                 (if (valid? nx ny)
+                                   (recur (inc j) [nx ny])
+                                   (recur (inc j) nil)))))]
+                (if result
+                  (let [[nx ny] result]
+                    (when-let [idx (grid-idx nx ny)]
+                      (aset grid idx [nx ny]))
+                    (.add active result)
+                    (recur (conj points result)))
+                  ;; Swap with last for O(1) removal
+                  (let [last-idx (dec (.size active))]
+                    (when (not= ri last-idx)
+                      (.set active ri (.get active last-idx)))
+                    (.remove active last-idx)
+                    (recur points)))))))))))
 
 ;; --- stipple fill expansion ---
 

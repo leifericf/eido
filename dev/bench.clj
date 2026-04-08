@@ -194,4 +194,8 @@
   ;; === After noise permutation table caching ===
   ;;   van-gogh-swirls              2128 ms  (was 4838, 56% faster)
   ;;   Cached seeded permutation tables instead of regenerating per noise call
+
+  ;; === After Poisson disk active list optimization ===
+  ;;   stipple-spheres               144 ms  (was 154, ~7% faster)
+  ;;   O(1) removal from active list via ArrayList swap-with-last
   )
