@@ -4,7 +4,6 @@
     [clojure.string :as str]
     [eido.compile :as compile]
     [eido.gif :as gif]
-    [eido.ir.lower :as lower]
     [eido.render :as render]
     [eido.svg :as svg]
     [eido.validate :as validate])
@@ -45,28 +44,13 @@
   [scene]
   (validate/explain scene))
 
-(defn- use-semantic-ir?
-  "Returns true if the scene should be compiled through the semantic IR path.
-  Scenes opt in with :eido/ir :semantic, and can force legacy with :eido/ir :legacy."
-  [scene]
-  (let [ir-mode (:eido/ir scene)]
-    (case ir-mode
-      :semantic true
-      :legacy   false
-      ;; Default: legacy path for backward compatibility
-      nil       false
-      false)))
-
 (defn- validated-compile
   "Validates then compiles a scene.
-  Routes through semantic IR when :eido/ir :semantic is set.
   Skips validation if the scene has :eido/validate false."
   [scene]
   (when-not (false? (:eido/validate scene))
     (compile/validate-scene! scene))
-  (if (use-semantic-ir? scene)
-    (lower/lower (compile/compile-semantic scene))
-    (compile/compile scene)))
+  (compile/compile scene))
 
 (defn- render-image
   "Renders a single scene to a BufferedImage."
