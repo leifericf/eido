@@ -44,6 +44,12 @@
   ([scene opts]
    (render/render (validated-compile scene) opts)))
 
+(defn- render-image-unchecked
+  "Renders a scene without validation (for internal use after first frame)."
+  ([scene] (render-image-unchecked scene {}))
+  ([scene opts]
+   (render/render (compile/compile scene) opts)))
+
 (defn render-file
   "Reads an EDN scene file and renders it to a BufferedImage."
   [path]
@@ -103,9 +109,13 @@
   Opts: :scale, :transparent-background."
   ([scenes fps] (render-to-animated-svg-str scenes fps {}))
   ([scenes fps opts]
-   (let [irs (mapv validated-compile scenes)]
-     (svg/render-animated irs fps
-       (select-keys opts [:scale :transparent-background])))))
+   (let [scene-vec (vec scenes)]
+     ;; Validate first frame; skip for rest
+     (when (seq scene-vec)
+       (compile/validate-scene! (first scene-vec)))
+     (let [irs (mapv compile/compile scene-vec)]
+       (svg/render-animated irs fps
+         (select-keys opts [:scale :transparent-background]))))))
 
 (defn render-to-animated-svg
   "Renders a sequence of scenes to an animated SVG file.
@@ -185,11 +195,14 @@
          pad-width   (count (str (dec n)))
          render-opts (select-keys opts [:scale :transparent-background])]
      (.mkdirs (File. ^String dir))
+     ;; Validate first frame; skip validation for subsequent frames
+     (when (pos? n)
+       (compile/validate-scene! (nth scene-vec 0)))
      (mapv (fn [i]
              (let [scene (nth scene-vec i)
                    fname (str prefix (pad-index i pad-width) ".png")
                    path  (str dir "/" fname)
-                   img   (render-image scene render-opts)]
+                   img   (render-image-unchecked scene render-opts)]
                (ImageIO/write img "png" (File. ^String path))
                path))
            (range n)))))
@@ -201,10 +214,14 @@
   ([scenes path fps] (render-to-gif scenes path fps {}))
   ([scenes path fps opts]
    (let [render-opts (select-keys opts [:scale :transparent-background])
-         images      (mapv #(render-image % render-opts) scenes)
-         delay-ms    (quot 1000 fps)
-         loop?       (get opts :loop true)]
-     (gif/write-animated-gif images path delay-ms loop?))))
+         scene-vec   (vec scenes)]
+     ;; Validate first frame; skip validation for subsequent frames
+     (when (seq scene-vec)
+       (compile/validate-scene! (first scene-vec)))
+     (let [images   (mapv #(render-image-unchecked % render-opts) scene-vec)
+           delay-ms (quot 1000 fps)
+           loop?    (get opts :loop true)]
+       (gif/write-animated-gif images path delay-ms loop?)))))
 
 (defn render-batch
   "Renders a sequence of export jobs to files. Each job is a map with
