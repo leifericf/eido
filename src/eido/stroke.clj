@@ -102,16 +102,21 @@
 ;; --- cumulative distance ---
 
 (defn- cumulative-distances
-  "Returns a vector of cumulative arc-length distances for each point."
-  [points]
-  (loop [i 1 dists [0.0]]
-    (if (>= i (count points))
-      dists
-      (let [[x0 y0] (nth points (dec i))
-            [x1 y1] (nth points i)
-            d (Math/sqrt (+ (* (- x1 x0) (- x1 x0))
-                            (* (- y1 y0) (- y1 y0))))]
-        (recur (inc i) (conj dists (+ (peek dists) d)))))))
+  "Returns a double-array of cumulative arc-length distances for each point."
+  ^doubles [points]
+  (let [n (count points)
+        ^doubles dists (double-array n)]
+    (aset dists 0 0.0)
+    (loop [i 1]
+      (when (< i n)
+        (let [[x0 y0] (nth points (dec i))
+              [x1 y1] (nth points i)
+              dx (- (double x1) (double x0))
+              dy (- (double y1) (double y0))
+              d (Math/sqrt (+ (* dx dx) (* dy dy)))]
+          (aset dists i (+ (aget dists (dec i)) d))
+          (recur (inc i)))))
+    dists))
 
 ;; --- outline generation ---
 
@@ -125,36 +130,35 @@
         points    (flatten-to-points path-cmds)
         n         (count points)]
     (when (>= n 2)
-      (let [dists     (cumulative-distances points)
-            total-len (peek dists)
-            ;; Build left and right offset points
-            left  (mapv (fn [i]
-                          (let [[px py] (nth points i)
-                                [nx ny] (point-normal points i)
-                                t (if (pos? total-len)
-                                    (/ (nth dists i) total-len)
-                                    0.0)
-                                w (* (width-at profile t)
-                                     (/ (double max-width) 2.0))]
-                            [(+ px (* nx w)) (+ py (* ny w))]))
-                        (range n))
-            right (mapv (fn [i]
-                          (let [[px py] (nth points i)
-                                [nx ny] (point-normal points i)
-                                t (if (pos? total-len)
-                                    (/ (nth dists i) total-len)
-                                    0.0)
-                                w (* (width-at profile t)
-                                     (/ (double max-width) 2.0))]
-                            [(- px (* nx w)) (- py (* ny w))]))
-                        (range n))]
+      (let [^doubles dists (cumulative-distances points)
+            total-len (aget dists (dec n))
+            half-w    (/ (double max-width) 2.0)
+            ;; Pre-compute normals once for all points
+            normals   (let [arr (object-array n)]
+                        (dotimes [i n]
+                          (aset arr i (point-normal points i)))
+                        arr)
+            ;; Build left and right offset points in a single pass
+            left      (object-array n)
+            right     (object-array n)]
+        (dotimes [i n]
+          (let [[px py] (nth points i)
+                [nx ny] (aget normals i)
+                t (if (pos? total-len)
+                    (/ (aget dists i) total-len)
+                    0.0)
+                w (* (width-at profile t) half-w)]
+            (aset left i [(+ px (* nx w)) (+ py (* ny w))])
+            (aset right i [(- px (* nx w)) (- py (* ny w))])))
         ;; Build outline: left forward, then right backward, then close
         (let [cmds (transient [])]
-          (conj! cmds [:move-to (first left)])
-          (doseq [i (range 1 n)]
-            (conj! cmds [:line-to (nth left i)]))
-          (doseq [i (range (dec n) -1 -1)]
-            (conj! cmds [:line-to (nth right i)]))
+          (conj! cmds [:move-to (aget left 0)])
+          (dotimes [j (dec n)]
+            (conj! cmds [:line-to (aget left (inc j))]))
+          (loop [i (dec n)]
+            (when (>= i 0)
+              (conj! cmds [:line-to (aget right i)])
+              (recur (dec i))))
           (conj! cmds [:close])
           (persistent! cmds))))))
 

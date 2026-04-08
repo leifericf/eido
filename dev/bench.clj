@@ -213,4 +213,9 @@
   ;;   contour-terrain                73 ms  (was 118, 38% faster)
   ;;   topo-map                       45 ms  (was 75, 40% faster)
   ;;   Flat double-array grid with aget instead of nested vectors with get-in
+
+  ;; === After stroke outline deduplication ===
+  ;;   van-gogh-swirls              1785 ms  (was 2375, 25% faster)
+  ;;   compile only                 1589 ms  (was 1820, 13% faster)
+  ;;   Compute normals once, single pass for left+right, double-array dists
   )
