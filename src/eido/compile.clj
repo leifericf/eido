@@ -62,18 +62,19 @@
 (defn- compile-command
   "Flattens a scene path command into an IR command.
   Scene: [:move-to [x y]] -> IR: [:move-to x y]"
-  [[cmd & args]]
-  (case cmd
-    :move-to  (let [[x y] (first args)] [:move-to x y])
-    :line-to  (let [[x y] (first args)] [:line-to x y])
-    :curve-to (let [[cx1 cy1] (first args)
-                    [cx2 cy2] (second args)
-                    [x y]     (nth args 2)]
-                [:curve-to cx1 cy1 cx2 cy2 x y])
-    :quad-to  (let [[cpx cpy] (first args)
-                    [x y]     (second args)]
-                [:quad-to cpx cpy x y])
-    :close    [:close]))
+  [command]
+  (let [cmd (nth command 0)]
+    (case cmd
+      :move-to  (let [[x y] (nth command 1)] [:move-to x y])
+      :line-to  (let [[x y] (nth command 1)] [:line-to x y])
+      :curve-to (let [[cx1 cy1] (nth command 1)
+                      [cx2 cy2] (nth command 2)
+                      [x y]     (nth command 3)]
+                  [:curve-to cx1 cy1 cx2 cy2 x y])
+      :quad-to  (let [[cpx cpy] (nth command 1)
+                      [x y]     (nth command 2)]
+                  [:quad-to cpx cpy x y])
+      :close    [:close])))
 
 (defn- compile-node
   "Compiles a scene node into a flat IR op map."
