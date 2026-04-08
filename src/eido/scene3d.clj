@@ -372,13 +372,14 @@
      (int (Math/round (* (double b) brightness)))]))
 
 (defn- shade-face-style
-  "Applies lighting to a face's style based on its normal and a light."
-  [style normal light]
+  "Applies lighting to a face's style based on its normal and a light.
+  norm-normal and norm-light-dir should be pre-normalized to avoid
+  redundant computation in hot loops."
+  [style norm-normal norm-light-dir light]
   (if (and light (:style/fill style))
-    (let [light-dir (m/normalize (:light/direction light))
-          ambient   (double (get light :light/ambient 0.3))
+    (let [ambient   (double (get light :light/ambient 0.3))
           intensity (double (get light :light/intensity 0.7))
-          cos-angle (m/dot (m/normalize normal) light-dir)
+          cos-angle (m/dot norm-normal norm-light-dir)
           brightness (min 1.0 (+ ambient (* intensity (max 0.0 cos-angle))))]
       (cond-> (assoc style :style/fill (shade-color (:style/fill style) brightness))
         (:style/stroke style)
@@ -463,14 +464,17 @@
           cull?      (get opts :cull-back true)
           base-style (:style opts)
           cam-dir    (m/camera-direction projection)
+          norm-light-dir (when light (m/normalize (:light/direction light)))
           ;; Compute culling and depth in world space using camera direction
           processed  (->> mesh
                           (map (fn [face]
-                                 (let [normal  (:face/normal face)
-                                       verts   (:face/vertices face)
-                                       facing  (m/dot (m/normalize normal) cam-dir)
-                                       depth   (m/dot (m/face-centroid verts) cam-dir)]
-                                   {:face face :facing facing :depth depth})))
+                                 (let [normal      (:face/normal face)
+                                       verts       (:face/vertices face)
+                                       norm-normal (m/normalize normal)
+                                       facing      (m/dot norm-normal cam-dir)
+                                       depth       (m/dot (m/face-centroid verts) cam-dir)]
+                                   {:face face :facing facing :depth depth
+                                    :norm-normal norm-normal})))
                           ;; Keep front-facing (normal points toward camera)
                           (filter (fn [{:keys [facing]}]
                                     (if cull? (> facing 0.0) true)))
@@ -478,14 +482,15 @@
                           (sort-by :depth))]
       {:node/type :group
        :group/children
-       (mapv (fn [{:keys [face facing depth]}]
+       (mapv (fn [{:keys [face facing depth norm-normal]}]
                (let [face-style (or (:face/style face) base-style)
                      ;; For back-facing faces (when cull-back is false),
                      ;; flip normal so shading uses the camera-facing side
-                     normal     (if (neg? facing)
-                                  (m/v* (:face/normal face) -1)
-                                  (:face/normal face))
-                     shaded     (shade-face-style face-style normal light)
+                     norm-normal (if (neg? facing)
+                                   (m/v* norm-normal -1)
+                                   norm-normal)
+                     shaded     (shade-face-style face-style norm-normal
+                                                  norm-light-dir light)
                      projected  (mapv #(m/project projection %) (:face/vertices face))
                      expanded   (expand-polygon projected)]
                  (assoc (merge (scene/polygon expanded) shaded)
@@ -700,6 +705,7 @@
         ;; Shade cap faces
         light    (:light opts)
         base-style (:style opts)
+        norm-light-dir (when light (m/normalize (:light/direction light)))
         ;; Project cap paths and create nodes
         caps (cond-> []
                front-facing
@@ -708,7 +714,8 @@
                                                projection cap-cmds 0.0 center)
                              :path/fill-rule :even-odd
                              :node/depth     front-depth}
-                            (shade-face-style base-style [0.0 -1.0 0.0] light)))
+                            (shade-face-style base-style [0.0 -1.0 0.0]
+                                              norm-light-dir light)))
                back-facing
                (conj (merge {:node/type      :shape/path
                              :path/commands  (project-path-commands
@@ -716,7 +723,8 @@
                                                (double depth) center)
                              :path/fill-rule :even-odd
                              :node/depth     back-depth}
-                            (shade-face-style base-style [0.0 1.0 0.0] light))))
+                            (shade-face-style base-style [0.0 1.0 0.0]
+                                              norm-light-dir light))))
         ;; Merge caps into wall children and re-sort by depth
         all-nodes (into (:group/children walls) caps)
         sorted    (vec (sort-by #(get % :node/depth Double/NEGATIVE_INFINITY)
