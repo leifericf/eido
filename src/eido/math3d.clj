@@ -109,6 +109,68 @@
         (rotate-x (- pitch))
         (rotate-z (- roll)))))
 
+(defn make-projector
+  "Returns a function that projects 3D points to 2D screen coordinates.
+  Precomputes trig values and projection parameters once, avoiding
+  per-vertex map lookups, trig calls, and intermediate vector allocations."
+  [projection]
+  (case (:projection/type projection)
+    :isometric
+    (let [s      (double (:projection/scale projection))
+          [ox oy] (:projection/origin projection)]
+      (fn [[x y z]]
+        (let [sx (+ ox (* s (- x z) cos30))
+              sy (+ oy (* s (- (* (+ x z) sin30) y)))]
+          [sx sy])))
+    :orthographic
+    (let [s      (double (:projection/scale projection))
+          [ox oy] (:projection/origin projection)
+          yaw    (double (get projection :projection/yaw 0.0))
+          pitch  (double (get projection :projection/pitch 0.0))
+          roll   (double (get projection :projection/roll 0.0))
+          ;; Precompute combined rotation matrix: Rz(-roll) * Rx(-pitch) * Ry(-yaw)
+          cy (Math/cos yaw)   sy (Math/sin yaw)
+          cp (Math/cos pitch) sp (Math/sin pitch)
+          cr (Math/cos roll)  sr (Math/sin roll)
+          m00 (+ (* cr cy) (* sr sp sy))
+          m01 (* sr cp)
+          m02 (- (* sr sp cy) (* cr sy))
+          m10 (- (* cr sp sy) (* sr cy))
+          m11 (* cr cp)
+          m12 (+ (* sr sy) (* cr sp cy))]
+      (fn [[x y z]]
+        (let [vx (+ (* m00 x) (* m01 y) (* m02 z))
+              vy (+ (* m10 x) (* m11 y) (* m12 z))]
+          [(+ ox (* s vx))
+           (- oy (* s vy))])))
+    :perspective
+    (let [s      (double (:projection/scale projection))
+          [ox oy] (:projection/origin projection)
+          d      (double (:projection/distance projection))
+          yaw    (double (get projection :projection/yaw 0.0))
+          pitch  (double (get projection :projection/pitch 0.0))
+          roll   (double (get projection :projection/roll 0.0))
+          ;; Precompute combined rotation matrix: Rz(-roll) * Rx(-pitch) * Ry(-yaw)
+          cy (Math/cos yaw)   sy (Math/sin yaw)
+          cp (Math/cos pitch) sp (Math/sin pitch)
+          cr (Math/cos roll)  sr (Math/sin roll)
+          m00 (+ (* cr cy) (* sr sp sy))
+          m01 (* sr cp)
+          m02 (- (* sr sp cy) (* cr sy))
+          m10 (- (* cr sp sy) (* sr cy))
+          m11 (* cr cp)
+          m12 (+ (* sr sy) (* cr sp cy))
+          m20 (* cp sy)
+          m21 (- sp)
+          m22 (* cp cy)]
+      (fn [[x y z]]
+        (let [vx     (+ (* m00 x) (* m01 y) (* m02 z))
+              vy     (+ (* m10 x) (* m11 y) (* m12 z))
+              vz     (+ (* m20 x) (* m21 y) (* m22 z))
+              factor (/ d (+ d vz))]
+          [(+ ox (* s vx factor))
+           (- oy (* s vy factor))])))))
+
 (defn- project-isometric
   [{:projection/keys [scale origin]} [x y z]]
   (let [s   (double scale)

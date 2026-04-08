@@ -436,12 +436,13 @@
         ;; Sort edges by depth (farthest first)
         sorted     (->> edges
                         (sort-by (fn [[a b]]
-                                   (m/dot (m/v* (m/v+ a b) 0.5) cam-dir))))]
+                                   (m/dot (m/v* (m/v+ a b) 0.5) cam-dir))))
+        proj-fn    (m/make-projector projection)]
     {:node/type :group
      :group/children
      (mapv (fn [[a b]]
-             (let [pa (m/project projection a)
-                   pb (m/project projection b)]
+             (let [pa (proj-fn a)
+                   pb (proj-fn b)]
                {:node/type :shape/line
                 :line/from pa
                 :line/to   pb
@@ -464,6 +465,7 @@
           cull?      (get opts :cull-back true)
           base-style (:style opts)
           cam-dir    (m/camera-direction projection)
+          proj-fn    (m/make-projector projection)
           norm-light-dir (when light (m/normalize (:light/direction light)))
           ;; Compute culling and depth in world space using camera direction
           processed  (->> mesh
@@ -491,7 +493,7 @@
                                    norm-normal)
                      shaded     (shade-face-style face-style norm-normal
                                                   norm-light-dir light)
-                     projected  (mapv #(m/project projection %) (:face/vertices face))
+                     projected  (mapv proj-fn (:face/vertices face))
                      expanded   (expand-polygon projected)]
                  (assoc (merge (scene/polygon expanded) shaded)
                    :node/depth depth)))
@@ -647,30 +649,30 @@
 (defn- project-path-commands
   "Projects 2D path commands (in XZ plane) through a 3D projection.
   The commands are first placed in 3D as [x, y-offset, z] then projected."
-  [projection commands y-offset center]
+  [proj-fn commands y-offset center]
   (mapv (fn [[cmd & args]]
           (case cmd
             :move-to  (let [[x z] (first args)
                             p3d (m/v- [(double x) y-offset (double z)] center)]
-                        [:move-to (m/project projection p3d)])
+                        [:move-to (proj-fn p3d)])
             :line-to  (let [[x z] (first args)
                             p3d (m/v- [(double x) y-offset (double z)] center)]
-                        [:line-to (m/project projection p3d)])
+                        [:line-to (proj-fn p3d)])
             :quad-to  (let [[cx cz] (first args)
                             [x z]   (second args)
                             cp3d (m/v- [(double cx) y-offset (double cz)] center)
                             p3d  (m/v- [(double x) y-offset (double z)] center)]
-                        [:quad-to (m/project projection cp3d)
-                                  (m/project projection p3d)])
+                        [:quad-to (proj-fn cp3d)
+                                  (proj-fn p3d)])
             :curve-to (let [[c1x c1z] (first args)
                             [c2x c2z] (second args)
                             [x z]     (nth args 2)
                             cp1 (m/v- [(double c1x) y-offset (double c1z)] center)
                             cp2 (m/v- [(double c2x) y-offset (double c2z)] center)
                             p3d (m/v- [(double x) y-offset (double z)] center)]
-                        [:curve-to (m/project projection cp1)
-                                   (m/project projection cp2)
-                                   (m/project projection p3d)])
+                        [:curve-to (proj-fn cp1)
+                                   (proj-fn cp2)
+                                   (proj-fn p3d)])
             :close [:close]))
         commands))
 
@@ -707,11 +709,12 @@
         base-style (:style opts)
         norm-light-dir (when light (m/normalize (:light/direction light)))
         ;; Project cap paths and create nodes
+        proj-fn (m/make-projector projection)
         caps (cond-> []
                front-facing
                (conj (merge {:node/type      :shape/path
                              :path/commands  (project-path-commands
-                                               projection cap-cmds 0.0 center)
+                                               proj-fn cap-cmds 0.0 center)
                              :path/fill-rule :even-odd
                              :node/depth     front-depth}
                             (shade-face-style base-style [0.0 -1.0 0.0]
@@ -719,7 +722,7 @@
                back-facing
                (conj (merge {:node/type      :shape/path
                              :path/commands  (project-path-commands
-                                               projection cap-cmds
+                                               proj-fn cap-cmds
                                                (double depth) center)
                              :path/fill-rule :even-odd
                              :node/depth     back-depth}
