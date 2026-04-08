@@ -3,12 +3,19 @@
     [clojure.string :as str]))
 
 (defn- fmt
-  "Formats a number, stripping unnecessary trailing zeros."
+  "Formats a number, stripping unnecessary trailing zeros and dot."
   [n]
-  (let [s (format "%.4f" (double n))]
-    (-> s
-        (str/replace #"0+$" "")
-        (str/replace #"\.$" ""))))
+  (let [s (format "%.4f" (double n))
+        len (.length s)]
+    ;; Manual trim: faster than two regex passes for this simple pattern
+    (loop [i (dec len)]
+      (if (< i 0)
+        "0"
+        (let [c (.charAt s i)]
+          (cond
+            (= c \0) (recur (dec i))
+            (= c \.) (.substring s 0 i)
+            :else     (.substring s 0 (inc i))))))))
 
 (defn- color->css
   "Converts a resolved color map to CSS rgb()/rgba() string."
