@@ -90,26 +90,26 @@
         [:em "what"] " the shape is, " [:em "where"] " it goes, and " [:em "how"] " it looks. Eido takes care of drawing it."]
        [:p "Here are the basic building blocks:"]
        [:h4 "Rectangle"]
-       [:pre [:code
+       [:pre {:data-img "docs-rect.png"} [:code
               "{:node/type :shape/rect
  :rect/xy [50 50]          ;; top-left corner position
  :rect/size [200 100]      ;; width and height
  :style/fill [:color/rgb 0 128 255]}"]]
        [:p "Add rounded corners with " [:code ":rect/corner-radius"] ":"]
-       [:pre [:code
+       [:pre {:data-img "docs-rect-rounded.png"} [:code
               "{:node/type :shape/rect
  :rect/xy [50 50]
  :rect/size [200 100]
  :rect/corner-radius 16
  :style/fill [:color/rgb 0 128 255]}"]]
        [:h4 "Circle"]
-       [:pre [:code
+       [:pre {:data-img "docs-circle.png"} [:code
               "{:node/type :shape/circle
  :circle/center [200 200]  ;; center point
  :circle/radius 80         ;; radius in pixels
  :style/stroke {:color [:color/rgb 0 0 0] :width 2}}"]]
        [:h4 "Ellipse"]
-       [:pre [:code
+       [:pre {:data-img "docs-ellipse.png"} [:code
               "{:node/type :shape/ellipse
  :ellipse/center [200 200]
  :ellipse/rx 120            ;; horizontal radius
@@ -117,7 +117,7 @@
  :style/fill [:color/rgb 200 50 50]}"]]
        [:h4 "Arc"]
        [:p "A partial ellipse — like a pie slice or an open curve:"]
-       [:pre [:code
+       [:pre {:data-img "docs-arc.png"} [:code
               "{:node/type :shape/arc
  :arc/center [200 200]
  :arc/rx 80 :arc/ry 80
@@ -125,14 +125,14 @@
  :arc/mode :pie                  ;; :open, :chord, or :pie
  :style/fill [:color/rgb 255 200 50]}"]]
        [:h4 "Line"]
-       [:pre [:code
+       [:pre {:data-img "docs-line.png"} [:code
               "{:node/type :shape/line
  :line/from [50 50]
  :line/to [350 250]
  :style/stroke {:color [:color/rgb 0 0 0] :width 2}}"]]
        [:h4 "Path"]
        [:p "For anything that isn't a basic shape, use a path. Paths are sequences of drawing commands — move to a point, draw a line, draw a curve, and close the shape. This is how you create arbitrary freeform shapes:"]
-       [:pre [:code
+       [:pre {:data-img "docs-path.png"} [:code
               "{:node/type :shape/path
  :path/commands [[:move-to [100 200]]          ;; pick up the pen
                  [:line-to [200 50]]           ;; draw a straight line
@@ -144,7 +144,7 @@
  :style/fill [:color/rgb 255 200 50]}"]]
        [:h4 "Convenience helpers"]
        [:p "The " [:code "eido.scene"] " namespace provides shortcuts for common shapes:"]
-       [:pre [:code
+       [:pre {:data-img "docs-helpers.png"} [:code
               "(require '[eido.scene :as scene])
 
 (scene/regular-polygon [200 200] 80 6)    ;; hexagon
@@ -158,7 +158,7 @@
       [:div
        [:p "Text in Eido is not rasterized pixels — it's converted to vector paths, just like any other shape. That means text works with everything: gradient fills, strokes, transforms, clipping, even 3D extrusion."]
        [:h4 "Simple text"]
-       [:pre [:code
+       [:pre {:data-img "docs-text.png"} [:code
               "{:node/type   :shape/text
  :text/content \"Hello\"
  :text/font    {:font/family \"Serif\" :font/size 48 :font/weight :bold}
@@ -167,7 +167,7 @@
  :style/fill   [:color/rgb 0 0 0]}"]]
        [:h4 "Per-glyph control"]
        [:p "Style each character independently — great for rainbow text, animated reveals, or creative typography:"]
-       [:pre [:code
+       [:pre {:data-img "docs-text-glyphs.png"} [:code
               "{:node/type    :shape/text-glyphs
  :text/content \"COLOR\"
  :text/font    {:font/family \"SansSerif\" :font/size 64}
@@ -177,7 +177,7 @@
  :style/fill   [:color/rgb 100 100 100]}  ;; default for unlisted glyphs"]]
        [:h4 "Text on a path"]
        [:p "Make text follow any curve:"]
-       [:pre [:code
+       [:pre {:data-img "docs-text-on-path.png"} [:code
               "{:node/type    :shape/text-on-path
  :text/content \"ALONG A CURVE\"
  :text/font    {:font/family \"SansSerif\" :font/size 24}
@@ -246,7 +246,7 @@
        [:p "Instead of a flat color, fill a shape with a smooth color transition. Eido supports two kinds:"]
        [:h4 "Linear gradient"]
        [:p "Colors transition along a line from one point to another:"]
-       [:pre [:code
+       [:pre {:data-img "docs-gradient-linear.png"} [:code
               "{:style/fill {:gradient/type :linear
                :gradient/from [0 0]       ;; start point
                :gradient/to [200 0]       ;; end point
@@ -255,7 +255,7 @@
               ]]
        [:h4 "Radial gradient"]
        [:p "Colors radiate outward from a center point:"]
-       [:pre [:code
+       [:pre {:data-img "docs-gradient-radial.png"} [:code
               "{:style/fill {:gradient/type :radial
                :gradient/center [100 100]
                :gradient/radius 100
@@ -270,7 +270,7 @@
        [:p "Beyond solid colors and gradients, Eido supports texture-like fills that give shapes a hand-crafted look:"]
        [:h4 "Hatching"]
        [:p "Parallel lines drawn across a shape — like pen-and-ink cross-hatching:"]
-       [:pre [:code
+       [:pre {:data-img "docs-hatch.png"} [:code
               "{:style/fill {:fill/type :hatch
                :hatch/angle 45            ;; line angle in degrees
                :hatch/spacing 4           ;; distance between lines
@@ -278,7 +278,7 @@
                :hatch/color [:color/rgb 0 0 0]}}"]]
        [:h4 "Stippling"]
        [:p "Random dots packed inside a shape — like pointillism:"]
-       [:pre [:code
+       [:pre {:data-img "docs-stipple.png"} [:code
               "{:style/fill {:fill/type :stipple
                :stipple/density 0.6       ;; how packed (0-1)
                :stipple/radius 1.0        ;; dot size
@@ -300,7 +300,7 @@
       [:div
        [:p "Groups let you treat multiple shapes as one unit. Any style, transform, or effect applied to the group affects all its children. Styles "
         [:em "inherit"] " — children get the group's fill color unless they specify their own. Opacity " [:em "multiplies"] " through the tree."]
-       [:pre [:code
+       [:pre {:data-img "docs-group.png"} [:code
               "{:node/type :group
  :node/transform [[:transform/translate 200 200]]
  :style/fill [:color/rgb 255 0 0]
@@ -321,7 +321,7 @@
       :content
       [:div
        [:p "Clipping restricts a group's visible area to a shape — like looking through a window. Only the parts of the children that fall inside the clip shape are drawn:"]
-       [:pre [:code
+       [:pre {:data-img "docs-clipping.png"} [:code
               "{:node/type :group
  :group/clip {:node/type :shape/circle
               :circle/center [200 200]
@@ -366,7 +366,7 @@
        [:p "The " [:code "eido.scene"] " namespace provides functions that generate collections of shapes from a pattern — grids, radial layouts, distributions along a line:"]
        [:h4 "Grid"]
        [:p "Create a grid of shapes by providing columns, rows, and a function that receives the column and row:"]
-       [:pre [:code
+       [:pre {:data-img "docs-grid.png"} [:code
               "(scene/grid 10 10
   (fn [col row]
     {:node/type :shape/circle
@@ -374,7 +374,7 @@
      :circle/radius 15
      :style/fill [:color/rgb (* col 25) (* row 25) 128]}))"]]
        [:h4 "Distribute along a line"]
-       [:pre [:code
+       [:pre {:data-img "docs-distribute.png"} [:code
               "(scene/distribute 8 [50 200] [750 200]
   (fn [x y t]   ;; t is progress 0 to 1
     {:node/type :shape/circle
@@ -382,7 +382,7 @@
      :circle/radius (+ 5 (* 20 t))
      :style/fill [:color/rgb 0 0 0]}))"]]
        [:h4 "Radial arrangement"]
-       [:pre [:code
+       [:pre {:data-img "docs-radial.png"} [:code
               "(scene/radial 12 200 200 120  ;; 12 items around (200,200) radius 120
   (fn [x y angle]
     {:node/type :shape/circle
@@ -395,7 +395,7 @@
       :content
       [:div
        [:p "Contour lines connect points of equal value — like elevation lines on a topographic map. Eido generates them from noise fields using the marching squares algorithm:"]
-       [:pre [:code
+       [:pre {:data-img "docs-contour.png"} [:code
               "(require '[eido.contour :as contour])
 
 {:node/type :contour
@@ -500,7 +500,7 @@
       :content
       [:div
        [:p "Eido can render 3D objects by projecting them onto 2D. You set up a camera (perspective or isometric), define lights, and place 3D meshes in the scene. The result is a regular 2D scene with shaded polygons — no GPU required:"]
-       [:pre [:code
+       [:pre {:data-img "docs-3d-sphere.png"} [:code
               "(require '[eido.scene3d :as s3d])
 
 (let [proj (s3d/perspective

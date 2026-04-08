@@ -5,6 +5,8 @@
     [clojure.repl :as repl]
     [clojure.string :as str]
     [eido.core :as eido]
+    [eido.scene :as scene]
+    [eido.scene3d :as s3d]
     [site.pages :as pages]
     [site.styles :as styles]
     [hiccup.page :as page]
@@ -43,30 +45,27 @@
     gallery.showcase
     gallery.artisan])
 
+(def api-namespace-groups
+  "API namespaces organized by category for sidebar display."
+  [{:category "Core"
+    :namespaces '[eido.core]}
+   {:category "Drawing"
+    :namespaces '[eido.path eido.scene]}
+   {:category "Styling"
+    :namespaces '[eido.color eido.hatch eido.palette eido.stipple eido.stroke]}
+   {:category "Effects"
+    :namespaces '[eido.decorator eido.distort eido.flow eido.morph eido.warp]}
+   {:category "Generative"
+    :namespaces '[eido.contour eido.lsystem eido.noise eido.particle
+                  eido.scatter eido.vary eido.voronoi]}
+   {:category "Animation"
+    :namespaces '[eido.animate]}
+   {:category "3D"
+    :namespaces '[eido.scene3d]}])
+
 (def eido-namespaces
   "Eido source namespaces for API doc generation."
-  '[eido.core
-    eido.animate
-    eido.color
-    eido.contour
-    eido.decorator
-    eido.distort
-    eido.flow
-    eido.hatch
-    eido.lsystem
-    eido.morph
-    eido.noise
-    eido.palette
-    eido.particle
-    eido.path
-    eido.scene
-    eido.scene3d
-    eido.scatter
-    eido.stipple
-    eido.stroke
-    eido.vary
-    eido.voronoi
-    eido.warp])
+  (vec (mapcat :namespaces api-namespace-groups)))
 
 ;; --- Discovery ---
 
@@ -130,6 +129,274 @@
   [{:keys [var]}]
   (repl/source-fn (symbol (str (namespace (symbol var)))
                           (str (name (symbol var))))))
+
+;; --- Docs preview rendering ---
+
+(defn- insert-doc-previews
+  "Walks Hiccup content, inserting preview images after code blocks
+  that have a :data-img attribute on their :pre element."
+  [content]
+  (cond
+    (not (vector? content)) content
+    (not (keyword? (first content))) (mapv insert-doc-previews content)
+
+    ;; [:pre {:data-img "file.png"} [:code "..."]]
+    (and (= :pre (first content))
+         (map? (second content))
+         (:data-img (second content)))
+    (let [img-file (:data-img (second content))
+          clean-attrs (dissoc (second content) :data-img)
+          clean-pre (if (seq clean-attrs)
+                      (into [:pre clean-attrs] (drop 2 content))
+                      (into [:pre] (drop 2 content)))]
+      [:div.docs-code-example
+       clean-pre
+       [:img.docs-preview {:src (str "../images/" img-file)
+                           :alt "Rendered output"
+                           :loading "lazy"}]])
+
+    ;; Recurse into children of Hiccup elements
+    :else
+    (let [has-attrs? (and (> (count content) 1) (map? (second content)))
+          tag (first content)
+          attrs (when has-attrs? (second content))
+          children (if has-attrs? (drop 2 content) (rest content))]
+      (into (if attrs [tag attrs] [tag])
+            (map insert-doc-previews children)))))
+
+(defn docs-scenes
+  "Returns a map of {filename -> scene} for docs code example previews.
+  Each scene matches or illustrates its corresponding code block."
+  []
+  (let [bg [:color/rgb 245 243 238]
+        helper-nodes [(assoc (scene/regular-polygon [100 125] 70 6)
+                             :style/fill [:color/rgb 100 150 255])
+                      (assoc (scene/star [280 125] 70 30 5)
+                             :style/fill [:color/rgb 255 100 100])
+                      (merge (scene/triangle [410 210] [510 40] [610 210])
+                             {:style/fill [:color/rgb 100 200 100]})
+                      (merge (scene/smooth-path [[660 200] [740 50] [820 200] [900 50]])
+                             {:style/stroke {:color [:color/rgb 200 100 50] :width 3}})]
+        grid-nodes (vec (scene/grid 10 10
+                          (fn [col row]
+                            {:node/type :shape/circle
+                             :circle/center [(+ 30 (* col 40)) (+ 30 (* row 40))]
+                             :circle/radius 15
+                             :style/fill [:color/rgb (* col 25) (* row 25) 128]})))
+        dist-nodes (vec (scene/distribute 8 [50 200] [750 200]
+                          (fn [x y t]
+                            {:node/type :shape/circle
+                             :circle/center [x y]
+                             :circle/radius (+ 5 (* 20 t))
+                             :style/fill [:color/rgb 0 0 0]})))
+        radial-nodes (vec (scene/radial 12 200 200 120
+                            (fn [x y _angle]
+                              {:node/type :shape/circle
+                               :circle/center [x y]
+                               :circle/radius 15
+                               :style/fill [:color/rgb 200 0 0]})))
+        sphere-proj (s3d/perspective
+                      {:scale 100 :origin [200 200]
+                       :yaw 0.5 :pitch -0.3 :distance 5})
+        sphere-light {:light/direction [1 1 0.5]
+                      :light/ambient 0.2
+                      :light/intensity 0.8}
+        sphere-result (s3d/sphere sphere-proj [0 0 0] 1.5
+                        {:style {:style/fill [:color/rgb 100 150 255]}
+                         :light sphere-light})
+        sphere-nodes (if (sequential? sphere-result)
+                       (vec sphere-result) [sphere-result])]
+    {"docs-rect.png"
+     {:image/size [300 200] :image/background bg
+      :image/nodes [{:node/type :shape/rect
+                     :rect/xy [50 50] :rect/size [200 100]
+                     :style/fill [:color/rgb 0 128 255]}]}
+
+     "docs-rect-rounded.png"
+     {:image/size [300 200] :image/background bg
+      :image/nodes [{:node/type :shape/rect
+                     :rect/xy [50 50] :rect/size [200 100]
+                     :rect/corner-radius 16
+                     :style/fill [:color/rgb 0 128 255]}]}
+
+     "docs-circle.png"
+     {:image/size [400 400] :image/background bg
+      :image/nodes [{:node/type :shape/circle
+                     :circle/center [200 200] :circle/radius 80
+                     :style/stroke {:color [:color/rgb 0 0 0] :width 2}}]}
+
+     "docs-ellipse.png"
+     {:image/size [400 400] :image/background bg
+      :image/nodes [{:node/type :shape/ellipse
+                     :ellipse/center [200 200]
+                     :ellipse/rx 120 :ellipse/ry 60
+                     :style/fill [:color/rgb 200 50 50]}]}
+
+     "docs-arc.png"
+     {:image/size [400 400] :image/background bg
+      :image/nodes [{:node/type :shape/arc
+                     :arc/center [200 200]
+                     :arc/rx 80 :arc/ry 80
+                     :arc/start 0 :arc/extent 270
+                     :arc/mode :pie
+                     :style/fill [:color/rgb 255 200 50]}]}
+
+     "docs-line.png"
+     {:image/size [400 300] :image/background bg
+      :image/nodes [{:node/type :shape/line
+                     :line/from [50 50] :line/to [350 250]
+                     :style/stroke {:color [:color/rgb 0 0 0] :width 2}}]}
+
+     "docs-path.png"
+     {:image/size [400 300] :image/background bg
+      :image/nodes [{:node/type :shape/path
+                     :path/commands [[:move-to [100 200]]
+                                     [:line-to [200 50]]
+                                     [:curve-to [250 0] [300 100] [300 200]]
+                                     [:quad-to [250 250] [200 200]]
+                                     [:close]]
+                     :style/fill [:color/rgb 255 200 50]}]}
+
+     "docs-helpers.png"
+     {:image/size [950 250] :image/background bg
+      :image/nodes helper-nodes}
+
+     "docs-text.png"
+     {:image/size [300 150] :image/background bg
+      :image/nodes [{:node/type :shape/text
+                     :text/content "Hello"
+                     :text/font {:font/family "Serif" :font/size 48
+                                 :font/weight :bold}
+                     :text/origin [50 100]
+                     :text/align :center
+                     :style/fill [:color/rgb 0 0 0]}]}
+
+     "docs-text-glyphs.png"
+     {:image/size [400 150] :image/background bg
+      :image/nodes [{:node/type :shape/text-glyphs
+                     :text/content "COLOR"
+                     :text/font {:font/family "SansSerif" :font/size 64}
+                     :text/origin [50 100]
+                     :text/glyphs [{:glyph/index 0
+                                    :style/fill [:color/rgb 255 0 0]}
+                                   {:glyph/index 1
+                                    :style/fill [:color/rgb 0 255 0]}]
+                     :style/fill [:color/rgb 100 100 100]}]}
+
+     "docs-text-on-path.png"
+     {:image/size [500 250] :image/background bg
+      :image/nodes [{:node/type :shape/text-on-path
+                     :text/content "ALONG A CURVE"
+                     :text/font {:font/family "SansSerif" :font/size 24}
+                     :text/path [[:move-to [50 200]]
+                                 [:curve-to [150 50] [350 50] [450 200]]]
+                     :text/offset 10
+                     :text/spacing 1
+                     :style/fill [:color/rgb 0 0 0]}]}
+
+     "docs-gradient-linear.png"
+     {:image/size [300 200] :image/background bg
+      :image/nodes [{:node/type :shape/rect
+                     :rect/xy [50 50] :rect/size [200 100]
+                     :rect/corner-radius 8
+                     :style/fill {:gradient/type :linear
+                                  :gradient/from [0 0]
+                                  :gradient/to [200 0]
+                                  :gradient/stops
+                                  [[0.0 [:color/rgb 255 0 0]]
+                                   [1.0 [:color/rgb 0 0 255]]]}}]}
+
+     "docs-gradient-radial.png"
+     {:image/size [300 250] :image/background bg
+      :image/nodes [{:node/type :shape/circle
+                     :circle/center [150 125] :circle/radius 100
+                     :style/fill {:gradient/type :radial
+                                  :gradient/center [100 100]
+                                  :gradient/radius 100
+                                  :gradient/stops
+                                  [[0.0 [:color/name "white"]]
+                                   [1.0 [:color/name "black"]]]}}]}
+
+     "docs-hatch.png"
+     {:image/size [300 250] :image/background bg
+      :image/nodes [{:node/type :shape/circle
+                     :circle/center [150 125] :circle/radius 100
+                     :style/fill {:fill/type :hatch
+                                  :hatch/angle 45
+                                  :hatch/spacing 4
+                                  :hatch/stroke-width 1
+                                  :hatch/color [:color/rgb 0 0 0]}}]}
+
+     "docs-stipple.png"
+     {:image/size [300 250] :image/background bg
+      :image/nodes [{:node/type :shape/circle
+                     :circle/center [150 125] :circle/radius 100
+                     :style/fill {:fill/type :stipple
+                                  :stipple/density 0.6
+                                  :stipple/radius 1.0
+                                  :stipple/seed 42
+                                  :stipple/color [:color/rgb 0 0 0]}}]}
+
+     "docs-group.png"
+     {:image/size [400 400] :image/background bg
+      :image/nodes [{:node/type :group
+                     :node/transform [[:transform/translate 200 200]]
+                     :style/fill [:color/rgb 255 0 0]
+                     :node/opacity 0.8
+                     :group/children
+                     [{:node/type :shape/circle
+                       :circle/center [0 0] :circle/radius 80}
+                      {:node/type :shape/rect
+                       :rect/xy [-30 -30] :rect/size [60 60]
+                       :style/fill [:color/rgb 0 0 255]
+                       :node/opacity 0.5}]}]}
+
+     "docs-clipping.png"
+     {:image/size [400 400] :image/background bg
+      :image/nodes [{:node/type :group
+                     :group/clip {:node/type :shape/circle
+                                  :circle/center [200 200]
+                                  :circle/radius 80}
+                     :group/children
+                     [{:node/type :shape/rect
+                       :rect/xy [120 120] :rect/size [160 160]
+                       :style/fill [:color/rgb 255 0 0]}]}]}
+
+     "docs-grid.png"
+     {:image/size [420 420] :image/background bg
+      :image/nodes grid-nodes}
+
+     "docs-distribute.png"
+     {:image/size [800 400] :image/background bg
+      :image/nodes dist-nodes}
+
+     "docs-radial.png"
+     {:image/size [400 400] :image/background bg
+      :image/nodes radial-nodes}
+
+     "docs-contour.png"
+     {:image/size [500 400] :image/background bg
+      :image/nodes [{:node/type :contour
+                     :contour/bounds [0 0 500 400]
+                     :contour/opts {:thresholds [0.0 0.2 0.4]
+                                    :resolution 3
+                                    :noise-scale 0.012
+                                    :seed 42}
+                     :style/stroke {:color [:color/rgb 100 150 100]
+                                    :width 1}}]}
+
+     "docs-3d-sphere.png"
+     {:image/size [400 400] :image/background bg
+      :image/nodes sphere-nodes}}))
+
+(defn render-docs-examples!
+  "Renders preview images for docs code examples."
+  [out-dir]
+  (doseq [[filename scene-data] (docs-scenes)]
+    (let [path (str out-dir "/images/" filename)]
+      (println "  Rendering" filename "...")
+      (io/make-parents path)
+      (eido/render scene-data {:output path}))))
 
 ;; --- HTML generation ---
 
@@ -397,7 +664,7 @@ function filterGallery(tag) {
            (for [{sec-id :id sec-title :title content :content} sections]
              [:section.docs-section {:id sec-id}
               [:h3 sec-title]
-              content])])]
+              (insert-doc-previews content)])])]
        [:script (h/raw (str highlight-clj-js "
 document.querySelectorAll('pre code').forEach(function(el) {
   el.innerHTML = highlightClj(el.textContent);
@@ -432,17 +699,26 @@ document.querySelectorAll('pre code').forEach(function(el) {
                                 :ns-name (str ns-sym)
                                 :ns-doc  (:doc (meta ns-obj))
                                 :vars    publics})))
-                     (remove #(empty? (:vars %))))]
+                     (remove #(empty? (:vars %))))
+        ns-by-name (into {} (map (juxt :ns-name identity) ns-data))]
     (html-page {:title "API Reference" :active-page :api :depth 1}
       [:h1.page-title "API Reference"]
       [:p.page-subtitle "Auto-generated from source metadata."]
       [:div.api-layout
        [:nav.api-sidebar
-        [:ul
-         (for [{:keys [ns-name]} ns-data]
-           [:li [:a {:href (str "#" ns-name)} ns-name]])]]
+        (for [{:keys [category namespaces]} api-namespace-groups]
+          (let [group-ns (keep #(ns-by-name (str %)) namespaces)]
+            (when (seq group-ns)
+              [:div.api-sidebar-category
+               [:div.api-sidebar-category-title category]
+               [:ul
+                (for [{:keys [ns-name]} group-ns]
+                  [:li [:a {:href (str "#" ns-name)} ns-name]])]])))]
        [:div
-        (for [{:keys [ns-name ns-doc vars]} ns-data]
+        (for [{:keys [namespaces]} api-namespace-groups
+              :let [group-ns (keep #(ns-by-name (str %)) namespaces)]
+              :when (seq group-ns)
+              {:keys [ns-name ns-doc vars]} group-ns]
           [:section.api-ns {:id ns-name}
            [:h2.api-ns-title ns-name]
            (when ns-doc
@@ -454,6 +730,7 @@ document.querySelectorAll('pre code').forEach(function(el) {
                 [:span.api-var-args arglists])
               (when doc
                 [:div.api-var-doc doc])])])]])))
+
 
 ;; --- Site builder ---
 
@@ -471,6 +748,10 @@ document.querySelectorAll('pre code').forEach(function(el) {
   ;; Render all example images
   (println "Rendering examples...")
   (render-all-examples! out-dir)
+
+  ;; Render docs example previews
+  (println "Rendering docs examples...")
+  (render-docs-examples! out-dir)
 
   ;; Discover examples for gallery
   (let [examples-by-category (all-examples)]

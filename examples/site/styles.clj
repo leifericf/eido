@@ -367,7 +367,15 @@
                        :font-size     "0.95rem"
                        :line-height   "1.7"
                        :margin-bottom "0.75rem"}]
-   [".docs-section pre" {:margin-bottom "1rem"}]])
+   [".docs-section pre" {:margin-bottom "1rem"}]
+   ;; Docs code example with preview image
+   [:.docs-code-example {:margin-bottom "1rem"}]
+   [".docs-code-example pre" {:margin-bottom "0"}]
+   [:.docs-preview {:max-width "100%"
+                    :height "auto"
+                    :border-radius "8px"
+                    :border (str "1px solid " (:border colors))
+                    :margin-top "0.75rem"}]])
 
 ;; --- API reference ---
 
@@ -403,9 +411,24 @@
                    :max-height "calc(100vh - 2rem)"
                    :overflow-y "auto"
                    :font-size  "0.85rem"}]
-   [:.api-sidebar>ul {:list-style "none"}]
-   [:.api-sidebar>ul>li {:margin-bottom "0.5rem"}]
-   [:.api-sidebar>ul>li>a {:color (:text-muted colors)}]
+   [:.api-sidebar-category {:margin-bottom "1.25rem"}]
+   [:.api-sidebar-category-title {:font-size      "0.75rem"
+                                  :font-weight    "700"
+                                  :text-transform "uppercase"
+                                  :letter-spacing "0.06em"
+                                  :color          (:accent colors)
+                                  :margin-bottom  "0.4rem"}]
+   [".api-sidebar-category ul" {:list-style "none"
+                                :margin     0
+                                :padding    0}]
+   [".api-sidebar-category ul li" {:margin-bottom "0.2rem"}]
+   [".api-sidebar-category ul li a" {:color           (:text-muted colors)
+                                     :font-size       "0.85rem"
+                                     :text-decoration "none"
+                                     :padding         "0.15rem 0"
+                                     :display         "block"
+                                     :transition      "color 0.15s"}]
+   [".api-sidebar-category ul li a:hover" {:color (:text colors)}]
    [:.api-layout {:display               "grid"
                   :grid-template-columns  "200px 1fr"
                   :gap                    "2rem"}]
