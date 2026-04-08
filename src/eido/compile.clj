@@ -130,7 +130,7 @@
       (throw (ex-info (str "Unknown node type: " (:node/type node))
                       {:node/type (:node/type node)})))))
 
-(def ^:private default-ctx
+(def default-ctx
   {:style {} :transforms [] :opacity 1.0})
 
 (defn- inherit-style
@@ -164,7 +164,7 @@
                             (simplify-transform t)))
                         (or (:node/transform node) []))))
 
-(defn- compile-tree
+(defn compile-tree
   "Recursively compiles a node tree into a flat sequence of IR ops."
   [node ctx]
   (let [node-type (:node/type node)
@@ -259,7 +259,7 @@
   [fill]
   (and (map? fill) (= :pattern (:fill/type fill))))
 
-(defn- shape-bounds
+(defn shape-bounds
   "Returns [x y w h] bounding box for common shape types."
   [node]
   (case (:node/type node)
@@ -285,7 +285,7 @@
                        (- (apply max ys) (apply min ys))]))
     nil))
 
-(defn- expand-hatch-fill
+(defn expand-hatch-fill
   "Expands a node with a hatch fill into a group with:
   - The shape as a clip mask with optional background fill
   - Hatch lines clipped inside."
@@ -317,7 +317,7 @@
                                  (dissoc :node/opacity)
                                  (dissoc :node/transform))))}))
 
-(defn- expand-stipple-fill
+(defn expand-stipple-fill
   "Expands a node with a stipple fill into a group with:
   - The shape as a clip mask with optional background fill
   - Stipple dots clipped inside."

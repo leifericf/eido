@@ -6,32 +6,32 @@
   Output: {:ir/size [w h] :ir/background bg :ir/ops [RectOp ...]}"
   (:require
     [eido.color :as color]
-    [eido.ir :as ir]))
+    [eido.ir :as ir]
+    [eido.ir.fill :as fill]))
 
 ;; --- fill resolution ---
 
 (defn- resolve-fill
   "Resolves a semantic fill descriptor to the format concrete ops expect."
-  [fill]
-  (when fill
-    (case (:fill/type fill)
+  [f]
+  (when f
+    (case (:fill/type f)
       :fill/solid
-      (color/resolve-color (:color fill))
+      (color/resolve-color (:color f))
 
       :fill/gradient
-      (let [g fill]
-        (cond-> {:gradient/type  (:gradient/type g)
-                 :gradient/stops (mapv (fn [[pos c]]
-                                         [pos (color/resolve-color c)])
-                                       (:gradient/stops g))}
-          (:gradient/from g)   (assoc :gradient/from (:gradient/from g))
-          (:gradient/to g)     (assoc :gradient/to (:gradient/to g))
-          (:gradient/center g) (assoc :gradient/center (:gradient/center g))
-          (:gradient/radius g) (assoc :gradient/radius (:gradient/radius g))))
+      (cond-> {:gradient/type  (:gradient/type f)
+               :gradient/stops (mapv (fn [[pos c]]
+                                       [pos (color/resolve-color c)])
+                                     (:gradient/stops f))}
+        (:gradient/from f)   (assoc :gradient/from (:gradient/from f))
+        (:gradient/to f)     (assoc :gradient/to (:gradient/to f))
+        (:gradient/center f) (assoc :gradient/center (:gradient/center f))
+        (:gradient/radius f) (assoc :gradient/radius (:gradient/radius f)))
 
       ;; Already-resolved color map passthrough
-      (when (and (:r fill) (:g fill) (:b fill))
-        fill))))
+      (when (and (:r f) (:g f) (:b f))
+        f))))
 
 (defn- resolve-stroke
   "Resolves stroke map to the field names concrete ops expect."
@@ -62,13 +62,13 @@
                   [:quad-to cpx cpy x y])
       :close    [:close])))
 
-;; --- geometry → concrete op ---
+;; --- single geometry → concrete op ---
 
-(defn- lower-item
-  "Converts a semantic draw item to a concrete IR op."
+(defn- lower-simple-item
+  "Converts a draw item with a non-semantic fill to a single concrete IR op."
   [item]
   (let [geom       (:item/geometry item)
-        fill       (resolve-fill (:item/fill item))
+        f          (resolve-fill (:item/fill item))
         stroke     (resolve-stroke (:item/stroke item))
         opacity    (or (:item/opacity item) 1.0)
         transforms (:item/transforms item)
@@ -78,7 +78,7 @@
       (let [[x y] (:rect/xy geom)
             [w h] (:rect/size geom)]
         (ir/->RectOp :rect x y w h (:rect/corner-radius geom)
-                      fill
+                      f
                       (:stroke-color stroke) (:stroke-width stroke)
                       opacity
                       (:stroke-cap stroke) (:stroke-join stroke)
@@ -88,7 +88,7 @@
       :circle
       (let [[cx cy] (:circle/center geom)]
         (ir/->CircleOp :circle cx cy (:circle/radius geom)
-                        fill
+                        f
                         (:stroke-color stroke) (:stroke-width stroke)
                         opacity
                         (:stroke-cap stroke) (:stroke-join stroke)
@@ -99,7 +99,7 @@
       (let [[cx cy] (:ellipse/center geom)]
         (ir/->EllipseOp :ellipse cx cy
                          (:ellipse/rx geom) (:ellipse/ry geom)
-                         fill
+                         f
                          (:stroke-color stroke) (:stroke-width stroke)
                          opacity
                          (:stroke-cap stroke) (:stroke-join stroke)
@@ -112,7 +112,7 @@
                      (:arc/rx geom) (:arc/ry geom)
                      (:arc/start geom) (:arc/extent geom)
                      (get geom :arc/mode :open)
-                     fill
+                     f
                      (:stroke-color stroke) (:stroke-width stroke)
                      opacity
                      (:stroke-cap stroke) (:stroke-join stroke)
@@ -123,7 +123,7 @@
       (let [[x1 y1] (:line/from geom)
             [x2 y2] (:line/to geom)]
         (ir/->LineOp :line x1 y1 x2 y2
-                      fill
+                      f
                       (:stroke-color stroke) (:stroke-width stroke)
                       opacity
                       (:stroke-cap stroke) (:stroke-join stroke)
@@ -134,7 +134,7 @@
       (ir/->PathOp :path
                     (mapv compile-command (:path/commands geom))
                     (:path/fill-rule geom)
-                    fill
+                    f
                     (:stroke-color stroke) (:stroke-width stroke)
                     opacity
                     (:stroke-cap stroke) (:stroke-join stroke)
@@ -143,6 +143,19 @@
 
       (throw (ex-info (str "Unknown geometry type: " (:geometry/type geom))
                       {:geometry geom})))))
+
+;; --- item lowering dispatch ---
+
+(defn- lower-item
+  "Lowers a semantic draw item to a vector of concrete ops.
+  Simple fills produce one op; semantic fills (hatch, stipple) expand to many."
+  [item]
+  (let [item-fill (:item/fill item)]
+    (if (fill/semantic-fill? item-fill)
+      (case (:fill/type item-fill)
+        (:hatch :fill/hatch)     (fill/lower-hatch item)
+        (:stipple :fill/stipple) (fill/lower-stipple item))
+      [(lower-simple-item item)])))
 
 ;; --- container lowering ---
 
@@ -154,5 +167,5 @@
    :ir/background (:ir/background ir-container)
    :ir/ops        (into []
                     (mapcat (fn [pass]
-                              (mapv lower-item (:pass/items pass))))
+                              (into [] (mapcat lower-item) (:pass/items pass))))
                     (:ir/passes ir-container))})
