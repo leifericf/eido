@@ -56,18 +56,22 @@
 ;; --- container ---
 
 (defn container
-  "Creates a semantic IR container from size, background, and draw items."
-  [size background items]
-  {:ir/version    1
-   :ir/size       size
-   :ir/background background
-   :ir/resources  {:framebuffer {:resource/kind :image
-                                 :resource/size size}}
-   :ir/passes     [{:pass/id    :draw-main
-                    :pass/type  :draw-geometry
-                    :pass/target :framebuffer
-                    :pass/items items}]
-   :ir/outputs    {:default :framebuffer}})
+  "Creates a semantic IR container from size, background, and draw items.
+  Optionally accepts additional resources to merge with the default framebuffer."
+  ([size background items]
+   (container size background items nil))
+  ([size background items extra-resources]
+   {:ir/version    1
+    :ir/size       size
+    :ir/background background
+    :ir/resources  (merge {:framebuffer {:resource/kind :image
+                                         :resource/size size}}
+                          extra-resources)
+    :ir/passes     [{:pass/id    :draw-main
+                     :pass/type  :draw-geometry
+                     :pass/target :framebuffer
+                     :pass/items items}]
+    :ir/outputs    {:default :framebuffer}}))
 
 ;; --- geometry constructors ---
 
@@ -200,12 +204,16 @@
 
 (defn pipeline
   "Creates a multi-pass IR container.
-  passes: vector of pass maps (draw-geometry, effect-pass, program-pass)."
-  [size background passes]
-  {:ir/version    1
-   :ir/size       size
-   :ir/background background
-   :ir/resources  {:framebuffer {:resource/kind :image
-                                 :resource/size size}}
-   :ir/passes     passes
-   :ir/outputs    {:default :framebuffer}})
+  passes: vector of pass maps (draw-geometry, effect-pass, program-pass).
+  Optionally accepts additional resources and outputs."
+  ([size background passes]
+   (pipeline size background passes nil))
+  ([size background passes {:keys [resources outputs]}]
+   {:ir/version    1
+    :ir/size       size
+    :ir/background background
+    :ir/resources  (merge {:framebuffer {:resource/kind :image
+                                         :resource/size size}}
+                          resources)
+    :ir/passes     passes
+    :ir/outputs    (or outputs {:default :framebuffer})}))

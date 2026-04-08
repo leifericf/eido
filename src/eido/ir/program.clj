@@ -17,6 +17,7 @@
     Fields:       [:field/noise {field-desc} pos-expr]
     Color:        [:color/rgb r g b]"
   (:require
+    [eido.ir.domain :as domain]
     [eido.ir.field :as field]))
 
 ;; --- evaluation ---
@@ -141,7 +142,22 @@
 (defn run
   "Evaluates a program map over a single point.
   program: {:program/inputs {:uv :vec2 ...}
+            :program/domain {:domain/kind :image-grid ...}  ;; optional
             :program/body   <expr>}
-  env: {:uv [0.5 0.5] :time 0.0 ...}"
+  env: {:uv [0.5 0.5] :time 0.0 ...}
+
+  If the program has a :program/domain, validates that the env contains
+  the expected bindings for that domain kind."
   [program env]
+  (when-let [dom (:program/domain program)]
+    (let [expected (domain/bindings-for (:domain/kind dom))
+          missing  (remove #(contains? env %) expected)]
+      (when (seq missing)
+        (throw (ex-info (str "Program domain " (:domain/kind dom)
+                             " expects bindings " (pr-str expected)
+                             " but env is missing: " (pr-str (set missing)))
+                        {:domain   dom
+                         :expected expected
+                         :missing  (set missing)
+                         :env-keys (set (keys env))})))))
   (evaluate env (:program/body program)))
