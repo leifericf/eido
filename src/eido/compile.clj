@@ -63,22 +63,7 @@
      :stroke-join  (:join stroke)
      :stroke-dash  (:dash stroke)}))
 
-(defn- compile-command
-  "Flattens a scene path command into an IR command.
-  Scene: [:move-to [x y]] -> IR: [:move-to x y]"
-  [command]
-  (let [cmd (nth command 0)]
-    (case cmd
-      :move-to  (let [[x y] (nth command 1)] [:move-to x y])
-      :line-to  (let [[x y] (nth command 1)] [:line-to x y])
-      :curve-to (let [[cx1 cy1] (nth command 1)
-                      [cx2 cy2] (nth command 2)
-                      [x y]     (nth command 3)]
-                  [:curve-to cx1 cy1 cx2 cy2 x y])
-      :quad-to  (let [[cpx cpy] (nth command 1)
-                      [x y]     (nth command 2)]
-                  [:quad-to cpx cpy x y])
-      :close    [:close])))
+;; compile-command is now in eido.ir — use ir/compile-command
 
 (defn- compile-node
   "Compiles a scene node into an IR op record."
@@ -124,7 +109,7 @@
                          nil nil))
       :shape/path
       (ir/->PathOp :path
-                    (mapv compile-command (:path/commands node))
+                    (mapv ir/compile-command (:path/commands node))
                     (:path/fill-rule node)
                     fill stroke-color stroke-width opacity
                     stroke-cap stroke-join stroke-dash

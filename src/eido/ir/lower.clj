@@ -46,24 +46,7 @@
      :stroke-join  (:join stroke)
      :stroke-dash  (:dash stroke)}))
 
-;; --- path command compilation ---
-
-(defn- compile-command
-  "Flattens scene path command to concrete IR format.
-  [:move-to [x y]] → [:move-to x y]"
-  [command]
-  (let [cmd (nth command 0)]
-    (case cmd
-      :move-to  (let [[x y] (nth command 1)] [:move-to x y])
-      :line-to  (let [[x y] (nth command 1)] [:line-to x y])
-      :curve-to (let [[cx1 cy1] (nth command 1)
-                      [cx2 cy2] (nth command 2)
-                      [x y]     (nth command 3)]
-                  [:curve-to cx1 cy1 cx2 cy2 x y])
-      :quad-to  (let [[cpx cpy] (nth command 1)
-                      [x y]     (nth command 2)]
-                  [:quad-to cpx cpy x y])
-      :close    [:close])))
+;; compile-command is now in eido.ir — use ir/compile-command
 
 ;; --- single geometry → concrete op ---
 
@@ -135,7 +118,7 @@
 
       :path
       (ir/->PathOp :path
-                    (mapv compile-command (:path/commands geom))
+                    (mapv ir/compile-command (:path/commands geom))
                     (:path/fill-rule geom)
                     f
                     (:stroke-color stroke) (:stroke-width stroke)
