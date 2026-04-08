@@ -224,6 +224,8 @@
    :dst-over  AlphaComposite/DST_OVER
    :xor       AlphaComposite/XOR})
 
+(set! *unchecked-math* true)
+
 (defn- argb-a ^long [^long px] (bit-and (unsigned-bit-shift-right px 24) 0xFF))
 (defn- argb-r ^long [^long px] (bit-and (unsigned-bit-shift-right px 16) 0xFF))
 (defn- argb-g ^long [^long px] (bit-and (unsigned-bit-shift-right px 8) 0xFF))
@@ -497,6 +499,8 @@
             (aset dst-data i
               (unchecked-int (pack-argb fa fr fg fb)))))))
     (.setRGB dst 0 0 w h dst-data 0 w)))
+
+(set! *unchecked-math* false)
 
 (defn- render-buffer-op
   "Renders a compositing group: children to off-screen buffer, then onto g."

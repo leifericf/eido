@@ -184,4 +184,10 @@
   ;; === After pattern tile memoization ===
   ;;   Memoize pattern->paint so identical pattern specs reuse tiles.
   ;;   polka-pop not helped (each circle has unique pattern + bottleneck is shadow blur)
+
+  ;; === After unchecked-math in pixel loops ===
+  ;;   polka-pop                     357 ms  (was 565, 37% faster)
+  ;;   ink-landscape                  26 ms  (was 60, 57% faster)
+  ;;   neon-glow                      20 ms  (was 114, 82% faster)
+  ;;   Scoped unchecked-math around argb/pack/blur/grain/blend functions
   )
