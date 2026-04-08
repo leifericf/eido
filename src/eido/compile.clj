@@ -45,6 +45,8 @@
                                     {:fill/type    :pattern
                                      :pattern/size [tw th]
                                      :pattern/ops  (compile-tile-ops tile-nodes tw th)})
+      ;; Pre-resolved fills (e.g. procedural-image) pass through as-is
+      (= :procedural-image (:fill/type fill)) fill
       ;; hatch/stipple fills pass through — handled in expand-node
       (:fill/type fill)           nil)))
 

@@ -157,8 +157,9 @@
       ;; Semantic fills (hatch/stipple) expand to many ops
       (fill/semantic-fill? item-fill)
       (case (:fill/type item-fill)
-        (:hatch :fill/hatch)     (fill/lower-hatch item)
-        (:stipple :fill/stipple) (fill/lower-stipple item))
+        (:hatch :fill/hatch)       (fill/lower-hatch item)
+        (:stipple :fill/stipple)   (fill/lower-stipple item)
+        :fill/procedural           (fill/lower-procedural item))
 
       ;; Effects wrap the item in shadow/glow buffer groups
       (seq effects)

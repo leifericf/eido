@@ -71,6 +71,17 @@
         (.fill g shape)
         (.setPaint g saved-paint))
 
+      (= :procedural-image (:fill/type fill))
+      (let [saved-paint (.getPaint g)
+            ^java.awt.image.BufferedImage img (:image fill)
+            [^double ox ^double oy] (or (:offset fill) [0.0 0.0])
+            w (.getWidth img)
+            h (.getHeight img)]
+        (.setPaint g (TexturePaint. img
+                       (Rectangle2D$Double. ox oy (double w) (double h))))
+        (.fill g shape)
+        (.setPaint g saved-paint))
+
       :else
       (do (.setColor g (->awt-color fill))
           (.fill g shape)))))
