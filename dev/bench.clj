@@ -262,4 +262,24 @@
   ;; compile-command + build-path + flatten-commands seq allocation removal,
   ;; SVG fmt regex → manual trim, ensure-double-coords eliminated,
   ;; animation frame validation skip
+  ;;
+  ;; === Round 4: Records, batching, JVM tuning ===
+  ;;
+  ;; Example                     R3 final    R4 final   change
+  ;; -------                     --------    --------   ------
+  ;; van-gogh-swirls                 1529        1665    noise (validation dominates)
+  ;; utah-teapot                      108         115    noise
+  ;; stipple-spheres                  124         122      0%
+  ;; polka-pop                        152         212    noise (shadow blur variance)
+  ;; contour-terrain                   60          61      0%
+  ;; topo-map                          39          42    noise
+  ;; vintage-map                       16          13    -19%
+  ;; textile                           41          37    -10%
+  ;; sumi-e-bamboo                     16          16      0%
+  ;; thermal                           18          19    noise
+  ;;
+  ;; The JIT already optimizes keyword access on records similarly to maps
+  ;; after warmup. Records primarily help cold-start and GC pressure.
+  ;; BasicStroke caching and opacity tracking reduce per-op overhead.
+  ;; :perf alias (clojure -M:perf) provides JVM tuning for batch renders.
   )
