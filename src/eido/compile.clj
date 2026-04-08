@@ -150,35 +150,38 @@
 (defn- compile-tree
   "Recursively compiles a node tree into a flat sequence of IR ops."
   [node ctx]
-  (if (= :group (:node/type node))
-    (let [child-ctx (-> ctx
-                        (update :style (partial group-style node))
-                        (update :opacity * (get node :node/opacity 1.0))
-                        (update :transforms accumulate-transforms node)
-                        (cond-> (:group/clip node)
-                          (assoc :clip (compile-node (:group/clip node)))))]
-      (if (or (:group/composite node) (:group/filter node))
-        ;; Compositing boundary: render children to buffer, then composite
-        (let [buffer-ctx (assoc child-ctx :opacity 1.0)
-              child-ops  (into [] (mapcat #(compile-tree % buffer-ctx))
-                                (:group/children node))]
-          [{:op         :buffer
-            :composite  (or (:group/composite node) :src-over)
-            :filter     (:group/filter node)
-            :opacity    (* (:opacity ctx) (get node :node/opacity 1.0))
-            :transforms (accumulate-transforms (:transforms ctx) node)
-            :clip       (:clip ctx)
-            :ops        child-ops}])
-        ;; No composite: flatten as before
-        (into [] (mapcat #(compile-tree % child-ctx))
-              (:group/children node))))
-    (let [effective-opacity (* (:opacity ctx)
-                               (get node :node/opacity 1.0))
-          transforms (accumulate-transforms (:transforms ctx) node)
-          styled-node (-> (inherit-style node (:style ctx))
-                          (assoc :node/opacity effective-opacity))]
-      [(cond-> (assoc (compile-node styled-node) :transforms transforms)
-         (:clip ctx) (assoc :clip (:clip ctx)))])))
+  (let [node-type (:node/type node)
+        opacity   (get node :node/opacity 1.0)]
+    (if (= :group node-type)
+      (let [clip       (:group/clip node)
+            composite  (:group/composite node)
+            filt       (:group/filter node)
+            children   (:group/children node)
+            child-ctx  (-> ctx
+                           (update :style (partial group-style node))
+                           (update :opacity * opacity)
+                           (update :transforms accumulate-transforms node)
+                           (cond-> clip
+                             (assoc :clip (compile-node clip))))]
+        (if (or composite filt)
+          (let [buffer-ctx (assoc child-ctx :opacity 1.0)
+                child-ops  (into [] (mapcat #(compile-tree % buffer-ctx))
+                                  children)]
+            [{:op         :buffer
+              :composite  (or composite :src-over)
+              :filter     filt
+              :opacity    (* (:opacity ctx) opacity)
+              :transforms (accumulate-transforms (:transforms ctx) node)
+              :clip       (:clip ctx)
+              :ops        child-ops}])
+          (into [] (mapcat #(compile-tree % child-ctx))
+                children)))
+      (let [effective-opacity (* (:opacity ctx) opacity)
+            transforms (accumulate-transforms (:transforms ctx) node)
+            styled-node (-> (inherit-style node (:style ctx))
+                            (assoc :node/opacity effective-opacity))]
+        [(cond-> (assoc (compile-node styled-node) :transforms transforms)
+           (:clip ctx) (assoc :clip (:clip ctx)))]))))
 
 (defn- compile-tile-ops
   "Compiles pattern tile nodes into IR ops for rendering."
