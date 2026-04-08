@@ -374,18 +374,27 @@
 (defn- shade-face-style
   "Applies lighting to a face's style based on its normal and a light.
   norm-normal and norm-light-dir should be pre-normalized to avoid
-  redundant computation in hot loops."
-  [style norm-normal norm-light-dir light]
-  (if (and light (:style/fill style))
-    (let [ambient   (double (get light :light/ambient 0.3))
-          intensity (double (get light :light/intensity 0.7))
-          cos-angle (m/dot norm-normal norm-light-dir)
-          brightness (min 1.0 (+ ambient (* intensity (max 0.0 cos-angle))))]
-      (cond-> (assoc style :style/fill (shade-color (:style/fill style) brightness))
-        (:style/stroke style)
-        (assoc-in [:style/stroke :color]
-                  (shade-color (get-in style [:style/stroke :color]) brightness))))
-    style))
+  redundant computation in hot loops.
+  If the style has a :material key, delegates to eido.ir.material/shade-face
+  for Blinn-Phong specular shading (requires cam-dir)."
+  ([style norm-normal norm-light-dir light]
+   (shade-face-style style norm-normal norm-light-dir light nil))
+  ([style norm-normal norm-light-dir light cam-dir]
+   (if (and light (:style/fill style))
+     (if-let [material (:material style)]
+       ;; Material-based shading with specular
+       (let [mat-ns (requiring-resolve 'eido.ir.material/shade-face)]
+         (mat-ns style norm-normal norm-light-dir cam-dir light material))
+       ;; Legacy diffuse-only shading
+       (let [ambient   (double (get light :light/ambient 0.3))
+             intensity (double (get light :light/intensity 0.7))
+             cos-angle (m/dot norm-normal norm-light-dir)
+             brightness (min 1.0 (+ ambient (* intensity (max 0.0 cos-angle))))]
+         (cond-> (assoc style :style/fill (shade-color (:style/fill style) brightness))
+           (:style/stroke style)
+           (assoc-in [:style/stroke :color]
+                     (shade-color (get-in style [:style/stroke :color]) brightness)))))
+     style)))
 
 (defn- expand-polygon
   "Expands projected 2D polygon slightly outward from its centroid
@@ -492,7 +501,7 @@
                                    (m/v* norm-normal -1)
                                    norm-normal)
                      shaded     (shade-face-style face-style norm-normal
-                                                  norm-light-dir light)
+                                                  norm-light-dir light cam-dir)
                      projected  (mapv proj-fn (:face/vertices face))
                      expanded   (expand-polygon projected)]
                  (assoc (merge (scene/polygon expanded) shaded)
