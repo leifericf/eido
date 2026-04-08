@@ -13,16 +13,17 @@
     :generator/delaunay   — Delaunay triangulation edges
     :generator/decorator  — shapes placed along a path"
   (:require
-    [eido.compile :as compile]
     [eido.contour :as contour]
     [eido.decorator :as decorator]
     [eido.flow :as flow]
+    [eido.ir.lower :as lower]
     [eido.ir.vary :as ir-vary]
     [eido.noise :as noise]
     [eido.particle :as particle]
     [eido.scatter :as scatter]
     [eido.vary :as vary]
     [eido.voronoi :as voronoi]))
+  ;; NOTE: no dependency on eido.compile — generator lowering is self-sufficient
 
 ;; --- generator constructors ---
 
@@ -131,7 +132,7 @@
             styled (-> nodes
                        (apply-style (:generator/style gen-desc))
                        (apply-overrides (:generator/overrides gen-desc)))]
-        (into [] (mapcat #(compile/compile-tree % compile/default-ctx))
+        (lower/lower-scene-nodes
               styled))
 
       :generator/contour
@@ -147,7 +148,7 @@
             nodes (contour/contour-lines noise-fn bx by bw bh
                     (:generator/opts gen-desc))
             styled (apply-style nodes (:generator/style gen-desc))]
-        (into [] (mapcat #(compile/compile-tree % compile/default-ctx))
+        (lower/lower-scene-nodes
               styled))
 
       :generator/scatter
@@ -156,7 +157,7 @@
                     (:generator/positions gen-desc)
                     (:generator/jitter gen-desc))
             with-overrides (apply-overrides nodes (:generator/overrides gen-desc))]
-        (into [] (mapcat #(compile/compile-tree % compile/default-ctx))
+        (lower/lower-scene-nodes
               with-overrides))
 
       :generator/voronoi
@@ -166,7 +167,7 @@
             styled (-> cells
                        (apply-style (:generator/style gen-desc))
                        (apply-overrides (:generator/overrides gen-desc)))]
-        (into [] (mapcat #(compile/compile-tree % compile/default-ctx))
+        (lower/lower-scene-nodes
               styled))
 
       :generator/delaunay
@@ -174,7 +175,7 @@
             edges (voronoi/delaunay-edges
                     (:generator/points gen-desc) bx by bw bh)
             styled (apply-style edges (:generator/style gen-desc))]
-        (into [] (mapcat #(compile/compile-tree % compile/default-ctx))
+        (lower/lower-scene-nodes
               styled))
 
       :generator/particle
@@ -184,7 +185,7 @@
             all-states (particle/states config n {})
             state  (nth (vec all-states) (min frame (dec n)))
             nodes  (particle/render-frame state config)]
-        (into [] (mapcat #(compile/compile-tree % compile/default-ctx))
+        (lower/lower-scene-nodes
               nodes))
 
       :generator/decorator
@@ -194,7 +195,7 @@
                     (:generator/spacing gen-desc)
                     (:generator/rotate? gen-desc))
             with-overrides (apply-overrides nodes (:generator/overrides gen-desc))]
-        (into [] (mapcat #(compile/compile-tree % compile/default-ctx))
+        (lower/lower-scene-nodes
               with-overrides))
 
       (throw (ex-info (str "Unknown generator type: " gen-type)

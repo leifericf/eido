@@ -9,7 +9,6 @@
     [eido.ir :as ir]
     [eido.ir.effect :as effect]
     [eido.ir.fill :as fill]
-    [eido.ir.generator :as generator]
     [eido.ir.transform :as transform]))
 
 ;; --- fill resolution ---
@@ -256,7 +255,7 @@
   [item]
   (if-let [gen (:item/generator item)]
     ;; Generator items expand to many ops via feature module functions
-    (generator/expand-generator gen)
+    ((requiring-resolve 'eido.ir.generator/expand-generator) gen)
     ;; Geometry items go through transforms, fills, effects
     (let [item      (apply-item-pre-transforms item)
           item-fill (:item/fill item)
