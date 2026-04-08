@@ -743,7 +743,52 @@
   background
   [{:pass/id :draw :pass/type :draw-geometry
     :pass/items [rect-item circle-item]}
-   (ir/effect-pass :grain (effect/grain :amount 30 :seed 42))])"]]]}]}
+   (ir/effect-pass :grain (effect/grain :amount 30 :seed 42))])"]]]}
+
+     {:id    "domains"
+      :title "Domains"
+      :content
+      [:div
+       [:p "A domain describes the coordinate space over which a program or field is evaluated. Domains declare what bindings are available in the evaluation environment."]
+       [:pre [:code
+              "(require '[eido.ir.domain :as domain])
+
+;; Image grid — pixel coordinates with UV
+(domain/image-grid [800 600])
+;; Bindings: :uv [0..1, 0..1], :px, :py, :size
+
+;; World 2D — scene coordinates within bounds
+(domain/world-2d [0 0 400 300])
+;; Bindings: :pos [x y], :x, :y
+
+;; Other domains: shape-local, path-param, mesh-faces,
+;; points, particles, timeline"]]
+       [:p "Programs with a " [:code ":program/domain"] " validate that the evaluation environment provides the expected bindings."]]}
+
+     {:id    "resources"
+      :title "Resources"
+      :content
+      [:div
+       [:p "Resources are named objects that passes read and write. They make multi-pass data flow explicit."]
+       [:pre [:code
+              "(require '[eido.ir.resource :as resource])
+
+;; Declare resources
+(resource/image :buffer [400 300])
+(resource/mask :alpha-mask [400 300])
+(resource/parameter-block :params {:time 0.5 :seed 42})
+
+;; Pipeline with explicit resources
+(ir/pipeline [400 300] background
+  [{:pass/id :draw :pass/type :draw-geometry
+    :pass/target :framebuffer :pass/items [...]}
+   {:pass/id :process :pass/type :effect-pass
+    :pass/input :framebuffer :pass/target :output
+    :pass/effect (effect/grain :amount 30)}]
+  {:resources (resource/image :output [400 300])})
+
+;; Validate that all passes reference declared resources
+(resource/validate-pipeline-resources pipeline)"]]]}]}
 
    {:category "Output"
     :id       "output"

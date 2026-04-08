@@ -7,8 +7,8 @@
 - Add semantic IR layer to `eido.ir` with containers, draw items, and geometry constructors
 - Preserve hatch fills, stipple fills, and effects as semantic data through the pipeline instead of expanding to geometry immediately
 - Add `eido.ir.lower` to convert semantic IR to concrete ops consumed by existing renderers
-- Add `compile-semantic` in `eido.compile` and `:eido/ir :semantic` scene option for opt-in routing
-- Make `expand-hatch-fill`, `expand-stipple-fill`, `compile-tree`, `shape-bounds` public in `eido.compile` for reuse by lowering
+- Add `compile-semantic` in `eido.compile` for building semantic IR containers
+- Route `compile/compile` through semantic IR layer (compile-semantic → ir.lower/lower)
 
 ### Procedural fills
 
@@ -53,11 +53,25 @@
 
 - Extend `normalize-node` to preserve generators and effects as semantic data
 - Extend `scene-node->draw-item` to produce generator items for generator node types
-- Most scene node types now route through the semantic path when `:eido/ir :semantic` is set
+- All scene node types now route through the semantic IR path
+
+### Domains and resources
+
+- Add `eido.ir.domain` with domain descriptors (image-grid, shape-local, world-2d, path-param, mesh-faces, points, particles, timeline)
+- Add `eido.ir.resource` with named resource declarations (image, mask, geometry, points, field, particle-state, parameter-block)
+- Programs with `:program/domain` validate evaluation environment bindings
+- Pipeline resource validation via `validate-pipeline-resources`
+
+### Internal refactoring
+
+- IR modules (`ir.fill`, `ir.effect`, `ir.generator`) are self-sufficient with no `compile.clj` dependency
+- Delete 315 lines of legacy compile machinery (`compile-tree`, `compile-node`, `compile-style`, `expand-hatch-fill`, `expand-stipple-fill`, `make-shadow-node`, `make-glow-node`, `expand-effects`, and related helpers)
+- Implement group context handling (style inheritance, opacity multiplication, transform accumulation) natively in `ir.lower`
+- Unify `compile-command` and `geometry-bounds` as shared utilities in `eido.ir`
 
 ### API
 
-- New namespace group: `eido.ir`, `eido.ir.fill`, `eido.ir.effect`, `eido.ir.field`, `eido.ir.program`, `eido.ir.lower`, `eido.ir.transform`, `eido.ir.generator`, `eido.ir.vary`, `eido.ir.material`
+- New namespace group: `eido.ir`, `eido.ir.domain`, `eido.ir.resource`, `eido.ir.fill`, `eido.ir.effect`, `eido.ir.field`, `eido.ir.program`, `eido.ir.lower`, `eido.ir.transform`, `eido.ir.generator`, `eido.ir.vary`, `eido.ir.material`
 
 ## v1.0.0-alpha7 — Docs & Validation
 
