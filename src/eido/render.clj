@@ -108,17 +108,17 @@
   "Builds a GeneralPath from a sequence of IR path commands."
   ^GeneralPath [commands]
   (let [p (GeneralPath.)]
-    (doseq [[cmd & args] commands]
-      (case cmd
-        :move-to  (.moveTo p (double (first args)) (double (second args)))
-        :line-to  (.lineTo p (double (first args)) (double (second args)))
+    (doseq [command commands]
+      (case (nth command 0)
+        :move-to  (.moveTo p (double (nth command 1)) (double (nth command 2)))
+        :line-to  (.lineTo p (double (nth command 1)) (double (nth command 2)))
         :curve-to (.curveTo p
-                    (double (nth args 0)) (double (nth args 1))
-                    (double (nth args 2)) (double (nth args 3))
-                    (double (nth args 4)) (double (nth args 5)))
+                    (double (nth command 1)) (double (nth command 2))
+                    (double (nth command 3)) (double (nth command 4))
+                    (double (nth command 5)) (double (nth command 6)))
         :quad-to  (.quadTo p
-                    (double (nth args 0)) (double (nth args 1))
-                    (double (nth args 2)) (double (nth args 3)))
+                    (double (nth command 1)) (double (nth command 2))
+                    (double (nth command 3)) (double (nth command 4)))
         :close    (.closePath p)))
     p))
 
