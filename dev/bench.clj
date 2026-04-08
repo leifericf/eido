@@ -171,4 +171,9 @@
   ;;   utah-teapot                   116 ms  (was 126)
   ;;   stained-glass                   6 ms  (was 12, ~2x faster)
   ;;   isometric-scene                 3 ms  (was 4)
+
+  ;; === After contour segment connection optimization ===
+  ;;   contour-terrain              1391 ms  (was 1540, ~10% faster)
+  ;;   topo-map                      926 ms  (was 1048, ~12% faster)
+  ;;   connect-segments now O(n) via spatial hashing instead of O(n²)
   )

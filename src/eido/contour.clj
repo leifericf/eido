@@ -82,40 +82,70 @@
 
 ;; --- segment connection ---
 
+(defn- quantize-point
+  "Quantizes a point's coordinates for use as a hash key.
+  Uses fixed precision to match the eps=0.01 tolerance."
+  [[x y]]
+  [(Math/round (* (double x) 100.0)) (Math/round (* (double y) 100.0))])
+
+(defn- build-adjacency
+  "Builds a map from quantized endpoint -> set of segment indices,
+  and a vector of segment data for O(1) lookup."
+  [segments]
+  (let [seg-vec (vec segments)]
+    (reduce-kv
+      (fn [adj i [a b]]
+        (let [ka (quantize-point a)
+              kb (quantize-point b)]
+          (-> adj
+              (update ka (fnil conj #{}) i)
+              (update kb (fnil conj #{}) i))))
+      {}
+      seg-vec)))
+
 (defn- connect-segments
-  "Connects line segments into polylines by matching endpoints."
+  "Connects line segments into polylines by matching endpoints.
+  Uses spatial hashing for O(n) total instead of O(n²)."
   [segments]
   (if (empty? segments)
     []
-    (let [eps 0.01
-          close? (fn [p1 p2]
-                   (and (< (Math/abs (- (double (p1 0)) (double (p2 0)))) eps)
-                        (< (Math/abs (- (double (p1 1)) (double (p2 1)))) eps)))]
-      (loop [remaining (vec segments)
-             chains []]
-        (if (empty? remaining)
-          chains
-          (let [[seg & rest-segs] remaining
-                [p1 p2] seg
-                ;; Grow chain from this segment
-                [chain leftover]
-                (loop [chain [p1 p2]
-                       avail (vec rest-segs)]
-                  (let [tail (last chain)
-                        match (first (keep-indexed
-                                       (fn [i [a b]]
-                                         (cond
-                                           (close? tail a) [i b]
-                                           (close? tail b) [i a]
-                                           :else nil))
-                                       avail))]
-                    (if match
-                      (let [[idx pt] match]
-                        (recur (conj chain pt)
-                               (into (subvec avail 0 idx)
-                                     (subvec avail (inc idx)))))
-                      [chain avail])))]
-            (recur leftover (conj chains chain))))))))
+    (let [seg-vec  (vec segments)
+          n        (count seg-vec)
+          adj      (build-adjacency seg-vec)
+          ;; Mutable state for tracking which segments are consumed
+          used?    (boolean-array n)]
+      (loop [seed 0 chains (transient [])]
+        (if (>= seed n)
+          (persistent! chains)
+          (if (aget used? seed)
+            (recur (inc seed) chains)
+            (do
+              (aset used? seed true)
+              (let [[p1 p2] (seg-vec seed)
+                    ;; Grow chain forward from p2
+                    chain
+                    (loop [chain (transient [p1 p2])
+                           tail  p2]
+                      (let [k     (quantize-point tail)
+                            nbrs  (get adj k)
+                            ;; Find an unused neighbor segment at this endpoint
+                            match (when nbrs
+                                    (reduce
+                                      (fn [_ i]
+                                        (when-not (aget used? i)
+                                          (reduced i)))
+                                      nil nbrs))]
+                        (if (nil? match)
+                          (persistent! chain)
+                          (do
+                            (aset used? match true)
+                            (let [[a b] (seg-vec match)
+                                  ka (quantize-point a)
+                                  ;; Follow the other endpoint
+                                  next-pt (if (= ka k) b a)]
+                              (recur (conj! chain next-pt)
+                                     next-pt))))))]
+                (recur (inc seed) (conj! chains chain))))))))))
 
 ;; --- public API ---
 
