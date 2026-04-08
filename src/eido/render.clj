@@ -551,8 +551,13 @@
                 (BufferedImage. (int w) (int h) BufferedImage/TYPE_INT_ARGB))
         bg  (.createGraphics buf)]
     (.setRenderingHints bg (.getRenderingHints g))
-    (doseq [child-op ops]
-      (render-ir-op bg buf [w h] child-op))
+    ;; Reset opacity tracking for the buffer's Graphics2D context
+    (let [saved-prev-opacity *prev-opacity*]
+      (set! *prev-opacity* -1.0)
+      (doseq [child-op ops]
+        (render-ir-op bg buf [w h] child-op))
+      ;; Restore and invalidate so outer context re-sets its composite
+      (set! *prev-opacity* -1.0))
     (.dispose bg)
     ;; Apply filter to buffer before compositing
     (when filter
