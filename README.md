@@ -31,6 +31,7 @@ The approach is inspired by Christian Johansen's [Replicant](https://github.com/
 - **Particle simulation.** Physics-based effects configured as data — emitters, forces, and lifetime curves.
 - **Typography as paths.** Text compiled to vector paths — compatible with gradients, transforms, 3D extrusion.
 - **Procedural fills.** Noise-driven, field-based, and programmatic fills described entirely as data — no shaders, no GPU.
+- **Semantic IR.** A rich middle layer preserves visual intent — fills, effects, transforms, generators — before lowering to drawing instructions.
 - **No state, no framework.** Every function takes data and returns data. You bring your own workflow.
 - **Zero dependencies.** Just Clojure and the standard library.
 

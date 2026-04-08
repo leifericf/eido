@@ -63,8 +63,9 @@
    {:category "3D"
     :namespaces '[eido.scene3d]}
    {:category "Visual Computation"
-    :namespaces '[eido.ir eido.ir.fill eido.ir.effect
-                  eido.ir.field eido.ir.program eido.ir.lower]}])
+    :namespaces '[eido.ir eido.ir.fill eido.ir.effect eido.ir.field
+                  eido.ir.program eido.ir.transform eido.ir.generator
+                  eido.ir.vary eido.ir.material eido.ir.lower]}])
 
 (def eido-namespaces
   "Eido source namespaces for API doc generation."

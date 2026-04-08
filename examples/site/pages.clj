@@ -645,7 +645,105 @@
                            :opacity 0.5)
             (effect/glow :blur 12
                          :color [:color/rgb 100 200 255]
-                         :opacity 0.6)])"]]]}]}
+                         :opacity 0.6)])"]]
+       [:h4 "Filter Effects"]
+       [:p "Filter effects apply image-space processing: "
+        [:code "blur"] ", " [:code "grain"] ", " [:code "posterize"] ", "
+        [:code "duotone"] ", " [:code "halftone"] "."]
+       [:pre [:code
+              "(effect/grain :amount 40 :seed 42)
+(effect/posterize :levels 4)
+(effect/duotone :color-a [:color/rgb 20 20 60]
+                :color-b [:color/rgb 255 230 180])
+(effect/halftone :dot-size 8 :angle 45)"]]]}
+
+     {:id    "transforms"
+      :title "Transforms"
+      :content
+      [:div
+       [:p "Semantic transforms modify geometry before rendering — distortion, warping, and path morphing."]
+       [:pre [:code
+              "(require '[eido.ir.transform :as transform])
+
+;; Noise distortion on a path
+(ir/draw-item
+  (ir/path-geometry [[:move-to [0 100]] [:line-to [200 100]]])
+  :fill (fill/solid [:color/rgb 0 0 0])
+  :pre-transforms [(transform/distortion :noise
+                     {:amplitude 10 :frequency 0.05 :seed 42})])
+
+;; Warp a rect with wave deformation
+(ir/draw-item
+  (ir/rect-geometry [20 20] [160 160])
+  :fill (fill/solid [:color/rgb 100 150 200])
+  :pre-transforms [(transform/warp-transform :wave
+                     {:axis :y :amplitude 15 :wavelength 40})])
+
+;; Morph between two paths
+(transform/morph-transform target-path 0.5)"]]]}
+
+     {:id    "generators"
+      :title "Generators"
+      :content
+      [:div
+       [:p "Generators produce geometry procedurally — flow fields, contours, scatter distributions, Voronoi tessellation, decorators, and particles."]
+       [:pre [:code
+              "(require '[eido.ir.generator :as gen])
+
+;; Flow field from noise
+(gen/flow-field [0 0 400 300]
+  :opts {:density 20 :steps 50 :seed 42}
+  :style {:stroke {:color [:color/rgb 0 0 0] :width 1}})
+
+;; Contour lines at thresholds
+(gen/contour [0 0 400 300]
+  :opts {:thresholds [-0.2 0.0 0.2] :resolution 5})
+
+;; Scatter shapes at positions
+(gen/scatter-gen shape-node [[50 50] [150 150]]
+  :overrides (vary/by-gradient 2 [[0 red] [1 blue]]))
+
+;; Voronoi tessellation
+(gen/voronoi-gen points [0 0 400 300]
+  :style {:stroke {:color [:color/rgb 0 0 0] :width 1}})
+
+;; Particle snapshot at frame 30
+(gen/particle-gen fire-config 30 60)"]]]}
+
+     {:id    "materials"
+      :title "3D Materials"
+      :content
+      [:div
+       [:p "Material descriptors add specular highlights to 3D meshes using Blinn-Phong shading."]
+       [:pre [:code
+              "(require '[eido.ir.material :as material])
+(require '[eido.scene3d :as s3d])
+
+;; Phong material with specular highlights
+(s3d/render-mesh projection mesh
+  {:style {:style/fill [:color/rgb 150 100 200]
+           :material (material/phong
+                       :specular 0.4
+                       :shininess 32.0)}
+   :light {:light/direction [1 2 1]
+           :light/ambient 0.2
+           :light/intensity 0.8}})"]]]}
+
+     {:id    "multi-pass"
+      :title "Multi-Pass Rendering"
+      :content
+      [:div
+       [:p "Pipelines chain multiple passes — draw geometry, then apply effects."]
+       [:pre [:code
+              "(require '[eido.ir :as ir])
+(require '[eido.ir.effect :as effect])
+
+;; Draw shapes, then apply grain to the whole image
+(ir/pipeline [400 400]
+  background
+  [{:pass/id :draw :pass/type :draw-geometry
+    :pass/items [rect-item circle-item]}
+   (ir/effect-pass :grain (effect/grain :amount 30 :seed 42))])"]]]}]}
 
    {:category "Output"
     :id       "output"

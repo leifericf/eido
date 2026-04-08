@@ -20,9 +20,44 @@
 - Add `eido.ir.effect` — effect descriptors (shadow, glow) and lowering to BufferOp wrappers
 - Add `:procedural-image` fill type to renderer for direct image-based fills
 
+### Transforms
+
+- Add `eido.ir.transform` with semantic descriptors for distort (noise/wave/roughen/jitter), warp (wave/twist/fisheye/bulge/bend), and morph (path interpolation)
+- Transforms stored as `:item/pre-transforms` on draw items, applied to geometry before lowering
+
+### Generators
+
+- Add `eido.ir.generator` with descriptors for flow-field, contour, scatter, voronoi, delaunay, decorator, and particle generators
+- Generators use `:item/generator` instead of `:item/geometry` on draw items
+- Each generator wraps existing feature module functions for lowering
+
+### Vary
+
+- Add `eido.ir.vary` with override descriptors (by-index, by-position, by-noise, by-gradient)
+- Generators accept vary descriptors in `:generator/overrides`
+
+### 3D materials
+
+- Add `eido.ir.material` with Blinn-Phong material descriptors (ambient, diffuse, specular, shininess)
+- Extend `scene3d/shade-face-style` to support `:material` key with specular highlights
+- Backward compatible — existing scenes without `:material` unchanged
+
+### Multi-pass rendering
+
+- Add `pipeline` constructor for multi-pass IR containers
+- Add `effect-pass` and `program-pass` pass constructors
+- Effect passes wrap preceding ops in BufferOp with filter
+- Support chaining draw → effect passes (grain, blur, posterize, etc.)
+
+### Semantic pipeline
+
+- Extend `normalize-node` to preserve generators and effects as semantic data
+- Extend `scene-node->draw-item` to produce generator items for generator node types
+- Most scene node types now route through the semantic path when `:eido/ir :semantic` is set
+
 ### API
 
-- New namespace group: `eido.ir`, `eido.ir.fill`, `eido.ir.effect`, `eido.ir.field`, `eido.ir.program`, `eido.ir.lower`
+- New namespace group: `eido.ir`, `eido.ir.fill`, `eido.ir.effect`, `eido.ir.field`, `eido.ir.program`, `eido.ir.lower`, `eido.ir.transform`, `eido.ir.generator`, `eido.ir.vary`, `eido.ir.material`
 
 ## v1.0.0-alpha7 — Docs & Validation
 
