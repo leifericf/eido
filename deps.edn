@@ -6,6 +6,13 @@
                      com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.5.1"}}
         :jvm-opts ["-Djdk.attach.allowAttachSelf"
                    "--add-opens=java.base/java.lang=ALL-UNNAMED"]}
+  :perf {:jvm-opts ["-server"
+                    "-XX:+UseG1GC"
+                    "-XX:MaxGCPauseMillis=200"
+                    "-XX:CompileThreshold=500"
+                    "-XX:+OptimizeStringConcat"
+                    "-Xmx1g" "-Xms512m"
+                    "-Xmn384m"]}
   :test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner
                       {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
