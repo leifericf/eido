@@ -40,7 +40,8 @@
     gallery.mixed
     gallery.particles
     gallery.typography
-    gallery.showcase])
+    gallery.showcase
+    gallery.artisan])
 
 (def eido-namespaces
   "Eido source namespaces for API doc generation."
@@ -239,40 +240,59 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
   [example]
   (let [src (example-source example)
         card-id (str "src-" (hash (:output example)))]
-    [:div.gallery-card
-     [:div.gallery-card-img-wrap {:onclick "openLightbox(this.querySelector('img').src, this.querySelector('img').alt)"}
-      [:img {:src (str "../images/" (:output example))
-             :alt (:title example)
-             :loading "lazy"}]
-      [:div.gallery-card-expand
-       [:svg {:width "18" :height "18" :viewBox "0 0 24 24" :fill "none"
-              :stroke "currentColor" :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"}
-        [:polyline {:points "15 3 21 3 21 9"}]
-        [:polyline {:points "9 21 3 21 3 15"}]
-        [:line {:x1 "21" :y1 "3" :x2 "14" :y2 "10"}]
-        [:line {:x1 "3" :y1 "21" :x2 "10" :y2 "14"}]]]]
-     [:div.gallery-card-body
-      [:div.gallery-card-title (:title example)]
-      [:div.gallery-card-desc (:desc example)]
-      (when src
-        [:div
-         [:a.view-source {:href "#"
-                          :onclick (str "openCodeLightbox('" card-id "'); return false;")}
-          "View source"]
-         [:pre {:id card-id :style "display:none"} [:code src]]])]]))
+    (let [tags (or (:tags example) [])]
+      [:div.gallery-card {:data-tags (str/join "," tags)}
+       [:div.gallery-card-img-wrap {:onclick "openLightbox(this.querySelector('img').src, this.querySelector('img').alt)"}
+        [:img {:src (str "../images/" (:output example))
+               :alt (:title example)
+               :loading "lazy"}]
+        [:div.gallery-card-expand
+         [:svg {:width "18" :height "18" :viewBox "0 0 24 24" :fill "none"
+                :stroke "currentColor" :stroke-width "2" :stroke-linecap "round" :stroke-linejoin "round"}
+          [:polyline {:points "15 3 21 3 21 9"}]
+          [:polyline {:points "9 21 3 21 3 15"}]
+          [:line {:x1 "21" :y1 "3" :x2 "14" :y2 "10"}]
+          [:line {:x1 "3" :y1 "21" :x2 "10" :y2 "14"}]]]]
+       [:div.gallery-card-body
+        [:div.gallery-card-title (:title example)]
+        [:div.gallery-card-desc (:desc example)]
+        (when (seq tags)
+          [:div.gallery-card-tags
+           (for [tag tags]
+             [:span.tag tag])])
+        (when src
+          [:div
+           [:a.view-source {:href "#"
+                            :onclick (str "openCodeLightbox('" card-id "'); return false;")}
+            "View source"]
+           [:pre {:id card-id :style "display:none"} [:code src]]])]])))
 
 (defn generate-gallery-html
   "Generates the gallery page HTML."
   [examples-by-category]
-  (html-page {:title "Gallery" :active-page :gallery :depth 1}
-    [:h1.page-title "Gallery"]
-    [:p.page-subtitle "Every example renders from code — what you see is what the data describes."]
-    (for [{:keys [category examples]} examples-by-category]
-      [:section.gallery-section
-       [:h2.gallery-section-title category]
-       [:div.gallery-grid
-        (for [example examples]
-          (gallery-card example))]])
+  (let [all-tags (->> examples-by-category
+                      (mapcat :examples)
+                      (mapcat :tags)
+                      (remove nil?)
+                      distinct
+                      sort
+                      vec)]
+    (html-page {:title "Gallery" :active-page :gallery :depth 1}
+      [:h1.page-title "Gallery"]
+      [:p.page-subtitle "100 examples — every one renders from code."]
+      ;; Tag filter bar
+      (when (seq all-tags)
+        [:div.gallery-filter
+         [:span.gallery-filter-label "Filter by feature:"]
+         [:button.tag.tag--active {:onclick "filterGallery('all')" :data-tag "all"} "All"]
+         (for [tag all-tags]
+           [:button.tag {:onclick (str "filterGallery('" tag "')") :data-tag tag} tag])])
+      (for [{:keys [category examples]} examples-by-category]
+        [:section.gallery-section
+         [:h2.gallery-section-title category]
+         [:div.gallery-grid
+          (for [example examples]
+            (gallery-card example))]])
     ;; Image lightbox
     [:div#lightbox {:onclick "closeLightbox()"}
      [:img#lightbox-img]
@@ -333,7 +353,24 @@ function closeCodeLightbox() {
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') { closeLightbox(); closeCodeLightbox(); }
 });
-"))]))
+function filterGallery(tag) {
+  // Update active button
+  document.querySelectorAll('.gallery-filter .tag').forEach(function(btn) {
+    btn.classList.toggle('tag--active', btn.dataset.tag === tag);
+  });
+  // Show/hide cards
+  document.querySelectorAll('.gallery-card').forEach(function(card) {
+    var tags = card.dataset.tags || '';
+    var show = (tag === 'all') || tags.split(',').indexOf(tag) >= 0;
+    card.style.display = show ? '' : 'none';
+  });
+  // Hide empty sections
+  document.querySelectorAll('.gallery-section').forEach(function(sec) {
+    var visible = sec.querySelectorAll('.gallery-card:not([style*=\"display: none\"])').length;
+    sec.style.display = visible > 0 ? '' : 'none';
+  });
+}
+"))])))
 
 ;; --- Docs page ---
 

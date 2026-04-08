@@ -199,6 +199,40 @@
    [:.gallery-card-desc {:color     (:text-muted colors)
                          :font-size "0.85rem"
                          :margin-top "0.25rem"}]
+   [:.gallery-card-tags {:display   "flex"
+                         :flex-wrap "wrap"
+                         :gap       "0.3rem"
+                         :margin-top "0.5rem"}]
+   ;; Tag pills (shared by cards and filter bar)
+   [:.tag {:display       "inline-block"
+           :padding       "0.15rem 0.5rem"
+           :border-radius "10px"
+           :font-size     "0.7rem"
+           :border        (str "1px solid " (:border colors))
+           :background    "transparent"
+           :color         (:text-muted colors)
+           :cursor        "pointer"
+           :transition    "all 0.15s"
+           :font-family   "inherit"
+           :line-height   "1.4"}]
+   [".tag:hover" {:border-color (:accent colors)
+                  :color        (:text colors)}]
+   [:.tag--active {:background   (:accent colors)
+                   :border-color (:accent colors)
+                   :color        "#fff"}]
+   ;; Filter bar
+   [:.gallery-filter {:display     "flex"
+                      :flex-wrap   "wrap"
+                      :align-items "center"
+                      :gap         "0.4rem"
+                      :margin-bottom "2rem"
+                      :padding     "1rem"
+                      :background  (:bg-card colors)
+                      :border      (str "1px solid " (:border colors))
+                      :border-radius "8px"}]
+   [:.gallery-filter-label {:font-size   "0.8rem"
+                            :color       (:text-muted colors)
+                            :margin-right "0.5rem"}]
    [:details {:margin-top "0.75rem"}]
    [:summary {:cursor    "pointer"
               :color     (:link colors)
