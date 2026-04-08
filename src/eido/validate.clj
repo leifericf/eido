@@ -62,6 +62,14 @@
     (some #{:style/fill} via)
     "fill (expected a color, gradient, hatch, stipple, or pattern)"
 
+    (some #{:style/stroke} via)
+    "stroke map with :color and :width (optional: :cap, :join, :dash)"
+
+    (and (set? pred) (= 1 (count pred))
+         (let [tag (first pred)]
+           (and (keyword? tag) (= "transform" (namespace tag)))))
+    "transform type (must be :transform/translate, :transform/rotate, :transform/scale, :transform/shear-x, :transform/shear-y, or :transform/distort)"
+
     :else
     (pr-str pred)))
 
@@ -83,25 +91,33 @@
      :message (format-message in desc val)
      :value   val}))
 
-(def ^:private color-tags
+(def ^:private tagged-or-specs
+  "Keywords that appear as tags in s/or branches for tagged vectors.
+  Used to detect and filter tag-mismatch noise."
   #{:color/rgb :color/rgba :color/hsl :color/hsla
-    :color/hsb :color/hsba :color/hex :color/name})
+    :color/hsb :color/hsba :color/hex :color/name
+    :transform/translate :transform/rotate :transform/scale
+    :transform/shear-x :transform/shear-y :transform/distort})
 
-(defn- color-branch-mismatch?
+(defn- tag-branch-mismatch?
   "True when a spec problem is a tag-mismatch from a non-matching s/or
-  branch in the ::color spec (e.g. tried :color/rgba but tag was :color/rgb)."
-  [{:keys [pred val via]}]
-  (and (some #{:eido.spec/color} via)
-       (set? pred)
+  branch (e.g. tried :color/rgba but tag was :color/rgb, or tried
+  :transform/rotate but tag was :transform/translate).
+  Only filters when the actual value is itself a recognized tag —
+  if the value is unknown (e.g. :rotate instead of :transform/rotate),
+  all branches are kept so the user sees valid options."
+  [{:keys [pred val]}]
+  (and (set? pred)
        (= 1 (count pred))
-       (color-tags (first pred))
+       (tagged-or-specs (first pred))
        (keyword? val)
+       (tagged-or-specs val)
        (not (pred val))))
 
-(defn- deduplicate-color-problems
-  "Removes tag-mismatch noise from color s/or branches."
+(defn- deduplicate-tag-mismatches
+  "Removes tag-mismatch noise from s/or branches in tagged vectors."
   [problems]
-  (remove color-branch-mismatch? problems))
+  (remove tag-branch-mismatch? problems))
 
 (defn- deduplicate-by-path
   "When multiple s/or branches fail for the same value at the same path,
@@ -123,7 +139,7 @@
   [scene]
   (when-let [ed (s/explain-data :eido.spec/scene scene)]
     (let [problems (->> (::s/problems ed)
-                        deduplicate-color-problems
+                        deduplicate-tag-mismatches
                         deduplicate-by-path)]
       (when (seq problems)
         (let [errors (mapv problem->error problems)]
