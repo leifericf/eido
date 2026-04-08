@@ -187,15 +187,61 @@
         :else
         [(lower-simple-item item)]))))
 
+;; --- pass lowering ---
+
+(defn- effect->filter-spec
+  "Converts an effect descriptor to a filter spec vector for BufferOp."
+  [eff]
+  (case (:effect/type eff)
+    :effect/blur      [:blur (:effect/radius eff)]
+    :effect/grain     [:grain (:effect/amount eff) (:effect/seed eff)]
+    :effect/posterize [:posterize (:effect/levels eff)]
+    :effect/duotone   [:duotone (:effect/color-a eff) (:effect/color-b eff)]
+    :effect/halftone  [:halftone (:effect/dot-size eff) (:effect/angle eff)]))
+
+(defn- lower-pass
+  "Lowers a single pass to concrete ops."
+  [pass preceding-ops]
+  (case (:pass/type pass)
+    :draw-geometry
+    (into [] (mapcat lower-item) (:pass/items pass))
+
+    :effect-pass
+    ;; Wrap all preceding ops in a BufferOp with the filter
+    (let [filter-spec (effect->filter-spec (:pass/effect pass))]
+      [(ir/->BufferOp :buffer :src-over filter-spec 1.0 nil nil
+                      (or preceding-ops []))])
+
+    :program-pass
+    ;; Program passes evaluate per-pixel — produce a procedural image
+    ;; that covers the full canvas
+    (let [prog   (:pass/program pass)
+          size   (:resource/size (get (:ir/resources pass) (:pass/input pass)))
+          [w h]  (or size [100 100])]
+      ;; For now, program passes are a stretch — just pass through
+      preceding-ops)
+
+    ;; Unknown pass type — pass through
+    preceding-ops))
+
 ;; --- container lowering ---
 
 (defn lower
   "Lowers a semantic IR container to the concrete format
   consumed by eido.render and eido.svg."
   [ir-container]
-  {:ir/size       (:ir/size ir-container)
-   :ir/background (:ir/background ir-container)
-   :ir/ops        (into []
-                    (mapcat (fn [pass]
-                              (into [] (mapcat lower-item) (:pass/items pass))))
-                    (:ir/passes ir-container))})
+  (let [passes (:ir/passes ir-container)
+        ops    (reduce (fn [acc pass]
+                         (let [pass-ops (lower-pass
+                                          (assoc pass :ir/resources (:ir/resources ir-container))
+                                          acc)]
+                           (if (= :effect-pass (:pass/type pass))
+                             ;; Effect passes wrap preceding ops
+                             pass-ops
+                             ;; Draw passes append
+                             (into acc pass-ops))))
+                       []
+                       passes)]
+    {:ir/size       (:ir/size ir-container)
+     :ir/background (:ir/background ir-container)
+     :ir/ops        ops}))

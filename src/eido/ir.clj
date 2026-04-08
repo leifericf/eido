@@ -126,3 +126,39 @@
   The generator-map should have :item/generator with :generator/type."
   [generator-map]
   generator-map)
+
+;; --- pass constructors ---
+
+(defn effect-pass
+  "Creates an effect pass that applies a filter to a resource."
+  [id effect & {:keys [input target]
+                :or {input :framebuffer target :framebuffer}}]
+  {:pass/id     id
+   :pass/type   :effect-pass
+   :pass/input  input
+   :pass/target target
+   :pass/effect effect})
+
+(defn program-pass
+  "Creates a program pass that evaluates a program over a resource."
+  [id program & {:keys [input target]
+                 :or {input :framebuffer target :framebuffer}}]
+  {:pass/id      id
+   :pass/type    :program-pass
+   :pass/input   input
+   :pass/target  target
+   :pass/program program})
+
+;; --- pipeline ---
+
+(defn pipeline
+  "Creates a multi-pass IR container.
+  passes: vector of pass maps (draw-geometry, effect-pass, program-pass)."
+  [size background passes]
+  {:ir/version    1
+   :ir/size       size
+   :ir/background background
+   :ir/resources  {:framebuffer {:resource/kind :image
+                                 :resource/size size}}
+   :ir/passes     passes
+   :ir/outputs    {:default :framebuffer}})
