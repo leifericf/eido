@@ -39,6 +39,19 @@
 
 (def ^:private default-perm (make-perm 0))
 
+(def ^:private perm-cache
+  "Cache of permutation tables by seed. Avoids regenerating the 512-entry
+  table on every noise call for the same seed."
+  (atom {0 default-perm}))
+
+(defn- get-perm
+  "Returns a permutation table for the given seed, caching results."
+  [seed]
+  (or (get @perm-cache seed)
+      (let [p (make-perm seed)]
+        (swap! perm-cache assoc seed p)
+        p)))
+
 (defn- perm-at ^long [perm ^long i]
   (long (nth perm (bit-and i 255))))
 
@@ -76,7 +89,7 @@
    (perlin2d x y nil))
   (^double [x y opts]
    (let [perm (if-let [s (:seed opts)]
-                (make-perm s)
+                (get-perm s)
                 default-perm)
          x  (double x)
          y  (double y)
@@ -108,7 +121,7 @@
    (perlin3d x y z nil))
   (^double [x y z opts]
    (let [perm (if-let [s (:seed opts)]
-                (make-perm s)
+                (get-perm s)
                 default-perm)
          x  (double x)
          y  (double y)

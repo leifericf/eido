@@ -190,4 +190,8 @@
   ;;   ink-landscape                  26 ms  (was 60, 57% faster)
   ;;   neon-glow                      20 ms  (was 114, 82% faster)
   ;;   Scoped unchecked-math around argb/pack/blur/grain/blend functions
+
+  ;; === After noise permutation table caching ===
+  ;;   van-gogh-swirls              2128 ms  (was 4838, 56% faster)
+  ;;   Cached seeded permutation tables instead of regenerating per noise call
   )
