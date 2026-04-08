@@ -201,17 +201,22 @@
 (defn- render-single-op
   "Renders a single leaf IR op onto g with transforms, clip, and opacity."
   [^Graphics2D g op]
-  (let [saved-transform (.getTransform g)
-        saved-clip      (.getClip g)]
+  (let [transforms (:transforms op)
+        clip-op    (:clip op)
+        has-state? (or (seq transforms) clip-op)]
     (.setComposite g (AlphaComposite/getInstance
                        AlphaComposite/SRC_OVER
                        (float (:opacity op))))
-    (apply-transforms g (:transforms op))
-    (when-let [clip-op (:clip op)]
-      (.setClip g (op->clip-shape clip-op)))
-    (render-op g op)
-    (.setTransform g saved-transform)
-    (.setClip g saved-clip)))
+    (if has-state?
+      (let [saved-transform (.getTransform g)
+            saved-clip      (.getClip g)]
+        (apply-transforms g transforms)
+        (when clip-op
+          (.setClip g (op->clip-shape clip-op)))
+        (render-op g op)
+        (.setTransform g saved-transform)
+        (.setClip g saved-clip))
+      (render-op g op))))
 
 (def ^:private composite-rules
   {:src-over  AlphaComposite/SRC_OVER
