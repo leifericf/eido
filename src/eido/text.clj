@@ -241,19 +241,19 @@
    (let [^java.awt.geom.PathIterator
          iter (.getPathIterator
                 (let [^java.awt.geom.GeneralPath p (java.awt.geom.GeneralPath.)]
-                  (doseq [[cmd & args] commands]
-                    (case cmd
-                      :move-to  (let [[x y] (first args)]
+                  (doseq [command commands]
+                    (case (nth command 0)
+                      :move-to  (let [[x y] (nth command 1)]
                                   (.moveTo p (double x) (double y)))
-                      :line-to  (let [[x y] (first args)]
+                      :line-to  (let [[x y] (nth command 1)]
                                   (.lineTo p (double x) (double y)))
-                      :quad-to  (let [[cx cy] (first args)
-                                      [x y]   (second args)]
+                      :quad-to  (let [[cx cy] (nth command 1)
+                                      [x y]   (nth command 2)]
                                   (.quadTo p (double cx) (double cy)
                                              (double x) (double y)))
-                      :curve-to (let [[c1x c1y] (first args)
-                                      [c2x c2y] (second args)
-                                      [x y]     (nth args 2)]
+                      :curve-to (let [[c1x c1y] (nth command 1)
+                                      [c2x c2y] (nth command 2)
+                                      [x y]     (nth command 3)]
                                   (.curveTo p (double c1x) (double c1y)
                                               (double c2x) (double c2y)
                                               (double x) (double y)))

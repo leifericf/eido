@@ -35,32 +35,15 @@
 
 ;; --- path to points ---
 
-(defn- ensure-double-coords
-  "Coerces path command coordinates to doubles for Java interop."
-  [[cmd & args]]
-  (case cmd
-    :move-to  (let [[x y] (first args)] [:move-to [(double x) (double y)]])
-    :line-to  (let [[x y] (first args)] [:line-to [(double x) (double y)]])
-    :curve-to (let [[c1x c1y] (first args)
-                    [c2x c2y] (second args)
-                    [x y]     (nth args 2)]
-                [:curve-to [(double c1x) (double c1y)]
-                           [(double c2x) (double c2y)]
-                           [(double x) (double y)]])
-    :quad-to  (let [[cpx cpy] (first args)
-                    [x y]     (second args)]
-                [:quad-to [(double cpx) (double cpy)]
-                          [(double x) (double y)]])
-    :close    [:close]))
-
 (defn- flatten-to-points
   "Converts path commands to a vector of [x y] points via flattening."
   [commands]
-  (let [flat (text/flatten-commands (mapv ensure-double-coords commands) 0.5)]
+  (let [flat (text/flatten-commands commands 0.5)]
     (into []
-          (keep (fn [[cmd & args]]
-                  (when (#{:move-to :line-to} cmd)
-                    (first args))))
+          (keep (fn [command]
+                  (let [cmd (nth command 0)]
+                    (when (or (= :move-to cmd) (= :line-to cmd))
+                      (nth command 1)))))
           flat)))
 
 ;; --- normal computation ---
