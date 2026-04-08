@@ -9,6 +9,7 @@
     [eido.ir :as ir]
     [eido.ir.effect :as effect]
     [eido.ir.fill :as fill]
+    [eido.ir.generator :as generator]
     [eido.ir.transform :as transform]))
 
 ;; --- fill resolution ---
@@ -161,26 +162,30 @@
 
 (defn- lower-item
   "Lowers a semantic draw item to a vector of concrete ops.
-  Dispatches to specialized lowering for semantic fills and effects."
+  Dispatches to specialized lowering for generators, fills, and effects."
   [item]
-  (let [item      (apply-item-pre-transforms item)
-        item-fill (:item/fill item)
-        effects   (:item/effects item)]
-    (cond
-      ;; Semantic fills (hatch/stipple) expand to many ops
-      (fill/semantic-fill? item-fill)
-      (case (:fill/type item-fill)
-        (:hatch :fill/hatch)       (fill/lower-hatch item)
-        (:stipple :fill/stipple)   (fill/lower-stipple item)
-        :fill/procedural           (fill/lower-procedural item))
+  (if-let [gen (:item/generator item)]
+    ;; Generator items expand to many ops via feature module functions
+    (generator/expand-generator gen)
+    ;; Geometry items go through transforms, fills, effects
+    (let [item      (apply-item-pre-transforms item)
+          item-fill (:item/fill item)
+          effects   (:item/effects item)]
+      (cond
+        ;; Semantic fills (hatch/stipple/procedural) expand to many ops
+        (fill/semantic-fill? item-fill)
+        (case (:fill/type item-fill)
+          (:hatch :fill/hatch)       (fill/lower-hatch item)
+          (:stipple :fill/stipple)   (fill/lower-stipple item)
+          :fill/procedural           (fill/lower-procedural item))
 
-      ;; Effects wrap the item in shadow/glow buffer groups
-      (seq effects)
-      (effect/lower-effects item)
+        ;; Effects wrap the item in shadow/glow/filter buffer groups
+        (seq effects)
+        (effect/lower-effects item)
 
-      ;; Simple geometry with simple fill → single op
-      :else
-      [(lower-simple-item item)])))
+        ;; Simple geometry with simple fill → single op
+        :else
+        [(lower-simple-item item)]))))
 
 ;; --- container lowering ---
 

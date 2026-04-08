@@ -111,11 +111,18 @@
 
 (defn draw-item
   "Creates a semantic draw item from geometry and optional style properties."
-  [geometry & {:keys [fill stroke opacity transforms clip effects]}]
+  [geometry & {:keys [fill stroke opacity transforms clip effects pre-transforms]}]
   (cond-> {:item/geometry geometry}
-    fill       (assoc :item/fill fill)
-    stroke     (assoc :item/stroke stroke)
-    opacity    (assoc :item/opacity opacity)
-    transforms (assoc :item/transforms transforms)
-    clip       (assoc :item/clip clip)
-    effects    (assoc :item/effects effects)))
+    fill           (assoc :item/fill fill)
+    stroke         (assoc :item/stroke stroke)
+    opacity        (assoc :item/opacity opacity)
+    transforms     (assoc :item/transforms transforms)
+    clip           (assoc :item/clip clip)
+    effects        (assoc :item/effects effects)
+    pre-transforms (assoc :item/pre-transforms pre-transforms)))
+
+(defn generator-item
+  "Creates a semantic draw item from a generator descriptor map.
+  The generator-map should have :item/generator with :generator/type."
+  [generator-map]
+  generator-map)
