@@ -436,6 +436,75 @@
                  :material (material/phong :specular 0.9 :shininess 256.0)}
          :light light})]}))
 
+;; --- 17. Colored Point Lights ---
+
+(defn ^{:example {:output "3d-colored-lights.png"
+                  :title  "Colored Point Lights"
+                  :desc   "A sphere lit by warm and cool omni lights with hemisphere ambient."}}
+  colored-point-lights []
+  (let [mesh (s3d/sphere-mesh 1.5 24 16)
+        proj (s3d/perspective {:scale 120 :origin [200 200]
+                               :yaw 0.3 :pitch -0.25 :distance 6})]
+    {:image/size [400 400]
+     :image/background [:color/rgb 15 15 20]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:style {:style/fill [:color/rgb 200 200 200]
+                 :material (material/phong :ambient 0.05 :diffuse 0.8
+                                           :specular 0.5 :shininess 48.0)}
+         :lights [(material/omni [3 2 2]
+                    :color [:color/rgb 255 180 100]
+                    :multiplier 1.5
+                    :decay :inverse :decay-start 2.0)
+                  (material/omni [-3 1 -1]
+                    :color [:color/rgb 80 130 255]
+                    :multiplier 1.2
+                    :decay :inverse :decay-start 2.0)
+                  (material/hemisphere
+                    [:color/rgb 40 50 80]
+                    [:color/rgb 15 10 5]
+                    :multiplier 0.15)]})]}))
+
+;; --- 18. Spotlight Scene ---
+
+(defn ^{:example {:output "3d-spotlight.png"
+                  :title  "Spotlight"
+                  :desc   "A spot light with visible hotspot and falloff on a sphere and floor."}}
+  spotlight-scene []
+  (let [sphere (s3d/sphere-mesh 1.0 20 12)
+        floor  (s3d/cube-mesh [-3 -1.5 -3] 6)
+        proj   (s3d/perspective {:scale 80 :origin [200 220]
+                                 :yaw 0.4 :pitch -0.35 :distance 8})]
+    {:image/size [400 400]
+     :image/background [:color/rgb 10 10 15]
+     :image/nodes
+     [(s3d/render-mesh proj
+        (s3d/scale-mesh floor [1.0 0.05 1.0])
+        {:style {:style/fill [:color/rgb 180 180 180]
+                 :material (material/phong :ambient 0.02 :diffuse 0.8 :specular 0.1)}
+         :lights [(material/spot [0 8 0] [0 -1 0]
+                    :color [:color/rgb 255 240 200]
+                    :multiplier 2.0
+                    :hotspot 20 :falloff 30
+                    :decay :inverse :decay-start 3.0)
+                  (material/hemisphere
+                    [:color/rgb 20 25 40]
+                    [:color/rgb 5 5 5]
+                    :multiplier 0.1)]})
+      (s3d/render-mesh proj sphere
+        {:style {:style/fill [:color/rgb 200 60 60]
+                 :material (material/phong :ambient 0.02 :diffuse 0.7
+                                           :specular 0.6 :shininess 64.0)}
+         :lights [(material/spot [0 8 0] [0 -1 0]
+                    :color [:color/rgb 255 240 200]
+                    :multiplier 2.0
+                    :hotspot 20 :falloff 30
+                    :decay :inverse :decay-start 3.0)
+                  (material/hemisphere
+                    [:color/rgb 20 25 40]
+                    [:color/rgb 5 5 5]
+                    :multiplier 0.1)]})]}))
+
 (comment
   ;; Evaluate individual examples at the REPL:
   (utah-teapot)
@@ -453,4 +522,6 @@
   (wireframe-overlay)
   (specular-spheres)
   (glossy-torus)
-  (material-showcase))
+  (material-showcase)
+  (colored-point-lights)
+  (spotlight-scene))

@@ -727,7 +727,37 @@
                        :shininess 32.0)}
    :light {:light/direction [1 2 1]
            :light/ambient 0.2
-           :light/intensity 0.8}})"]]]}
+           :light/intensity 0.8}})"]]
+       [:h4 "Light Types"]
+       [:pre [:code
+              ";; Directional — parallel rays (like the sun)
+(material/directional [1 2 1] :multiplier 0.8 :ambient 0.2)
+
+;; Omni — point light radiating in all directions
+(material/omni [100 50 200]
+  :color [:color/rgb 255 200 150]
+  :decay :inverse-square :decay-start 10.0)
+
+;; Spot — cone with hotspot/falloff angles
+(material/spot [0 200 0] [0 -1 0]
+  :hotspot 25 :falloff 35 :decay :inverse)
+
+;; Hemisphere — sky/ground ambient
+(material/hemisphere
+  [:color/rgb 135 180 220] [:color/rgb 40 30 20]
+  :multiplier 0.3)"]]
+       [:h4 "Multi-Light"]
+       [:p "Use " [:code ":lights"] " to combine multiple lights. Each light's color tints its contribution."]
+       [:pre [:code
+              "(s3d/render-mesh proj mesh
+  {:style {:style/fill [:color/rgb 200 200 200]
+           :material (material/phong :specular 0.5)}
+   :lights [(material/omni [3 2 2]
+              :color [:color/rgb 255 180 100]
+              :multiplier 1.5 :decay :inverse)
+            (material/hemisphere
+              [:color/rgb 40 50 80] [:color/rgb 15 10 5]
+              :multiplier 0.2)]})"]]]}
 
      {:id    "multi-pass"
       :title "Multi-Pass Rendering"

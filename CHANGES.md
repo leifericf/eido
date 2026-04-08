@@ -36,11 +36,19 @@
 - Add `eido.ir.vary` with override descriptors (by-index, by-position, by-noise, by-gradient)
 - Generators accept vary descriptors in `:generator/overrides`
 
-### 3D materials
+### 3D materials and lighting
 
 - Add `eido.ir.material` with Blinn-Phong material descriptors (ambient, diffuse, specular, shininess)
-- Extend `scene3d/shade-face-style` to support `:material` key with specular highlights
-- Backward compatible — existing scenes without `:material` unchanged
+- Add four light types inspired by 3ds Max: directional, omni (point), spot, hemisphere (sky)
+- Light constructors: `material/directional`, `material/omni`, `material/spot`, `material/hemisphere`
+- Multi-light support: `:lights` vector on render-mesh opts, contributions sum per-channel
+- Light color tinting: each light's color modulates its diffuse and specular contribution
+- Distance decay: `:none`, `:inverse`, `:inverse-square` with configurable `:light/decay-start`
+- Spot light cone: `:light/hotspot` (inner angle) and `:light/falloff` (outer angle) with smoothstep
+- Hemisphere light: sky/ground color blended by surface normal direction
+- `smoothstep` added to `eido.math3d`
+- Extend `scene3d/shade-face-style` to support materials and multi-light
+- Backward compatible — existing scenes without `:material` or `:lights` unchanged
 
 ### Multi-pass rendering
 
