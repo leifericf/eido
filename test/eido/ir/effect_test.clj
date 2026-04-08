@@ -92,3 +92,105 @@
                                                :opacity 0.8)])])
           img (render-semantic semantic)]
       (is (some? img)))))
+
+;; --- filter effect constructor tests ---
+
+(deftest blur-constructor-test
+  (let [b (effect/blur :radius 8)]
+    (is (= :effect/blur (:effect/type b)))
+    (is (= 8 (:effect/radius b)))))
+
+(deftest grain-constructor-test
+  (let [g (effect/grain :amount 50 :seed 42)]
+    (is (= :effect/grain (:effect/type g)))
+    (is (= 50 (:effect/amount g)))
+    (is (= 42 (:effect/seed g)))))
+
+(deftest posterize-constructor-test
+  (let [p (effect/posterize :levels 4)]
+    (is (= :effect/posterize (:effect/type p)))
+    (is (= 4 (:effect/levels p)))))
+
+(deftest duotone-constructor-test
+  (let [d (effect/duotone :color-a [:color/rgb 20 20 60]
+                          :color-b [:color/rgb 255 230 180])]
+    (is (= :effect/duotone (:effect/type d)))
+    (is (= [:color/rgb 20 20 60] (:effect/color-a d)))))
+
+(deftest halftone-constructor-test
+  (let [h (effect/halftone :dot-size 8 :angle 30)]
+    (is (= :effect/halftone (:effect/type h)))
+    (is (= 8 (:effect/dot-size h)))
+    (is (= 30 (:effect/angle h)))))
+
+;; --- filter effect lowering tests ---
+
+(deftest grain-renders-test
+  (testing "grain effect renders without errors"
+    (let [semantic (ir/container
+                     [100 100]
+                     (color/resolve-color [:color/rgb 128 128 128])
+                     [(ir/draw-item
+                        (ir/rect-geometry [0 0] [100 100])
+                        :fill (fill/solid [:color/rgb 128 128 128])
+                        :effects [(effect/grain :amount 50 :seed 42)])])
+          img (render-semantic semantic)]
+      (is (some? img))
+      ;; Grain should make pixels vary from the base color
+      (let [[r1 _ _] (pixel-rgb img 10 10)
+            [r2 _ _] (pixel-rgb img 50 50)]
+        ;; At least one pixel should differ from 128 (grain noise)
+        (is (or (not= 128 r1) (not= 128 r2)))))))
+
+(deftest posterize-renders-test
+  (testing "posterize effect renders"
+    (let [semantic (ir/container
+                     [100 100]
+                     (color/resolve-color [:color/rgb 255 255 255])
+                     [(ir/draw-item
+                        (ir/rect-geometry [0 0] [100 100])
+                        :fill (fill/solid [:color/rgb 100 150 200])
+                        :effects [(effect/posterize :levels 2)])])
+          img (render-semantic semantic)]
+      (is (some? img)))))
+
+(deftest duotone-renders-test
+  (testing "duotone effect renders"
+    (let [semantic (ir/container
+                     [100 100]
+                     (color/resolve-color [:color/rgb 255 255 255])
+                     [(ir/draw-item
+                        (ir/rect-geometry [0 0] [100 100])
+                        :fill (fill/solid [:color/rgb 100 150 200])
+                        :effects [(effect/duotone
+                                    :color-a [:color/rgb 20 20 60]
+                                    :color-b [:color/rgb 255 230 180])])])
+          img (render-semantic semantic)]
+      (is (some? img)))))
+
+(deftest halftone-renders-test
+  (testing "halftone effect renders"
+    (let [semantic (ir/container
+                     [100 100]
+                     (color/resolve-color [:color/rgb 255 255 255])
+                     [(ir/draw-item
+                        (ir/rect-geometry [0 0] [100 100])
+                        :fill (fill/solid [:color/rgb 50 50 50])
+                        :effects [(effect/halftone :dot-size 8 :angle 45)])])
+          img (render-semantic semantic)]
+      (is (some? img)))))
+
+(deftest combined-effects-test
+  (testing "shadow + grain on same item"
+    (let [semantic (ir/container
+                     [200 200]
+                     (color/resolve-color [:color/rgb 240 240 240])
+                     [(ir/draw-item
+                        (ir/rect-geometry [40 40] [120 120])
+                        :fill (fill/solid [:color/rgb 60 120 200])
+                        :effects [(effect/shadow :dx 4 :dy 4 :blur 6
+                                                  :color [:color/rgb 0 0 0]
+                                                  :opacity 0.4)
+                                  (effect/grain :amount 30 :seed 99)])])
+          img (render-semantic semantic)]
+      (is (some? img)))))
