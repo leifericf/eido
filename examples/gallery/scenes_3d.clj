@@ -846,6 +846,41 @@
                  :light/intensity 0.8}
          :shading :smooth})]}))
 
+;; --- 32. Procedural Textured Sphere ---
+
+(defn ^{:example {:output "3d-procedural-texture.png"
+                  :title  "Procedural Texture"
+                  :desc   "The full 2D→3D bridge: UV-projected noise texture with bump map and specular variation."}}
+  procedural-textured-sphere []
+  (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.5)
+                 (s3d/subdivide {:iterations 2})
+                 (s3d/uv-project {:uv/method :spherical})
+                 (s3d/paint-mesh {:color/source :uv
+                                  :color/type :field
+                                  :color/field (field/noise-field :scale 4.0 :variant :fbm :seed 7)
+                                  :color/palette [[:color/rgb 40 30 20]
+                                                  [:color/rgb 160 120 60]
+                                                  [:color/rgb 200 180 140]]})
+                 (s3d/normal-map-mesh {:normal-map/field (field/noise-field :scale 8.0 :variant :turbulence :seed 7)
+                                       :normal-map/strength 0.4})
+                 (s3d/specular-map-mesh {:specular-map/field (field/noise-field :scale 6.0 :seed 7)
+                                         :specular-map/range [0.1 0.7]}))
+        proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
+                        [0 0 0] 5 0.5 -0.3)]
+    {:image/size [400 400]
+     :image/background [:color/rgb 25 22 30]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:style {:material {:material/type :material/phong
+                            :material/ambient 0.1
+                            :material/diffuse 0.8
+                            :material/specular 0.5
+                            :material/shininess 48.0}}
+         :light {:light/direction [1 2 0.5]
+                 :light/ambient 0.15
+                 :light/intensity 0.85}
+         :shading :smooth})]}))
+
 (comment
   ;; Evaluate individual examples at the REPL:
   (utah-teapot)
@@ -878,4 +913,5 @@
   (sweep-tube)
   (auto-smooth-cube)
   (greebled-panel)
-  (vertex-painted-sphere))
+  (vertex-painted-sphere)
+  (procedural-textured-sphere))
