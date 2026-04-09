@@ -174,6 +174,34 @@
                        style->mtl)))}
        obj-str))))
 
+;; --- OBJ face building ---
+
+(defn- build-face
+  "Builds a face map from parsed face references and current parser state."
+  [refs vertices texcoords normals style current-group smooth-group]
+  (let [v-count (count vertices)
+        t-count (count texcoords)
+        n-count (count normals)
+        verts   (mapv (fn [[vi _ti _ni]]
+                        (nth vertices (resolve-index vi v-count)))
+                      refs)
+        uvs     (when (some second refs)
+                  (mapv (fn [[_vi ti _ni]]
+                          (if ti
+                            (nth texcoords (resolve-index ti t-count))
+                            [0.0 0.0]))
+                        refs))
+        normal  (let [[_vi _ti ni] (first refs)]
+                  (if (and ni (pos? n-count))
+                    (nth normals (resolve-index ni n-count))
+                    (m/face-normal verts)))]
+    (cond-> {:face/vertices verts
+             :face/normal   normal}
+      style         (assoc :face/style style)
+      uvs           (assoc :face/texture-coords uvs)
+      current-group (assoc :face/group current-group)
+      smooth-group  (assoc :face/smooth-group smooth-group))))
+
 ;; --- OBJ parsing ---
 
 (defn parse-obj
@@ -228,32 +256,13 @@
                 [faces vertices texcoords normals current-mtl current-group sg])
 
               (str/starts-with? trimmed "f ")
-              (let [refs    (mapv parse-face-ref
-                                 (str/split (str/trim (subs trimmed 2)) #"\s+"))
-                    v-count (count vertices)
-                    t-count (count texcoords)
-                    n-count (count normals)
-                    verts   (mapv (fn [[vi _ti _ni]]
-                                   (nth vertices (resolve-index vi v-count)))
-                                 refs)
-                    uvs     (when (some second refs)
-                              (mapv (fn [[_vi ti _ni]]
-                                      (if ti
-                                        (nth texcoords (resolve-index ti t-count))
-                                        [0.0 0.0]))
-                                    refs))
-                    normal  (let [[_vi _ti ni] (first refs)]
-                              (if (and ni (pos? n-count))
-                                (nth normals (resolve-index ni n-count))
-                                (m/face-normal verts)))
-                    style   (or (get materials current-mtl) default)
-                    face    (cond-> {:face/vertices verts
-                                     :face/normal   normal}
-                              style         (assoc :face/style style)
-                              uvs           (assoc :face/texture-coords uvs)
-                              current-group (assoc :face/group current-group)
-                              smooth-group  (assoc :face/smooth-group smooth-group))]
-                [(conj faces face) vertices texcoords normals current-mtl current-group smooth-group])
+              (let [refs  (mapv parse-face-ref
+                               (str/split (str/trim (subs trimmed 2)) #"\s+"))
+                    style (or (get materials current-mtl) default)
+                    face  (build-face refs vertices texcoords normals
+                                      style current-group smooth-group)]
+                [(conj faces face) vertices texcoords normals
+                 current-mtl current-group smooth-group])
 
               :else
               [faces vertices texcoords normals current-mtl current-group smooth-group])))
