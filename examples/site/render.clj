@@ -1093,7 +1093,7 @@ document.querySelectorAll('pre code').forEach(function(el) {
   [v]
   (let [m (meta v)]
     {:name     (str (:name m))
-     :arglists (str/join " " (map pr-str (:arglists m)))
+     :arglists (:arglists m)
      :doc      (:doc m)
      :added    (:added m)}))
 
@@ -1119,6 +1119,11 @@ document.querySelectorAll('pre code').forEach(function(el) {
     (html-page {:title "API Reference" :active-page :api :depth 1}
       [:h1.page-title "API Reference"]
       [:p.page-subtitle "Auto-generated from source metadata."]
+      [:div.api-search
+       [:input#api-search {:type "text"
+                           :placeholder "Search functions, namespaces, or keywords..."
+                           :autocomplete "off"
+                           :oninput "filterAPI(this.value)"}]]
       [:div.api-layout
        [:nav.api-sidebar
         (for [{:keys [category namespaces]} api-namespace-groups]
@@ -1140,11 +1145,45 @@ document.querySelectorAll('pre code').forEach(function(el) {
              [:p.api-ns-doc ns-doc])
            (for [{:keys [name arglists doc]} vars]
              [:div.api-var
-              [:span.api-var-name name]
-              (when (seq arglists)
-                [:span.api-var-args arglists])
+              ;; Signature block — one line per arity
+              [:div.api-var-sig
+               (if (seq arglists)
+                 (for [arglist arglists]
+                   [:div.api-var-arity
+                    [:code "(" [:span.api-var-name name]
+                     (when (seq arglist)
+                       [:span.api-var-args
+                        " " (str/join " " (map str arglist))])
+                     ")"]])
+                 [:div.api-var-arity
+                  [:code [:span.api-var-name name]]])]
+              ;; Docstring with code formatting
               (when doc
-                [:div.api-var-doc doc])])])]])))
+                [:div.api-var-doc
+                 (h/raw
+                   (-> (str/replace doc #"`([^`]+)`" "<code>$1</code>")
+                       (str/replace #":[\w/\-\.]+" "<code>$0</code>")
+                       (str/replace #"\n" "<br>")))])])])]]
+      [:script (h/raw (str highlight-clj-js "
+document.querySelectorAll('.api-var-sig code').forEach(function(el) {
+  el.innerHTML = highlightClj(el.textContent);
+});
+
+function filterAPI(query) {
+  var q = query.toLowerCase().trim();
+  document.querySelectorAll('.api-var').forEach(function(card) {
+    if (!q) { card.style.display = ''; return; }
+    var text = card.textContent.toLowerCase();
+    card.style.display = text.indexOf(q) >= 0 ? '' : 'none';
+  });
+  document.querySelectorAll('.api-ns').forEach(function(sec) {
+    if (!q) { sec.style.display = ''; return; }
+    var visible = sec.querySelectorAll('.api-var:not([style*=\"display: none\"])').length;
+    var nsText = sec.querySelector('.api-ns-title').textContent.toLowerCase();
+    sec.style.display = (visible > 0 || nsText.indexOf(q) >= 0) ? '' : 'none';
+  });
+}
+"))])))
 
 
 ;; --- Site builder ---

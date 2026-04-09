@@ -395,17 +395,39 @@
                :border-radius "8px"
                :padding       "1.25rem"
                :margin-bottom "1rem"}]
-   [:.api-var-name {:font-family "'JetBrains Mono', monospace"
-                    :font-weight "600"
+   [:.api-var-sig {:margin-bottom "0.5rem"}]
+   [:.api-var-arity {:margin-bottom "0.2rem"}]
+   [".api-var-arity code" {:font-family "'JetBrains Mono', monospace"
+                           :font-size   "0.9rem"
+                           :background  (:bg colors)
+                           :padding     "0.3rem 0.6rem"
+                           :border-radius "4px"
+                           :display     "inline-block"}]
+   [:.api-var-name {:font-weight "600"
                     :color       (:accent colors)}]
-   [:.api-var-args {:font-family "'JetBrains Mono', monospace"
-                    :font-size   "0.85rem"
-                    :color       (:text-muted colors)
-                    :margin-left "0.5rem"}]
-   [:.api-var-doc {:margin-top "0.5rem"
-                   :font-size  "0.9rem"
-                   :color      (:text-muted colors)
-                   :white-space "pre-wrap"}]
+   [:.api-var-args {:color (:text-muted colors)}]
+   [:.api-var-doc {:margin-top  "0.6rem"
+                   :font-size   "0.9rem"
+                   :color       (:text-muted colors)
+                   :line-height "1.6"}]
+   [".api-var-doc code" {:font-family "'JetBrains Mono', monospace"
+                         :font-size   "0.82rem"
+                         :background  (:bg colors)
+                         :padding     "0.15rem 0.4rem"
+                         :border-radius "3px"
+                         :color       (:text colors)}]
+   [:.api-search {:margin-bottom "1.5rem"}]
+   ["#api-search" {:width         "100%"
+                   :padding       "0.75rem 1rem"
+                   :font-size     "0.95rem"
+                   :font-family   "'JetBrains Mono', monospace"
+                   :background    (:bg-card colors)
+                   :border        (str "1px solid " (:border colors))
+                   :border-radius "8px"
+                   :color         (:text colors)
+                   :outline       "none"}]
+   ["#api-search:focus" {:border-color (:accent colors)}]
+   ["#api-search::placeholder" {:color (:text-muted colors)}]
    [:.api-sidebar {:position   "sticky"
                    :top        "1rem"
                    :max-height "calc(100vh - 2rem)"
