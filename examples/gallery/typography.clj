@@ -13,7 +13,7 @@
                   :title  "Gradient Text with Shadow"
                   :desc   "Layered text using text-stack — a shadow layer offset by a few pixels, then a gradient fill on top."}}
   gradient-text-with-shadow []
-  {:image/size [500 200]
+  {:image/size [600 200]
    :image/background [:color/rgb 15 15 25]
    :image/nodes
    [(scene/text-stack "Typography" [40 140]

@@ -516,14 +516,17 @@
   (let [mesh (-> (s3d/cube-mesh [-1 -1 -1] 2)
                  (s3d/subdivide {:iterations 2})
                  (s3d/deform-mesh {:deform/type :displace
-                                   :deform/field (field/noise-field :scale 1.5 :variant :fbm :seed 7)
-                                   :deform/amplitude 0.15})
+                                   :deform/field (field/noise-field :scale 1.2 :variant :fbm :seed 7)
+                                   :deform/amplitude 0.45})
+                 (s3d/deform-mesh {:deform/type :twist
+                                   :deform/axis :y
+                                   :deform/amount 0.6})
                  (s3d/color-mesh {:color/type :field
                                   :color/field (field/noise-field :scale 2.0 :variant :fbm :seed 7)
                                   :color/palette [[:color/rgb 180 100 60]
                                                   [:color/rgb 220 170 100]
                                                   [:color/rgb 80 50 40]]}))
-        proj (s3d/orbit (s3d/orthographic {:scale 55 :origin [200 200]})
+        proj (s3d/orbit (s3d/orthographic {:scale 70 :origin [200 200]})
                         [0 0 0] 5 0.6 -0.35)]
     {:image/size [400 400]
      :image/background [:color/rgb 30 28 35]
@@ -550,9 +553,9 @@
                                                   [:color/rgb 140 120 80]
                                                   [:color/rgb 200 190 170]
                                                   [:color/rgb 255 255 255]]}))
-        proj (s3d/look-at (s3d/perspective {:scale 55 :origin [200 220]
-                                            :distance 8})
-                          [5 4 6] [0 0.5 0])]
+        proj (s3d/look-at (s3d/perspective {:scale 60 :origin [200 250]
+                                            :distance 7})
+                          [3 1.8 4] [0 0.5 0])]
     {:image/size [400 400]
      :image/background [:color/rgb 60 70 90]
      :image/nodes
@@ -748,23 +751,23 @@
                   :desc   "A circular cross-section swept along a winding 3D path."}}
   sweep-tube []
   (let [;; Circular profile
-        n-prof 8
+        n-prof 12
         profile (mapv (fn [i]
                         (let [a (* (/ (* 2 Math/PI) n-prof) i)]
-                          [(* 0.2 (Math/cos a)) (* 0.2 (Math/sin a))]))
+                          [(* 0.5 (Math/cos a)) (* 0.5 (Math/sin a))]))
                       (range n-prof))
         mesh (-> (s3d/sweep-mesh
                    {:profile profile
-                    :path [[0 0 0] [1 0.8 0.5] [2 0 1] [3 0.5 0]
-                           [4 0 -0.5] [5 0.8 0]]
+                    :path [[0 0 0] [1 1.2 0.8] [2 0 1.5] [3 0.8 0]
+                           [4 0 -1.0] [5 1.2 0]]
                     :segments 40})
                  (s3d/color-mesh {:color/type :axis-gradient
                                   :color/axis :x
                                   :color/palette [[:color/rgb 200 60 60]
                                                   [:color/rgb 60 60 200]
                                                   [:color/rgb 60 200 60]]}))
-        proj (s3d/look-at (s3d/orthographic {:scale 50 :origin [200 200]})
-                          [3 3 4] [2.5 0.3 0])]
+        proj (s3d/look-at (s3d/orthographic {:scale 50 :origin [130 200]})
+                          [3 2 4] [2.5 0.3 0])]
     {:image/size [400 400]
      :image/background [:color/rgb 30 28 35]
      :image/nodes
@@ -831,7 +834,7 @@
   (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.5)
                  (s3d/subdivide {:iterations 1})
                  (s3d/paint-mesh {:color/type :field
-                                  :color/field (field/noise-field :scale 1.2 :variant :fbm :seed 19)
+                                  :color/field (field/noise-field :scale 2.5 :variant :fbm :seed 19)
                                   :color/palette [[:color/rgb 30 60 180]
                                                   [:color/rgb 60 180 120]
                                                   [:color/rgb 220 200 50]
