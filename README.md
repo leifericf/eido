@@ -45,7 +45,7 @@ If it cannot be represented as plain data, it probably should not be in the libr
 Add eido as a git dependency in your `deps.edn`:
 
 ```clojure
-io.github.leifericf/eido {:git/tag "v1.0.0-alpha8" :git/sha "e0eb222"}
+io.github.leifericf/eido {:git/tag "v1.0.0-alpha9" :git/sha "075d93d"}
 ```
 
 ## Quick Start
@@ -70,7 +70,7 @@ See the **[full documentation](https://eido.leifericf.com/docs/)** for shapes, t
 
 ## Gallery
 
-The **[gallery](https://eido.leifericf.com/gallery/)** showcases 62 examples across six categories — 2D scenes, 3D scenes, mixed 2D/3D, particles, typography, and artistic expression — each with source code.
+The **[gallery](https://eido.leifericf.com/gallery/)** showcases examples across several categories — 2D scenes, 3D scenes, mixed 2D/3D, particles, typography, and artistic expression — each with source code.
 
 All examples live in `examples/gallery/` as pure functions. Build the gallery locally:
 
@@ -86,4 +86,4 @@ clj -X:test
 
 ## Status
 
-v1.0.0-alpha8 — The API is still evolving and may change without notice.
+v1.0.0-alpha9 — The API is still evolving and may change without notice.
