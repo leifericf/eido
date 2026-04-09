@@ -15,7 +15,7 @@
 
 ;; --- fill resolution ---
 
-(defn- resolve-fill
+(defn resolve-fill
   "Resolves a semantic fill descriptor to the format concrete ops expect."
   [f]
   (when f
@@ -34,7 +34,7 @@
         (:gradient/radius f) (assoc :gradient/radius (:gradient/radius f)))
 
       ;; Pattern fill — compile tile nodes to ops
-      :fill/pattern
+      (:fill/pattern :pattern)
       (when-let [tile-nodes (:pattern/nodes f)]
         (let [[tw th] (:pattern/size f)]
           {:fill/type    :pattern
