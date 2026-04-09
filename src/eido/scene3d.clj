@@ -607,6 +607,83 @@
         (let [v (axis-component axis centroid)]
           (and (>= v lo) (<= v hi)))))))
 
+;; --- per-face color ---
+
+(defn- lerp-color
+  "Linear interpolation between two RGB colors."
+  [[_t1 r1 g1 b1] [_t2 r2 g2 b2] t]
+  (let [t (double t)
+        s (- 1.0 t)]
+    [:color/rgb
+     (int (Math/round (+ (* s (double r1)) (* t (double r2)))))
+     (int (Math/round (+ (* s (double g1)) (* t (double g2)))))
+     (int (Math/round (+ (* s (double b1)) (* t (double b2)))))]))
+
+(defn- palette-color
+  "Maps a [0,1] value to a color from a palette via linear interpolation."
+  [palette t]
+  (let [t  (Math/max 0.0 (Math/min 1.0 (double t)))
+        n  (dec (count palette))
+        fi (* t n)
+        lo (int (Math/floor fi))
+        lo (min lo (dec n))
+        hi (min (inc lo) n)
+        f  (- fi lo)]
+    (lerp-color (nth palette lo) (nth palette hi) f)))
+
+(defn color-mesh
+  "Colors each face based on a descriptor.
+  opts:
+    :color/type    - :field, :axis-gradient, or :normal-map
+    :color/palette - vector of [:color/rgb r g b] colors
+    :color/field   - field descriptor (for :field type)
+    :color/axis    - :x, :y, or :z (for :axis-gradient type)"
+  [mesh opts]
+  (let [palette (:color/palette opts)
+        bounds  (when (= :axis-gradient (:color/type opts))
+                  (let [axis (get opts :color/axis :y)]
+                    (axis-range axis mesh)))
+        color-fn
+        (case (:color/type opts)
+          :field
+          (let [f (:color/field opts)]
+            (fn [_face centroid _normal]
+              (let [[cx _cy cz] centroid
+                    v (field/evaluate f (double cx) (double cz))]
+                ;; Map noise [-1,1] to [0,1]
+                (* 0.5 (+ 1.0 v)))))
+
+          :axis-gradient
+          (let [axis    (get opts :color/axis :y)
+                [lo hi] bounds
+                range   (- (double hi) (double lo))]
+            (fn [_face centroid _normal]
+              (if (zero? range)
+                0.5
+                (/ (- (axis-component axis centroid) (double lo)) range))))
+
+          :normal-map
+          (fn [_face _centroid normal]
+            (let [[nx ny nz] (m/normalize normal)
+                  ;; Map normal components to [0,1] range and use dominant axis
+                  ax (abs (double nx))
+                  ay (abs (double ny))
+                  az (abs (double nz))
+                  mx (max ax ay az)]
+              (cond
+                (== mx ax) (/ ax (+ ax ay az))
+                (== mx ay) (/ (+ ax ay) (+ ax ay az))
+                :else      (/ (+ ax ay az -0.01) (+ ax ay az))))))]
+    (mapv (fn [face]
+            (let [verts    (:face/vertices face)
+                  centroid (m/face-centroid verts)
+                  normal   (:face/normal face)
+                  t        (color-fn face centroid normal)
+                  color    (palette-color palette t)
+                  style    (merge (:face/style face) {:style/fill color})]
+              (assoc face :face/style style)))
+          mesh)))
+
 ;; --- polygonal modeling ---
 
 (defn extrude-faces

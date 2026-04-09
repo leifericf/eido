@@ -321,6 +321,62 @@
                   :segments 6})]
       (is (= 12 (count mesh))))))
 
+;; --- per-face color ---
+
+(deftest color-mesh-field-test
+  (let [mesh (s3d/sphere-mesh 1.5 8 4)
+        colored (s3d/color-mesh mesh
+                  {:color/type :field
+                   :color/field (field/noise-field :scale 1.0 :variant :fbm :seed 42)
+                   :color/palette [[:color/rgb 0 0 0]
+                                   [:color/rgb 255 255 255]]})]
+    (testing "same face count"
+      (is (= (count mesh) (count colored))))
+    (testing "every face has a fill style"
+      (doseq [face colored]
+        (is (some? (get-in face [:face/style :style/fill])))))
+    (testing "colors vary across faces"
+      (let [fills (map #(get-in % [:face/style :style/fill]) colored)]
+        (is (> (count (distinct fills)) 1))))))
+
+(deftest color-mesh-axis-gradient-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        colored (s3d/color-mesh mesh
+                  {:color/type :axis-gradient
+                   :color/axis :y
+                   :color/palette [[:color/rgb 0 0 255]
+                                   [:color/rgb 255 0 0]]})]
+    (testing "bottom faces are bluer, top faces are redder"
+      (let [face-data (map (fn [f]
+                             {:y (second (m/face-centroid (:face/vertices f)))
+                              :r (nth (get-in f [:face/style :style/fill]) 1)})
+                           colored)
+            sorted (sort-by :y face-data)]
+        (is (< (:r (first sorted)) (:r (last sorted))))))))
+
+(deftest color-mesh-normal-map-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        colored (s3d/color-mesh mesh
+                  {:color/type :normal-map
+                   :color/palette [[:color/rgb 255 0 0]
+                                   [:color/rgb 0 255 0]
+                                   [:color/rgb 0 0 255]]})]
+    (testing "faces get different colors based on normal direction"
+      (let [fills (map #(get-in % [:face/style :style/fill]) colored)]
+        (is (> (count (distinct fills)) 1))))))
+
+(deftest color-mesh-preserves-other-style-test
+  (let [mesh (mapv #(assoc % :face/style {:style/stroke {:color [:color/rgb 0 0 0] :width 1}})
+               (s3d/cube-mesh [0 0 0] 2))
+        colored (s3d/color-mesh mesh
+                  {:color/type :field
+                   :color/field (field/constant-field 0.5)
+                   :color/palette [[:color/rgb 100 100 100]
+                                   [:color/rgb 200 200 200]]})]
+    (testing "existing stroke style is preserved"
+      (doseq [face colored]
+        (is (some? (get-in face [:face/style :style/stroke])))))))
+
 ;; --- face selection + polygonal modeling ---
 
 (deftest extrude-faces-all-test
