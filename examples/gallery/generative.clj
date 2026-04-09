@@ -255,16 +255,11 @@
     {:image/size [w h]
      :image/background [:color/rgb 20 20 25]
      :image/nodes
-     (vec (keep-indexed
-            (fn [i {:keys [polygon]}]
-              (when (and polygon (>= (count polygon) 3))
-                (let [cmds (into [[:move-to (mapv double (first polygon))]]
-                                 (mapv (fn [p] [:line-to (mapv double p)]) (rest polygon)))
-                      cmds (conj cmds [:close])]
-                  {:node/type :shape/path
-                   :path/commands cmds
-                   :style/fill (prob/pick-weighted jewels weights (+ i 42))
-                   :style/stroke {:color [:color/rgb 20 20 25] :width 3}})))
+     (vec (map-indexed
+            (fn [i cell]
+              (assoc cell
+                :style/fill (prob/pick-weighted jewels weights (+ i 42))
+                :style/stroke {:color [:color/rgb 20 20 25] :width 3}))
             cells))}))
 
 ;; --- 9. Reaction-Diffusion Spots ---
@@ -273,15 +268,15 @@
                   :title  "Leopard Spots"
                   :desc   "Reaction-diffusion spots preset with warm animal coloring."}}
   rd-spots []
-  (let [gw 120 gh 120 cs 5
+  (let [gw 200 gh 200 cs 3
         g (ca/rd-run (ca/rd-grid gw gh :center-seed 77)
-            (:spots ca/rd-presets) 600)]
+            (:spots ca/rd-presets) 2000)]
     {:image/size [(* gw cs) (* gh cs)]
      :image/background [:color/rgb 210 180 130]
      :image/nodes
      (ca/rd->nodes g cs
        (fn [_a b]
-         (let [v (min 1.0 (* b 5))]
+         (let [v (min 1.0 (* b 3))]
            [:color/rgb
             (int (- 210 (* 160 v)))
             (int (- 180 (* 140 v)))
@@ -498,15 +493,15 @@
                   :title  "Mitosis"
                   :desc   "Reaction-diffusion cell division with the mitosis preset."}}
   mitosis []
-  (let [gw 80 gh 80 cs 5
+  (let [gw 150 gh 150 cs 3
         init (ca/rd-grid gw gh :center-seed 42)
         params (:mitosis ca/rd-presets)
         states (loop [g init i 0 acc []]
-                 (if (>= i 500)
+                 (if (>= i 800)
                    acc
-                   (let [g' (ca/rd-run g params 10)]
-                     (recur g' (+ i 10)
-                            (if (zero? (mod i 10)) (conj acc g') acc)))))]
+                   (let [g' (ca/rd-run g params 15)]
+                     (recur g' (+ i 15)
+                            (if (zero? (mod i 15)) (conj acc g') acc)))))]
     {:frames
      (anim/frames (count states)
        (fn [t]
@@ -598,22 +593,23 @@
         text-cmds (eido.text/text->path-commands "A"
                     {:font/family "SansSerif" :font/size 400
                      :font/weight :bold})
-        ;; Scale and position the text
+        ;; Font coords have Y pointing up; flip and center in canvas
+        transform-pt (fn [[x y]] [(+ 70 (* 1.2 x)) (+ 420 (* 1.2 y))])
         scaled (mapv (fn [[cmd & args]]
                        (case cmd
-                         :move-to [:move-to (mapv #(+ 60 (* 1.0 %)) (first args))]
-                         :line-to [:line-to (mapv #(+ 60 (* 1.0 %)) (first args))]
+                         :move-to  [:move-to (transform-pt (first args))]
+                         :line-to  [:line-to (transform-pt (first args))]
                          :curve-to [:curve-to
-                                    (mapv #(+ 60 (* 1.0 %)) (first args))
-                                    (mapv #(+ 60 (* 1.0 %)) (second args))
-                                    (mapv #(+ 60 (* 1.0 %)) (nth args 2))]
-                         :quad-to [:quad-to
-                                   (mapv #(+ 60 (* 1.0 %)) (first args))
-                                   (mapv #(+ 60 (* 1.0 %)) (second args))]
+                                    (transform-pt (first args))
+                                    (transform-pt (second args))
+                                    (transform-pt (nth args 2))]
+                         :quad-to  [:quad-to
+                                    (transform-pt (first args))
+                                    (transform-pt (second args))]
                          :close [:close]))
                      text-cmds)
         circles (circle/circle-pack-in-path scaled
-                  {:min-radius 2 :max-radius 20 :padding 1.5
+                  {:min-radius 2 :max-radius 18 :padding 1.5
                    :max-circles 400 :seed 42})
         pal (:neon palette/palettes)]
     {:image/size [w h]
@@ -773,19 +769,19 @@
 
 ;; --- 26. RD Waves ---
 
-(defn ^{:example {:output "gen-rd-waves.png"
-                  :title  "Standing Waves"
-                  :desc   "Reaction-diffusion waves preset with cool blue coloring."}}
-  rd-waves []
-  (let [gw 120 gh 90 cs 5
-        g (ca/rd-run (ca/rd-grid gw gh :random-seeds 42)
-            (:waves ca/rd-presets) 800)]
+(defn ^{:example {:output "gen-rd-ripple.png"
+                  :title  "Ripple"
+                  :desc   "Reaction-diffusion ripple preset with cool blue coloring."}}
+  rd-ripple []
+  (let [gw 200 gh 150 cs 3
+        g (ca/rd-run (ca/rd-grid gw gh :center-seed 42)
+            (:ripple ca/rd-presets) 1200)]
     {:image/size [(* gw cs) (* gh cs)]
      :image/background [:color/rgb 5 10 30]
      :image/nodes
      (ca/rd->nodes g cs
-       (fn [a b]
-         (let [v (min 1.0 (* b 8))]
+       (fn [_a b]
+         (let [v (min 1.0 (* b 3))]
            [:color/rgb
             (int (* 40 v))
             (int (+ 10 (* 150 v)))
@@ -815,4 +811,4 @@
   (boids-seek)
   (terrain-stripes)
   (series-showcase)
-  (rd-waves))
+  (rd-ripple))

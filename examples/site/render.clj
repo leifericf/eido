@@ -47,15 +47,15 @@
 
 (def example-namespaces
   "Namespaces to scan for example functions."
-  '[gallery.art
+  '[gallery.generative
+    gallery.showcase
+    gallery.art
+    gallery.artisan
     gallery.scenes-2d
     gallery.scenes-3d
     gallery.mixed
     gallery.particles
-    gallery.typography
-    gallery.showcase
-    gallery.artisan
-    gallery.generative])
+    gallery.typography])
 
 (def api-namespace-groups
   "API namespaces organized by category for sidebar display."

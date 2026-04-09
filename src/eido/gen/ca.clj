@@ -93,11 +93,12 @@
 ;; --- Reaction-Diffusion (Gray-Scott) ---
 
 (def rd-presets
-  "Named parameter sets for Gray-Scott reaction-diffusion."
-  {:coral   {:feed 0.0545 :kill 0.062 :da 1.0 :db 0.5 :dt 1.0}
-   :mitosis {:feed 0.0367 :kill 0.0649 :da 1.0 :db 0.5 :dt 1.0}
-   :waves   {:feed 0.014  :kill 0.054 :da 1.0 :db 0.5 :dt 1.0}
-   :spots   {:feed 0.035  :kill 0.065 :da 1.0 :db 0.5 :dt 1.0}})
+  "Named parameter sets for Gray-Scott reaction-diffusion.
+  All produce visible patterns within 500-2000 steps on 100x100+ grids."
+  {:coral   {:feed 0.055  :kill 0.062 :da 1.0 :db 0.5 :dt 1.0}
+   :mitosis {:feed 0.028  :kill 0.062 :da 1.0 :db 0.5 :dt 1.0}
+   :ripple  {:feed 0.025  :kill 0.06  :da 1.0 :db 0.5 :dt 1.0}
+   :spots   {:feed 0.039  :kill 0.058 :da 1.0 :db 0.5 :dt 1.0}})
 
 (defn rd-grid
   "Creates initial reaction-diffusion concentration grids.
