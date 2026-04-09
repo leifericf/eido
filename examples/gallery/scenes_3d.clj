@@ -720,6 +720,107 @@
                  :light/ambient 0.2
                  :light/intensity 0.8}})]}))
 
+;; --- 27. Smooth Geodesic Sphere ---
+
+(defn ^{:example {:output "3d-smooth-geodesic.png"
+                  :title  "Smooth Geodesic Sphere"
+                  :desc   "Icosahedron subdivided twice with smooth shading — no facet lines visible."}}
+  smooth-geodesic []
+  (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.5)
+                 (s3d/subdivide {:iterations 2}))
+        proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
+                        [0 0 0] 5 0.4 -0.3)]
+    {:image/size [400 400]
+     :image/background [:color/rgb 245 243 238]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:style {:style/fill [:color/rgb 100 160 200]}
+         :light {:light/direction [1 2 1]
+                 :light/ambient 0.2
+                 :light/intensity 0.8}
+         :shading :smooth})]}))
+
+;; --- 28. Sweep Tube ---
+
+(defn ^{:example {:output "3d-sweep-tube.png"
+                  :title  "Sweep Tube"
+                  :desc   "A circular cross-section swept along a winding 3D path."}}
+  sweep-tube []
+  (let [;; Circular profile
+        n-prof 8
+        profile (mapv (fn [i]
+                        (let [a (* (/ (* 2 Math/PI) n-prof) i)]
+                          [(* 0.2 (Math/cos a)) (* 0.2 (Math/sin a))]))
+                      (range n-prof))
+        mesh (-> (s3d/sweep-mesh
+                   {:profile profile
+                    :path [[0 0 0] [1 0.8 0.5] [2 0 1] [3 0.5 0]
+                           [4 0 -0.5] [5 0.8 0]]
+                    :segments 40})
+                 (s3d/color-mesh {:color/type :axis-gradient
+                                  :color/axis :x
+                                  :color/palette [[:color/rgb 200 60 60]
+                                                  [:color/rgb 60 60 200]
+                                                  [:color/rgb 60 200 60]]}))
+        proj (s3d/look-at (s3d/orthographic {:scale 50 :origin [200 200]})
+                          [3 3 4] [2.5 0.3 0])]
+    {:image/size [400 400]
+     :image/background [:color/rgb 30 28 35]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:light {:light/direction [1 2 0.5]
+                 :light/ambient 0.2
+                 :light/intensity 0.8}
+         :shading :smooth})]}))
+
+;; --- 29. Auto-Smooth Cube ---
+
+(defn ^{:example {:output "3d-auto-smooth-cube.png"
+                  :title  "Auto-Smooth Cube"
+                  :desc   "A cube subdivided with hard edges preserved — smooth surfaces with crisp corners."}}
+  auto-smooth-cube []
+  (let [base (s3d/cube-mesh [-1 -1 -1] 2)
+        hard (s3d/auto-smooth-edges base {:angle (/ Math/PI 4)})
+        mesh (s3d/subdivide base {:iterations 3 :hard-edges hard})
+        proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
+                        [0 0 0] 5 0.6 -0.35)]
+    {:image/size [400 400]
+     :image/background [:color/rgb 245 243 238]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:style {:style/fill [:color/rgb 180 160 200]}
+         :light {:light/direction [1 2 0.5]
+                 :light/ambient 0.2
+                 :light/intensity 0.8}
+         :shading :smooth})]}))
+
+;; --- 30. Greebled Panel ---
+
+(defn ^{:example {:output "3d-greebled-panel.png"
+                  :title  "Greebled Panel"
+                  :desc   "A cube with noise-driven surface detail — procedural mechanical panels."}}
+  greebled-panel []
+  (let [mesh (-> (s3d/cube-mesh [-1 -1 -1] 2)
+                 (s3d/subdivide {:iterations 1})
+                 (s3d/greeble-faces {:select/by :all
+                                     :greeble/field (field/noise-field :scale 4.0 :seed 77)
+                                     :greeble/inset 0.08
+                                     :greeble/depth-range [0.01 0.12]})
+                 (s3d/color-mesh {:color/type :field
+                                  :color/field (field/noise-field :scale 2.0 :seed 77)
+                                  :color/palette [[:color/rgb 140 150 160]
+                                                  [:color/rgb 100 110 120]
+                                                  [:color/rgb 170 175 180]]}))
+        proj (s3d/orbit (s3d/orthographic {:scale 55 :origin [200 200]})
+                        [0 0 0] 5 0.65 -0.35)]
+    {:image/size [400 400]
+     :image/background [:color/rgb 25 25 30]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:light {:light/direction [1 2 0.5]
+                 :light/ambient 0.15
+                 :light/intensity 0.85}})]}))
+
 (comment
   ;; Evaluate individual examples at the REPL:
   (utah-teapot)
@@ -747,4 +848,8 @@
   (crystal-cluster)
   (geometric-panels)
   (geodesic-sphere)
-  (mirrored-sculpture))
+  (mirrored-sculpture)
+  (smooth-geodesic)
+  (sweep-tube)
+  (auto-smooth-cube)
+  (greebled-panel))
