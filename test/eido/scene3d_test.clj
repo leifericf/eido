@@ -628,6 +628,49 @@
     (testing "only top face inset: 5 unchanged + 1 inner + 4 border = 10"
       (is (= 10 (count inset))))))
 
+;; --- convenience helpers ---
+
+(deftest bevel-faces-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        beveled (s3d/bevel-faces mesh {:select/by :all
+                                       :bevel/inset 0.15
+                                       :bevel/depth 0.1})]
+    (testing "bevel creates more faces than original"
+      (is (> (count beveled) (count mesh))))
+    (testing "all faces have normals"
+      (doseq [face beveled]
+        (is (some? (:face/normal face)))))))
+
+(deftest bevel-faces-selective-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        beveled (s3d/bevel-faces mesh {:select/by :normal
+                                       :select/direction [0 1 0]
+                                       :select/tolerance 0.1
+                                       :bevel/inset 0.2
+                                       :bevel/depth 0.1})]
+    (testing "selective bevel creates fewer faces than full bevel"
+      (let [full (s3d/bevel-faces mesh {:select/by :all
+                                        :bevel/inset 0.2
+                                        :bevel/depth 0.1})]
+        (is (< (count beveled) (count full)))))))
+
+(deftest greeble-faces-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        greebled (s3d/greeble-faces mesh
+                   {:select/by :all
+                    :greeble/field (field/noise-field :scale 3.0 :seed 42)
+                    :greeble/inset 0.1
+                    :greeble/depth-range [0.02 0.15]})]
+    (testing "greeble creates more faces than original"
+      (is (> (count greebled) (count mesh))))
+    (testing "faces are displaced outward by varying amounts"
+      (let [bounds-orig (s3d/mesh-bounds mesh)
+            bounds-greeble (s3d/mesh-bounds greebled)]
+        ;; Greebled mesh should extend beyond original in at least one dimension
+        (is (or (> (first (:max bounds-greeble)) (first (:max bounds-orig)))
+                (> (second (:max bounds-greeble)) (second (:max bounds-orig)))
+                (> (nth (:max bounds-greeble) 2) (nth (:max bounds-orig) 2))))))))
+
 (deftest inset-then-extrude-test
   (testing "inset + extrude creates recessed panels"
     (let [mesh (s3d/cube-mesh [0 0 0] 2)

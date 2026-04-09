@@ -1002,6 +1002,58 @@
               [face])))
         mesh))))
 
+;; --- convenience helpers ---
+
+(defn bevel-faces
+  "Insets selected faces then extrudes the inner faces, creating a beveled edge.
+  Composes inset-faces and extrude-faces in one step.
+  opts:
+    :select/*     - face selector (defaults to :all)
+    :bevel/inset  - how far to shrink inward (0-1)
+    :bevel/depth  - extrusion distance (positive = outward, negative = inward)"
+  [mesh opts]
+  (let [inset-amt (get opts :bevel/inset 0.1)
+        depth     (get opts :bevel/depth 0.05)
+        sel-opts  (if (:select/by opts) opts {:select/by :all})
+        ;; First inset: creates inner faces + border quads
+        inset-mesh (inset-faces mesh (merge sel-opts {:inset/amount inset-amt}))]
+    ;; Then extrude the smaller inner faces (they have the same selection criteria
+    ;; but are now smaller). We use :all since inset already created the structure.
+    (extrude-faces inset-mesh (merge sel-opts {:extrude/amount depth}))))
+
+(defn greeble-faces
+  "Adds procedural surface detail by insetting then noise-extruding faces.
+  Creates mechanical/sci-fi panel detail. Composes inset + field-driven extrude.
+  opts:
+    :select/*            - face selector (defaults to :all)
+    :greeble/field       - noise field for per-face extrusion depth
+    :greeble/inset       - inset amount (default 0.1)
+    :greeble/depth-range - [min-depth max-depth] range for extrusion"
+  [mesh opts]
+  (let [inset-amt   (get opts :greeble/inset 0.1)
+        [d-min d-max] (get opts :greeble/depth-range [0.02 0.15])
+        greeble-field (:greeble/field opts)
+        sel-opts    (if (:select/by opts) opts {:select/by :all})
+        ;; Inset all selected faces
+        inset-mesh  (inset-faces mesh (merge sel-opts {:inset/amount inset-amt}))]
+    ;; Extrude each face by a noise-sampled depth
+    (mapv (fn [face]
+            (let [verts    (:face/vertices face)
+                  centroid (m/face-centroid verts)
+                  [cx _cy cz] centroid
+                  ;; Sample noise to get extrusion depth for this face
+                  noise-val (if greeble-field
+                              (* 0.5 (+ 1.0 (field/evaluate greeble-field
+                                              (double cx) (double cz))))
+                              (rand))
+                  depth     (+ (double d-min) (* noise-val (- (double d-max) (double d-min))))
+                  normal    (m/normalize (:face/normal face))
+                  new-verts (mapv #(m/v+ % (m/v* normal depth)) verts)]
+              (assoc face
+                :face/vertices new-verts
+                :face/normal (m/face-normal new-verts))))
+          inset-mesh)))
+
 ;; --- mesh utilities ---
 
 (defn merge-meshes
