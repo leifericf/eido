@@ -253,8 +253,8 @@
   (let [[bx bz bw bd] bounds
         [cols rows] grid
         h     (double (or height 1.0))
-        dx    (/ (double bw) (dec (int cols)))
-        dz    (/ (double bd) (dec (int rows)))
+        dx    (if (> cols 1) (/ (double bw) (dec (int cols))) 0.0)
+        dz    (if (> rows 1) (/ (double bd) (dec (int rows))) 0.0)
         ;; Sample grid of Y values
         pts   (vec (for [r (range rows)
                          c (range cols)]

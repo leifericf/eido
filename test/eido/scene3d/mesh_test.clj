@@ -75,3 +75,18 @@
                       (pos? ny)))
                   faces)
           "all face normals should point up for a flat surface"))))
+
+(deftest heightfield-mesh-single-row-test
+  (testing "single row or column does not throw division by zero"
+    (is (= [] (mesh/heightfield-mesh
+                {:field {:field/type :field/constant :field/value 0.0}
+                 :bounds [0 0 2 2]
+                 :grid [1 3]
+                 :height 1.0}))
+        "single column produces no faces")
+    (is (= [] (mesh/heightfield-mesh
+                {:field {:field/type :field/constant :field/value 0.0}
+                 :bounds [0 0 2 2]
+                 :grid [3 1]
+                 :height 1.0}))
+        "single row produces no faces")))
