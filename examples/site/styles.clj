@@ -80,14 +80,14 @@
               :text-align  "center"
               :color       (:text-muted colors)
               :font-size   "0.85rem"}]
-   [:.alpha-banner {:text-align     "center"
-                    :font-size      "0.8rem"
-                    :color          "#b0a070"
-                    :background     "rgba(180, 160, 80, 0.08)"
-                    :border         "1px solid rgba(180, 160, 80, 0.2)"
-                    :border-radius  "6px"
-                    :padding        "0.5rem 1rem"
-                    :margin-top     "1rem"}]])
+   [:.beta-banner {:text-align     "center"
+                   :font-size      "0.8rem"
+                   :color          "#7090b0"
+                   :background     "rgba(80, 130, 180, 0.08)"
+                   :border         "1px solid rgba(80, 130, 180, 0.2)"
+                   :border-radius  "6px"
+                   :padding        "0.5rem 1rem"
+                   :margin-top     "1rem"}]])
 
 ;; --- Hero (landing page) ---
 

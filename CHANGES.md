@@ -1,5 +1,32 @@
 # Changes
 
+## v1.0.0-beta1 — Bug Fixes & Stabilization
+
+### Bug fixes
+
+- Fix box-blur sliding window producing near-black output — accumulators were never initialized, causing catastrophic blur results
+- Fix `path/decorated` nodes silently dropped during semantic compilation — `node->generator` read wrong key (`:decorator/path` instead of `:path/commands`)
+- Fix scatter/decorator group transforms dropped during lowering — all scatter dots rendered at origin instead of their positions (root cause of broken starfield and chromatic-scatter gallery images)
+- Fix generator nodes (flow-field, voronoi, scatter, etc.) ignoring base `:node/opacity`
+- Fix `expand-flow-field` not applying base opacity or fill overrides to child paths
+- Fix `lower-scene-node` passing raw scene transforms (`:transform/translate`) without compiling to concrete format (`:translate`)
+- Fix `analogous` palette crashing with division by zero when n=1
+- Fix `geometry-bounds` returning nil for `:arc` and `:line` geometries — broke hatch/stipple fills on these shapes
+- Fix heightfield-mesh quad winding producing inverted (-Y) normals
+- Fix heightfield-mesh division by zero with single-row or single-column grids
+- Fix normal-map color mapping returning ~1.0 for all axis-aligned normals — X, Y, and Z faces all got the same palette color
+- Fix missing `:arc` and `:line` support in fill lowering (`geometry->scene-node`, `scene-node->op`), transform path conversion, clip shape handling, and SVG clip export
+- Fix arc clip shape using full ellipse instead of arc sector
+
+### Performance
+
+- Add `eido/*validate*` dynamic var — skip spec validation for ~3.4x faster REPL re-renders
+- Dev helpers (`show`, `watch-file`, `watch-scene`) validate first render only, then skip on subsequent calls
+
+### Docs
+
+- Document REPL validation behavior and `*validate*` binding in docs site and `render` docstring
+
 ## v1.0.0-alpha10 — Namespace Restructuring
 
 **Breaking change**: Major namespace reorganization to improve API discoverability and documentation structure as Eido matures toward a stable release. This is a one-time restructuring effort to establish clean, consistent namespace boundaries.

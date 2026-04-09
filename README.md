@@ -45,7 +45,7 @@ If it cannot be represented as plain data, it probably should not be in the libr
 Add eido as a git dependency in your `deps.edn`:
 
 ```clojure
-io.github.leifericf/eido {:git/tag "v1.0.0-alpha10" :git/sha "ee4c5d0"}
+io.github.leifericf/eido {:git/tag "v1.0.0-beta1" :git/sha "65fcfac"}
 ```
 
 ## Quick Start
@@ -86,4 +86,4 @@ clj -X:test
 
 ## Status
 
-v1.0.0-alpha10 — The API is still evolving and may change without notice.
+**Beta** — The core API is stabilizing. Breaking changes may still occur between releases, but the fundamentals are in place.

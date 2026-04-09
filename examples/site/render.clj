@@ -461,8 +461,8 @@
                        (mapcat :examples)
                        (mapv :output))]
     (html-page {:title "Eido" :active-page :home :depth 0}
-      [:div.alpha-banner
-       "Early alpha — under heavy development. Expect some breaking changes between releases."]
+      [:div.beta-banner
+       "Beta — The core API is stabilizing. Breaking changes may still occur between releases, but the fundamentals are in place."]
       [:section.hero
        [:h1.hero-title "Eido"]
        [:p.hero-tagline "Describe what you see as plain data"]
