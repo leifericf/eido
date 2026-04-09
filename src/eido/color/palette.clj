@@ -12,11 +12,13 @@
 (defn analogous
   "Returns n colors spread evenly across a 60-degree arc centered on c."
   [c n]
-  (let [spread 60
-        step (/ (double spread) (dec n))]
-    (mapv (fn [i]
-            (color/rotate-hue c (- (* i step) (/ spread 2.0))))
-          (range n))))
+  (if (<= n 1)
+    [c]
+    (let [spread 60
+          step (/ (double spread) (dec n))]
+      (mapv (fn [i]
+              (color/rotate-hue c (- (* i step) (/ spread 2.0))))
+            (range n)))))
 
 (defn triadic
   "Returns 3 colors evenly spaced at 120-degree intervals."

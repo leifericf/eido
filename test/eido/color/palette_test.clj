@@ -22,7 +22,11 @@
     (is (= 5 (count (palette/analogous [:color/rgb 255 0 0] 5)))))
   (testing "all returned values are color vectors"
     (is (every? #(#{:color/rgb :color/rgba} (first %))
-                (palette/analogous [:color/rgb 255 0 0] 3)))))
+                (palette/analogous [:color/rgb 255 0 0] 3))))
+  (testing "n=1 returns single color without division by zero"
+    (let [result (palette/analogous [:color/rgb 255 0 0] 1)]
+      (is (= 1 (count result)))
+      (is (= [:color/rgb 255 0 0] (first result))))))
 
 ;; --- triadic ---
 
