@@ -444,7 +444,8 @@
     ;; Generator nodes
     (if-let [gen (and (generator-node-types node-type)
                       (node->generator node))]
-      {:item/generator gen}
+      (cond-> {:item/generator gen}
+        (:node/opacity node) (assoc :item/opacity (:node/opacity node)))
       ;; Shape nodes
       (let [geom (case node-type
                    :shape/rect

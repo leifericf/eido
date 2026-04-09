@@ -757,3 +757,40 @@
           "path/decorated should produce at least one circle op")
       (is (every? #(= :circle (:op %)) ops)
           "all ops should be circles"))))
+
+;; --- flow-field style propagation tests ---
+
+(deftest compile-flow-field-base-opacity-test
+  (testing "flow-field base :node/opacity propagates to child paths"
+    (let [scene {:image/size [200 200]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type  :flow-field
+                   :flow/bounds [0 0 200 200]
+                   :flow/opts  {:density 80 :steps 5 :seed 42}
+                   :node/opacity 0.3
+                   :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}
+          ir (compile/compile scene)
+          ops (:ir/ops ir)]
+      ;; Should have path ops generated from the flow field
+      (is (pos? (count ops)))
+      ;; Every op should carry the base opacity
+      (is (every? #(= 0.3 (:opacity %)) ops)
+          "base opacity should propagate to all flow-field paths"))))
+
+(deftest compile-flow-field-fill-override-test
+  (testing "flow-field per-item fill override takes effect"
+    (let [scene {:image/size [200 200]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type  :flow-field
+                   :flow/bounds [0 0 200 200]
+                   :flow/opts  {:density 80 :steps 5 :seed 42}
+                   :style/fill {:color [:color/rgb 100 100 100]}
+                   :flow/overrides [{:style/fill {:color [:color/rgb 255 0 0]}}]}]}
+          ir (compile/compile scene)
+          ops (:ir/ops ir)]
+      (is (pos? (count ops)))
+      ;; Every op should have the override fill (red), not the base fill (gray)
+      (is (every? #(= {:r 255 :g 0 :b 0 :a 1.0} (:fill %)) ops)
+          "override fill should replace base fill on all paths"))))

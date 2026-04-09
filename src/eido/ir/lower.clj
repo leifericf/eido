@@ -334,7 +334,12 @@
    (cond
      ;; Generator items
      (:item/generator item)
-     ((requiring-resolve 'eido.ir.generator/expand-generator) (:item/generator item))
+     (let [gen-ops ((requiring-resolve 'eido.ir.generator/expand-generator)
+                     (:item/generator item))
+           item-opacity (or (:item/opacity item) 1.0)]
+       (if (== 1.0 (double item-opacity))
+         gen-ops
+         (mapv #(assoc % :opacity (* (:opacity %) item-opacity)) gen-ops)))
 
      ;; Group items — thread context to children
      (:item/group item)
