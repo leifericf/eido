@@ -1169,6 +1169,37 @@
                 face)))
           mesh)))
 
+;; --- specular maps ---
+
+(defn specular-map-mesh
+  "Varies specular intensity per vertex using a field sampled at UV coordinates.
+  Requires :face/texture-coords on faces. The material's specular value is
+  overridden per sub-triangle during rendering.
+  opts:
+    :specular-map/field - field descriptor
+    :specular-map/range - [min-spec max-spec] (default [0.0 1.0])
+    :select/*           - optional face selector"
+  [mesh opts]
+  (let [f     (:specular-map/field opts)
+        [lo hi] (get opts :specular-map/range [0.0 1.0])
+        lo    (double lo)
+        range (- (double hi) lo)
+        sel   (when (:select/by opts) (make-face-selector opts))]
+    (mapv (fn [face]
+            (let [verts    (:face/vertices face)
+                  centroid (m/face-centroid verts)
+                  normal   (:face/normal face)
+                  uvs      (:face/texture-coords face)]
+              (if (and uvs (or (nil? sel) (sel face centroid normal)))
+                (let [specs (mapv (fn [uv]
+                                    (let [[u v] uv
+                                          t (* 0.5 (+ 1.0 (field/evaluate f (double u) (double v))))]
+                                      (+ lo (* t range))))
+                                  uvs)]
+                  (assoc face :face/vertex-specular specs))
+                face)))
+          mesh)))
+
 ;; --- polygonal modeling ---
 
 (defn extrude-faces
@@ -1490,8 +1521,9 @@
                                    shade-normal)
                    vert-colors   (:face/vertex-colors face)
                    vert-normals  (:face/vertex-normals face)
+                   vert-specular (:face/vertex-specular face)
                    verts         (:face/vertices face)]
-               (if (or vert-colors vert-normals)
+               (if (or vert-colors vert-normals vert-specular)
                  ;; Fan-triangulate for per-vertex interpolation
                  (let [n          (count verts)
                        center-2d  (let [ps (mapv proj-fn verts)
@@ -1508,7 +1540,9 @@
                                          (int (/ (reduce + bs) n))]))
                        center-normal (when vert-normals
                                        (m/normalize
-                                         (reduce m/v+ [0.0 0.0 0.0] vert-normals)))]
+                                         (reduce m/v+ [0.0 0.0 0.0] vert-normals)))
+                       center-specular (when vert-specular
+                                         (/ (reduce + vert-specular) n))]
                    (for [i (range n)
                          :let [j  (mod (inc i) n)
                                p0 (proj-fn (nth verts i))
@@ -1525,15 +1559,24 @@
                                tri-shade-normal (if (neg? facing)
                                                   (m/v* tri-shade-normal -1)
                                                   tri-shade-normal)
-                               ;; Per-sub-triangle color
-                               tri-style (if vert-colors
-                                           (let [c0 (nth vert-colors i)
-                                                 c1 (nth vert-colors j)
-                                                 avg (lerp-color
-                                                       (lerp-color c0 c1 0.5)
-                                                       center-color 0.333)]
-                                             (assoc (or face-style {}) :style/fill avg))
-                                           face-style)
+                               ;; Per-sub-triangle specular override
+                               tri-style (let [s (if vert-colors
+                                                   (let [c0 (nth vert-colors i)
+                                                         c1 (nth vert-colors j)
+                                                         avg (lerp-color
+                                                               (lerp-color c0 c1 0.5)
+                                                               center-color 0.333)]
+                                                     (assoc (or face-style {}) :style/fill avg))
+                                                   face-style)]
+                                           (if vert-specular
+                                             (let [avg-spec (/ (+ (nth vert-specular i)
+                                                                  (nth vert-specular j)
+                                                                  (double center-specular))
+                                                               3.0)]
+                                               (if (:material s)
+                                                 (assoc-in s [:material :material/specular] avg-spec)
+                                                 s))
+                                             s))
                                shaded    (shade-face-style tri-style tri-shade-normal
                                            norm-light-dir light cam-dir
                                            lights centroid)

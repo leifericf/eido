@@ -693,6 +693,24 @@
       (is (= :group (:node/type result)))
       (is (pos? (count (:group/children result)))))))
 
+;; --- specular maps ---
+
+(deftest specular-map-mesh-test
+  (let [mesh (-> (s3d/sphere-mesh 1.0 8 4)
+                 (s3d/uv-project {:uv/method :spherical}))
+        mapped (s3d/specular-map-mesh mesh
+                 {:specular-map/field (field/noise-field :scale 3.0 :seed 42)
+                  :specular-map/range [0.1 0.8]})]
+    (testing "every face has vertex specular"
+      (doseq [face mapped]
+        (is (some? (:face/vertex-specular face)))
+        (is (= (count (:face/vertices face))
+               (count (:face/vertex-specular face))))))
+    (testing "specular values are in range"
+      (doseq [face mapped
+              s (:face/vertex-specular face)]
+        (is (<= 0.1 s 0.8))))))
+
 ;; --- face selection + polygonal modeling ---
 
 (deftest extrude-faces-all-test
