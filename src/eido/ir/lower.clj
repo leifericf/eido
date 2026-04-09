@@ -173,7 +173,10 @@
   (let [stroke (:style/stroke node)
         fill   (resolve-scene-fill (:style/fill node))
         opacity (get node :node/opacity 1.0)
-        transforms (:node/transform node)
+        transforms (when-let [raw (:node/transform node)]
+                     (mapv (fn [[k & args]]
+                             (into [(keyword (name k))] args))
+                           raw))
         clip    nil
         stroke-color (some-> stroke :color color/resolve-color)
         stroke-width (when stroke (:width stroke))
@@ -227,13 +230,19 @@
 
       ;; Groups — lower children recursively, wrap in BufferOp if needed
       :group
-      (let [child-ops (into [] (map lower-scene-node) (:group/children node))
+      (let [child-ops (into [] (mapcat (fn [c]
+                                         (let [r (lower-scene-node c)]
+                                           (if (vector? r) r [r]))))
+                             (:group/children node))
             composite (:group/composite node)
-            filt      (:group/filter node)]
-        (if (or composite filt)
+            filt      (:group/filter node)
+            has-group-state? (or composite filt
+                                 (seq transforms)
+                                 (not= 1.0 opacity))]
+        (if has-group-state?
           (ir/->BufferOp :buffer (or composite :src-over) filt
                          opacity transforms clip child-ops)
-          ;; Flat group — just return child ops (handled by caller)
+          ;; Truly flat group — no transforms, no opacity, no composite
           child-ops))
 
       (throw (ex-info (str "Cannot lower scene node type: " (:node/type node))

@@ -27,3 +27,6 @@ classes/
 
 # Site build output
 _site/
+
+# Rendered gallery images
+images/

@@ -754,9 +754,9 @@
           ir (compile/compile scene)
           ops (:ir/ops ir)]
       (is (pos? (count ops))
-          "path/decorated should produce at least one circle op")
-      (is (every? #(= :circle (:op %)) ops)
-          "all ops should be circles"))))
+          "path/decorated should produce at least one op")
+      (is (every? #(#{:circle :buffer} (:op %)) ops)
+          "all ops should be circles or buffer groups containing circles"))))
 
 ;; --- flow-field style propagation tests ---
 
