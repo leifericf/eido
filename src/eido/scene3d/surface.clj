@@ -156,11 +156,12 @@
                   total (+ ax ay az)]
               (if (zero? total)
                 0.5
-                (let [mx (max ax ay az)]
+                (let [mx (max ax ay az)
+                      third (/ 1.0 3.0)]
                   (cond
-                    (== mx ax) (/ ax total)
-                    (== mx ay) (/ (+ ax ay) total)
-                    :else      1.0))))))]
+                    (== mx ax) (* (/ ax total) third)
+                    (== mx ay) (+ (* (/ ay total) third) third)
+                    :else      (+ (* (/ az total) third) (* 2.0 third))))))))]
     (mapv (fn [face]
             (let [verts    (:face/vertices face)
                   centroid (m/face-centroid verts)
@@ -226,11 +227,12 @@
                   total (+ ax ay az)]
               (if (zero? total)
                 0.5
-                (let [mx (max ax ay az)]
+                (let [mx (max ax ay az)
+                      third (/ 1.0 3.0)]
                   (cond
-                    (== mx ax) (/ ax total)
-                    (== mx ay) (/ (+ ax ay) total)
-                    :else      1.0))))))]
+                    (== mx ax) (* (/ ax total) third)
+                    (== mx ay) (+ (* (/ ay total) third) third)
+                    :else      (+ (* (/ az total) third) (* 2.0 third))))))))]
     (mapv (fn [face]
             (let [verts    (:face/vertices face)
                   centroid (m/face-centroid verts)
