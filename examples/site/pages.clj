@@ -467,29 +467,26 @@
       [:div
        [:p "Plain randomness gives you chaos. " [:em "Shaped"] " randomness gives you art. Instead of \"pick any number,\" you can say things like \"pick a size, but most should be small with occasional large ones\" or \"choose a color, but make red rare.\" That's what this module is for."]
        [:p "The key idea: every function takes a " [:code "seed"] " — a number that locks the result. Same seed, same output, always. Change the seed and you get a fresh variation. This is how you explore, then freeze a result you like."]
-       [:h4 "Spread evenly or cluster around a center"]
-       [:pre [:code
+       [:h4 "Spread evenly vs. cluster naturally"]
+       [:p [:code "uniform"] " scatters values evenly across a range (top row). "
+        [:code "gaussian"] " clusters them around a center with natural falloff (bottom row) — the \"bell curve\" shape you see everywhere in nature:"]
+       [:pre {:data-img "docs-uniform-vs-gaussian.png"} [:code
               "(require '[eido.gen.prob :as prob])
 
-;; 10 random sizes between 5 and 50 — evenly spread
-(prob/uniform 10 5.0 50.0 42)
+;; Top: 80 dots spread evenly between 20 and 380
+(prob/uniform 80 20.0 380.0 42)
 
-;; 10 sizes clustered around 20 — most near 20, a few larger or smaller
-;; (the \"bell curve\" shape that looks natural)
-(prob/gaussian 10 20.0 5.0 42)"]]
-       [:h4 "Weighted choice — making some options rarer"]
-       [:p "This is how artists control frequency — make most elements neutral, some colorful, and a few rare accents:"]
-       [:pre [:code
-              ";; 60% circles, 30% squares, 10% triangles
+;; Bottom: 80 dots clustered around 200 (mean=200, sd=50)
+(prob/gaussian 80 200.0 50.0 99)"]]
+       [:h4 "Weighted choice — controlling frequency"]
+       [:p "This is how you control what appears most often. Give each option a weight — higher weight means more likely. Here, circles appear 6x more often than triangles:"]
+       [:pre {:data-img "docs-weighted-shapes.png"} [:code
+              ";; 60% circles (blue), 30% squares (gold), 10% triangles (red)
 (prob/pick-weighted [:circle :square :triangle]
-                    [6 3 1] seed)
-
-;; Pick one color from a palette, but make red rare
-(prob/pick-weighted
-  [[:color/rgb 240 240 230]     ;; neutral — weight 5
-   [:color/rgb 50 80 180]       ;; blue — weight 2
-   [:color/rgb 200 40 40]]      ;; red — weight 1
-  [5 2 1] seed)"]]
+                    [6 3 1] seed)"]]
+       [:p "Try changing the weights to see how the balance shifts. Weights of "
+        [:code "[1 1 1]"] " give equal frequency; " [:code "[10 1 1]"]
+        " makes the first option dominant."]
        [:h4 "Coin flips and shuffling"]
        [:pre [:code
               ";; Should this element be fancy? 30% chance
@@ -504,115 +501,138 @@
       :content
       [:div
        [:p "Fill a region with circles of varying sizes, packed tightly without overlapping — like bubbles in a glass or cells under a microscope. It's one of the most visually striking generative techniques and appears constantly in contemporary generative art."]
-       [:pre [:code
+       [:pre {:data-img "docs-circle-pack.png"} [:code
               "(require '[eido.gen.circle :as circle])
 
-;; Pack circles into a 600x600 area
-(circle/circle-pack 0 0 600 600
-  {:min-radius  3       ;; smallest circle
-   :max-radius  40      ;; largest circle
-   :padding     2       ;; gap between circles
-   :max-circles 300     ;; stop after this many
-   :seed        42})    ;; change seed for a new arrangement
-;; => [{:center [x y] :radius r} ...]"]]
-       [:p "The result is plain data — a list of center positions and radii. You decide how to draw them: solid fills, stroked outlines, each with a different color from a weighted palette."]
+;; Pack circles into a region, color them with a weighted palette
+(let [circles (circle/circle-pack 0 0 400 400
+                {:min-radius  3       ;; smallest circle
+                 :max-radius  35      ;; largest circle
+                 :padding     2       ;; gap between circles
+                 :max-circles 200     ;; stop after this many
+                 :seed        42})    ;; change for a new arrangement
+      colors (palette/weighted-sample
+               (:sunset palette/palettes)
+               [3 2 2 1 5] (count circles) 42)]
+  ;; Draw each circle with its sampled color
+  ...)"]]
+       [:p "Tweak " [:code ":min-radius"] " and " [:code ":max-radius"]
+        " to control the size range. Lower " [:code ":padding"]
+        " for tighter packing. Increase " [:code ":max-circles"]
+        " to fill more space."]
        [:h4 "Packing into shapes"]
-       [:p "Pack circles inside any closed shape — text outlines, stars, organic blobs:"]
-       [:pre [:code
-              ";; Pack circles inside a star
+       [:p "Pack circles inside any closed shape — stars, text outlines, hand-drawn blobs:"]
+       [:pre {:data-img "docs-circle-pack-star.png"} [:code
+              ";; Pack circles inside a star — each one a different hue
 (circle/circle-pack-in-path
-  (:path/commands (scene/star [300 300] 250 100 5))
-  {:min-radius 2 :max-radius 20 :seed 42})"]]
-       [:p "Convert to renderable shapes with " [:code "pack->nodes"] ", then apply colors, strokes, or any style you like."]]}
+  (:path/commands (scene/star [200 200] 180 70 5))
+  {:min-radius 2 :max-radius 15 :seed 42})"]]
+       [:p "The result is always plain data — a list of positions and radii. You choose how to draw them."]]}
 
      {:id    "subdivision"
       :title "Rectangular Subdivision"
       :content
       [:div
        [:p "Start with one big rectangle and split it again and again into smaller cells — like a Mondrian painting, a newspaper layout, or an abstract quilt. Each split chooses a random direction and position, creating organic-looking grids that feel structured but not mechanical."]
-       [:pre [:code
+       [:pre {:data-img "docs-subdivide.png"} [:code
               "(require '[eido.gen.subdivide :as sub])
 
-(sub/subdivide 0 0 600 600
+(sub/subdivide 0 0 400 400
   {:depth       4          ;; how many times to split
-   :min-size    40         ;; don't make cells smaller than this
+   :min-size    35         ;; don't make cells smaller than this
    :split-range [0.3 0.7]  ;; how uneven splits can be
-   :padding     4          ;; gap between cells
-   :seed        42})
-;; => [{:rect [x y w h] :depth n} ...]"]]
+   :padding     5          ;; gap between cells
+   :seed        77})"]]
+       [:p "Increase " [:code ":depth"] " for finer divisions. Widen " [:code ":split-range"]
+        " (e.g. " [:code "[0.15 0.85]"] ") for more dramatic size differences. Set "
+        [:code ":h-bias"] " to " [:code "0.0"] " for only vertical splits or "
+        [:code "1.0"] " for only horizontal."]
        [:p "Each cell knows its " [:code ":depth"]
-        " — how many splits deep it is. Use that to vary color intensity, texture density, or content. The real power comes from filling each cell with something different: a circle pack in one, a flow field in another, a flat color in a third."]]}
+        " — use that to vary color, texture, or content. The real power comes from filling each cell with something different: a circle pack in one, a flow field in another, a flat color in a third."]]}
 
      {:id    "weighted-palettes"
       :title "Weighted Palettes"
       :content
       [:div
-       [:p "Real generative art uses color with intention — 60% neutral, 30% primary, 10% accent. Weighted palettes give you explicit control over color frequency:"]
-       [:pre [:code
+       [:p "Real generative art uses color with intention — 60% neutral, 30% primary, 10% accent. Weighted palettes give you explicit control over how often each color appears:"]
+       [:pre {:data-img "docs-weighted-palette.png"} [:code
               "(require '[eido.color.palette :as palette])
 
-;; Sample 100 colors: heavy on neutral, rare accent
+;; Sample 100 colors from a palette with weights
+;; Neutral dominates, accent is rare
 (palette/weighted-sample
-  [[:color/rgb 240 235 225]    ;; neutral
-   [:color/rgb 200 50 50]      ;; primary
-   [:color/rgb 50 120 200]     ;; secondary
-   [:color/rgb 255 200 0]]     ;; accent
-  [5 2 2 1]                    ;; weights
+  [[:color/rgb 240 235 225]    ;; neutral  — weight 5
+   [:color/rgb 200 50 50]      ;; primary  — weight 2
+   [:color/rgb 50 120 200]     ;; secondary — weight 2
+   [:color/rgb 255 200 0]]     ;; accent   — weight 1
+  [5 2 2 1]
   100 seed)"]]
-       [:p [:code "weighted-gradient"] " creates gradient stops where each color occupies space proportional to its weight — feed directly into " [:code "gradient-map"] ":"]
-       [:pre [:code
-              "(def stops (palette/weighted-gradient my-palette [5 2 1]))
-(palette/gradient-map stops t)  ;; sample at any t in [0,1]"]]
-       [:p [:code "shuffle-palette"] " randomizes color order deterministically — useful for giving each edition in a series a different color arrangement from the same palette."]]}
+       [:p "The bar chart above shows the sampled colors in order — notice how the neutral cream dominates, while the gold accent appears sparingly. Change the weights to shift the balance."]
+       [:p [:code "weighted-gradient"] " creates gradient stops where each color occupies proportional space — feed into " [:code "gradient-map"] " for smooth interpolation. "
+        [:code "shuffle-palette"] " randomizes color order with a seed — great for giving each edition a different arrangement from the same palette."]]}
 
      {:id    "path-aesthetics"
       :title "Path Aesthetics"
       :content
       [:div
-       [:p "Three helpers that transform path commands to achieve common artistic effects — smoothing, hand-drawn jitter, and dashing:"]
+       [:p "Three helpers that transform any path into something that looks more organic, hand-drawn, or stylized. They work on path commands and return path commands, so you can chain them freely."]
        [:h4 "Smoothing"]
-       [:p "Convert angular polylines into smooth curves via Catmull-Rom fitting:"]
-       [:pre [:code
+       [:p "Turn angular polylines (gray) into flowing curves (red). The " [:code ":samples"] " option controls how many points to fit — more points means a tighter fit:"]
+       [:pre {:data-img "docs-smooth-vs-raw.png"} [:code
               "(require '[eido.path.aesthetic :as aesthetic])
 
-;; Smooth a flow field streamline
 (aesthetic/smooth-commands path-cmds {:samples 40})"]]
-       [:h4 "Jitter"]
-       [:p "Add organic, hand-drawn wobble to any path:"]
-       [:pre [:code
+       [:h4 "Jitter — hand-drawn wobble"]
+       [:p "Add organic irregularity to any path. Control the intensity with " [:code ":amount"] " — subtle (blue, amount 4) vs. dramatic (red, amount 12):"]
+       [:pre {:data-img "docs-jitter.png"} [:code
               "(aesthetic/jittered-commands path-cmds
-  {:amount 3.0 :seed 42})"]]
+  {:amount 4.0   ;; displacement intensity
+   :seed 42})    ;; change seed for different wobble"]]
        [:h4 "Dashing"]
-       [:p "Break a path into dash segments by arc length:"]
-       [:pre [:code
-              "(aesthetic/dash-commands path-cmds
-  {:dash [15.0 8.0]     ;; 15px on, 8px off
-   :offset 3.0})        ;; shift pattern start
-;; => [[[:move-to ...] [:line-to ...]] ...]  one vector per dash"]]
-       [:p "All three compose freely: smooth, then jitter, then dash — or any order."]]}
+       [:p "Break a continuous path into dash segments. Three different dash patterns on the same line:"]
+       [:pre {:data-img "docs-dashes.png"} [:code
+              ";; Top: 15px on, 8px off
+(aesthetic/dash-commands path-cmds {:dash [15.0 8.0]})
+
+;; Middle: long dashes
+(aesthetic/dash-commands path-cmds {:dash [30.0 5.0]})
+
+;; Bottom: dots
+(aesthetic/dash-commands path-cmds {:dash [5.0 15.0]})"]]
+       [:h4 "Combining them — dashed flow field"]
+       [:p "The real power is chaining: smooth a flow field, then dash it. Each streamline becomes a series of short, flowing strokes:"]
+       [:pre {:data-img "docs-dashed-flow.png"} [:code
+              "(let [paths (flow/flow-field 20 20 460 360
+                {:density 30 :steps 35 :seed 42})]
+  (mapcat (fn [path]
+            (-> (:path/commands path)
+                (aesthetic/smooth-commands {:samples 30})
+                (aesthetic/dash-commands {:dash [10.0 6.0]})))
+          paths))"]]
+       [:p "Try different " [:code ":dash"] " ratios, " [:code ":density"]
+        " values, and " [:code ":seed"] "s to find the feel you want."]]}
 
      {:id    "series"
       :title "Long-Form Series"
       :content
       [:div
-       [:p "For Art Blocks / fxhash-style workflows: one algorithm, many outputs, each keyed by a seed. The " [:code "eido.gen.series"] " module handles deterministic parameter derivation so nearby editions are uncorrelated:"]
-       [:pre [:code
+       [:p "For Art Blocks / fxhash-style workflows: one algorithm, many outputs, each keyed by an edition number. You define a parameter spec — which values vary and how — and the series module generates independent, deterministic parameters for each edition:"]
+       [:pre {:data-img "docs-series-grid.png"} [:code
               "(require '[eido.gen.series :as series])
 
+;; Define what varies across editions
 (def spec
-  {:hue     {:type :uniform :lo 0 :hi 360}
-   :density {:type :gaussian :mean 30 :sd 5}
-   :palette {:type :choice :options [:sunset :ocean :fire]}
-   :fancy   {:type :boolean :probability 0.2}})
+  {:hue {:type :uniform :lo 0 :hi 360}
+   :r   {:type :gaussian :mean 20 :sd 8}})
 
-;; Generate parameters for edition #42
-(series/series-params spec master-seed 42)
-;; => {:hue 234.5, :density 28.3, :palette :ocean, :fancy false}
-
-;; Preview a range of editions
-(series/series-range spec master-seed 0 100)"]]
-       [:p "Each parameter type maps to a probability distribution from " [:code "eido.gen.prob"]
-        ". The " [:code "edition-seed"] " function uses murmur3-style hashing to ensure edition 41 and 42 produce completely independent parameters."]]}
+;; Generate parameters for editions 0-8
+(series/series-range spec master-seed 0 9)
+;; Each edition gets different hue and radius values"]]
+       [:p "The grid above shows 9 editions from the same spec — each with a unique hue and size, all derived deterministically from the master seed. Edition 41 and edition 42 are completely uncorrelated despite being neighbors."]
+       [:p "Available parameter types: " [:code ":uniform"] " (even spread), "
+        [:code ":gaussian"] " (clustered), " [:code ":choice"] " (pick from a list), "
+        [:code ":weighted-choice"] " (pick with weights), and "
+        [:code ":boolean"] " (coin flip with probability)."]]}
 
      {:id    "cellular-automata"
       :title "Cellular Automata & Reaction-Diffusion"
@@ -621,27 +641,27 @@
        [:p "Some of the most mesmerizing organic patterns come from simple rules applied to a grid, over and over. Cells interact with their neighbors, and complex behavior " [:em "emerges"] " — coral-like growth, dividing cells, rippling waves."]
        [:h4 "Cellular Automata"]
        [:p "The classic Game of Life — and any custom rule set. Start with a random grid, run it forward, and render the result. Each generation, cells are born or die based on how many living neighbors they have:"]
-       [:pre [:code
+       [:pre {:data-img "docs-ca-life.png"} [:code
               "(require '[eido.gen.ca :as ca])
 
 (let [grid    (ca/ca-grid 50 50 :random 42)    ;; random starting state
-      evolved (ca/ca-run grid :life 100)]       ;; run 100 generations
-  (ca/ca->nodes evolved 8                       ;; 8px per cell
+      evolved (ca/ca-run grid :life 50)]        ;; run 50 generations
+  (ca/ca->nodes evolved 10                      ;; 10px per cell
     {:style/fill [:color/rgb 30 30 30]}))"]]
        [:p "Try " [:code ":highlife"] " for a different flavor, or define your own rules with "
         [:code "{:birth #{3 6} :survive #{2 3}}"] " — specify exactly how many neighbors cause birth or survival."]
        [:h4 "Reaction-Diffusion"]
        [:p "Two invisible chemicals spread across a surface and react with each other, creating organic spots, stripes, and coral-like growth. This is the math behind animal skin patterns and mineral formations. Eido includes named presets so you can jump right in:"]
-       [:pre [:code
+       [:pre {:data-img "docs-rd-coral.png"} [:code
               ";; Grow coral-like patterns from a center seed
-(let [grid   (ca/rd-grid 100 100 :center-seed 42)
-      result (ca/rd-run grid (:coral ca/rd-presets) 500)]
+(let [grid   (ca/rd-grid 80 80 :center-seed 42)
+      result (ca/rd-run grid (:coral ca/rd-presets) 400)]
   (ca/rd->nodes result 5
     (fn [a b]  ;; a and b are the two chemical concentrations
       [:color/rgb
-       (int (* 255 a))
-       (int (* 255 (- 1 b)))
-       (int (* 128 b))])))"]]
+       (int (+ 10 (* 80 (min 1.0 (* b 4)))))
+       (int (+ 20 (* 120 (min 1.0 (* b 4)))))
+       (int (+ 40 (* 180 (- 1.0 (* a 0.3)))))])))"]]
        [:p "Presets: " [:code ":coral"] " (branching growth), "
         [:code ":mitosis"] " (dividing cells), "
         [:code ":waves"] " (rippling patterns), "
@@ -653,23 +673,20 @@
       :content
       [:div
        [:p "Ever watched a flock of starlings twist through the sky? Each bird follows three simple rules: don't crowd your neighbors (separation), fly the same direction as them (alignment), and stay close to the group (cohesion). From these three rules, beautiful swirling patterns emerge — no leader, no choreography."]
-       [:pre [:code
+       [:pre {:data-img "docs-boids.gif"} [:code
               "(require '[eido.gen.boids :as boids])
 
-;; Create a flock with a preset
-(def flock (boids/init-flock boids/classic))
-
-;; Step the simulation forward one tick
-(def next-flock (boids/step-flock flock boids/classic))
-
-;; Render each boid as a small triangle pointing in its direction
-(boids/flock->nodes next-flock
-  {:shape :triangle :size 8
-   :style {:style/fill [:color/rgb 40 40 50]}})"]]
-       [:p "For animation, generate many frames at once:"]
-       [:pre [:code
-              ";; 120 frames of murmuration — tight, swirling flock
-(boids/simulate-flock boids/murmuration 120 {})"]]
+;; Create and simulate a flock
+(let [frames (boids/simulate-flock boids/classic 80 {})]
+  ;; Render each frame as oriented triangles
+  (anim/frames (count frames)
+    (fn [t]
+      (let [flock (nth frames (int (* t (dec (count frames)))))]
+        {:image/size [500 350]
+         :image/nodes
+         (boids/flock->nodes flock
+           {:shape :triangle :size 7
+            :style {:style/fill [:color/rgb 40 45 55]}})}))))"]]
        [:p "Presets: " [:code "boids/classic"] " (balanced, natural flocking) and "
         [:code "boids/murmuration"] " (tight starling-like swarming). Add optional behaviors like " [:code ":seek"] " (steer toward a point), " [:code ":flee"] " (steer away), or " [:code ":wander"] " (noise-based drifting) by adding them to the config."]]}]}
 

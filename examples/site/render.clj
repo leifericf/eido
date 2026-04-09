@@ -4,7 +4,17 @@
     [clojure.java.io :as io]
     [clojure.repl :as repl]
     [clojure.string :as str]
+    [eido.animate :as anim]
+    [eido.color.palette :as palette]
     [eido.core :as eido]
+    [eido.gen.boids :as boids]
+    [eido.gen.ca :as ca]
+    [eido.gen.circle :as circle]
+    [eido.gen.flow :as flow]
+    [eido.gen.noise :as noise]
+    [eido.gen.prob :as prob]
+    [eido.gen.subdivide :as subdivide]
+    [eido.path.aesthetic :as aesthetic]
     [eido.scene :as scene]
     [eido.scene3d :as s3d]
     [site.pages :as pages]
@@ -43,7 +53,8 @@
     gallery.particles
     gallery.typography
     gallery.showcase
-    gallery.artisan])
+    gallery.artisan
+    gallery.generative])
 
 (def api-namespace-groups
   "API namespaces organized by category for sidebar display."
@@ -404,16 +415,238 @@
 
      "docs-3d-sphere.png"
      {:image/size [400 400] :image/background bg
-      :image/nodes sphere-nodes}}))
+      :image/nodes sphere-nodes}
+
+     ;; --- Generative docs scenes ---
+
+     "docs-uniform-vs-gaussian.png"
+     (let [uniform-pts (prob/uniform 80 20.0 380.0 42)
+           gaussian-pts (prob/gaussian 80 200.0 50.0 99)]
+       {:image/size [400 300] :image/background bg
+        :image/nodes
+        (into
+          (mapv (fn [x] {:node/type :shape/circle
+                         :circle/center [x 80] :circle/radius 3
+                         :style/fill [:color/rgb 80 120 200]})
+                uniform-pts)
+          (mapv (fn [x] {:node/type :shape/circle
+                         :circle/center [(max 20 (min 380 x)) 200] :circle/radius 3
+                         :style/fill [:color/rgb 200 80 80]})
+                gaussian-pts))})
+
+     "docs-weighted-shapes.png"
+     (let [shapes (mapv #(prob/pick-weighted [:circle :square :triangle] [6 3 1] %)
+                        (range 60))]
+       {:image/size [500 120] :image/background bg
+        :image/nodes
+        (vec (map-indexed
+               (fn [i shape]
+                 (let [x (+ 15 (* i 8)) y 60
+                       color (case shape
+                               :circle   [:color/rgb 80 140 220]
+                               :square   [:color/rgb 220 160 40]
+                               :triangle [:color/rgb 200 60 80])]
+                   (case shape
+                     :circle   {:node/type :shape/circle
+                                :circle/center [x y] :circle/radius 3.5
+                                :style/fill color}
+                     :square   {:node/type :shape/rect
+                                :rect/xy [(- x 3) (- y 3)] :rect/size [6 6]
+                                :style/fill color}
+                     :triangle {:node/type :shape/path
+                                :path/commands [[:move-to [x (- y 4)]]
+                                                [:line-to [(+ x 4) (+ y 3)]]
+                                                [:line-to [(- x 4) (+ y 3)]]
+                                                [:close]]
+                                :style/fill color})))
+               shapes))})
+
+     "docs-circle-pack.png"
+     (let [circles (circle/circle-pack 20 20 360 360
+                     {:min-radius 3 :max-radius 35 :padding 2
+                      :max-circles 200 :seed 42})
+           pal (:sunset palette/palettes)
+           colors (palette/weighted-sample pal [3 2 2 1 5] (count circles) 42)]
+       {:image/size [400 400] :image/background bg
+        :image/nodes
+        (mapv (fn [{[x y] :center r :radius} c]
+                {:node/type :shape/circle
+                 :circle/center [x y] :circle/radius r
+                 :style/fill c
+                 :style/stroke {:color [:color/rgba 40 30 20 60] :width 0.5}})
+              circles colors)})
+
+     "docs-circle-pack-star.png"
+     (let [star-cmds (:path/commands (scene/star [200 200] 180 70 5))
+           circles (circle/circle-pack-in-path star-cmds
+                     {:min-radius 2 :max-radius 15 :padding 1 :seed 42})]
+       {:image/size [400 400] :image/background bg
+        :image/nodes
+        (mapv (fn [{[x y] :center r :radius} i]
+                {:node/type :shape/circle
+                 :circle/center [x y] :circle/radius r
+                 :style/fill [:color/hsl (mod (* i 17) 360) 0.6 0.55]})
+              circles (range))})
+
+     "docs-subdivide.png"
+     (let [rects (subdivide/subdivide 15 15 370 370
+                   {:depth 4 :min-size 35 :padding 5 :seed 77})
+           colors [[:color/rgb 245 245 240] [:color/rgb 245 245 240]
+                   [:color/rgb 245 245 240] [:color/rgb 220 30 30]
+                   [:color/rgb 30 60 180] [:color/rgb 245 220 40]]]
+       {:image/size [400 400] :image/background [:color/rgb 20 20 20]
+        :image/nodes
+        (mapv (fn [{[x y w h] :rect :as cell}]
+                {:node/type :shape/rect :rect/xy [x y] :rect/size [w h]
+                 :style/fill (prob/pick colors (+ (hash cell) 42))
+                 :style/stroke {:color [:color/rgb 20 20 20] :width 3}})
+              rects)})
+
+     "docs-weighted-palette.png"
+     (let [pal [[:color/rgb 240 235 225] [:color/rgb 200 50 50]
+                [:color/rgb 50 120 200] [:color/rgb 255 200 0]]
+           weights [5 2 2 1]
+           colors (palette/weighted-sample pal weights 100 42)]
+       {:image/size [500 80] :image/background bg
+        :image/nodes
+        (mapv (fn [color i]
+                {:node/type :shape/rect
+                 :rect/xy [(+ 5 (* i 4.9)) 10] :rect/size [4 60]
+                 :style/fill color})
+              colors (range))})
+
+     "docs-smooth-vs-raw.png"
+     (let [pts [[30 180] [100 40] [180 160] [260 30] [340 150] [400 60] [470 170]]
+           raw-cmds (into [[:move-to (first pts)]]
+                          (mapv (fn [p] [:line-to p]) (rest pts)))
+           smooth (aesthetic/smooth-commands raw-cmds {:samples 60})]
+       {:image/size [500 220] :image/background bg
+        :image/nodes
+        [{:node/type :shape/path :path/commands raw-cmds
+          :style/stroke {:color [:color/rgba 180 180 180 180] :width 2}}
+         {:node/type :shape/path :path/commands smooth
+          :style/stroke {:color [:color/rgb 200 60 60] :width 2.5}}]})
+
+     "docs-jitter.png"
+     (let [cmds [[:move-to [30 100]] [:line-to [470 100]]]
+           j1 (aesthetic/jittered-commands cmds {:amount 4.0 :seed 42})
+           j2 (aesthetic/jittered-commands cmds {:amount 12.0 :seed 42})]
+       {:image/size [500 200] :image/background bg
+        :image/nodes
+        [{:node/type :shape/path :path/commands cmds
+          :style/stroke {:color [:color/rgba 180 180 180 180] :width 1.5}}
+         {:node/type :shape/path :path/commands j1
+          :node/transform [[:transform/translate 0 -30]]
+          :style/stroke {:color [:color/rgb 60 120 200] :width 1.5}}
+         {:node/type :shape/path :path/commands j2
+          :node/transform [[:transform/translate 0 30]]
+          :style/stroke {:color [:color/rgb 200 60 80] :width 1.5}}]})
+
+     "docs-dashes.png"
+     (let [cmds [[:move-to [30 40]] [:line-to [470 40]]]
+           d1 (aesthetic/dash-commands cmds {:dash [15.0 8.0]})
+           d2 (aesthetic/dash-commands cmds {:dash [30.0 5.0]})
+           d3 (aesthetic/dash-commands cmds {:dash [5.0 15.0]})]
+       {:image/size [500 180] :image/background bg
+        :image/nodes
+        (vec (concat
+               (mapv (fn [d] {:node/type :shape/path :path/commands d
+                              :style/stroke {:color [:color/rgb 40 40 40] :width 2}})
+                     (or d1 []))
+               (mapv (fn [d] {:node/type :shape/path :path/commands d
+                              :node/transform [[:transform/translate 0 50]]
+                              :style/stroke {:color [:color/rgb 60 120 200] :width 2.5}})
+                     (or d2 []))
+               (mapv (fn [d] {:node/type :shape/path :path/commands d
+                              :node/transform [[:transform/translate 0 100]]
+                              :style/stroke {:color [:color/rgb 200 60 80] :width 2}})
+                     (or d3 []))))})
+
+     "docs-dashed-flow.png"
+     (let [paths (flow/flow-field 20 20 460 360
+                   {:density 30 :steps 35 :step-size 3 :seed 42})
+           pal (:ocean palette/palettes)]
+       {:image/size [500 400] :image/background bg
+        :image/nodes
+        (vec (mapcat
+               (fn [path-node i]
+                 (let [cmds (:path/commands path-node)
+                       smoothed (aesthetic/smooth-commands cmds {:samples 30})
+                       dashes (aesthetic/dash-commands smoothed {:dash [10.0 6.0]})]
+                   (mapv (fn [d] {:node/type :shape/path :path/commands d
+                                  :style/stroke {:color (nth pal (mod i (count pal)))
+                                                 :width 1.5}})
+                         (or dashes []))))
+               paths (range)))})
+
+     "docs-ca-life.png"
+     (let [g (ca/ca-run (ca/ca-grid 40 40 :random 42) :life 50)]
+       {:image/size [400 400] :image/background bg
+        :image/nodes (ca/ca->nodes g 10
+                       {:style/fill [:color/rgb 30 30 30]})})
+
+     "docs-rd-coral.png"
+     (let [g (ca/rd-run (ca/rd-grid 80 80 :center-seed 42)
+               (:coral ca/rd-presets) 400)]
+       {:image/size [400 400] :image/background [:color/rgb 10 20 40]
+        :image/nodes (ca/rd->nodes g 5
+                       (fn [a b]
+                         (let [v (min 1.0 (* b 4))]
+                           [:color/rgb (int (+ 10 (* 80 v)))
+                            (int (+ 20 (* 120 v)))
+                            (int (+ 40 (* 180 (- 1.0 (* a 0.3)))))])))})
+
+     "docs-boids.gif"
+     (let [config (assoc boids/classic :count 60 :bounds [0 0 500 350] :seed 42)
+           frames (boids/simulate-flock config 80 {})]
+       {:frames
+        (anim/frames (count frames)
+          (fn [t]
+            (let [i (min (int (* t (dec (count frames)))) (dec (count frames)))]
+              {:image/size [500 350]
+               :image/background [:color/rgb 230 235 240]
+               :image/nodes
+               (boids/flock->nodes (nth frames i)
+                 {:shape :triangle :size 7
+                  :style {:style/fill [:color/rgb 40 45 55]}})})))
+        :fps 24})
+
+     "docs-series-grid.png"
+     (let [spec {:hue {:type :uniform :lo 0.0 :hi 360.0}
+                 :r   {:type :gaussian :mean 20.0 :sd 8.0}}
+           editions (mapv #(assoc (eido.gen.series/series-params spec 42 %)
+                                  :edition %)
+                          (range 9))]
+       {:image/size [400 400] :image/background [:color/rgb 30 30 35]
+        :image/nodes
+        (vec (mapcat
+               (fn [{:keys [hue r edition]}]
+                 (let [col (mod edition 3) row (quot edition 3)
+                       cx (+ 70 (* col 130)) cy (+ 70 (* row 130))]
+                   [{:node/type :shape/circle
+                     :circle/center [cx cy]
+                     :circle/radius (max 8 (min 55 r))
+                     :style/fill [:color/hsl hue 0.7 0.55]}
+                    {:node/type :shape/text
+                     :text/content (str "#" edition)
+                     :text/origin [(- cx 8) (+ cy (max 8 (min 55 r)) 14)]
+                     :text/font {:font/family "SansSerif" :font/size 10}
+                     :style/fill [:color/rgb 140 140 150]}]))
+               editions))})
+
+     }))
 
 (defn render-docs-examples!
-  "Renders preview images for docs code examples."
+  "Renders preview images for docs code examples.
+  Supports both static scenes and animated scenes with :frames."
   [out-dir]
   (doseq [[filename scene-data] (docs-scenes)]
     (let [path (str out-dir "/images/" filename)]
       (println "  Rendering" filename "...")
       (io/make-parents path)
-      (eido/render scene-data {:output path}))))
+      (if (:frames scene-data)
+        (eido/render (:frames scene-data) {:output path :fps (:fps scene-data 24)})
+        (eido/render scene-data {:output path})))))
 
 ;; --- HTML generation ---
 
