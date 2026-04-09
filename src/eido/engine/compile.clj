@@ -182,22 +182,9 @@
   (let [[bx by bw bh] (:flow/bounds node)
         paths     (flow/flow-field bx by bw bh
                     (or (:flow/opts node) {}))
-        overrides (:flow/overrides node)
-        styled    (vec (map-indexed
-                         (fn [i p]
-                           (let [ovr (when overrides
-                                       (nth overrides
-                                         (mod i (count overrides))))]
-                             (cond-> p
-                               (:style/fill node)
-                               (assoc :style/fill (:style/fill node))
-                               (:style/stroke node)
-                               (assoc :style/stroke (:style/stroke node))
-                               (:style/stroke ovr)
-                               (assoc :style/stroke (:style/stroke ovr))
-                               (:node/opacity ovr)
-                               (assoc :node/opacity (:node/opacity ovr)))))
-                         paths))]
+        styled    (apply-style-overrides
+                    paths node (:flow/overrides node)
+                    [:style/fill :style/stroke :node/opacity])]
     (wrap-group styled node)))
 
 (defn- expand-symmetry [node]
