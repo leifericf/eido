@@ -758,6 +758,60 @@
                      (s3d/extrude-faces {:select/by :all :extrude/amount -0.1}))]
       (is (pos? (count result))))))
 
+;; --- UV projection ---
+
+(deftest uv-project-box-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        uv-mesh (s3d/uv-project mesh {:uv/method :box})]
+    (testing "every face has texture coords"
+      (doseq [face uv-mesh]
+        (is (some? (:face/texture-coords face)))
+        (is (= (count (:face/vertices face))
+               (count (:face/texture-coords face))))))
+    (testing "UVs are in [0,1] range"
+      (doseq [face uv-mesh
+              [u v] (:face/texture-coords face)]
+        (is (<= 0.0 u 1.0))
+        (is (<= 0.0 v 1.0))))))
+
+(deftest uv-project-spherical-test
+  (let [mesh (s3d/sphere-mesh 1.0 8 4)
+        uv-mesh (s3d/uv-project mesh {:uv/method :spherical})]
+    (testing "every face has texture coords"
+      (doseq [face uv-mesh]
+        (is (some? (:face/texture-coords face)))))
+    (testing "UVs are in [0,1] range"
+      (doseq [face uv-mesh
+              [u v] (:face/texture-coords face)]
+        (is (<= 0.0 u 1.0))
+        (is (<= 0.0 v 1.0))))))
+
+(deftest uv-project-cylindrical-test
+  (let [mesh (s3d/cylinder-mesh 1.0 2.0 8)
+        uv-mesh (s3d/uv-project mesh {:uv/method :cylindrical})]
+    (testing "every face has texture coords"
+      (doseq [face uv-mesh]
+        (is (some? (:face/texture-coords face)))))))
+
+(deftest uv-project-planar-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        uv-mesh (s3d/uv-project mesh {:uv/method :planar :uv/axis :y})]
+    (testing "every face has texture coords"
+      (doseq [face uv-mesh]
+        (is (some? (:face/texture-coords face)))))))
+
+(deftest uv-project-with-selector-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        uv-mesh (s3d/uv-project mesh {:uv/method :box
+                                      :select/by :normal
+                                      :select/direction [0 1 0]
+                                      :select/tolerance 0.1})]
+    (testing "only selected faces get UVs"
+      (let [with-uv (filter :face/texture-coords uv-mesh)
+            without (remove :face/texture-coords uv-mesh)]
+        (is (pos? (count with-uv)))
+        (is (pos? (count without)))))))
+
 ;; --- sweep mesh ---
 
 (deftest sweep-mesh-straight-test

@@ -6,6 +6,8 @@
     [eido.scene :as scene]
     [eido.text :as text]))
 
+(declare mesh-bounds)
+
 ;; --- projection constructors ---
 
 (defn isometric
@@ -852,6 +854,112 @@
       (fn [_face centroid _normal]
         (let [v (axis-component axis centroid)]
           (and (>= v lo) (<= v hi)))))))
+
+;; --- UV projection ---
+
+(defn- uv-box-project
+  "Projects vertices onto the two axes perpendicular to the face's dominant axis."
+  [face bounds]
+  (let [normal (:face/normal face)
+        [nx ny nz] (m/normalize normal)
+        ax (abs (double nx))
+        ay (abs (double ny))
+        az (abs (double nz))
+        ;; Choose projection plane by dominant normal axis
+        [axis-a axis-b min-a min-b range-a range-b]
+        (cond
+          (and (>= ax ay) (>= ax az))
+          [1 2 (second (:min bounds)) (nth (:min bounds) 2)
+           (- (second (:max bounds)) (second (:min bounds)))
+           (- (nth (:max bounds) 2) (nth (:min bounds) 2))]
+          (>= ay az)
+          [0 2 (first (:min bounds)) (nth (:min bounds) 2)
+           (- (first (:max bounds)) (first (:min bounds)))
+           (- (nth (:max bounds) 2) (nth (:min bounds) 2))]
+          :else
+          [0 1 (first (:min bounds)) (second (:min bounds))
+           (- (first (:max bounds)) (first (:min bounds)))
+           (- (second (:max bounds)) (second (:min bounds)))])]
+    (mapv (fn [v]
+            (let [a (nth v axis-a)
+                  b (nth v axis-b)
+                  u (if (zero? range-a) 0.5 (/ (- (double a) min-a) range-a))
+                  vv (if (zero? range-b) 0.5 (/ (- (double b) min-b) range-b))]
+              [(max 0.0 (min 1.0 u)) (max 0.0 (min 1.0 vv))]))
+          (:face/vertices face))))
+
+(defn- uv-spherical-project [face]
+  (mapv (fn [[x y z]]
+          (let [r (m/magnitude [x y z])
+                r (if (zero? r) 1.0 r)
+                u (+ 0.5 (/ (Math/atan2 (double z) (double x)) (* 2.0 Math/PI)))
+                v (+ 0.5 (/ (Math/asin (max -1.0 (min 1.0 (/ (double y) r)))) Math/PI))]
+            [u v]))
+        (:face/vertices face)))
+
+(defn- uv-cylindrical-project [face bounds axis]
+  (let [[y-min y-max] (case axis
+                        :x [(first (:min bounds)) (first (:max bounds))]
+                        :y [(second (:min bounds)) (second (:max bounds))]
+                        :z [(nth (:min bounds) 2) (nth (:max bounds) 2)])
+        y-range (- (double y-max) (double y-min))]
+    (mapv (fn [[x y z]]
+            (let [;; Angle around axis
+                  [a b h] (case axis
+                            :x [y z x] :y [x z y] :z [x y z])
+                  u (+ 0.5 (/ (Math/atan2 (double b) (double a)) (* 2.0 Math/PI)))
+                  v (if (zero? y-range) 0.5
+                      (/ (- (double h) (double y-min)) y-range))]
+              [u (max 0.0 (min 1.0 v))]))
+          (:face/vertices face))))
+
+(defn- uv-planar-project [face bounds axis]
+  (let [[a-idx b-idx] (case axis :x [1 2] :y [0 2] :z [0 1])
+        a-min (nth (:min bounds) a-idx)
+        b-min (nth (:min bounds) b-idx)
+        a-range (- (double (nth (:max bounds) a-idx)) a-min)
+        b-range (- (double (nth (:max bounds) b-idx)) b-min)]
+    (mapv (fn [v]
+            (let [a (nth v a-idx)
+                  b (nth v b-idx)
+                  u (if (zero? a-range) 0.5 (/ (- (double a) a-min) a-range))
+                  vv (if (zero? b-range) 0.5 (/ (- (double b) b-min) b-range))]
+              [(max 0.0 (min 1.0 u)) (max 0.0 (min 1.0 vv))]))
+          (:face/vertices face))))
+
+(defn uv-project
+  "Assigns texture coordinates to mesh faces via projection.
+  opts:
+    :uv/method  - :box, :spherical, :cylindrical, or :planar
+    :uv/axis    - axis for :cylindrical/:planar (default :y)
+    :uv/scale   - UV scale factor (default 1.0)
+    :uv/offset  - [u-offset v-offset] (default [0 0])
+    :select/*   - optional face selector"
+  [mesh opts]
+  (let [method (get opts :uv/method :box)
+        axis   (get opts :uv/axis :y)
+        scale  (double (get opts :uv/scale 1.0))
+        [ou ov] (get opts :uv/offset [0 0])
+        sel    (when (:select/by opts) (make-face-selector opts))
+        bounds (mesh-bounds mesh)]
+    (mapv (fn [face]
+            (let [centroid (m/face-centroid (:face/vertices face))
+                  normal   (:face/normal face)]
+              (if (or (nil? sel) (sel face centroid normal))
+                (let [raw-uvs (case method
+                                :box         (uv-box-project face bounds)
+                                :spherical   (uv-spherical-project face)
+                                :cylindrical (uv-cylindrical-project face bounds axis)
+                                :planar      (uv-planar-project face bounds axis))
+                      scaled  (if (and (== scale 1.0) (zero? (double ou)) (zero? (double ov)))
+                                raw-uvs
+                                (mapv (fn [[u v]]
+                                        [(+ (* u scale) (double ou))
+                                         (+ (* v scale) (double ov))])
+                                      raw-uvs))]
+                  (assoc face :face/texture-coords scaled))
+                face)))
+          mesh)))
 
 ;; --- per-face color ---
 
