@@ -10,7 +10,8 @@
 
 (defn ^{:example {:output "particle-campfire.gif"
                   :title  "Campfire"
-                  :desc   "Fire and ember particles over log silhouettes with a pulsing glow."}}
+                  :desc   "Fire and ember particles over log silhouettes with a pulsing glow."
+                  :tags   ["particles" "animation" "glow"]}}
   campfire []
   (let [;; Fire rising from the base
         fire-frames  (vec (particle/simulate
@@ -70,7 +71,8 @@
 
 (defn ^{:example {:output "particle-fireworks.gif"
                   :title  "Fireworks"
-                  :desc   "Three staggered bursts in red, blue, and gold."}}
+                  :desc   "Three staggered bursts in red, blue, and gold."
+                  :tags   ["particles" "animation" "color"]}}
   fireworks []
   (let [make-burst
         (fn [pos seed colors]
@@ -115,7 +117,8 @@
 
 (defn ^{:example {:output "particle-snowfall.gif"
                   :title  "Snowfall"
-                  :desc   "Gentle snow drifting over moonlit mountain silhouettes."}}
+                  :desc   "Gentle snow drifting over moonlit mountain silhouettes."
+                  :tags   ["particles" "animation"]}}
   snowfall []
   (let [snow-config (-> particle/snow
                         (assoc-in [:particle/emitter :emitter/position] [-20 -10])
@@ -160,7 +163,8 @@
 
 (defn ^{:example {:output "particle-fountain-3d.gif"
                   :title  "3D Fountain with Orbiting Camera"
-                  :desc   "Particles in 3D space projected through an orbiting perspective camera, depth-sorted with pillars."}}
+                  :desc   "Particles in 3D space projected through an orbiting perspective camera, depth-sorted with pillars."
+                  :tags   ["particles" "3d" "animation"]}}
   fountain-3d []
   (let [config {:particle/emitter {:emitter/type :circle
                                     :emitter/position [0.0 0.0 0.0]
@@ -216,7 +220,8 @@
 
 (defn ^{:example {:output "particle-volcano-3d.gif"
                   :title  "Volcanic Eruption"
-                  :desc   "3D lava and smoke particles erupting from a scene3d cone mesh."}}
+                  :desc   "3D lava and smoke particles erupting from a scene3d cone mesh."
+                  :tags   ["particles" "3d" "animation" "color"]}}
   volcanic-eruption []
   (let [proj  (s3d/perspective {:scale 50 :origin [200 340]
                                  :yaw 0.3 :pitch -0.2 :distance 10})

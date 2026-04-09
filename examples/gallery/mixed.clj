@@ -10,7 +10,8 @@
 
 (defn ^{:example {:output "mixed-neon-orbit.gif"
                   :title  "Neon Orbit"
-                  :desc   "Rotating 3D torus wreathed in orbiting 2D color halos and pulsing concentric rings."}}
+                  :desc   "Rotating 3D torus wreathed in orbiting 2D color halos and pulsing concentric rings."
+                  :tags   ["3d" "animation" "color" "glow"]}}
   neon-orbit []
   (let [frame-fn
         (fn [t]
@@ -67,7 +68,8 @@
 
 (defn ^{:example {:output "mixed-crystal-garden.gif"
                   :title  "Crystal Garden"
-                  :desc   "Faceted 3D crystal spires with swaying 2D grass and rising sparkle particles."}}
+                  :desc   "Faceted 3D crystal spires with swaying 2D grass and rising sparkle particles."
+                  :tags   ["3d" "animation" "particles" "color"]}}
   crystal-garden []
   (let [frame-fn
         (fn [t]
@@ -128,7 +130,8 @@
 
 (defn ^{:example {:output "mixed-solar-system.gif"
                   :title  "Solar System"
-                  :desc   "Shaded 3D planet with 2D orbital ellipses, trailing moons, and a twinkling star field."}}
+                  :desc   "Shaded 3D planet with 2D orbital ellipses, trailing moons, and a twinkling star field."
+                  :tags   ["3d" "animation" "dashing" "color"]}}
   solar-system []
   (let [frame-fn
         (fn [t]

@@ -424,7 +424,7 @@
 (defn ^{:example {:output "artisan-botanical-lsystem.png"
                   :title  "Botanical L-system"
                   :desc   "Delicate plant with L-system branches, stippled flowers, hatched leaves."
-                  :tags   ["l-systems" "stipple" "hatching"]}}
+                  :tags   ["l-system" "stipple" "hatching"]}}
   botanical-lsystem []
   (let [bg    [:color/rgb 250 245 235]
         brown [:color/rgb 80 55 30]
@@ -532,7 +532,7 @@
 (defn ^{:example {:output "artisan-contour-terrain.png"
                   :title  "Contour Terrain"
                   :desc   "Topographic map with contour layers, hatched water, and compass rose."
-                  :tags   ["contours" "hatching" "path-decorators"]}}
+                  :tags   ["contour" "hatching" "path-decorators"]}}
   contour-terrain []
   (let [thresholds (mapv #(- (* % 0.12) 0.5) (range 10))
         land-pal (palette/gradient-palette [:color/rgb 60 100 50] [:color/rgb 200 180 140] 10)
@@ -744,7 +744,7 @@
 (defn ^{:example {:output "artisan-vintage-map.png"
                   :title  "Vintage Map"
                   :desc   "Contour lines, hatched ocean, stippled land, decorative frame, and text."
-                  :tags   ["contours" "hatching" "stipple" "path-decorators" "text"]}}
+                  :tags   ["contour" "hatching" "stipple" "path-decorators" "text"]}}
   vintage-map []
   (let [parchment [:color/rgb 235 220 190]
         ink       [:color/rgb 50 40 30]
@@ -903,7 +903,7 @@
 (defn ^{:example {:output "artisan-morphing-geometry.gif"
                   :title  "Morphing Geometry"
                   :desc   "Animated loop: triangle to square to pentagon to hexagon to circle."
-                  :tags   ["morphing" "animation"]}}
+                  :tags   ["path-morph" "animation"]}}
   morphing-geometry []
   (let [cx 200.0 cy 200.0 r 100.0
         tri-cmds  (:path/commands (scene/regular-polygon [cx cy] r 3))

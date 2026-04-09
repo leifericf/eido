@@ -15,7 +15,8 @@
 
 (defn ^{:example {:output "showcase-aurora.gif"
                   :title  "Aurora Borealis"
-                  :desc   "Shimmering curtains of light driven by layered 3D noise."}}
+                  :desc   "Shimmering curtains of light driven by layered 3D noise."
+                  :tags   ["noise" "animation" "opacity" "color"]}}
   aurora []
   {:frames
    (anim/frames 80
@@ -60,7 +61,8 @@
 
 (defn ^{:example {:output "showcase-moire.gif"
                   :title  "Moire Interference"
-                  :desc   "Two rotating line grids creating mesmerizing interference patterns."}}
+                  :desc   "Two rotating line grids creating mesmerizing interference patterns."
+                  :tags   ["animation" "math" "opacity"]}}
   moire []
   {:frames
    (anim/frames 90
@@ -95,7 +97,8 @@
 
 (defn ^{:example {:output "showcase-jellyfish.gif"
                   :title  "Bioluminescent Jellyfish"
-                  :desc   "Pulsing jellyfish with flowing tentacles and soft glow."}}
+                  :desc   "Pulsing jellyfish with flowing tentacles and soft glow."
+                  :tags   ["animation" "brush-strokes" "opacity" "color"]}}
   jellyfish []
   {:frames
    (anim/frames 60
@@ -161,7 +164,8 @@
 
 (defn ^{:example {:output "showcase-bauhaus.png"
                   :title  "Bauhaus Composition"
-                  :desc   "Bold geometric abstraction in primary colors with overlapping forms."}}
+                  :desc   "Bold geometric abstraction in primary colors with overlapping forms."
+                  :tags   ["color" "math"]}}
   bauhaus []
   (let [rng (java.util.Random. 42)]
     {:image/size [500 500]
@@ -211,7 +215,8 @@
 
 (defn ^{:example {:output "showcase-geode.png"
                   :title  "Crystal Geode"
-                  :desc   "Voronoi tessellation with gem-like gradient fills and dark edges."}}
+                  :desc   "Voronoi tessellation with gem-like gradient fills and dark edges."
+                  :tags   ["voronoi" "scatter" "gradients" "color"]}}
   geode []
   (let [pts (scatter/poisson-disk 30 30 470 470 28 77)
         cells (voronoi/voronoi-cells pts 0 0 500 500)
@@ -242,7 +247,8 @@
 
 (defn ^{:example {:output "showcase-gem-3d.gif"
                   :title  "Rotating Gem"
-                  :desc   "Faceted 3D icosahedron-like gem with colorful face shading."}}
+                  :desc   "Faceted 3D icosahedron-like gem with colorful face shading."
+                  :tags   ["3d" "animation" "color"]}}
   rotating-gem []
   {:frames
    (anim/frames 60
@@ -271,7 +277,8 @@
 
 (defn ^{:example {:output "showcase-soundwave.gif"
                   :title  "Sound Wave"
-                  :desc   "Layered frequency bands pulsing like an audio spectrum."}}
+                  :desc   "Layered frequency bands pulsing like an audio spectrum."
+                  :tags   ["animation" "color" "math"]}}
   sound-wave []
   {:frames
    (anim/frames 60
@@ -324,7 +331,8 @@
 
 (defn ^{:example {:output "showcase-textile.png"
                   :title  "Generative Textile"
-                  :desc   "Woven pattern with noise-driven color and hatched texture."}}
+                  :desc   "Woven pattern with noise-driven color and hatched texture."
+                  :tags   ["hatching" "noise" "palette"]}}
   textile []
   (let [cols 20 rows 20
         cell-w 25 cell-h 25
@@ -356,7 +364,8 @@
 
 (defn ^{:example {:output "showcase-rainstorm.gif"
                   :title  "Rainstorm"
-                  :desc   "Falling rain with expanding ripple circles on a dark surface."}}
+                  :desc   "Falling rain with expanding ripple circles on a dark surface."
+                  :tags   ["animation" "opacity" "math"]}}
   rainstorm []
   {:frames
    (anim/frames 60
@@ -413,7 +422,8 @@
 
 (defn ^{:example {:output "showcase-cosmic-eye.gif"
                   :title  "Cosmic Eye"
-                  :desc   "A radial iris pattern with orbiting rings and shifting nebula colors."}}
+                  :desc   "A radial iris pattern with orbiting rings and shifting nebula colors."
+                  :tags   ["noise" "animation" "glow" "color"]}}
   cosmic-eye []
   {:frames
    (anim/frames 60
@@ -489,7 +499,8 @@
 
 (defn ^{:example {:output "showcase-topo-rings.png"
                   :title  "Topographic Rings"
-                  :desc   "Concentric elevation contours with warm-to-cool color mapping."}}
+                  :desc   "Concentric elevation contours with warm-to-cool color mapping."
+                  :tags   ["noise" "contour" "gradients"]}}
   topo-rings []
   (let [cx 250 cy 250
         rings (vec
@@ -525,7 +536,8 @@
 
 (defn ^{:example {:output "showcase-neon-grid.gif"
                   :title  "Neon Grid"
-                  :desc   "Retro wireframe grid receding into the horizon with pulsing neon."}}
+                  :desc   "Retro wireframe grid receding into the horizon with pulsing neon."
+                  :tags   ["animation" "glow" "color"]}}
   neon-grid []
   {:frames
    (anim/frames 40
@@ -575,7 +587,8 @@
 
 (defn ^{:example {:output "showcase-zen-garden.png"
                   :title  "Zen Garden"
-                  :desc   "Raked sand patterns with placed stones — stippled and hatched."}}
+                  :desc   "Raked sand patterns with placed stones — stippled and hatched."
+                  :tags   ["stipple" "hatching" "math"]}}
   zen-garden []
   (let [w 500 h 400
         ;; Raked sand — curved parallel lines
@@ -625,7 +638,8 @@
 
 (defn ^{:example {:output "showcase-orbits.gif"
                   :title  "Orbiting Spheres"
-                  :desc   "Colored spheres in circular orbits around a central point."}}
+                  :desc   "Colored spheres in circular orbits around a central point."
+                  :tags   ["3d" "animation" "color"]}}
   orbiting-spheres []
   {:frames
    (anim/frames 60
@@ -681,7 +695,8 @@
 
 (defn ^{:example {:output "showcase-dissolve.gif"
                   :title  "Pixel Dissolve"
-                  :desc   "A grid of squares that scatter and reassemble with color shifts."}}
+                  :desc   "A grid of squares that scatter and reassemble with color shifts."
+                  :tags   ["animation" "color" "math"]}}
   pixel-dissolve []
   {:frames
    (anim/frames 50
@@ -717,7 +732,8 @@
 
 (defn ^{:example {:output "showcase-rose.png"
                   :title  "Stained Glass Rose"
-                  :desc   "Rose curve voronoi tessellation with jewel-toned fills."}}
+                  :desc   "Rose curve voronoi tessellation with jewel-toned fills."
+                  :tags   ["voronoi" "scatter" "math" "color"]}}
   stained-glass-rose []
   (let [;; Generate points along a rose curve + scattered background
         rose-pts (for [a (range 0 360 4)]
@@ -754,7 +770,8 @@
 
 (defn ^{:example {:output "showcase-heartbeat.gif"
                   :title  "Heartbeat"
-                  :desc   "An ECG-style trace that pulses across the screen."}}
+                  :desc   "An ECG-style trace that pulses across the screen."
+                  :tags   ["animation" "math"]}}
   heartbeat []
   {:frames
    (anim/frames 60
@@ -810,7 +827,8 @@
 
 (defn ^{:example {:output "showcase-prism.png"
                   :title  "Prism"
-                  :desc   "Light beam splitting through a prism into a spectrum."}}
+                  :desc   "Light beam splitting through a prism into a spectrum."
+                  :tags   ["color" "opacity" "math"]}}
   prism []
   (let [;; Prism triangle
         prism-shape (assoc (scene/triangle [250 120] [180 300] [320 300])
@@ -845,7 +863,8 @@
 
 (defn ^{:example {:output "showcase-breathing-mandala.gif"
                   :title  "Breathing Mandala"
-                  :desc   "Layered radial symmetry that expands and contracts with color cycling."}}
+                  :desc   "Layered radial symmetry that expands and contracts with color cycling."
+                  :tags   ["symmetry" "animation" "color"]}}
   breathing-mandala []
   {:frames
    (anim/frames 50
@@ -889,7 +908,8 @@
 
 (defn ^{:example {:output "showcase-matrix.gif"
                   :title  "Digital Rain"
-                  :desc   "Cascading columns of characters fading into the dark."}}
+                  :desc   "Cascading columns of characters fading into the dark."
+                  :tags   ["animation" "opacity" "color"]}}
   digital-rain []
   {:frames
    (anim/frames 40

@@ -11,7 +11,8 @@
 
 (defn ^{:example {:output "text-gradient-shadow.png"
                   :title  "Gradient Text with Shadow"
-                  :desc   "Layered text using text-stack — a shadow layer offset by a few pixels, then a gradient fill on top."}}
+                  :desc   "Layered text using text-stack — a shadow layer offset by a few pixels, then a gradient fill on top."
+                  :tags   ["typography" "gradients" "shadows"]}}
   gradient-text-with-shadow []
   {:image/size [600 200]
    :image/background [:color/rgb 15 15 25]
@@ -33,7 +34,8 @@
 
 (defn ^{:example {:output "text-rainbow-glyphs.png"
                   :title  "Per-Glyph Rainbow"
-                  :desc   "Each glyph styled independently using :shape/text-glyphs, cycling hue by 40 degrees per character."}}
+                  :desc   "Each glyph styled independently using :shape/text-glyphs, cycling hue by 40 degrees per character."
+                  :tags   ["typography" "color"]}}
   per-glyph-rainbow []
   {:image/size [600 160]
    :image/background [:color/rgb 20 20 35]
@@ -53,7 +55,8 @@
 
 (defn ^{:example {:output "text-neon-glow.png"
                   :title  "Neon Glow"
-                  :desc   "A blurred copy behind crisp text creates a glow effect using :group/filter [:blur 8]."}}
+                  :desc   "A blurred copy behind crisp text creates a glow effect using :group/filter [:blur 8]."
+                  :tags   ["typography" "glow" "filters"]}}
   neon-glow []
   {:image/size [500 200]
    :image/background [:color/rgb 10 10 20]
@@ -79,7 +82,8 @@
 
 (defn ^{:example {:output "text-circular.gif"
                   :title  "Animated Circular Text"
-                  :desc   "Text following a circular path, rotating around a gradient sphere."}}
+                  :desc   "Text following a circular path, rotating around a gradient sphere."
+                  :tags   ["typography" "animation" "gradients"]}}
   animated-circular-text []
   (let [frame-fn
         (fn [t]
@@ -116,7 +120,8 @@
 
 (defn ^{:example {:output "text-3d-rotate.gif"
                   :title  "Rotating 3D Extruded Text"
-                  :desc   "Each letter extruded in 3D with phase-shifted sine waves driving vertical bounce and pitch rock."}}
+                  :desc   "Each letter extruded in 3D with phase-shifted sine waves driving vertical bounce and pitch rock."
+                  :tags   ["typography" "3d" "animation"]}}
   rotating-3d-text []
   (let [letters "EIDO"
         font {:font/family "SansSerif" :font/size 36 :font/weight :bold}

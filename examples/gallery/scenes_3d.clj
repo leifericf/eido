@@ -13,7 +13,8 @@
 
 (defn ^{:example {:output "3d-teapot.png"
                   :title  "Utah Teapot"
-                  :desc   "Classic computer graphics test model loaded from OBJ, rendered with isometric projection."}}
+                  :desc   "Classic computer graphics test model loaded from OBJ, rendered with isometric projection."
+                  :tags   ["3d"]}}
   utah-teapot []
   (let [teapot (-> (obj/parse-obj (slurp "resources/teapot.obj") {})
                    (s3d/translate-mesh [-1.085 0.0 -7.875])
@@ -36,7 +37,8 @@
 
 (defn ^{:example {:output "3d-teapot-spin.gif"
                   :title  "Utah Teapot Spin"
-                  :desc   "Orbiting camera animation around the Utah teapot."}}
+                  :desc   "Orbiting camera animation around the Utah teapot."
+                  :tags   ["3d" "animation"]}}
   utah-teapot-spin []
   (let [teapot (-> (obj/parse-obj (slurp "resources/teapot.obj") {})
                    (s3d/translate-mesh [-1.085 0.0 -7.875])
@@ -63,7 +65,8 @@
 
 (defn ^{:example {:output "3d-rotating-torus.gif"
                   :title  "Rotating Torus"
-                  :desc   "A parametric torus spinning on its axis with diffuse shading."}}
+                  :desc   "A parametric torus spinning on its axis with diffuse shading."
+                  :tags   ["3d" "animation"]}}
   rotating-torus []
   {:frames (anim/frames 60
              (fn [t]
@@ -87,7 +90,8 @@
 
 (defn ^{:example {:output "3d-scene.png"
                   :title  "Isometric Scene"
-                  :desc   "Three primitives — cube, cylinder, and sphere — with shared directional lighting."}}
+                  :desc   "Three primitives — cube, cylinder, and sphere — with shared directional lighting."
+                  :tags   ["3d" "color"]}}
   isometric-scene []
   (let [proj  (s3d/isometric {:scale 35 :origin [200 210]})
         light {:light/direction [1 2 0.5] :light/ambient 0.3 :light/intensity 0.7}]
@@ -111,7 +115,8 @@
 
 (defn ^{:example {:output "3d-rotating-cube.gif"
                   :title  "Rotating Cube"
-                  :desc   "A cube tumbling in space with directional lighting."}}
+                  :desc   "A cube tumbling in space with directional lighting."
+                  :tags   ["3d" "animation"]}}
   rotating-cube []
   {:frames (anim/frames 60
              (fn [t]
@@ -134,7 +139,8 @@
 
 (defn ^{:example {:output "3d-city.png"
                   :title  "Isometric City"
-                  :desc   "An 8x8 grid of buildings with randomized heights and hue-shifted colors."}}
+                  :desc   "An 8x8 grid of buildings with randomized heights and hue-shifted colors."
+                  :tags   ["3d" "color"]}}
   isometric-city []
   (let [n 6  spacing 2.4  offset (* -0.5 n spacing)
         proj  (s3d/isometric {:scale 22 :origin [200 220]})
@@ -166,7 +172,8 @@
 
 (defn ^{:example {:output "3d-torus.png"
                   :title  "Torus"
-                  :desc   "A golden torus with fine mesh detail and smooth Lambertian shading."}}
+                  :desc   "A golden torus with fine mesh detail and smooth Lambertian shading."
+                  :tags   ["3d"]}}
   torus []
   (let [proj (s3d/isometric {:scale 55 :origin [200 200]})
         mesh (-> (s3d/torus-mesh 1.8 0.7 32 16)
@@ -185,7 +192,8 @@
 
 (defn ^{:example {:output "3d-wireframe.png"
                   :title  "Wireframe"
-                  :desc   "A torus rendered as wireframe with deduplicated, depth-sorted edges."}}
+                  :desc   "A torus rendered as wireframe with deduplicated, depth-sorted edges."
+                  :tags   ["3d"]}}
   wireframe []
   {:image/size [400 400]
    :image/background [:color/rgb 245 243 238]
@@ -241,7 +249,8 @@
 
 (defn ^{:example {:output "3d-look-at.png"
                   :title  "Camera: look-at"
-                  :desc   "Point the camera from a position toward a target, no manual yaw/pitch math."}}
+                  :desc   "Point the camera from a position toward a target, no manual yaw/pitch math."
+                  :tags   ["3d" "color"]}}
   camera-look-at []
   {:image/size [400 400]
    :image/background [:color/rgb 245 243 238]
@@ -254,7 +263,8 @@
 
 (defn ^{:example {:output "3d-orbit.gif"
                   :title  "Camera: orbit"
-                  :desc   "Camera on a sphere around a target, orbiting the scene."}}
+                  :desc   "Camera on a sphere around a target, orbiting the scene."
+                  :tags   ["3d" "animation"]}}
   camera-orbit []
   {:frames (anim/frames 90
              (fn [t]
@@ -270,7 +280,8 @@
 
 (defn ^{:example {:output "3d-perspective-fov.png"
                   :title  "Camera: Perspective FOV"
-                  :desc   "Field-of-view control for perspective projection; closer objects appear larger."}}
+                  :desc   "Field-of-view control for perspective projection; closer objects appear larger."
+                  :tags   ["3d" "color"]}}
   camera-perspective-fov []
   {:image/size [400 400]
    :image/background [:color/rgb 245 243 238]
@@ -285,7 +296,8 @@
 
 (defn ^{:example {:output "3d-cone-torus.png"
                   :title  "New Primitives"
-                  :desc   "Cone, torus, and sphere combined with merge-meshes and perspective projection."}}
+                  :desc   "Cone, torus, and sphere combined with merge-meshes and perspective projection."
+                  :tags   ["3d" "color"]}}
   new-primitives []
   (let [light {:light/direction [1 2 0.5] :light/ambient 0.3 :light/intensity 0.7}
         proj  (s3d/look-at
@@ -311,7 +323,8 @@
 
 (defn ^{:example {:output "3d-torus-wireframe-overlay.gif"
                   :title  "Wireframe Overlay"
-                  :desc   "Solid shading and wireframe combined; wireframe renders at 40% opacity over the solid torus."}}
+                  :desc   "Solid shading and wireframe combined; wireframe renders at 40% opacity over the solid torus."
+                  :tags   ["3d" "animation" "compositing" "opacity"]}}
   wireframe-overlay []
   {:frames (anim/frames 60
              (fn [t]
@@ -341,7 +354,8 @@
 
 (defn ^{:example {:output "3d-specular-spheres.png"
                   :title  "Specular Spheres"
-                  :desc   "Three spheres with increasing specular highlights demonstrating Blinn-Phong materials."}}
+                  :desc   "Three spheres with increasing specular highlights demonstrating Blinn-Phong materials."
+                  :tags   ["3d" "color"]}}
   specular-spheres []
   (let [proj  (s3d/perspective {:scale 80 :origin [300 200]
                                 :yaw 0.2 :pitch -0.25 :distance 10})
@@ -377,7 +391,8 @@
 
 (defn ^{:example {:output "3d-glossy-torus.gif"
                   :title  "Glossy Torus"
-                  :desc   "A rotating torus with specular highlights catching the light as it turns."}}
+                  :desc   "A rotating torus with specular highlights catching the light as it turns."
+                  :tags   ["3d" "animation"]}}
   glossy-torus []
   {:frames (anim/frames 60
              (fn [t]
@@ -405,7 +420,8 @@
 
 (defn ^{:example {:output "3d-material-showcase.png"
                   :title  "Material Showcase"
-                  :desc   "Four primitives with different Blinn-Phong material properties — matte, satin, glossy, and mirror-like."}}
+                  :desc   "Four primitives with different Blinn-Phong material properties — matte, satin, glossy, and mirror-like."
+                  :tags   ["3d" "color"]}}
   material-showcase []
   (let [proj  (s3d/isometric {:scale 30 :origin [300 220]})
         light {:light/direction [1 1.5 0.8]
@@ -442,7 +458,8 @@
 
 (defn ^{:example {:output "3d-colored-lights.png"
                   :title  "Colored Point Lights"
-                  :desc   "A sphere lit by warm and cool omni lights with hemisphere ambient."}}
+                  :desc   "A sphere lit by warm and cool omni lights with hemisphere ambient."
+                  :tags   ["3d" "color"]}}
   colored-point-lights []
   (let [mesh (s3d/sphere-mesh 1.5 24 16)
         proj (s3d/perspective {:scale 120 :origin [200 200]
@@ -471,7 +488,8 @@
 
 (defn ^{:example {:output "3d-spotlight.png"
                   :title  "Spotlight"
-                  :desc   "A spot light with visible hotspot and falloff on a sphere and floor."}}
+                  :desc   "A spot light with visible hotspot and falloff on a sphere and floor."
+                  :tags   ["3d" "color"]}}
   spotlight-scene []
   (let [sphere (s3d/sphere-mesh 1.0 20 12)
         floor  (s3d/cube-mesh [-3 -1.5 -3] 6)
@@ -511,7 +529,8 @@
 
 (defn ^{:example {:output "3d-organic-sculpture.png"
                   :title  "Organic Sculpture"
-                  :desc   "A cube deformed with noise, subdivided, and colored by field — the full sculpting pipeline."}}
+                  :desc   "A cube deformed with noise, subdivided, and colored by field — the full sculpting pipeline."
+                  :tags   ["3d" "noise" "distortion" "color"]}}
   organic-sculpture []
   (let [mesh (-> (s3d/cube-mesh [-1 -1 -1] 2)
                  (s3d/subdivide {:iterations 2})
@@ -540,7 +559,8 @@
 
 (defn ^{:example {:output "3d-alien-landscape.png"
                   :title  "Alien Landscape"
-                  :desc   "Ridge noise heightfield with altitude-banded colors and dramatic lighting."}}
+                  :desc   "Ridge noise heightfield with altitude-banded colors and dramatic lighting."
+                  :tags   ["3d" "noise" "gradients"]}}
   alien-landscape []
   (let [mesh (-> (s3d/heightfield-mesh
                    {:field  (field/noise-field :scale 0.4 :variant :ridge :seed 99)
@@ -569,7 +589,8 @@
 
 (defn ^{:example {:output "3d-coral-growth.png"
                   :title  "Coral Growth"
-                  :desc   "A sphere with noise-selected faces extruded outward, creating organic coral-like forms."}}
+                  :desc   "A sphere with noise-selected faces extruded outward, creating organic coral-like forms."
+                  :tags   ["3d" "noise" "gradients"]}}
   coral-growth []
   (let [mesh (-> (s3d/sphere-mesh 1.2 12 8)
                  (s3d/extrude-faces {:select/type :field
@@ -596,7 +617,8 @@
 
 (defn ^{:example {:output "3d-twisted-vase.png"
                   :title  "Twisted Vase"
-                  :desc   "A revolved profile twisted and colored with a warm gradient."}}
+                  :desc   "A revolved profile twisted and colored with a warm gradient."
+                  :tags   ["3d" "distortion" "gradients"]}}
   twisted-vase []
   (let [mesh (-> (s3d/revolve-mesh
                    {:profile [[0.0 0.0] [0.8 0.1] [0.9 0.4] [0.6 0.8]
@@ -626,7 +648,8 @@
 
 (defn ^{:example {:output "3d-crystal-cluster.png"
                   :title  "Crystal Cluster"
-                  :desc   "An icosahedron with noise-extruded faces creating sharp crystalline growths."}}
+                  :desc   "An icosahedron with noise-extruded faces creating sharp crystalline growths."
+                  :tags   ["3d" "noise" "color"]}}
   crystal-cluster []
   (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.0)
                  (s3d/extrude-faces {:select/type :field
@@ -652,7 +675,8 @@
 
 (defn ^{:example {:output "3d-geometric-panels.png"
                   :title  "Geometric Panels"
-                  :desc   "A dodecahedron with every face inset and extruded, creating faceted panel geometry."}}
+                  :desc   "A dodecahedron with every face inset and extruded, creating faceted panel geometry."
+                  :tags   ["3d" "noise" "color"]}}
   geometric-panels []
   (let [mesh (-> (s3d/platonic-mesh :dodecahedron 1.8)
                  (s3d/inset-faces {:select/type :all :inset/amount 0.2})
@@ -679,7 +703,8 @@
 
 (defn ^{:example {:output "3d-geodesic-sphere.png"
                   :title  "Geodesic Sphere"
-                  :desc   "An icosahedron subdivided twice — a geodesic sphere with uniform face distribution."}}
+                  :desc   "An icosahedron subdivided twice — a geodesic sphere with uniform face distribution."
+                  :tags   ["3d" "subdivision"]}}
   geodesic-sphere []
   (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.5)
                  (s3d/subdivide {:iterations 2}))
@@ -699,7 +724,8 @@
 
 (defn ^{:example {:output "3d-mirrored-sculpture.png"
                   :title  "Mirrored Sculpture"
-                  :desc   "A noise-deformed shape mirrored and merged for bilateral symmetry."}}
+                  :desc   "A noise-deformed shape mirrored and merged for bilateral symmetry."
+                  :tags   ["3d" "noise" "symmetry" "gradients"]}}
   mirrored-sculpture []
   (let [mesh (-> (s3d/platonic-mesh :octahedron 1.2)
                  (s3d/deform-mesh {:deform/type :displace
@@ -728,7 +754,8 @@
 
 (defn ^{:example {:output "3d-smooth-geodesic.png"
                   :title  "Smooth Geodesic Sphere"
-                  :desc   "Icosahedron subdivided twice with smooth shading — no facet lines visible."}}
+                  :desc   "Icosahedron subdivided twice with smooth shading — no facet lines visible."
+                  :tags   ["3d" "subdivision"]}}
   smooth-geodesic []
   (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.5)
                  (s3d/subdivide {:iterations 2}))
@@ -748,7 +775,8 @@
 
 (defn ^{:example {:output "3d-sweep-tube.png"
                   :title  "Sweep Tube"
-                  :desc   "A circular cross-section swept along a winding 3D path."}}
+                  :desc   "A circular cross-section swept along a winding 3D path."
+                  :tags   ["3d" "gradients"]}}
   sweep-tube []
   (let [;; Circular profile
         n-prof 12
@@ -781,7 +809,8 @@
 
 (defn ^{:example {:output "3d-auto-smooth-cube.png"
                   :title  "Auto-Smooth Cube"
-                  :desc   "A cube subdivided with hard edges preserved — smooth surfaces with crisp corners."}}
+                  :desc   "A cube subdivided with hard edges preserved — smooth surfaces with crisp corners."
+                  :tags   ["3d" "subdivision" "smoothing"]}}
   auto-smooth-cube []
   (let [base (s3d/cube-mesh [-1 -1 -1] 2)
         hard (s3d/auto-smooth-edges base {:angle (/ Math/PI 4)})
@@ -802,7 +831,8 @@
 
 (defn ^{:example {:output "3d-detailed-panel.png"
                   :title  "Detailed Panel"
-                  :desc   "A cube with noise-driven surface detail — procedural mechanical panels."}}
+                  :desc   "A cube with noise-driven surface detail — procedural mechanical panels."
+                  :tags   ["3d" "noise" "subdivision"]}}
   detailed-panel []
   (let [mesh (-> (s3d/cube-mesh [-1 -1 -1] 2)
                  (s3d/subdivide {:iterations 1})
@@ -829,7 +859,8 @@
 
 (defn ^{:example {:output "3d-vertex-paint.png"
                   :title  "Vertex Painted Sphere"
-                  :desc   "Per-vertex color with smooth interpolation — gradients flow across faces, not between them."}}
+                  :desc   "Per-vertex color with smooth interpolation — gradients flow across faces, not between them."
+                  :tags   ["3d" "noise" "gradients" "color"]}}
   vertex-painted-sphere []
   (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.5)
                  (s3d/subdivide {:iterations 1})
@@ -854,7 +885,8 @@
 
 (defn ^{:example {:output "3d-procedural-texture.png"
                   :title  "Procedural Texture"
-                  :desc   "The full 2D→3D bridge: UV-projected noise texture with bump map and specular variation."}}
+                  :desc   "The full 2D→3D bridge: UV-projected noise texture with bump map and specular variation."
+                  :tags   ["3d" "noise" "subdivision" "color"]}}
   procedural-textured-sphere []
   (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.5)
                  (s3d/subdivide {:iterations 2})
@@ -889,7 +921,8 @@
 
 (defn ^{:example {:output "3d-scatter-forest.png"
                   :title  "Scatter Forest"
-                  :desc   "2D Poisson scatter distribution placing 3D tree meshes — bridging scatter to mesh instancing."}}
+                  :desc   "2D Poisson scatter distribution placing 3D tree meshes — bridging scatter to mesh instancing."
+                  :tags   ["3d" "scatter"]}}
   scatter-forest []
   (let [;; Simple tree: cone on cylinder
         tree (s3d/merge-meshes
@@ -916,7 +949,8 @@
 
 (defn ^{:example {:output "3d-hatched-sphere.png"
                   :title  "Hatched Sphere"
-                  :desc   "Non-photorealistic rendering — 3D sphere with cross-hatch fill whose density varies by lighting."}}
+                  :desc   "Non-photorealistic rendering — 3D sphere with cross-hatch fill whose density varies by lighting."
+                  :tags   ["3d" "hatching"]}}
   hatched-sphere []
   (let [mesh (s3d/sphere-mesh 1.5 12 8)
         proj (s3d/orbit (s3d/orthographic {:scale 60 :origin [200 200]})
@@ -939,7 +973,8 @@
 
 (defn ^{:example {:output "3d-lsystem-tree.png"
                   :title  "L-System Tree"
-                  :desc   "Branching organic structure from L-system rules swept into 3D mesh tubes."}}
+                  :desc   "Branching organic structure from L-system rules swept into 3D mesh tubes."
+                  :tags   ["3d" "l-system" "gradients"]}}
   lsystem-tree []
   (let [mesh (-> (s3d/lsystem-mesh {:axiom "F"
                                      :rules {"F" "FF[&+F][&-F][&^F]"}

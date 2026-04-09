@@ -18,7 +18,8 @@
 
 (defn ^{:example {:output "art-ink-landscape.png"
                   :title  "Ink Landscape"
-                  :desc   "Hatching, path distortion, and calligraphic strokes."}}
+                  :desc   "Hatching, path distortion, and calligraphic strokes."
+                  :tags   ["hatching" "distortion" "brush-strokes"]}}
   ink-landscape []
   (let [mountain-path [[:move-to [0.0 300.0]]
                        [:line-to [50.0 250.0]]
@@ -83,7 +84,8 @@
 
 (defn ^{:example {:output "art-starfield.png"
                   :title  "Starfield"
-                  :desc   "Scatter, noise, glow, and nebula."}}
+                  :desc   "Scatter, noise, glow, and nebula."
+                  :tags   ["scatter" "glow" "opacity"]}}
   starfield []
   (let [pal (:midnight palette/palettes)
         star-positions (scatter/poisson-disk 0 0 600 400 15 42)
@@ -121,7 +123,8 @@
 
 (defn ^{:example {:output "art-stipple-spheres.png"
                   :title  "Stipple Spheres"
-                  :desc   "Stippled spheres with shadows and varying density."}}
+                  :desc   "Stippled spheres with shadows and varying density."
+                  :tags   ["stipple" "shadows"]}}
   stipple-spheres []
   {:image/size [400 400]
    :image/background [:color/rgb 245 240 230]
@@ -164,7 +167,8 @@
 
 (defn ^{:example {:output "art-polka-pop.png"
                   :title  "Polka Pop"
-                  :desc   "Pop art polka dot circles with pattern fills."}}
+                  :desc   "Pop art polka dot circles with pattern fills."
+                  :tags   ["pattern-fills" "shadows" "palette"]}}
   polka-pop []
   (let [pal (:neon palette/palettes)]
     {:image/size [400 400]
@@ -200,7 +204,8 @@
 
 (defn ^{:example {:output "art-calligraphy-flow.gif"
                   :title  "Calligraphy Flow"
-                  :desc   "Animated variable-width calligraphic strokes."}}
+                  :desc   "Animated variable-width calligraphic strokes."
+                  :tags   ["brush-strokes" "animation" "palette"]}}
   calligraphy-flow []
   {:frames
    (anim/frames 60
@@ -225,7 +230,8 @@
 
 (defn ^{:example {:output "art-decorative-frame.png"
                   :title  "Decorative Frame"
-                  :desc   "Path decorators, hatching, and stipple accents."}}
+                  :desc   "Path decorators, hatching, and stipple accents."
+                  :tags   ["path-decorators" "hatching" "stipple"]}}
   decorative-frame []
   {:image/size [400 400]
    :image/background [:color/rgb 250 245 235]
@@ -286,7 +292,8 @@
 
 (defn ^{:example {:output "art-noise-garden.gif"
                   :title  "Noise Garden"
-                  :desc   "Animated swaying flowers driven by noise."}}
+                  :desc   "Animated swaying flowers driven by noise."
+                  :tags   ["animation" "palette" "opacity"]}}
   noise-garden []
   (let [pal (:forest palette/palettes)]
     {:frames
@@ -324,7 +331,8 @@
 
 (defn ^{:example {:output "art-mandala.png"
                   :title  "Mandala"
-                  :desc   "Radial symmetry with hatching and stippling."}}
+                  :desc   "Radial symmetry with hatching and stippling."
+                  :tags   ["symmetry" "hatching" "stipple" "brush-strokes"]}}
   mandala []
   {:image/size [600 600]
    :image/background [:color/rgb 245 235 215]
@@ -364,7 +372,8 @@
 
 (defn ^{:example {:output "art-van-gogh-swirls.png"
                   :title  "Van Gogh Swirls"
-                  :desc   "Flow fields with variable brush strokes and warm palette."}}
+                  :desc   "Flow fields with variable brush strokes and warm palette."
+                  :tags   ["flow-field" "brush-strokes" "noise" "palette"]}}
   van-gogh-swirls []
   (let [pal (:fire palette/palettes)
         paths (flow/flow-field 0 0 600 400
@@ -386,7 +395,8 @@
 
 (defn ^{:example {:output "art-topo-map.png"
                   :title  "Topographic Map"
-                  :desc   "Contour lines colored by elevation."}}
+                  :desc   "Contour lines colored by elevation."
+                  :tags   ["contour" "noise" "gradients"]}}
   topo-map []
   (let [thresholds (mapv #(- (* % 0.15) 0.6) (range 9))
         pal (palette/gradient-palette [:color/rgb 30 80 30] [:color/rgb 200 170 120] 9)]
@@ -408,7 +418,8 @@
 
 (defn ^{:example {:output "art-stained-glass.png"
                   :title  "Stained Glass"
-                  :desc   "Voronoi cells with colored fills and dark outlines."}}
+                  :desc   "Voronoi cells with colored fills and dark outlines."
+                  :tags   ["voronoi" "scatter" "color"]}}
   stained-glass []
   (let [pts (scatter/poisson-disk 20 20 460 360 50 42)
         cells (voronoi/voronoi-cells pts 0 0 500 400)
@@ -435,7 +446,8 @@
 
 (defn ^{:example {:output "art-risograph.png"
                   :title  "Risograph"
-                  :desc   "Posterize filter, grain, and bold overlapping shapes."}}
+                  :desc   "Posterize filter, grain, and bold overlapping shapes."
+                  :tags   ["filters" "compositing" "opacity"]}}
   risograph []
   {:image/size [400 400]
    :image/background [:color/rgb 240 235 220]
@@ -465,7 +477,8 @@
 
 (defn ^{:example {:output "art-thermal.png"
                   :title  "Thermal Imaging"
-                  :desc   "Gradient-mapped noise field in thermal colors."}}
+                  :desc   "Gradient-mapped noise field in thermal colors."
+                  :tags   ["noise" "gradients" "color"]}}
   thermal []
   (let [thermal-stops [[0.0 [:color/rgb 0 0 30]]
                        [0.2 [:color/rgb 20 0 100]]
@@ -496,7 +509,8 @@
 
 (defn ^{:example {:output "art-flow-mandala.gif"
                   :title  "Flow Mandala"
-                  :desc   "Animated flow field with radial symmetry."}}
+                  :desc   "Animated flow field with radial symmetry."
+                  :tags   ["flow-field" "symmetry" "animation" "gradients"]}}
   flow-mandala []
   {:frames
    (anim/frames 40
@@ -532,7 +546,8 @@
 
 (defn ^{:example {:output "art-chromatic-scatter.png"
                   :title  "Chromatic Scatter"
-                  :desc   "Per-instance color variation driven by noise."}}
+                  :desc   "Per-instance color variation driven by noise."
+                  :tags   ["scatter" "noise" "gradients"]}}
   chromatic-scatter []
   (let [pts (scatter/poisson-disk 30 30 540 340 18 42)
         stops [[0.0 [:color/rgb 20 0 80]]
@@ -558,7 +573,8 @@
 
 (defn ^{:example {:output "art-fractal-forest.png"
                   :title  "Fractal Forest"
-                  :desc   "L-system trees with distortion and brush strokes."}}
+                  :desc   "L-system trees with distortion and brush strokes."
+                  :tags   ["l-system" "distortion"]}}
   fractal-forest []
   {:image/size [600 400]
    :image/background [:color/rgb 220 230 210]
@@ -602,7 +618,8 @@
 
 (defn ^{:example {:output "art-shape-breath.gif"
                   :title  "Shape Breath"
-                  :desc   "Morphing circle to star with color shift."}}
+                  :desc   "Morphing circle to star with color shift."
+                  :tags   ["path-morph" "animation" "glow" "gradients"]}}
   shape-breath []
   (let [circle-cmds (:path/commands (scene/regular-polygon [200.0 200.0] 140.0 60))
         star-cmds   (:path/commands (scene/star [200.0 200.0] 170.0 65.0 8))]
@@ -631,7 +648,8 @@
 
 (defn ^{:example {:output "art-wavy-text.png"
                   :title  "Wavy Text"
-                  :desc   "Text with twist warp and radial gradient fill."}}
+                  :desc   "Text with twist warp and radial gradient fill."
+                  :tags   ["typography" "warp" "gradients"]}}
   wavy-text []
   {:image/size [500 300]
    :image/background [:color/rgb 15 10 30]
@@ -653,7 +671,8 @@
 
 (defn ^{:example {:output "art-landscape-type.png"
                   :title  "Landscape Typography"
-                  :desc   "Voronoi mosaic sunset inside text clip mask."}}
+                  :desc   "Voronoi mosaic sunset inside text clip mask."
+                  :tags   ["voronoi" "typography" "gradients" "scatter"]}}
   landscape-type []
   (let [pts (scatter/poisson-disk -30 -240 640 290 35 42)
         cells (voronoi/voronoi-cells pts -30 -240 640 290)
@@ -689,7 +708,8 @@
 
 (defn ^{:example {:output "art-venn-booleans.png"
                   :title  "Venn Booleans"
-                  :desc   "Path boolean operations on overlapping circles."}}
+                  :desc   "Path boolean operations on overlapping circles."
+                  :tags   ["path-boolean" "opacity"]}}
   venn-booleans []
   (let [circle-a (:path/commands (scene/regular-polygon [160.0 200.0] 100.0 60))
         circle-b (:path/commands (scene/regular-polygon [260.0 200.0] 100.0 60))
@@ -717,7 +737,8 @@
 
 (defn ^{:example {:output "art-organic-mandala.png"
                   :title  "Organic Mandala"
-                  :desc   "L-system branches with radial symmetry and per-instance color."}}
+                  :desc   "L-system branches with radial symmetry and per-instance color."
+                  :tags   ["l-system" "symmetry" "gradients"]}}
   organic-mandala []
   (let [branch-cmds (lsystem/lsystem->path-cmds
                       "F" {"F" "F[-F]F[+F]F"} 3 25.7 8.0 [300 300] -90.0)

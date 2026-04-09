@@ -10,7 +10,8 @@
 
 (defn ^{:example {:output "spiral-grid.gif"
                   :title  "Spiral Rainbow"
-                  :desc   "A rotating spiral wave where hue follows the angle and pulse follows the distance from center."}}
+                  :desc   "A rotating spiral wave where hue follows the angle and pulse follows the distance from center."
+                  :tags   ["animation" "color" "math"]}}
   spiral-rainbow []
   {:frames
    (anim/frames 60
@@ -40,7 +41,8 @@
 
 (defn ^{:example {:output "sine-field.gif"
                   :title  "Sine Interference"
-                  :desc   "Three overlapping sine waves at different frequencies create organic, shifting patterns."}}
+                  :desc   "Three overlapping sine waves at different frequencies create organic, shifting patterns."
+                  :tags   ["animation" "color" "math"]}}
   sine-interference []
   {:frames
    (anim/frames 50
@@ -68,7 +70,8 @@
 
 (defn ^{:example {:output "breathing-grid.gif"
                   :title  "Breathing Wave"
-                  :desc   "A diagonal wave where cells expand and contract with staggered timing, hue shifting along the diagonal."}}
+                  :desc   "A diagonal wave where cells expand and contract with staggered timing, hue shifting along the diagonal."
+                  :tags   ["animation" "color" "math"]}}
   breathing-wave []
   {:frames
    (anim/frames 50
@@ -93,7 +96,8 @@
 
 (defn ^{:example {:output "dancing-bars.gif"
                   :title  "Dancing Bars"
-                  :desc   "Vertical bars with height, position, and color driven by overlapping sine waves."}}
+                  :desc   "Vertical bars with height, position, and color driven by overlapping sine waves."
+                  :tags   ["animation" "color" "math"]}}
   dancing-bars []
   {:frames
    (anim/frames 50
@@ -123,7 +127,8 @@
 
 (defn ^{:example {:output "tentacles.gif"
                   :title  "Tentacles"
-                  :desc   "Eight arms spiral outward from the center, wobbling and shifting color along their length."}}
+                  :desc   "Eight arms spiral outward from the center, wobbling and shifting color along their length."
+                  :tags   ["animation" "color" "opacity"]}}
   tentacles []
   {:frames
    (anim/frames 60
@@ -160,7 +165,8 @@
 
 (defn ^{:example {:output "pendulum-wave.gif"
                   :title  "Pendulum Wave"
-                  :desc   "15 pendulums with increasing frequencies create wave patterns."}}
+                  :desc   "15 pendulums with increasing frequencies create wave patterns."
+                  :tags   ["animation" "math" "color"]}}
   pendulum-wave []
   {:frames
    (anim/frames 150
@@ -191,7 +197,8 @@
 
 (defn ^{:example {:output "galaxy.gif"
                   :title  "Particle Galaxy"
-                  :desc   "300 particles orbiting with Keplerian speeds and 3 spiral arms."}}
+                  :desc   "300 particles orbiting with Keplerian speeds and 3 spiral arms."
+                  :tags   ["particles" "animation" "color"]}}
   particle-galaxy []
   {:frames
    (anim/frames 60
@@ -224,7 +231,8 @@
 
 (defn ^{:example {:output "op-art.gif"
                   :title  "Op Art"
-                  :desc   "Concentric rings that wobble to create an optical illusion, using only black and white."}}
+                  :desc   "Concentric rings that wobble to create an optical illusion, using only black and white."
+                  :tags   ["animation" "math"]}}
   op-art []
   {:frames
    (anim/frames 50
@@ -249,7 +257,8 @@
 
 (defn ^{:example {:output "lissajous.gif"
                   :title  "Lissajous Curve"
-                  :desc   "A 3:2 Lissajous figure traced with a rainbow trail that fades with age."}}
+                  :desc   "A 3:2 Lissajous figure traced with a rainbow trail that fades with age."
+                  :tags   ["animation" "math" "color" "opacity"]}}
   lissajous-curve []
   {:frames
    (anim/frames 60
@@ -275,7 +284,8 @@
 
 (defn ^{:example {:output "cellular.gif"
                   :title  "Cellular Automaton"
-                  :desc   "Evolving cellular patterns driven by sine wave interference, rendered as glowing colored cells."}}
+                  :desc   "Evolving cellular patterns driven by sine wave interference, rendered as glowing colored cells."
+                  :tags   ["cellular-automata" "animation" "color"]}}
   cellular-automaton []
   {:frames
    (anim/frames 40
@@ -303,7 +313,8 @@
 
 (defn ^{:example {:output "kaleidoscope.gif"
                   :title  "Kaleidoscope"
-                  :desc   "Eight-fold rotational symmetry with orbiting, pulsing dots."}}
+                  :desc   "Eight-fold rotational symmetry with orbiting, pulsing dots."
+                  :tags   ["symmetry" "animation" "color"]}}
   kaleidoscope []
   {:frames
    (anim/frames 60
@@ -332,7 +343,8 @@
 
 (defn ^{:example {:output "star-burst.gif"
                   :title  "Star Burst"
-                  :desc   "Rotating gradient stars with staggered pulsing, using radial gradients and cubic easing."}}
+                  :desc   "Rotating gradient stars with staggered pulsing, using radial gradients and cubic easing."
+                  :tags   ["animation" "gradients" "color"]}}
   star-burst []
   {:frames
    (anim/frames 60
@@ -393,7 +405,8 @@
 
 (defn ^{:example {:output "tree.gif"
                   :title  "Blooming Tree"
-                  :desc   "A recursive fractal tree that grows from trunk to full canopy, then sways in the wind."}}
+                  :desc   "A recursive fractal tree that grows from trunk to full canopy, then sways in the wind."
+                  :tags   ["animation" "math" "color"]}}
   blooming-tree []
   {:frames
    (anim/frames 90
@@ -425,7 +438,8 @@
 
 (defn ^{:example {:output "sierpinski.gif"
                   :title  "Sierpinski Triangle"
-                  :desc   "The classic fractal, built up one recursion depth at a time with shifting colors."}}
+                  :desc   "The classic fractal, built up one recursion depth at a time with shifting colors."
+                  :tags   ["animation" "math" "color"]}}
   sierpinski-triangle []
   {:frames
    (anim/frames 60
@@ -464,7 +478,8 @@
 
 (defn ^{:example {:output "koch.gif"
                   :title  "Koch Snowflake"
-                  :desc   "A Koch snowflake that gains detail with each frame, the boundary growing ever more intricate."}}
+                  :desc   "A Koch snowflake that gains detail with each frame, the boundary growing ever more intricate."
+                  :tags   ["animation" "math" "color"]}}
   koch-snowflake-scene []
   {:frames
    (anim/frames 60

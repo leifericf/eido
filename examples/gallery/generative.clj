@@ -29,7 +29,8 @@
 
 (defn ^{:example {:output "gen-circle-pack.png"
                   :title  "Circle Pack"
-                  :desc   "Packed circles with weighted sunset palette — rare accents."}}
+                  :desc   "Packed circles with weighted sunset palette — rare accents."
+                  :tags   ["circle-packing" "palette" "color"]}}
   circle-pack-palette []
   (let [w 600 h 600
         pal    (:sunset palette/palettes)
@@ -53,7 +54,8 @@
 
 (defn ^{:example {:output "gen-mondrian.png"
                   :title  "Mondrian Grid"
-                  :desc   "Recursive subdivision with primary color accents."}}
+                  :desc   "Recursive subdivision with primary color accents."
+                  :tags   ["subdivision" "color"]}}
   mondrian []
   (let [w 600 h 600
         rects (subdivide/subdivide 10 10 580 580
@@ -80,7 +82,8 @@
 
 (defn ^{:example {:output "gen-coral.gif"
                   :title  "Coral Growth"
-                  :desc   "Gray-Scott reaction-diffusion at the coral preset."}}
+                  :desc   "Gray-Scott reaction-diffusion at the coral preset."
+                  :tags   ["reaction-diffusion" "animation" "color"]}}
   coral []
   (let [gw 120 gh 120
         cell-size 5
@@ -118,7 +121,8 @@
 
 (defn ^{:example {:output "gen-murmuration.gif"
                   :title  "Murmuration"
-                  :desc   "Starling-like flocking with tight cohesion and wide alignment."}}
+                  :desc   "Starling-like flocking with tight cohesion and wide alignment."
+                  :tags   ["boids" "animation"]}}
   murmuration []
   (let [w 800 h 600
         config (assoc boids/murmuration
@@ -143,7 +147,8 @@
 
 (defn ^{:example {:output "gen-dashed-flow.png"
                   :title  "Dashed Flow"
-                  :desc   "Flow field streamlines with dashed + smoothed paths."}}
+                  :desc   "Flow field streamlines with dashed + smoothed paths."
+                  :tags   ["flow-field" "dashing" "smoothing" "palette"]}}
   dashed-flow []
   (let [w 600 h 600
         paths (flow/flow-field 20 20 560 560
@@ -170,7 +175,8 @@
 
 (defn ^{:example {:output "gen-series-grid.png"
                   :title  "Series Preview"
-                  :desc   "9 editions of a parametric design driven by eido.gen.series."}}
+                  :desc   "9 editions of a parametric design driven by eido.gen.series."
+                  :tags   ["noise" "color" "math"]}}
   series-grid []
   (let [w 600 h 600
         cell 190
@@ -214,7 +220,8 @@
 
 (defn ^{:example {:output "gen-subdiv-pack.png"
                   :title  "Subdivided Packing"
-                  :desc   "Each subdivision cell filled with a different circle pack and palette."}}
+                  :desc   "Each subdivision cell filled with a different circle pack and palette."
+                  :tags   ["subdivision" "circle-packing" "palette"]}}
   subdiv-pack []
   (let [w 600 h 600
         rects (subdivide/subdivide 10 10 580 580
@@ -243,7 +250,8 @@
 
 (defn ^{:example {:output "gen-voronoi-glass.png"
                   :title  "Voronoi Glass"
-                  :desc   "Voronoi cells with jewel-toned weighted palette and dark leading."}}
+                  :desc   "Voronoi cells with jewel-toned weighted palette and dark leading."
+                  :tags   ["voronoi" "scatter" "palette" "color"]}}
   voronoi-glass []
   (let [w 600 h 600
         pts (scatter/poisson-disk 20 20 560 560 45 42)
@@ -266,7 +274,8 @@
 
 (defn ^{:example {:output "gen-rd-spots.png"
                   :title  "Leopard Spots"
-                  :desc   "Reaction-diffusion spots preset with warm animal coloring."}}
+                  :desc   "Reaction-diffusion spots preset with warm animal coloring."
+                  :tags   ["reaction-diffusion" "color"]}}
   rd-spots []
   (let [gw 200 gh 200 cs 3
         g (ca/rd-run (ca/rd-grid gw gh :center-seed 77)
@@ -286,7 +295,8 @@
 
 (defn ^{:example {:output "gen-jitter-grid.png"
                   :title  "Trembling Grid"
-                  :desc   "A perfect grid where each element trembles with gaussian-distributed displacement."}}
+                  :desc   "A perfect grid where each element trembles with gaussian-distributed displacement."
+                  :tags   ["jitter" "color" "math"]}}
   jitter-grid []
   (let [w 600 h 600 cols 15 rows 15
         dx (/ (double w) (inc cols))
@@ -311,7 +321,8 @@
 
 (defn ^{:example {:output "gen-noise-flow.png"
                   :title  "Painted Flow"
-                  :desc   "Flow field streamlines colored by noise, smoothed for a painted feel."}}
+                  :desc   "Flow field streamlines colored by noise, smoothed for a painted feel."
+                  :tags   ["flow-field" "noise" "smoothing" "color"]}}
   noise-flow []
   (let [w 700 h 500
         paths (flow/flow-field 20 20 660 460
@@ -335,7 +346,8 @@
 
 (defn ^{:example {:output "gen-boids-trails.gif"
                   :title  "Boid Trails"
-                  :desc   "Flocking boids leaving fading afterimage trails."}}
+                  :desc   "Flocking boids leaving fading afterimage trails."
+                  :tags   ["boids" "animation" "opacity"]}}
   boids-trails []
   (let [w 600 h 450
         config (assoc boids/classic :count 40 :bounds [0 0 w h] :seed 88 :max-speed 4.0)
@@ -368,7 +380,8 @@
 
 (defn ^{:example {:output "gen-ca-quilt.png"
                   :title  "CA Quilt"
-                  :desc   "Cellular automata snapshots at different generations, stitched into a quilt."}}
+                  :desc   "Cellular automata snapshots at different generations, stitched into a quilt."
+                  :tags   ["cellular-automata" "color"]}}
   ca-quilt []
   (let [w 600 h 600
         cell-w 10 grid-size 28
@@ -399,7 +412,8 @@
 
 (defn ^{:example {:output "gen-stipple-gradient.png"
                   :title  "Stippled Sphere"
-                  :desc   "A sphere effect using density-varying stipple dots."}}
+                  :desc   "A sphere effect using density-varying stipple dots."
+                  :tags   ["stipple" "scatter"]}}
   stipple-gradient []
   (let [w 500 h 500 cx 250 cy 250 r 200]
     {:image/size [w h]
@@ -424,7 +438,8 @@
 
 (defn ^{:example {:output "gen-contour-elevation.png"
                   :title  "Elevation Map"
-                  :desc   "Dense contour lines with altitude-banded earth tones."}}
+                  :desc   "Dense contour lines with altitude-banded earth tones."
+                  :tags   ["contour" "noise" "palette"]}}
   contour-elevation []
   (let [w 600 h 450
         thresholds (mapv #(- (* % 0.1) 0.5) (range 12))
@@ -449,7 +464,8 @@
 
 (defn ^{:example {:output "gen-dot-cloud.png"
                   :title  "Dot Cloud"
-                  :desc   "Gaussian-distributed dots forming a soft, nebula-like cloud."}}
+                  :desc   "Gaussian-distributed dots forming a soft, nebula-like cloud."
+                  :tags   ["scatter" "noise" "opacity" "color"]}}
   dot-cloud []
   (let [w 600 h 600 n 2000
         xs (prob/gaussian n 300.0 100.0 42)
@@ -471,7 +487,8 @@
 
 (defn ^{:example {:output "gen-lsystem-dashed.png"
                   :title  "Dashed Sapling"
-                  :desc   "L-system tree with dashed and jittered branch strokes."}}
+                  :desc   "L-system tree with dashed and jittered branch strokes."
+                  :tags   ["l-system" "dashing" "jitter"]}}
   lsystem-dashed []
   (let [w 500 h 600
         cmds (lsystem/lsystem->path-cmds
@@ -491,7 +508,8 @@
 
 (defn ^{:example {:output "gen-mitosis.gif"
                   :title  "Mitosis"
-                  :desc   "Reaction-diffusion cell division with the mitosis preset."}}
+                  :desc   "Reaction-diffusion cell division with the mitosis preset."
+                  :tags   ["reaction-diffusion" "animation"]}}
   mitosis []
   (let [gw 150 gh 150 cs 3
         init (ca/rd-grid gw gh :center-seed 42)
@@ -523,7 +541,8 @@
 
 (defn ^{:example {:output "gen-hatch-subdiv.png"
                   :title  "Hatched Grid"
-                  :desc   "Subdivision cells alternating between solid fills and cross-hatching."}}
+                  :desc   "Subdivision cells alternating between solid fills and cross-hatching."
+                  :tags   ["subdivision" "hatching" "palette"]}}
   hatch-subdiv []
   (let [w 600 h 600
         rects (subdivide/subdivide 15 15 570 570
@@ -553,7 +572,8 @@
 
 (defn ^{:example {:output "gen-morph-wave.gif"
                   :title  "Morphing Waves"
-                  :desc   "Layered wave paths that smoothly morph between shapes."}}
+                  :desc   "Layered wave paths that smoothly morph between shapes."
+                  :tags   ["smoothing" "animation" "color"]}}
   morph-wave []
   (let [w 600 h 400
         make-wave (fn [seed amp freq phase]
@@ -587,7 +607,8 @@
 
 (defn ^{:example {:output "gen-text-pack.png"
                   :title  "Packed Type"
-                  :desc   "The letter A filled with packed circles using a weighted palette."}}
+                  :desc   "The letter A filled with packed circles using a weighted palette."
+                  :tags   ["circle-packing" "typography" "palette"]}}
   text-pack []
   (let [w 500 h 500
         text-cmds (eido.text/text->path-commands "A"
@@ -626,7 +647,8 @@
 
 (defn ^{:example {:output "gen-depth-gradient.png"
                   :title  "Depth Gradient"
-                  :desc   "Subdivision where deeper cells are darker, creating an organic shadow map."}}
+                  :desc   "Subdivision where deeper cells are darker, creating an organic shadow map."
+                  :tags   ["subdivision" "gradients"]}}
   depth-gradient []
   (let [w 600 h 600
         rects (subdivide/subdivide 10 10 580 580
@@ -647,7 +669,8 @@
 
 (defn ^{:example {:output "gen-boids-seek.gif"
                   :title  "Predator and Prey"
-                  :desc   "Boids seeking a point while fleeing another — dynamic tension."}}
+                  :desc   "Boids seeking a point while fleeing another — dynamic tension."
+                  :tags   ["boids" "animation"]}}
   boids-seek []
   (let [w 600 h 450
         config {:count 60 :bounds [0 0 w h] :max-speed 3.5 :max-force 0.18
@@ -695,7 +718,8 @@
 
 (defn ^{:example {:output "gen-terrain-stripes.png"
                   :title  "Terrain Stripes"
-                  :desc   "Horizontal lines displaced by noise, creating a topographic ribbon effect."}}
+                  :desc   "Horizontal lines displaced by noise, creating a topographic ribbon effect."
+                  :tags   ["noise" "smoothing" "color"]}}
   terrain-stripes []
   (let [w 700 h 500 n-lines 40 spacing (/ (double h) (inc n-lines))]
     {:image/size [w h]
@@ -718,7 +742,8 @@
 
 (defn ^{:example {:output "gen-series-showcase.png"
                   :title  "Edition Gallery"
-                  :desc   "25 editions of a parametric design showing weighted-choice diversity."}}
+                  :desc   "25 editions of a parametric design showing weighted-choice diversity."
+                  :tags   ["color" "math"]}}
   series-showcase []
   (let [w 750 h 750 cell 140
         spec {:bg-hue   {:type :uniform :lo 0.0 :hi 360.0}
@@ -771,7 +796,8 @@
 
 (defn ^{:example {:output "gen-rd-ripple.png"
                   :title  "Ripple"
-                  :desc   "Reaction-diffusion ripple preset with cool blue coloring."}}
+                  :desc   "Reaction-diffusion ripple preset with cool blue coloring."
+                  :tags   ["reaction-diffusion" "color"]}}
   rd-ripple []
   (let [gw 200 gh 150 cs 3
         g (ca/rd-run (ca/rd-grid gw gh :center-seed 42)
