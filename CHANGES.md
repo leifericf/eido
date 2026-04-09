@@ -16,7 +16,22 @@
 
 - **`eido.color.palette`** — Add `weighted-pick`, `weighted-sample`, `weighted-gradient`, and `shuffle-palette` for artist-friendly color frequency control
 - **`eido.gen`** — Re-export all new module functions via the `eido.gen` facade namespace
-- **`eido.path`** — Re-export `smooth-commands`, `jittered-commands`, `dash-commands` from `eido.path.aesthetic`
+- **`eido.path`** — Re-export `smooth-commands`, `jittered-commands`, `dash-commands`, `stylize` from `eido.path.aesthetic`
+
+### Convenience helpers
+
+21 convenience functions marked with `:convenience` metadata for API Reference display:
+
+- **`eido.scene`** — `circle-node`, `rect-node`, `line-node` (node shorthands), `polar->xy` (trig-free coords), `ring` (place shapes in a circle), `points->path` (points to commands)
+- **`eido.animate`** — `pulse` (sine oscillation), `fade-linear`, `fade-out`, `fade-in` (opacity decay)
+- **`eido.color`** — `rgb`, `hsl` (shorthand constructors)
+- **`eido.color.palette`** — `with-roles` (named palette roles)
+- **`eido.gen.vary`** — `by-palette` (weighted palette coloring), `by-noise-palette` (noise-to-palette)
+- **`eido.gen.circle`** — `pack->colored-nodes` (pack + palette in one call)
+- **`eido.gen.subdivide`** — `subdivide->palette-nodes` (rects + palette coloring)
+- **`eido.path.aesthetic`** — `stylize` (data-driven path transform pipeline)
+- **`eido.gen.prob`** — `mixture` (sample from mixed distributions)
+- **`eido.gen.series`** — `derive-traits` (categorize params into labels)
 
 ### Docs
 
@@ -24,6 +39,13 @@
 - Add 14 rendered inline previews (including animated boids gif) to generative docs sections — all generated during CI site build
 - Add documentation sections for controlling randomness, circle packing, subdivision, weighted palettes, path aesthetics (smooth/jitter/dash with visual comparisons), long-form series, cellular automata, reaction-diffusion, and boids
 - Add new namespaces to API reference: `eido.gen.prob`, `eido.gen.circle`, `eido.gen.subdivide`, `eido.gen.series`, `eido.gen.ca`, `eido.gen.boids`, `eido.path.aesthetic`
+- API Reference: structured signature cards with syntax highlighting, search bar, "Helper" badges on convenience functions with "Wraps: fn-name" links
+- Rename "Docs" to "Guide" with subtitle "A hands-on tour of Eido — from first shapes to generative art"
+- Clean URLs throughout (directory-style, no index.html in links)
+- Landing page: add convenience shorthand example showing both full and shorthand syntax
+- Use color names (`[:color/name "red"]`) instead of RGB in early Guide examples for friendlier onboarding
+- Add rendered visuals to Colors, Strokes, Clipping, Compositing, Transforms, Noise, Particles, Animation, and Easing sections
+- Add category intros for Drawing, Styling, Composition, Animation, and Generative
 - Add 26 gallery examples showcasing generative features: circle packing (solid, in-path, subdivided), Mondrian grid, reaction-diffusion (coral, spots, mitosis, waves), boids (murmuration, trails, predator/prey), dashed flow, series preview, voronoi glass, trembling grid, painted flow, CA quilt, stippled sphere, contour elevation, dot cloud, dashed L-system, hatched subdivision, morphing waves, packed typography, depth gradient, terrain stripes, edition gallery
 
 ## v1.0.0-beta1 — Bug Fixes & Stabilization
