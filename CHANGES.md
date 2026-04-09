@@ -11,7 +11,7 @@
 - Add `auto-smooth-edges` for detecting hard edges by angle threshold
 - Add `mirror-mesh` for reflecting meshes across axis planes with optional merge
 - Add `bevel-faces` convenience helper (composes inset + extrude)
-- Add `greeble-faces` convenience helper (noise-driven inset + per-face extrude for procedural surface detail)
+- Add `detail-faces` convenience helper (noise-driven inset + per-face extrude for procedural surface detail)
 
 ### New shape generators
 
@@ -41,8 +41,8 @@
 
 ### Non-photorealistic rendering
 
-- Add `:style/fill-type :hatch` for cross-hatched 3D face rendering with lighting-driven density
-- Add `:style/fill-type :stipple` for stipple-dot 3D face rendering
+- Add `:render/mode :hatch` for cross-hatched 3D face rendering with lighting-driven density
+- Add `:render/mode :stipple` for stipple-dot 3D face rendering
 - Hatch lines clipped to face polygon boundaries via line-polygon intersection
 - Stipple dots filtered by point-in-polygon test
 - Bridges 2D hatch/stipple pattern systems to 3D surfaces
@@ -64,7 +64,7 @@
 
 ### Gallery
 
-- Add 17 new gallery examples: organic sculpture, alien landscape, coral growth, twisted vase, crystal cluster, geometric panels, geodesic sphere, mirrored sculpture, smooth geodesic, sweep tube, auto-smooth cube, greebled panel, vertex painted sphere, procedural textured sphere, scatter forest, hatched sphere, L-system tree
+- Add 17 new gallery examples: organic sculpture, alien landscape, coral growth, twisted vase, crystal cluster, geometric panels, geodesic sphere, mirrored sculpture, smooth geodesic, sweep tube, auto-smooth cube, detaild panel, vertex painted sphere, procedural textured sphere, scatter forest, hatched sphere, L-system tree
 
 ## v1.0.0-alpha8 — Semantic IR & Procedural Fills
 
@@ -105,7 +105,7 @@
 ### 3D materials and lighting
 
 - Add `eido.ir.material` with Blinn-Phong material descriptors (ambient, diffuse, specular, shininess)
-- Add four light types inspired by 3ds Max: directional, omni (point), spot, hemisphere (sky)
+- Add four light types: directional, point (omni), spot, hemisphere (sky)
 - Light constructors: `material/directional`, `material/omni`, `material/spot`, `material/hemisphere`
 - Multi-light support: `:lights` vector on render-mesh opts, contributions sum per-channel
 - Light color tinting: each light's color modulates its diffuse and specular contribution

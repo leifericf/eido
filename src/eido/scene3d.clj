@@ -834,7 +834,7 @@
   "Builds a predicate fn from a selector descriptor.
   Returns (fn [face centroid normal] -> boolean)."
   [opts]
-  (case (:select/by opts)
+  (case (:select/type opts)
     :all (fn [_face _centroid _normal] true)
 
     :normal
@@ -933,17 +933,17 @@
 (defn uv-project
   "Assigns texture coordinates to mesh faces via projection.
   opts:
-    :uv/method  - :box, :spherical, :cylindrical, or :planar
+    :uv/type  - :box, :spherical, :cylindrical, or :planar
     :uv/axis    - axis for :cylindrical/:planar (default :y)
     :uv/scale   - UV scale factor (default 1.0)
     :uv/offset  - [u-offset v-offset] (default [0 0])
     :select/*   - optional face selector"
   [mesh opts]
-  (let [method (get opts :uv/method :box)
+  (let [method (get opts :uv/type :box)
         axis   (get opts :uv/axis :y)
         scale  (double (get opts :uv/scale 1.0))
         [ou ov] (get opts :uv/offset [0 0])
-        sel    (when (:select/by opts) (make-face-selector opts))
+        sel    (when (:select/type opts) (make-face-selector opts))
         bounds (mesh-bounds mesh)]
     (mapv (fn [face]
             (let [centroid (m/face-centroid (:face/vertices face))
@@ -990,7 +990,7 @@
 
 (defn color-mesh
   "Colors each face based on a descriptor.
-  When :select/by is present, only selected faces are colored; others pass through.
+  When :select/type is present, only selected faces are colored; others pass through.
   opts:
     :color/type    - :field, :axis-gradient, or :normal-map
     :color/palette - vector of [:color/rgb r g b] colors
@@ -999,7 +999,7 @@
     :select/*      - optional face selector (defaults to all faces)"
   [mesh opts]
   (let [palette (:color/palette opts)
-        sel     (when (:select/by opts) (make-face-selector opts))
+        sel     (when (:select/type opts) (make-face-selector opts))
         bounds  (when (= :axis-gradient (:color/type opts))
                   (let [axis (get opts :color/axis :y)]
                     (axis-range axis mesh)))
@@ -1061,7 +1061,7 @@
   [mesh opts]
   (let [palette   (:color/palette opts)
         uv-source? (= :uv (:color/source opts))
-        sel       (when (:select/by opts) (make-face-selector opts))
+        sel       (when (:select/type opts) (make-face-selector opts))
         bounds    (when (= :axis-gradient (:color/type opts))
                     (axis-range (get opts :color/axis :y) mesh))
         vert-t-fn
@@ -1157,7 +1157,7 @@
   [mesh opts]
   (let [f        (:normal-map/field opts)
         strength (double (get opts :normal-map/strength 1.0))
-        sel      (when (:select/by opts) (make-face-selector opts))]
+        sel      (when (:select/type opts) (make-face-selector opts))]
     (mapv (fn [face]
             (let [verts    (:face/vertices face)
                   centroid (m/face-centroid verts)
@@ -1187,7 +1187,7 @@
         [lo hi] (get opts :specular-map/range [0.0 1.0])
         lo    (double lo)
         range (- (double hi) lo)
-        sel   (when (:select/by opts) (make-face-selector opts))]
+        sel   (when (:select/type opts) (make-face-selector opts))]
     (mapv (fn [face]
             (let [verts    (:face/vertices face)
                   centroid (m/face-centroid verts)
@@ -1398,26 +1398,26 @@
   [mesh opts]
   (let [inset-amt (get opts :bevel/inset 0.1)
         depth     (get opts :bevel/depth 0.05)
-        sel-opts  (if (:select/by opts) opts {:select/by :all})
+        sel-opts  (if (:select/type opts) opts {:select/type :all})
         ;; First inset: creates inner faces + border quads
         inset-mesh (inset-faces mesh (merge sel-opts {:inset/amount inset-amt}))]
     ;; Then extrude the smaller inner faces (they have the same selection criteria
     ;; but are now smaller). We use :all since inset already created the structure.
     (extrude-faces inset-mesh (merge sel-opts {:extrude/amount depth}))))
 
-(defn greeble-faces
+(defn detail-faces
   "Adds procedural surface detail by insetting then noise-extruding faces.
   Creates mechanical/sci-fi panel detail. Composes inset + field-driven extrude.
   opts:
     :select/*            - face selector (defaults to :all)
-    :greeble/field       - noise field for per-face extrusion depth
-    :greeble/inset       - inset amount (default 0.1)
-    :greeble/depth-range - [min-depth max-depth] range for extrusion"
+    :detail/field       - noise field for per-face extrusion depth
+    :detail/inset       - inset amount (default 0.1)
+    :detail/depth-range - [min-depth max-depth] range for extrusion"
   [mesh opts]
-  (let [inset-amt   (get opts :greeble/inset 0.1)
-        [d-min d-max] (get opts :greeble/depth-range [0.02 0.15])
-        greeble-field (:greeble/field opts)
-        sel-opts    (if (:select/by opts) opts {:select/by :all})
+  (let [inset-amt   (get opts :detail/inset 0.1)
+        [d-min d-max] (get opts :detail/depth-range [0.02 0.15])
+        detail-field (:detail/field opts)
+        sel-opts    (if (:select/type opts) opts {:select/type :all})
         ;; Inset all selected faces
         inset-mesh  (inset-faces mesh (merge sel-opts {:inset/amount inset-amt}))]
     ;; Extrude each face by a noise-sampled depth
@@ -1426,8 +1426,8 @@
                   centroid (m/face-centroid verts)
                   [cx _cy cz] centroid
                   ;; Sample noise to get extrusion depth for this face
-                  noise-val (if greeble-field
-                              (* 0.5 (+ 1.0 (field/evaluate greeble-field
+                  noise-val (if detail-field
+                              (* 0.5 (+ 1.0 (field/evaluate detail-field
                                               (double cx) (double cz))))
                               (rand))
                   depth     (+ (double d-min) (* noise-val (- (double d-max) (double d-min))))
@@ -1595,7 +1595,7 @@
         ys (map second projected)
         bx (apply min xs) by (apply min ys)
         bw (- (apply max xs) bx) bh (- (apply max ys) by)
-        fill-type (:style/fill-type face-style)]
+        fill-type (:render/mode face-style)]
     (case fill-type
       :hatch
       (let [angle    (get face-style :hatch/angle 45)
@@ -1795,7 +1795,7 @@
                  ;; Standard single-color face
                  (let [projected (mapv proj-fn verts)
                        expanded  (expand-polygon projected)]
-                   (if (:style/fill-type face-style)
+                   (if (:render/mode face-style)
                      ;; NPR rendering: hatch or stipple
                      (let [has-light (or light (seq lights))
                            brightness (if has-light

@@ -569,7 +569,7 @@
                   :desc   "A sphere with noise-selected faces extruded outward, creating organic coral-like forms."}}
   coral-growth []
   (let [mesh (-> (s3d/sphere-mesh 1.2 12 8)
-                 (s3d/extrude-faces {:select/by :field
+                 (s3d/extrude-faces {:select/type :field
                                      :select/field (field/noise-field :scale 1.5 :seed 33)
                                      :select/threshold 0.1
                                      :extrude/amount 0.6
@@ -626,7 +626,7 @@
                   :desc   "An icosahedron with noise-extruded faces creating sharp crystalline growths."}}
   crystal-cluster []
   (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.0)
-                 (s3d/extrude-faces {:select/by :field
+                 (s3d/extrude-faces {:select/type :field
                                      :select/field (field/noise-field :scale 2.5 :seed 17)
                                      :select/threshold 0.0
                                      :extrude/amount 0.8
@@ -652,8 +652,8 @@
                   :desc   "A dodecahedron with every face inset and extruded, creating faceted panel geometry."}}
   geometric-panels []
   (let [mesh (-> (s3d/platonic-mesh :dodecahedron 1.8)
-                 (s3d/inset-faces {:select/by :all :inset/amount 0.2})
-                 (s3d/extrude-faces {:select/by :field
+                 (s3d/inset-faces {:select/type :all :inset/amount 0.2})
+                 (s3d/extrude-faces {:select/type :field
                                      :select/field (field/noise-field :scale 3.0 :seed 55)
                                      :select/threshold -0.2
                                      :extrude/amount -0.15})
@@ -797,16 +797,16 @@
 
 ;; --- 30. Greebled Panel ---
 
-(defn ^{:example {:output "3d-greebled-panel.png"
+(defn ^{:example {:output "3d-detailed-panel.png"
                   :title  "Greebled Panel"
                   :desc   "A cube with noise-driven surface detail — procedural mechanical panels."}}
-  greebled-panel []
+  detailed-panel []
   (let [mesh (-> (s3d/cube-mesh [-1 -1 -1] 2)
                  (s3d/subdivide {:iterations 1})
-                 (s3d/greeble-faces {:select/by :all
-                                     :greeble/field (field/noise-field :scale 4.0 :seed 77)
-                                     :greeble/inset 0.08
-                                     :greeble/depth-range [0.01 0.12]})
+                 (s3d/detail-faces {:select/type :all
+                                     :detail/field (field/noise-field :scale 4.0 :seed 77)
+                                     :detail/inset 0.08
+                                     :detail/depth-range [0.01 0.12]})
                  (s3d/color-mesh {:color/type :field
                                   :color/field (field/noise-field :scale 2.0 :seed 77)
                                   :color/palette [[:color/rgb 140 150 160]
@@ -855,7 +855,7 @@
   procedural-textured-sphere []
   (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.5)
                  (s3d/subdivide {:iterations 2})
-                 (s3d/uv-project {:uv/method :spherical})
+                 (s3d/uv-project {:uv/type :spherical})
                  (s3d/paint-mesh {:color/source :uv
                                   :color/type :field
                                   :color/field (field/noise-field :scale 4.0 :variant :fbm :seed 7)
@@ -922,7 +922,7 @@
      :image/background [:color/rgb 255 250 240]
      :image/nodes
      [(s3d/render-mesh proj mesh
-        {:style {:style/fill-type :hatch
+        {:style {:render/mode :hatch
                  :style/fill [:color/rgb 255 250 235]
                  :hatch/angle 30
                  :hatch/spacing 3
@@ -992,7 +992,7 @@
   (smooth-geodesic)
   (sweep-tube)
   (auto-smooth-cube)
-  (greebled-panel)
+  (detailed-panel)
   (vertex-painted-sphere)
   (procedural-textured-sphere)
   (scatter-forest)

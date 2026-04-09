@@ -9,7 +9,7 @@
     :spot        — cone of light from a position with hotspot/falloff
     :hemisphere  — sky/ground ambient blend by normal direction
 
-  Inspired by 3ds Max Standard Lights."
+  Standard light types for 3D scene illumination."
   (:require
     [eido.color :as color]
     [eido.math3d :as m]))

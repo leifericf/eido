@@ -510,7 +510,7 @@
 (deftest color-mesh-with-selector-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
         colored (s3d/color-mesh mesh
-                  {:select/by :normal :select/direction [0 1 0] :select/tolerance 0.1
+                  {:select/type :normal :select/direction [0 1 0] :select/tolerance 0.1
                    :color/type :axis-gradient
                    :color/axis :y
                    :color/palette [[:color/rgb 0 0 0]
@@ -577,7 +577,7 @@
 (deftest paint-mesh-with-selector-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
         painted (s3d/paint-mesh mesh
-                  {:select/by :normal :select/direction [0 1 0] :select/tolerance 0.1
+                  {:select/type :normal :select/direction [0 1 0] :select/tolerance 0.1
                    :color/type :axis-gradient
                    :color/axis :y
                    :color/palette [[:color/rgb 100 100 100]
@@ -605,7 +605,7 @@
 
 (deftest paint-mesh-uv-source-test
   (let [mesh (-> (s3d/sphere-mesh 1.0 8 4)
-                 (s3d/uv-project {:uv/method :spherical}))
+                 (s3d/uv-project {:uv/type :spherical}))
         painted (s3d/paint-mesh mesh
                   {:color/source :uv
                    :color/type :field
@@ -620,7 +620,7 @@
 
 (deftest paint-mesh-uv-vs-position-different-test
   (let [mesh (-> (s3d/sphere-mesh 1.0 8 4)
-                 (s3d/uv-project {:uv/method :spherical}))
+                 (s3d/uv-project {:uv/type :spherical}))
         by-pos (s3d/paint-mesh mesh {:color/type :field
                                      :color/field (field/noise-field :scale 1.0 :seed 1)
                                      :color/palette [[:color/rgb 0 0 0]
@@ -648,7 +648,7 @@
 
 (deftest normal-map-mesh-test
   (let [mesh (-> (s3d/sphere-mesh 1.0 8 4)
-                 (s3d/uv-project {:uv/method :spherical}))
+                 (s3d/uv-project {:uv/type :spherical}))
         mapped (s3d/normal-map-mesh mesh
                  {:normal-map/field (field/noise-field :scale 5.0 :seed 42)
                   :normal-map/strength 0.5})]
@@ -665,9 +665,9 @@
 
 (deftest normal-map-mesh-with-selector-test
   (let [mesh (-> (s3d/cube-mesh [0 0 0] 2)
-                 (s3d/uv-project {:uv/method :box}))
+                 (s3d/uv-project {:uv/type :box}))
         mapped (s3d/normal-map-mesh mesh
-                 {:select/by :normal :select/direction [0 1 0] :select/tolerance 0.1
+                 {:select/type :normal :select/direction [0 1 0] :select/tolerance 0.1
                   :normal-map/field (field/noise-field :scale 3.0)
                   :normal-map/strength 0.3})]
     (testing "only selected faces get vertex normals"
@@ -677,7 +677,7 @@
 (deftest render-mesh-vertex-normals-test
   (let [proj (s3d/isometric {:scale 50 :origin [200 200]})
         mesh (-> (s3d/sphere-mesh 1.0 8 4)
-                 (s3d/uv-project {:uv/method :spherical})
+                 (s3d/uv-project {:uv/type :spherical})
                  (s3d/paint-mesh {:color/source :uv
                                   :color/type :field
                                   :color/field (field/noise-field :scale 2.0 :seed 7)
@@ -697,7 +697,7 @@
 
 (deftest specular-map-mesh-test
   (let [mesh (-> (s3d/sphere-mesh 1.0 8 4)
-                 (s3d/uv-project {:uv/method :spherical}))
+                 (s3d/uv-project {:uv/type :spherical}))
         mapped (s3d/specular-map-mesh mesh
                  {:specular-map/field (field/noise-field :scale 3.0 :seed 42)
                   :specular-map/range [0.1 0.8]})]
@@ -715,7 +715,7 @@
 
 (deftest extrude-faces-all-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        extruded (s3d/extrude-faces mesh {:select/by :all
+        extruded (s3d/extrude-faces mesh {:select/type :all
                                           :extrude/amount 0.5})]
     (testing "each face becomes cap + side walls"
       ;; 6 original quad faces → 6 caps + 6*4 side walls = 30 faces
@@ -727,7 +727,7 @@
 (deftest extrude-faces-by-normal-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
         ;; Select only upward-facing faces
-        extruded (s3d/extrude-faces mesh {:select/by :normal
+        extruded (s3d/extrude-faces mesh {:select/type :normal
                                           :select/direction [0 1 0]
                                           :select/tolerance 0.1
                                           :extrude/amount 1.0})]
@@ -736,7 +736,7 @@
 
 (deftest extrude-faces-with-scale-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        extruded (s3d/extrude-faces mesh {:select/by :normal
+        extruded (s3d/extrude-faces mesh {:select/type :normal
                                           :select/direction [0 1 0]
                                           :select/tolerance 0.1
                                           :extrude/amount 1.0
@@ -754,7 +754,7 @@
 (deftest extrude-faces-by-field-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
         extruded (s3d/extrude-faces mesh
-                   {:select/by :field
+                   {:select/type :field
                     :select/field (field/constant-field 1.0)
                     :select/threshold 0.5
                     :extrude/amount 0.5})]
@@ -765,11 +765,11 @@
   (testing "chained extrusions build on each other"
     (let [mesh (s3d/cube-mesh [0 0 0] 2)
           result (-> mesh
-                     (s3d/extrude-faces {:select/by :normal
+                     (s3d/extrude-faces {:select/type :normal
                                          :select/direction [0 1 0]
                                          :select/tolerance 0.1
                                          :extrude/amount 1.0})
-                     (s3d/extrude-faces {:select/by :normal
+                     (s3d/extrude-faces {:select/type :normal
                                          :select/direction [0 1 0]
                                          :select/tolerance 0.1
                                          :extrude/amount 0.5}))]
@@ -780,7 +780,7 @@
 
 (deftest extrude-faces-by-axis-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        extruded (s3d/extrude-faces mesh {:select/by :axis
+        extruded (s3d/extrude-faces mesh {:select/type :axis
                                           :select/axis :y
                                           :select/min 1.5
                                           :select/max 3.0
@@ -790,7 +790,7 @@
 
 (deftest inset-faces-all-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        inset (s3d/inset-faces mesh {:select/by :all
+        inset (s3d/inset-faces mesh {:select/type :all
                                      :inset/amount 0.2})]
     (testing "each face becomes inner face + border quads"
       ;; 6 faces × (1 inner + 4 border) = 30
@@ -798,7 +798,7 @@
 
 (deftest inset-faces-by-normal-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        inset (s3d/inset-faces mesh {:select/by :normal
+        inset (s3d/inset-faces mesh {:select/type :normal
                                      :select/direction [0 1 0]
                                      :select/tolerance 0.1
                                      :inset/amount 0.3})]
@@ -811,7 +811,7 @@
   (let [proj (s3d/isometric {:scale 50 :origin [200 200]})
         mesh (s3d/cube-mesh [0 0 0] 2)
         result (s3d/render-mesh proj mesh
-                 {:style {:style/fill-type :hatch
+                 {:style {:render/mode :hatch
                           :style/fill [:color/rgb 240 235 225]
                           :hatch/angle 45
                           :hatch/spacing 4
@@ -829,7 +829,7 @@
   (let [proj (s3d/isometric {:scale 50 :origin [200 200]})
         mesh (s3d/cube-mesh [0 0 0] 2)
         result (s3d/render-mesh proj mesh
-                 {:style {:style/fill-type :stipple
+                 {:style {:render/mode :stipple
                           :style/fill [:color/rgb 240 235 225]
                           :stipple/density 0.4
                           :stipple/radius 1.0
@@ -911,7 +911,7 @@
 
 (deftest bevel-faces-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        beveled (s3d/bevel-faces mesh {:select/by :all
+        beveled (s3d/bevel-faces mesh {:select/type :all
                                        :bevel/inset 0.15
                                        :bevel/depth 0.1})]
     (testing "bevel creates more faces than original"
@@ -922,47 +922,47 @@
 
 (deftest bevel-faces-selective-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        beveled (s3d/bevel-faces mesh {:select/by :normal
+        beveled (s3d/bevel-faces mesh {:select/type :normal
                                        :select/direction [0 1 0]
                                        :select/tolerance 0.1
                                        :bevel/inset 0.2
                                        :bevel/depth 0.1})]
     (testing "selective bevel creates fewer faces than full bevel"
-      (let [full (s3d/bevel-faces mesh {:select/by :all
+      (let [full (s3d/bevel-faces mesh {:select/type :all
                                         :bevel/inset 0.2
                                         :bevel/depth 0.1})]
         (is (< (count beveled) (count full)))))))
 
-(deftest greeble-faces-test
+(deftest detail-faces-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        greebled (s3d/greeble-faces mesh
-                   {:select/by :all
-                    :greeble/field (field/noise-field :scale 3.0 :seed 42)
-                    :greeble/inset 0.1
-                    :greeble/depth-range [0.02 0.15]})]
-    (testing "greeble creates more faces than original"
-      (is (> (count greebled) (count mesh))))
+        detaild (s3d/detail-faces mesh
+                   {:select/type :all
+                    :detail/field (field/noise-field :scale 3.0 :seed 42)
+                    :detail/inset 0.1
+                    :detail/depth-range [0.02 0.15]})]
+    (testing "detail creates more faces than original"
+      (is (> (count detaild) (count mesh))))
     (testing "faces are displaced outward by varying amounts"
       (let [bounds-orig (s3d/mesh-bounds mesh)
-            bounds-greeble (s3d/mesh-bounds greebled)]
+            bounds-detail (s3d/mesh-bounds detaild)]
         ;; Greebled mesh should extend beyond original in at least one dimension
-        (is (or (> (first (:max bounds-greeble)) (first (:max bounds-orig)))
-                (> (second (:max bounds-greeble)) (second (:max bounds-orig)))
-                (> (nth (:max bounds-greeble) 2) (nth (:max bounds-orig) 2))))))))
+        (is (or (> (first (:max bounds-detail)) (first (:max bounds-orig)))
+                (> (second (:max bounds-detail)) (second (:max bounds-orig)))
+                (> (nth (:max bounds-detail) 2) (nth (:max bounds-orig) 2))))))))
 
 (deftest inset-then-extrude-test
   (testing "inset + extrude creates recessed panels"
     (let [mesh (s3d/cube-mesh [0 0 0] 2)
           result (-> mesh
-                     (s3d/inset-faces {:select/by :all :inset/amount 0.2})
-                     (s3d/extrude-faces {:select/by :all :extrude/amount -0.1}))]
+                     (s3d/inset-faces {:select/type :all :inset/amount 0.2})
+                     (s3d/extrude-faces {:select/type :all :extrude/amount -0.1}))]
       (is (pos? (count result))))))
 
 ;; --- UV projection ---
 
 (deftest uv-project-box-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        uv-mesh (s3d/uv-project mesh {:uv/method :box})]
+        uv-mesh (s3d/uv-project mesh {:uv/type :box})]
     (testing "every face has texture coords"
       (doseq [face uv-mesh]
         (is (some? (:face/texture-coords face)))
@@ -976,7 +976,7 @@
 
 (deftest uv-project-spherical-test
   (let [mesh (s3d/sphere-mesh 1.0 8 4)
-        uv-mesh (s3d/uv-project mesh {:uv/method :spherical})]
+        uv-mesh (s3d/uv-project mesh {:uv/type :spherical})]
     (testing "every face has texture coords"
       (doseq [face uv-mesh]
         (is (some? (:face/texture-coords face)))))
@@ -988,22 +988,22 @@
 
 (deftest uv-project-cylindrical-test
   (let [mesh (s3d/cylinder-mesh 1.0 2.0 8)
-        uv-mesh (s3d/uv-project mesh {:uv/method :cylindrical})]
+        uv-mesh (s3d/uv-project mesh {:uv/type :cylindrical})]
     (testing "every face has texture coords"
       (doseq [face uv-mesh]
         (is (some? (:face/texture-coords face)))))))
 
 (deftest uv-project-planar-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        uv-mesh (s3d/uv-project mesh {:uv/method :planar :uv/axis :y})]
+        uv-mesh (s3d/uv-project mesh {:uv/type :planar :uv/axis :y})]
     (testing "every face has texture coords"
       (doseq [face uv-mesh]
         (is (some? (:face/texture-coords face)))))))
 
 (deftest uv-project-with-selector-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        uv-mesh (s3d/uv-project mesh {:uv/method :box
-                                      :select/by :normal
+        uv-mesh (s3d/uv-project mesh {:uv/type :box
+                                      :select/type :normal
                                       :select/direction [0 1 0]
                                       :select/tolerance 0.1})]
     (testing "only selected faces get UVs"
