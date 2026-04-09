@@ -84,43 +84,36 @@
     " to get started."]])
 
 (defn install-content
-  "Installation walkthrough for the landing page."
+  "Getting started walkthrough for the landing page."
   []
   [:div
-   [:p "Eido runs on the JVM and uses Clojure's " [:code "deps.edn"]
-    " for dependency management. If you're new to Clojure, here's how to get started:"]
-   [:h4 "1. Install Clojure"]
-   [:p "Follow the official "
-    [:a {:href "https://clojure.org/guides/install_clojure" :target "_blank"} "Clojure install guide"]
-    " for your platform. This gives you the " [:code "clj"] " command-line tool."]
-   [:h4 "2. Create a project"]
-   [:p "Make a new directory and create a " [:code "deps.edn"] " file with Eido as a dependency:"]
+   [:p "New to Clojure? Follow the "
+    [:a {:href "https://calva.io/getting-started/" :target "_blank"} "Calva Getting Started guide"]
+    " — it walks you through installing VS Code, Clojure, and the Calva extension, which lets you evaluate code directly from your editor."]
+   [:h4 "1. Add Eido to your project"]
+   [:p "Create a " [:code "deps.edn"] " file with Eido as a dependency:"]
    [:pre [:code
           ";; deps.edn
 {:deps
  {io.github.leifericf/eido
   {:git/tag \"v1.0.0-beta1\" :git/sha \"65fcfac\"}}}"]]
-   [:h4 "3. Start a REPL and render"]
-   [:p "Launch a REPL with " [:code "clj"] ", then try rendering your first image:"]
+   [:h4 "2. Render your first image"]
+   [:p "Start a REPL via Calva (\"Jack-in\"), then evaluate:"]
    [:pre [:code
-          "$ clj
-Clojure 1.12.0
+          "(require '[eido.core :as eido])
 
-user=> (require '[eido.core :as eido])
-
-user=> (eido/render
-         {:image/size [400 400]
-          :image/background [:color/name \"linen\"]
-          :image/nodes
-          [{:node/type     :shape/circle
-            :circle/center [200 200]
-            :circle/radius 120
-            :style/fill    [:color/name \"coral\"]}]}
-         {:output \"my-first-image.png\"})
-
-\"my-first-image.png\""]]
+(eido/render
+  {:image/size [400 400]
+   :image/background [:color/name \"linen\"]
+   :image/nodes
+   [{:node/type     :shape/circle
+     :circle/center [200 200]
+     :circle/radius 120
+     :style/fill    [:color/name \"coral\"]}]}
+  {:output \"my-first-image.png\"})
+;; => \"my-first-image.png\""]]
    [:p "That's it — " [:code "my-first-image.png"]
-    " is now on disk. No build tools, no project scaffolding, no configuration. Just a REPL and a map."]])
+    " is now on disk. Change the color, re-evaluate, see the new image. This interactive loop is how generative artists work with Eido."]])
 
 ;; --- Docs page ---
 ;; Docs are organized into categories, each containing sections.
