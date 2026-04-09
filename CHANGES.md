@@ -1,5 +1,71 @@
 # Changes
 
+## v1.0.0-alpha9 — 3D Sculpting Pipeline & 2D↔3D Bridge
+
+### 3D mesh operations
+
+- Add composable mesh→mesh sculpting vocabulary: every operation takes a mesh and returns a mesh, all composable via `->` threading
+- Add `deform-mesh` with six deformation types: twist, taper, bend, inflate, crumple (seeded noise), displace (field-driven)
+- Add `extrude-faces` and `inset-faces` with declarative face selection by normal, field, axis, or all
+- Add `subdivide` with Catmull-Clark subdivision, hard edge support via `:hard-edges` option
+- Add `auto-smooth-edges` for detecting hard edges by angle threshold
+- Add `mirror-mesh` for reflecting meshes across axis planes with optional merge
+- Add `bevel-faces` convenience helper (composes inset + extrude)
+- Add `greeble-faces` convenience helper (noise-driven inset + per-face extrude for procedural surface detail)
+
+### New shape generators
+
+- Add `platonic-mesh` with keyword dispatch for tetrahedron, octahedron, dodecahedron, icosahedron
+- Add `heightfield-mesh` for terrain generation from 2D noise fields
+- Add `revolve-mesh` for spinning 2D profiles into 3D forms (vases, goblets, columns)
+- Add `sweep-mesh` for extruding 2D profiles along 3D paths using Frenet frames (tubes, tentacles, pipes)
+- Add `lsystem-mesh` for 3D L-system branching structures via 3D turtle interpreter + sweep (trees, coral, vascular networks)
+- Add `instance-mesh` for scatter-based mesh placement with optional jitter and rotation
+
+### Vertex color and smooth shading
+
+- Add `paint-mesh` for per-vertex color from fields sampled at 3D positions or UV coordinates (`:color/source :uv`)
+- Add `color-mesh` for per-face color from fields, axis gradients, or normal-map direction
+- Both support `:select/*` face selectors for partial coloring
+- Add `:shading :smooth` option to `render-mesh` — vertex normal averaging from face adjacency
+- Fan-triangulation in `render-mesh` for smooth vertex color interpolation within faces
+
+### Procedural texturing (2D↔3D bridge)
+
+- Add `uv-project` with four UV projection methods: box, spherical, cylindrical, planar
+- Extend `paint-mesh` with `:color/source :uv` — samples 2D fields at vertex UV coordinates
+- Add `normal-map-mesh` for perturbing vertex normals from UV-sampled field gradients (TBN frame computation)
+- Add `specular-map-mesh` for varying specular intensity per vertex from UV-sampled fields
+- Add `face-tangent-bitangent` to `eido.math3d` for TBN matrix construction
+- The same field descriptor (`field/noise-field`) works as 2D fill, 3D deformation, face selection, vertex color, texture, bump map, and specular map
+
+### Non-photorealistic rendering
+
+- Add `:style/fill-type :hatch` for cross-hatched 3D face rendering with lighting-driven density
+- Add `:style/fill-type :stipple` for stipple-dot 3D face rendering
+- Hatch lines clipped to face polygon boundaries via line-polygon intersection
+- Stipple dots filtered by point-in-polygon test
+- Bridges 2D hatch/stipple pattern systems to 3D surfaces
+
+### OBJ import/export
+
+- Add `write-obj` and `write-mtl` for Wavefront OBJ export with deduplicated vertices/normals
+- Add UV texture coordinate import (`vt` lines) with `:face/texture-coords` per face
+- Add UV texture coordinate export (vi/ti/ni face ref format)
+- Add group (`g`) and smooth group (`s`) parsing → `:face/group`, `:face/smooth-group`
+- OBJ roundtrip preserves geometry, normals, UVs, and materials
+
+### Shared infrastructure
+
+- Add `field/evaluate-3d` for 3D noise field evaluation using `perlin3d`
+- Add `m/lerp` for 3D vector linear interpolation
+- Extract `build-face-adjacency` and `compute-vertex-normals` as shared helpers for subdivision, smooth shading, and auto-smooth
+- Face selectors as reusable data maps (`:select/*` namespace keys) composable across extrude, inset, color, and paint operations
+
+### Gallery
+
+- Add 17 new gallery examples: organic sculpture, alien landscape, coral growth, twisted vase, crystal cluster, geometric panels, geodesic sphere, mirrored sculpture, smooth geodesic, sweep tube, auto-smooth cube, greebled panel, vertex painted sphere, procedural textured sphere, scatter forest, hatched sphere, L-system tree
+
 ## v1.0.0-alpha8 — Semantic IR & Procedural Fills
 
 ### Semantic IR

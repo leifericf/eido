@@ -28,6 +28,9 @@ The approach is inspired by Christian Johansen's [Replicant](https://github.com/
 - **One function.** `render` takes a scene (or a sequence of scenes) and produces output. That's the API.
 - **Description, not instruction.** You declare what the image contains; eido decides how to draw it.
 - **Animations are sequences.** 60 frames = 60 maps in a vector. No timeline, no keyframes, no mutation.
+- **3D sculpting pipeline.** Composable mesh→mesh operations: deform, extrude, subdivide, mirror — all pure data, all chainable via `->`.
+- **2D↔3D bridge.** The same field/noise/palette vocabulary works in both dimensions. UV-mapped procedural textures, normal maps, and specular maps connect 2D generative tools to 3D surfaces.
+- **Non-photorealistic rendering.** Hatch and stipple patterns from 2D applied to 3D faces with lighting-driven density.
 - **Particle simulation.** Physics-based effects configured as data — emitters, forces, and lifetime curves.
 - **Typography as paths.** Text compiled to vector paths — compatible with gradients, transforms, 3D extrusion.
 - **Procedural fills.** Noise-driven, field-based, and programmatic fills described entirely as data — no shaders, no GPU.

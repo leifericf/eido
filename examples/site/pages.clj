@@ -24,6 +24,10 @@
     :desc  "You declare what the image contains — Eido decides how to draw it."}
    {:title "Animations are sequences"
     :desc  "60 frames = 60 scenes in a list. No timeline, no keyframes, no mutable state."}
+   {:title "3D sculpting pipeline"
+    :desc  "Composable mesh operations — deform, extrude, subdivide, mirror — all pure data, chainable via ->."}
+   {:title "2D↔3D bridge"
+    :desc  "Same fields, palettes, and programs work across both domains. UV-mapped procedural textures on 3D meshes."}
    {:title "Particle simulation"
     :desc  "Physics-based effects — fire, snow, sparks — configured as data with deterministic results."}
    {:title "Typography as paths"
