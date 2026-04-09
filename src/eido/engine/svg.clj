@@ -189,6 +189,14 @@
     :ellipse (let [{:keys [cx cy rx ry]} clip]
                (str "<ellipse cx=\"" cx "\" cy=\"" cy
                     "\" rx=\"" rx "\" ry=\"" ry "\"/>"))
+    :arc     (let [{:keys [cx cy rx ry start extent mode]} clip]
+               (str "<path d=\""
+                    (arc->path-d cx cy rx ry
+                      (or start 0) (or extent 360) (or mode :pie))
+                    "\"/>"))
+    :line    (let [{:keys [x1 y1 x2 y2]} clip]
+               (str "<line x1=\"" x1 "\" y1=\"" y1
+                    "\" x2=\"" x2 "\" y2=\"" y2 "\"/>"))
     :path    (str "<path d=\"" (commands->d (:commands clip)) "\"/>")
     (throw (ex-info (str "Unknown clip op: " op) {:op op}))))
 

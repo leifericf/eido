@@ -213,9 +213,12 @@
     :ellipse (let [{:keys [cx cy rx ry]} clip]
                (Ellipse2D$Double. (double (- cx rx)) (double (- cy ry))
                                    (double (* 2.0 rx)) (double (* 2.0 ry))))
-    :arc     (let [{:keys [cx cy rx ry]} clip]
-               (Ellipse2D$Double. (double (- cx rx)) (double (- cy ry))
-                                   (double (* 2.0 rx)) (double (* 2.0 ry))))
+    :arc     (let [{:keys [cx cy rx ry start extent mode]} clip]
+               (Arc2D$Double. (double (- cx rx)) (double (- cy ry))
+                               (double (* 2.0 rx)) (double (* 2.0 ry))
+                               (double (or start 0)) (double (or extent 360))
+                               (int (get arc-mode-map (or mode :pie)
+                                        Arc2D$Double/PIE))))
     :line    (let [{:keys [x1 y1 x2 y2]} clip]
                (java.awt.geom.Line2D$Double. (double x1) (double y1)
                                               (double x2) (double y2)))
