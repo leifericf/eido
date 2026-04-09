@@ -128,3 +128,56 @@
     (is (= [:color/rgb 255 255 255]
            (palette/gradient-map [[0.0 [:color/rgb 0 0 0]]
                                   [1.0 [:color/rgb 255 255 255]]] 1.5)))))
+
+;; --- weighted palette utilities ---
+
+(def test-palette
+  [[:color/rgb 255 0 0]
+   [:color/rgb 0 255 0]
+   [:color/rgb 0 0 255]])
+
+(deftest weighted-pick-determinism-test
+  (testing "same seed produces same color"
+    (is (= (palette/weighted-pick test-palette [1 1 1] 42)
+           (palette/weighted-pick test-palette [1 1 1] 42)))))
+
+(deftest weighted-pick-valid-color-test
+  (testing "returns a color from the palette"
+    (is (some #{(palette/weighted-pick test-palette [1 1 1] 42)} test-palette))))
+
+(deftest weighted-sample-count-test
+  (testing "returns exactly n colors"
+    (is (= 10 (count (palette/weighted-sample test-palette [1 1 1] 10 42))))))
+
+(deftest weighted-sample-all-from-palette-test
+  (testing "all sampled colors are from the palette"
+    (let [sampled (palette/weighted-sample test-palette [1 1 1] 50 42)]
+      (is (every? (set test-palette) sampled)))))
+
+(deftest weighted-gradient-stop-count-test
+  (testing "returns one stop per palette color"
+    (is (= 3 (count (palette/weighted-gradient test-palette [1 1 1]))))))
+
+(deftest weighted-gradient-monotonic-test
+  (testing "stop positions are monotonically increasing"
+    (let [stops (palette/weighted-gradient test-palette [3 1 1])
+          positions (mapv first stops)]
+      (is (apply < positions)))))
+
+(deftest weighted-gradient-proportional-test
+  (testing "first color occupies more space with higher weight"
+    (let [stops-equal (palette/weighted-gradient test-palette [1 1 1])
+          stops-heavy (palette/weighted-gradient test-palette [5 1 1])]
+      ;; With equal weights, first stop is at 1/6 ≈ 0.167
+      ;; With heavy first, first stop is at 5/14 ≈ 0.357
+      (is (> (ffirst stops-heavy) (ffirst stops-equal))))))
+
+(deftest shuffle-palette-determinism-test
+  (testing "same seed produces same shuffle"
+    (is (= (palette/shuffle-palette test-palette 42)
+           (palette/shuffle-palette test-palette 42)))))
+
+(deftest shuffle-palette-preserves-elements-test
+  (testing "contains same colors"
+    (is (= (set test-palette)
+           (set (palette/shuffle-palette test-palette 42))))))

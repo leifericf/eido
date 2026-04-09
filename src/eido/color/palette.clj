@@ -1,6 +1,7 @@
 (ns eido.color.palette
   (:require
-    [eido.color :as color]))
+    [eido.color :as color]
+    [eido.gen.prob :as prob]))
 
 ;; --- harmony functions ---
 
@@ -126,6 +127,44 @@
                 (color/lerp c0 c1 seg-t))
               (recur (inc i)))))))))
 
+;; --- weighted palette utilities ---
+
+(defn weighted-pick
+  "Picks one color from palette biased by weights.
+  palette: vector of color vectors.
+  weights: vector of positive numbers (same length as palette).
+  seed: long for deterministic selection."
+  [palette weights seed]
+  (let [idx (prob/weighted-choice weights seed)]
+    (nth palette idx)))
+
+(defn weighted-sample
+  "Samples n colors from palette with replacement, biased by weights."
+  [palette weights n seed]
+  (let [indices (prob/weighted-sample n weights seed)]
+    (mapv #(nth palette %) indices)))
+
+(defn weighted-gradient
+  "Creates gradient stops where each color occupies proportional space.
+  Returns stops [[pos color] ...] suitable for gradient-map.
+  palette and weights must have the same length."
+  [palette weights]
+  (let [total  (double (reduce + weights))
+        n      (count palette)
+        widths (mapv #(/ (double %) total) weights)]
+    (loop [i 0 pos 0.0 stops []]
+      (if (>= i n)
+        stops
+        (let [w     (nth widths i)
+              mid   (+ pos (/ w 2.0))
+              color (nth palette i)]
+          (recur (inc i) (+ pos w) (conj stops [mid color])))))))
+
+(defn shuffle-palette
+  "Returns a deterministically shuffled palette."
+  [palette seed]
+  (prob/shuffle-seeded palette seed))
+
 (comment
   (complementary [:color/rgb 255 0 0])
   (analogous [:color/rgb 255 0 0] 5)
@@ -133,4 +172,6 @@
   (gradient-palette [:color/rgb 0 0 0] [:color/rgb 255 255 255] 5)
   (monochromatic [:color/hsl 200 0.8 0.5] 5)
   (:sunset palettes)
+  (weighted-pick (:sunset palettes) [1 1 1 1 5] 42)
+  (weighted-gradient (:sunset palettes) [3 1 1 1 1])
   )
