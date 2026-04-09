@@ -222,6 +222,88 @@
     (is (approx= [1.0 4.0 9.0]
           (first (:face/vertices (first scaled)))))))
 
+;; --- mesh deformations ---
+
+(deftest deform-mesh-twist-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        twisted (s3d/deform-mesh mesh {:deform/type :twist
+                                       :deform/axis :y
+                                       :deform/amount 1.0})]
+    (testing "same number of faces"
+      (is (= (count mesh) (count twisted))))
+    (testing "vertices change"
+      (is (not= (:face/vertices (first mesh))
+                (:face/vertices (first twisted)))))
+    (testing "normals are recomputed"
+      (is (some? (:face/normal (first twisted)))))))
+
+(deftest deform-mesh-taper-test
+  (let [mesh [(s3d/make-face [[1 0 0] [0 0 1] [-1 0 0]])
+              (s3d/make-face [[1 2 0] [0 2 1] [-1 2 0]])]
+        tapered (s3d/deform-mesh mesh {:deform/type :taper
+                                       :deform/axis :y
+                                       :deform/amount 0.5})]
+    (testing "top face vertices are scaled down"
+      (let [top-verts (:face/vertices (second tapered))
+            xs (map #(abs (first %)) top-verts)]
+        (is (every? #(< % 1.0) xs))))))
+
+(deftest deform-mesh-bend-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        bent (s3d/deform-mesh mesh {:deform/type :bend
+                                    :deform/axis :y
+                                    :deform/amount 1.0})]
+    (testing "same face count"
+      (is (= (count mesh) (count bent))))
+    (testing "vertices change"
+      (is (not= (mapv :face/vertices mesh)
+                (mapv :face/vertices bent))))))
+
+(deftest deform-mesh-inflate-test
+  (let [mesh (s3d/sphere-mesh 1.0 8 4)
+        inflated (s3d/deform-mesh mesh {:deform/type :inflate
+                                        :deform/amount 0.5})]
+    (testing "vertices move outward"
+      (let [orig-dists (map #(m/magnitude %) (mapcat :face/vertices mesh))
+            new-dists  (map #(m/magnitude %) (mapcat :face/vertices inflated))]
+        (is (> (reduce + new-dists) (reduce + orig-dists)))))))
+
+(deftest deform-mesh-crumple-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        c1 (s3d/deform-mesh mesh {:deform/type :crumple
+                                   :deform/amplitude 0.1
+                                   :deform/seed 42})
+        c2 (s3d/deform-mesh mesh {:deform/type :crumple
+                                   :deform/amplitude 0.1
+                                   :deform/seed 42})]
+    (testing "deterministic with same seed"
+      (is (= (mapv :face/vertices c1) (mapv :face/vertices c2))))
+    (testing "vertices change"
+      (is (not= (mapv :face/vertices mesh) (mapv :face/vertices c1))))))
+
+(deftest deform-mesh-displace-test
+  (let [mesh (s3d/sphere-mesh 1.0 8 4)
+        displaced (s3d/deform-mesh mesh
+                    {:deform/type :displace
+                     :deform/field {:field/type :field/constant
+                                    :field/value 1.0}
+                     :deform/amplitude 0.5})]
+    (testing "all vertices move outward by 0.5 along normal"
+      (let [orig-dists (map m/magnitude (mapcat :face/vertices mesh))
+            new-dists  (map m/magnitude (mapcat :face/vertices displaced))]
+        (is (> (reduce + new-dists) (reduce + orig-dists)))))))
+
+(deftest deform-mesh-chaining-test
+  (testing "deformations can be chained via ->"
+    (let [mesh (s3d/cube-mesh [0 0 0] 2)
+          result (-> mesh
+                     (s3d/deform-mesh {:deform/type :twist
+                                       :deform/axis :y
+                                       :deform/amount 0.5})
+                     (s3d/deform-mesh {:deform/type :inflate
+                                       :deform/amount 0.1}))]
+      (is (= (count mesh) (count result))))))
+
 ;; --- mesh utilities ---
 
 (deftest merge-meshes-bare-test
