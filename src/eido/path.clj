@@ -1,4 +1,17 @@
 (ns eido.path
+  "Path operations: boolean ops (union, intersection, difference, xor)
+  plus re-exports from sub-namespaces:
+    eido.path.stroke   — stroke profiles & expansion
+    eido.path.distort  — noise/wave distortion
+    eido.path.warp     — twist/fisheye/bend/bulge
+    eido.path.morph    — path interpolation
+    eido.path.decorate — path decoration"
+  (:require
+    [eido.path.decorate :as decorate]
+    [eido.path.distort :as distort]
+    [eido.path.morph :as morph]
+    [eido.path.stroke :as stroke]
+    [eido.path.warp :as warp])
   (:import
     [java.awt.geom Area GeneralPath PathIterator]))
 
@@ -85,3 +98,32 @@
          [[:move-to [50.0 50.0]] [:line-to [150.0 50.0]]
           [:line-to [150.0 150.0]] [:line-to [50.0 150.0]] [:close]])
   )
+
+;; --- re-exports from sub-namespaces ---
+
+(defmacro ^:private import-fn [target-sym]
+  (let [local-name (symbol (name target-sym))]
+    `(do (def ~local-name ~target-sym)
+         (alter-meta! (var ~local-name) merge
+           (dissoc (meta (var ~target-sym)) :name :ns)))))
+
+;; stroke
+(import-fn stroke/resolve-profile)
+(import-fn stroke/width-at)
+(import-fn stroke/outline-commands)
+
+;; distort
+(import-fn distort/distort-commands)
+
+;; warp
+(import-fn warp/warp-commands)
+(import-fn warp/shape->path-commands)
+(import-fn warp/warp-node)
+
+;; morph
+(import-fn morph/resample)
+(import-fn morph/morph)
+(import-fn morph/morph-auto)
+
+;; decorate
+(import-fn decorate/decorate-path)

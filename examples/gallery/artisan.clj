@@ -6,7 +6,7 @@
     [eido.contour :as contour]
     [eido.flow :as flow]
     [eido.lsystem :as lsystem]
-    [eido.morph :as morph]
+    [eido.path.morph :as morph]
     [eido.noise :as noise]
     [eido.palette :as palette]
     [eido.path :as path]

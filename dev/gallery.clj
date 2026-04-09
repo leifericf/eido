@@ -10,7 +10,7 @@
     [eido.scatter :as scatter]
     [eido.scene :as scene]
     [eido.lsystem :as lsystem]
-    [eido.morph :as morph]
+    [eido.path.morph :as morph]
     [eido.path :as path]
     [eido.vary :as vary]
     [eido.voronoi :as voronoi]))

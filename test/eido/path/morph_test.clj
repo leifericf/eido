@@ -1,7 +1,7 @@
-(ns eido.morph-test
+(ns eido.path.morph-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.morph :as morph]))
+    [eido.path.morph :as morph]))
 
 (def square [[:move-to [0.0 0.0]] [:line-to [100.0 0.0]]
              [:line-to [100.0 100.0]] [:line-to [0.0 100.0]] [:close]])

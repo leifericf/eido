@@ -1,7 +1,7 @@
-(ns eido.decorator-test
+(ns eido.path.decorate-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.decorator :as decorator]))
+    [eido.path.decorate :as decorator]))
 
 (deftest decorate-path-test
   (testing "places shapes along a straight path"

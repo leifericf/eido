@@ -1,4 +1,4 @@
-(ns eido.decorator
+(ns eido.path.decorate
   (:require
     [eido.text :as text]))
 

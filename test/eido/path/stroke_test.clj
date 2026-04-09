@@ -1,7 +1,7 @@
-(ns eido.stroke-test
+(ns eido.path.stroke-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.stroke :as stroke]))
+    [eido.path.stroke :as stroke]))
 
 ;; --- profiles ---
 

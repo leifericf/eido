@@ -9,9 +9,9 @@
   Transforms are stored on draw items as :item/pre-transforms and applied
   to geometry before coordinate transforms during lowering."
   (:require
-    [eido.distort :as distort]
-    [eido.morph :as morph]
-    [eido.warp :as warp]))
+    [eido.path.distort :as distort]
+    [eido.path.morph :as morph]
+    [eido.path.warp :as warp]))
 
 ;; --- transform constructors ---
 

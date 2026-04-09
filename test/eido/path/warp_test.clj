@@ -1,7 +1,7 @@
-(ns eido.warp-test
+(ns eido.path.warp-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.warp :as warp]))
+    [eido.path.warp :as warp]))
 
 (deftest wave-warp-test
   (testing "wave warp displaces y coordinates"

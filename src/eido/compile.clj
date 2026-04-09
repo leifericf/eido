@@ -2,17 +2,17 @@
   (:refer-clojure :exclude [compile])
   (:require
     [eido.color :as color]
-    [eido.decorator :as decorator]
     [eido.contour :as contour]
-    [eido.distort :as distort]
     [eido.flow :as flow]
-    [eido.lsystem :as lsystem]
-    [eido.scatter :as scatter]
-    [eido.stroke :as stroke]
-    [eido.text :as text]
     [eido.ir :as ir]
+    [eido.lsystem :as lsystem]
+    [eido.path.decorate :as decorator]
+    [eido.path.distort :as distort]
+    [eido.path.stroke :as stroke]
+    [eido.path.warp :as warp]
+    [eido.scatter :as scatter]
+    [eido.text :as text]
     [eido.validate :as validate]
-    [eido.warp :as warp]
     [eido.vary :as vary]
     [eido.voronoi :as voronoi]))
 

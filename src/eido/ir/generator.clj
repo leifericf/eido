@@ -14,7 +14,7 @@
     :generator/decorator  — shapes placed along a path"
   (:require
     [eido.contour :as contour]
-    [eido.decorator :as decorator]
+    [eido.path.decorate :as decorator]
     [eido.flow :as flow]
     [eido.ir.lower :as lower]
     [eido.ir.vary :as ir-vary]

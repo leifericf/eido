@@ -1,4 +1,4 @@
-(ns eido.stroke
+(ns eido.path.stroke
   (:require
     [eido.text :as text]))
 

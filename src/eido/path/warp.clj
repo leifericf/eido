@@ -1,4 +1,4 @@
-(ns eido.warp
+(ns eido.path.warp
   (:require
     [eido.text :as text]))
 

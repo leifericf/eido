@@ -1,4 +1,4 @@
-(ns eido.morph
+(ns eido.path.morph
   (:require
     [eido.text :as text]))
 

@@ -1,7 +1,7 @@
-(ns eido.distort-test
+(ns eido.path.distort-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.distort :as distort]))
+    [eido.path.distort :as distort]))
 
 ;; --- noise distortion ---
 

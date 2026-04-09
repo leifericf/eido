@@ -1,4 +1,4 @@
-(ns eido.distort
+(ns eido.path.distort
   (:require
     [eido.noise :as noise]))
 
