@@ -338,6 +338,20 @@
        :b (Math/round (+ (* inv (:b a)) (* t (:b b))))
        :a (+ (* inv (:a a)) (* t (:a b)))})))
 
+;; --- convenience helpers ---
+
+(defn ^{:convenience true}
+  rgb
+  "Shorthand for [:color/rgb r g b]."
+  [r g b]
+  [:color/rgb r g b])
+
+(defn ^{:convenience true}
+  hsl
+  "Shorthand for [:color/hsl h s l]. Wraps hue with mod 360."
+  [h s l]
+  [:color/hsl (mod h 360) s l])
+
 (comment
   (resolve-color [:color/rgb 200 0 0])
   (resolve-color [:color/hsl 0 1.0 0.5])
@@ -345,5 +359,7 @@
   (lighten [:color/rgb 200 0 0] 0.2)
   (rotate-hue [:color/rgb 255 0 0] 120)
   (lerp [:color/rgb 0 0 0] [:color/rgb 255 255 255] 0.5)
+  (rgb 255 0 0)
+  (hsl 200 0.8 0.5)
   )
 

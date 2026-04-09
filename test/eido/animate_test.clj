@@ -305,3 +305,33 @@
       (is (== 100.0 t)))
     (let [t (anim/lerp 0 100 (anim/ping-pong 1.0))]
       (is (== 0.0 t)))))
+
+;; --- convenience helper tests ---
+
+(deftest pulse-test
+  (testing "pulse at t=0 is 0.5"
+    (is (< (Math/abs (- (anim/pulse 0.0) 0.5)) 0.01)))
+  (testing "pulse at t=0.25 is 1.0"
+    (is (< (Math/abs (- (anim/pulse 0.25) 1.0)) 0.01)))
+  (testing "pulse with frequency 2 oscillates twice as fast"
+    (is (< (Math/abs (- (anim/pulse 0.125 2.0) 1.0)) 0.01))))
+
+(deftest fade-linear-test
+  (testing "1.0 at t=0, 0.0 at t=1"
+    (is (== 1.0 (anim/fade-linear 0.0)))
+    (is (== 0.0 (anim/fade-linear 1.0)))
+    (is (== 0.5 (anim/fade-linear 0.5)))))
+
+(deftest fade-out-test
+  (testing "starts at 1.0 and ends at 0.0"
+    (is (== 1.0 (anim/fade-out 0.0)))
+    (is (== 0.0 (anim/fade-out 1.0))))
+  (testing "quadratic: midpoint is 0.25 not 0.5"
+    (is (== 0.25 (anim/fade-out 0.5)))))
+
+(deftest fade-in-test
+  (testing "starts at 0.0 and ends at 1.0"
+    (is (== 0.0 (anim/fade-in 0.0)))
+    (is (== 1.0 (anim/fade-in 1.0))))
+  (testing "quadratic: midpoint is 0.25"
+    (is (== 0.25 (anim/fade-in 0.5)))))

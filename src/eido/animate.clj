@@ -240,6 +240,34 @@
         local    (/ (- (double t) offset) duration)]
     (max 0.0 (min 1.0 local))))
 
+;; --- convenience helpers ---
+
+(defn ^{:convenience true}
+  pulse
+  "Sine oscillation: returns a value in [0, 1] that pulses over time.
+  Wraps (/ (+ 1 (sin (* t 2 PI frequency))) 2)."
+  ([t] (pulse t 1.0))
+  ([t frequency]
+   (/ (+ 1.0 (Math/sin (* (double t) 2.0 Math/PI (double frequency)))) 2.0)))
+
+(defn ^{:convenience true}
+  fade-linear
+  "Linear fade: 1.0 at t=0, 0.0 at t=1. Wraps (- 1.0 t)."
+  [t]
+  (- 1.0 (min 1.0 (max 0.0 (double t)))))
+
+(defn ^{:convenience true :convenience-for 'eido.animate/fade-linear}
+  fade-out
+  "Quadratic fade-out (softer tail). Wraps (* (fade-linear t) (fade-linear t))."
+  [t]
+  (let [f (fade-linear t)] (* f f)))
+
+(defn ^{:convenience true}
+  fade-in
+  "Quadratic fade-in. Wraps (* t t) clamped to [0, 1]."
+  [t]
+  (let [t (min 1.0 (max 0.0 (double t)))] (* t t)))
+
 (comment
   ;; Build 60 frames of a pulsing radius
   (frames 60

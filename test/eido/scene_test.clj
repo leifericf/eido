@@ -228,3 +228,56 @@
           "first cell rect should be red")
       (is (= [255 255 255] (pixel-rgb img 45 45))
           "gap between cells should be background"))))
+
+;; --- convenience helper tests ---
+
+(deftest circle-node-test
+  (testing "creates circle node without fill"
+    (let [n (scene/circle-node [100 200] 50)]
+      (is (= :shape/circle (:node/type n)))
+      (is (= [100 200] (:circle/center n)))
+      (is (= 50 (:circle/radius n)))
+      (is (nil? (:style/fill n)))))
+  (testing "creates circle node with fill"
+    (let [n (scene/circle-node [100 200] 50 [:color/name "red"])]
+      (is (= [:color/name "red"] (:style/fill n))))))
+
+(deftest rect-node-test
+  (testing "creates rect node"
+    (let [n (scene/rect-node [10 20] [100 50] [:color/name "blue"])]
+      (is (= :shape/rect (:node/type n)))
+      (is (= [10 20] (:rect/xy n)))
+      (is (= [100 50] (:rect/size n)))
+      (is (= [:color/name "blue"] (:style/fill n))))))
+
+(deftest line-node-test
+  (testing "creates line node with stroke"
+    (let [n (scene/line-node [0 0] [100 100] [:color/name "black"] 2)]
+      (is (= :shape/line (:node/type n)))
+      (is (= {:color [:color/name "black"] :width 2} (:style/stroke n))))))
+
+(deftest polar->xy-test
+  (testing "angle 0 gives point to the right"
+    (let [[x y] (scene/polar->xy [100 100] 50 0)]
+      (is (< (Math/abs (- x 150)) 0.01))
+      (is (< (Math/abs (- y 100)) 0.01))))
+  (testing "angle PI/2 gives point below"
+    (let [[x y] (scene/polar->xy [100 100] 50 (/ Math/PI 2))]
+      (is (< (Math/abs (- x 100)) 0.01))
+      (is (< (Math/abs (- y 150)) 0.01)))))
+
+(deftest ring-test
+  (testing "creates n nodes in a circle"
+    (let [nodes (scene/ring 4 [200 200] 100
+                  {:node/type :shape/circle :circle/center [0 0] :circle/radius 10})]
+      (is (= 4 (count nodes)))
+      (is (every? #(:node/transform %) nodes)))))
+
+(deftest points->path-test
+  (testing "converts points to path commands"
+    (let [cmds (scene/points->path [[0 0] [100 0] [100 100]])]
+      (is (= :move-to (ffirst cmds)))
+      (is (= 3 (count cmds)))))
+  (testing "closed path adds :close"
+    (let [cmds (scene/points->path [[0 0] [100 0] [100 100]] true)]
+      (is (= :close (first (last cmds)))))))

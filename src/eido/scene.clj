@@ -182,6 +182,63 @@
      :group/children (vec children)}))
 
 
+;; --- convenience helpers ---
+
+(defn ^{:convenience true} circle-node
+  "Creates a circle node. Shorthand for the {:node/type :shape/circle ...} map.
+  Example: (circle-node [200 200] 50 [:color/name \"red\"])"
+  ([center radius]
+   {:node/type :shape/circle :circle/center center :circle/radius radius})
+  ([center radius fill]
+   {:node/type :shape/circle :circle/center center :circle/radius radius
+    :style/fill fill}))
+
+(defn ^{:convenience true} rect-node
+  "Creates a rect node. Shorthand for the {:node/type :shape/rect ...} map.
+  Example: (rect-node [10 10] [100 50] [:color/name \"blue\"])"
+  ([xy size]
+   {:node/type :shape/rect :rect/xy xy :rect/size size})
+  ([xy size fill]
+   {:node/type :shape/rect :rect/xy xy :rect/size size :style/fill fill}))
+
+(defn ^{:convenience true} line-node
+  "Creates a line node. Shorthand for the {:node/type :shape/line ...} map.
+  Example: (line-node [0 0] [100 100] [:color/name \"black\"] 2)"
+  ([from to]
+   {:node/type :shape/line :line/from from :line/to to})
+  ([from to color width]
+   {:node/type :shape/line :line/from from :line/to to
+    :style/stroke {:color color :width width}}))
+
+(defn ^{:convenience true :convenience-for 'eido.scene/radial}
+  polar->xy
+  "Converts polar coordinates to [x y].
+  Wraps the trig: (+ cx (* r (cos a))), (+ cy (* r (sin a)))."
+  [[cx cy] radius angle]
+  [(+ (double cx) (* (double radius) (Math/cos (double angle))))
+   (+ (double cy) (* (double radius) (Math/sin (double angle))))])
+
+(defn ^{:convenience true :convenience-for 'eido.scene/radial}
+  ring
+  "Places n copies of shape in a circle. Returns a vector of translated nodes.
+  Convenience for (radial n cx cy radius (fn [x y _] shape-with-translate))."
+  [n [cx cy] radius shape]
+  (vec (for [i (range n)]
+         (let [angle (* 2.0 Math/PI (/ (double i) (double n)))
+               x (+ (double cx) (* (double radius) (Math/cos angle)))
+               y (+ (double cy) (* (double radius) (Math/sin angle)))]
+           (assoc shape :node/transform [[:transform/translate x y]])))))
+
+(defn ^{:convenience true}
+  points->path
+  "Converts [x y] points to path commands.
+  Convenience for (into [[:move-to p0]] (mapv (fn [p] [:line-to p]) rest))."
+  ([points] (points->path points false))
+  ([points closed?]
+   (let [cmds (into [[:move-to (first points)]]
+                    (mapv (fn [p] [:line-to p]) (rest points)))]
+     (if closed? (conj cmds [:close]) cmds))))
+
 (comment
   (grid 3 2 (fn [c r]
               {:node/type :shape/circle

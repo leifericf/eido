@@ -228,3 +228,15 @@
   (testing "unknown name throws ex-info"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown color name"
           (color/resolve-color [:color/name "notacolor"])))))
+
+;; --- convenience helper tests ---
+
+(deftest rgb-test
+  (testing "creates color vector"
+    (is (= [:color/rgb 255 0 0] (color/rgb 255 0 0)))))
+
+(deftest hsl-test
+  (testing "creates color vector"
+    (is (= [:color/hsl 200 0.8 0.5] (color/hsl 200 0.8 0.5))))
+  (testing "wraps hue with mod 360"
+    (is (= [:color/hsl 10 0.5 0.5] (color/hsl 370 0.5 0.5)))))
