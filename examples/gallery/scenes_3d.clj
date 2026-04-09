@@ -821,6 +821,31 @@
                  :light/ambient 0.15
                  :light/intensity 0.85}})]}))
 
+;; --- 31. Vertex Painted Sphere ---
+
+(defn ^{:example {:output "3d-vertex-paint.png"
+                  :title  "Vertex Painted Sphere"
+                  :desc   "Per-vertex color with smooth interpolation — gradients flow across faces, not between them."}}
+  vertex-painted-sphere []
+  (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.5)
+                 (s3d/subdivide {:iterations 1})
+                 (s3d/paint-mesh {:color/type :field
+                                  :color/field (field/noise-field :scale 1.2 :variant :fbm :seed 19)
+                                  :color/palette [[:color/rgb 30 60 180]
+                                                  [:color/rgb 60 180 120]
+                                                  [:color/rgb 220 200 50]
+                                                  [:color/rgb 200 50 30]]}))
+        proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
+                        [0 0 0] 5 0.5 -0.3)]
+    {:image/size [400 400]
+     :image/background [:color/rgb 30 28 35]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:light {:light/direction [1 2 0.5]
+                 :light/ambient 0.2
+                 :light/intensity 0.8}
+         :shading :smooth})]}))
+
 (comment
   ;; Evaluate individual examples at the REPL:
   (utah-teapot)
@@ -852,4 +877,5 @@
   (smooth-geodesic)
   (sweep-tube)
   (auto-smooth-cube)
-  (greebled-panel))
+  (greebled-panel)
+  (vertex-painted-sphere))

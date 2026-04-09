@@ -534,6 +534,85 @@
       (doseq [face colored]
         (is (some? (get-in face [:face/style :style/stroke])))))))
 
+;; --- vertex color (paint-mesh) ---
+
+(deftest paint-mesh-field-test
+  (let [mesh (s3d/sphere-mesh 1.0 8 4)
+        painted (s3d/paint-mesh mesh
+                  {:color/type :field
+                   :color/field (field/noise-field :scale 1.0 :variant :fbm :seed 42)
+                   :color/palette [[:color/rgb 0 0 0]
+                                   [:color/rgb 255 255 255]]})]
+    (testing "same face count"
+      (is (= (count mesh) (count painted))))
+    (testing "every face has vertex colors"
+      (doseq [face painted]
+        (is (some? (:face/vertex-colors face)))
+        (is (= (count (:face/vertices face))
+               (count (:face/vertex-colors face))))))
+    (testing "colors are RGB vectors"
+      (let [c (first (:face/vertex-colors (first painted)))]
+        (is (= :color/rgb (first c)))
+        (is (= 4 (count c)))))))
+
+(deftest paint-mesh-axis-gradient-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        painted (s3d/paint-mesh mesh
+                  {:color/type :axis-gradient
+                   :color/axis :y
+                   :color/palette [[:color/rgb 0 0 255]
+                                   [:color/rgb 255 0 0]]})]
+    (testing "vertices at y=0 are blue, vertices at y=2 are red"
+      (let [face (first painted)
+            colors (:face/vertex-colors face)
+            verts  (:face/vertices face)]
+        (doseq [[v c] (map vector verts colors)]
+          (let [y (second v)]
+            (if (< y 0.5)
+              (is (> (nth c 3) (nth c 1))  ;; blue > red at bottom
+                  (str "expected blue at y=" y))
+              (is (> (nth c 1) (nth c 3))  ;; red > blue at top
+                  (str "expected red at y=" y)))))))))
+
+(deftest paint-mesh-with-selector-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        painted (s3d/paint-mesh mesh
+                  {:select/by :normal :select/direction [0 1 0] :select/tolerance 0.1
+                   :color/type :axis-gradient
+                   :color/axis :y
+                   :color/palette [[:color/rgb 100 100 100]
+                                   [:color/rgb 200 200 200]]})]
+    (testing "only selected faces have vertex colors"
+      (let [with-vc (filter :face/vertex-colors painted)
+            without (remove :face/vertex-colors painted)]
+        (is (pos? (count with-vc)))
+        (is (pos? (count without)))))))
+
+(deftest render-mesh-vertex-colors-test
+  (let [proj (s3d/isometric {:scale 50 :origin [200 200]})
+        mesh (-> (s3d/cube-mesh [0 0 0] 2)
+                 (s3d/paint-mesh {:color/type :axis-gradient
+                                  :color/axis :y
+                                  :color/palette [[:color/rgb 0 0 255]
+                                                  [:color/rgb 255 0 0]]}))
+        result (s3d/render-mesh proj mesh
+                 {:light {:light/direction [1 2 1]
+                          :light/ambient 0.2 :light/intensity 0.8}})]
+    (testing "vertex-colored faces produce more children (sub-triangles)"
+      ;; A cube normally renders 3 visible faces. With vertex color each
+      ;; face is fan-triangulated, producing more children.
+      (is (> (count (:group/children result)) 3)))))
+
+(deftest paint-mesh-composes-test
+  (testing "paint composes with other operations in pipeline"
+    (let [result (-> (s3d/platonic-mesh :icosahedron 1.0)
+                     (s3d/subdivide {:iterations 1})
+                     (s3d/paint-mesh {:color/type :field
+                                      :color/field (field/noise-field :scale 2.0 :seed 7)
+                                      :color/palette [[:color/rgb 200 100 50]
+                                                      [:color/rgb 50 100 200]]}))]
+      (is (every? :face/vertex-colors result)))))
+
 ;; --- face selection + polygonal modeling ---
 
 (deftest extrude-faces-all-test

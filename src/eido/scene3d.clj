@@ -934,6 +934,63 @@
                 face)))
           mesh)))
 
+;; --- vertex color ---
+
+(defn paint-mesh
+  "Assigns per-vertex colors from a field/gradient/normal-map.
+  Like color-mesh but samples at each vertex position for smooth interpolation.
+  When :select/by is present, only selected faces get vertex colors.
+  opts:
+    :color/type    - :field, :axis-gradient, or :normal-map
+    :color/palette - vector of [:color/rgb r g b] colors
+    :color/field   - field descriptor (for :field type)
+    :color/axis    - :x, :y, or :z (for :axis-gradient type)
+    :select/*      - optional face selector"
+  [mesh opts]
+  (let [palette (:color/palette opts)
+        sel     (when (:select/by opts) (make-face-selector opts))
+        bounds  (when (= :axis-gradient (:color/type opts))
+                  (axis-range (get opts :color/axis :y) mesh))
+        vert-t-fn
+        (case (:color/type opts)
+          :field
+          (let [f (:color/field opts)]
+            (fn [vertex _normal]
+              (let [[x _y z] vertex]
+                (* 0.5 (+ 1.0 (field/evaluate f (double x) (double z)))))))
+
+          :axis-gradient
+          (let [axis    (get opts :color/axis :y)
+                [lo hi] bounds
+                range   (- (double hi) (double lo))]
+            (fn [vertex _normal]
+              (if (zero? range)
+                0.5
+                (/ (- (axis-component axis vertex) (double lo)) range))))
+
+          :normal-map
+          (fn [_vertex normal]
+            (let [[nx ny nz] (m/normalize normal)
+                  ax (abs (double nx))
+                  ay (abs (double ny))
+                  az (abs (double nz))
+                  mx (max ax ay az)]
+              (cond
+                (== mx ax) (/ ax (+ ax ay az))
+                (== mx ay) (/ (+ ax ay) (+ ax ay az))
+                :else      (/ (+ ax ay az -0.01) (+ ax ay az))))))]
+    (mapv (fn [face]
+            (let [verts    (:face/vertices face)
+                  centroid (m/face-centroid verts)
+                  normal   (:face/normal face)]
+              (if (or (nil? sel) (sel face centroid normal))
+                (let [colors (mapv (fn [v]
+                                     (palette-color palette (vert-t-fn v normal)))
+                                   verts)]
+                  (assoc face :face/vertex-colors colors))
+                face)))
+          mesh)))
+
 ;; --- polygonal modeling ---
 
 (defn extrude-faces
@@ -1246,21 +1303,55 @@
                           (sort-by :depth))]
       {:node/type :group
        :group/children
-       (mapv (fn [{:keys [face facing depth shade-normal centroid]}]
-               (let [face-style (or (:face/style face) base-style)
-                     ;; For back-facing faces (when cull-back is false),
-                     ;; flip normal so shading uses the camera-facing side
-                     shade-normal (if (neg? facing)
-                                    (m/v* shade-normal -1)
-                                    shade-normal)
-                     shaded     (shade-face-style face-style shade-normal
-                                                  norm-light-dir light cam-dir
-                                                  lights centroid)
-                     projected  (mapv proj-fn (:face/vertices face))
-                     expanded   (expand-polygon projected)]
-                 (assoc (merge (scene/polygon expanded) shaded)
-                   :node/depth depth)))
-             processed)})))
+       (into []
+         (mapcat
+           (fn [{:keys [face facing depth shade-normal centroid]}]
+             (let [face-style   (or (:face/style face) base-style)
+                   shade-normal (if (neg? facing)
+                                  (m/v* shade-normal -1)
+                                  shade-normal)
+                   vert-colors  (:face/vertex-colors face)
+                   verts        (:face/vertices face)]
+               (if vert-colors
+                 ;; Fan-triangulate for vertex color interpolation
+                 (let [n         (count verts)
+                       center-2d (let [ps (mapv proj-fn verts)
+                                       cx (/ (reduce + (map first ps)) n)
+                                       cy (/ (reduce + (map second ps)) n)]
+                                   [cx cy])
+                       center-color (let [rs (map #(nth % 1) vert-colors)
+                                          gs (map #(nth % 2) vert-colors)
+                                          bs (map #(nth % 3) vert-colors)]
+                                      [:color/rgb
+                                       (int (/ (reduce + rs) n))
+                                       (int (/ (reduce + gs) n))
+                                       (int (/ (reduce + bs) n))])]
+                   (for [i (range n)
+                         :let [j  (mod (inc i) n)
+                               p0 (proj-fn (nth verts i))
+                               p1 (proj-fn (nth verts j))
+                               c0 (nth vert-colors i)
+                               c1 (nth vert-colors j)
+                               ;; Average color for this sub-triangle
+                               avg-color (lerp-color
+                                           (lerp-color c0 c1 0.5)
+                                           center-color 0.333)
+                               tri-style (assoc (or face-style {}) :style/fill avg-color)
+                               shaded    (shade-face-style tri-style shade-normal
+                                           norm-light-dir light cam-dir
+                                           lights centroid)
+                               expanded  (expand-polygon [p0 p1 center-2d])]]
+                     (assoc (merge (scene/polygon expanded) shaded)
+                       :node/depth depth)))
+                 ;; Standard single-color face
+                 (let [shaded    (shade-face-style face-style shade-normal
+                                                   norm-light-dir light cam-dir
+                                                   lights centroid)
+                       projected (mapv proj-fn verts)
+                       expanded  (expand-polygon projected)]
+                   [(assoc (merge (scene/polygon expanded) shaded)
+                      :node/depth depth)]))))
+           processed))})))
 
 ;; --- depth sorting ---
 
