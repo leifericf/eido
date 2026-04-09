@@ -1,0 +1,8 @@
+{
+  "mcpServers" : {
+    "noumenon" : {
+      "command" : "/opt/homebrew/bin/noum",
+      "args" : [ "serve" ]
+    }
+  }
+}

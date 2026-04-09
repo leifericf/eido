@@ -498,3 +498,15 @@ Before generating or refactoring Clojure code, the agent must:
    - Provide realistic sample data and a few tests for core functions.
 
 The agent should internalize this checklist rather than mechanically listing each step in output. Think it through, then write the code.
+
+# Noumenon MCP — Query Before Reading
+
+**Use the Noumenon MCP tools before Read, Glob, or Grep.** This project has a knowledge graph that knows about file structure, dependencies, complexity, and commit history.
+
+1. Call `noumenon_status` to check the graph is populated.
+2. Use `noumenon_query` or `noumenon_ask` to find what you need.
+3. Then read specific files for implementation details.
+
+**Important:** Pass the repo name (`eido`) as `repo_path`, not a filesystem path.
+
+A PreToolUse hook enforces this — file-reading tools are blocked until a Noumenon MCP query has been made.
