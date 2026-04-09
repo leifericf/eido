@@ -1111,6 +1111,64 @@
                 face)))
           mesh)))
 
+;; --- normal/bump maps ---
+
+(defn- perturb-normal-from-field
+  "Perturbs a surface normal using the gradient of a scalar field sampled at UV.
+  Uses finite differences and the TBN frame."
+  [field strength face-verts face-uvs vertex-idx face-normal]
+  (let [eps 0.001
+        uv  (nth face-uvs vertex-idx)
+        [u v] uv
+        ;; Sample field and compute gradient via finite differences
+        f0  (field/evaluate field (double u) (double v))
+        fu  (field/evaluate field (+ (double u) eps) (double v))
+        fv  (field/evaluate field (double u) (+ (double v) eps))
+        du  (/ (- fu f0) eps)
+        dv  (/ (- fv f0) eps)
+        ;; Compute TBN frame from face geometry + UVs
+        v0  (nth face-verts 0)
+        v1  (nth face-verts (min 1 (dec (count face-verts))))
+        v2  (nth face-verts (min 2 (dec (count face-verts))))
+        uv0 (nth face-uvs 0)
+        uv1 (nth face-uvs (min 1 (dec (count face-uvs))))
+        uv2 (nth face-uvs (min 2 (dec (count face-uvs))))
+        tb  (m/face-tangent-bitangent [v0 v1 v2] [uv0 uv1 uv2])
+        n   (m/normalize face-normal)]
+    (if tb
+      (let [[tangent bitangent] tb
+            ;; Perturb normal in tangent space
+            perturbation (m/v+ (m/v* tangent (* (double strength) du))
+                               (m/v* bitangent (* (double strength) dv)))]
+        (m/normalize (m/v+ n perturbation)))
+      n)))
+
+(defn normal-map-mesh
+  "Perturbs vertex normals using a field sampled at UV coordinates.
+  Creates visible surface detail under lighting without adding geometry.
+  Requires :face/texture-coords on faces (from uv-project or OBJ import).
+  opts:
+    :normal-map/field    - field descriptor
+    :normal-map/strength - perturbation strength (default 1.0)
+    :select/*            - optional face selector"
+  [mesh opts]
+  (let [f        (:normal-map/field opts)
+        strength (double (get opts :normal-map/strength 1.0))
+        sel      (when (:select/by opts) (make-face-selector opts))]
+    (mapv (fn [face]
+            (let [verts    (:face/vertices face)
+                  centroid (m/face-centroid verts)
+                  normal   (:face/normal face)
+                  uvs      (:face/texture-coords face)]
+              (if (and uvs (or (nil? sel) (sel face centroid normal)))
+                (let [vert-normals (mapv (fn [i]
+                                           (perturb-normal-from-field
+                                             f strength verts uvs i normal))
+                                         (range (count verts)))]
+                  (assoc face :face/vertex-normals vert-normals))
+                face)))
+          mesh)))
+
 ;; --- polygonal modeling ---
 
 (defn extrude-faces
@@ -1426,38 +1484,57 @@
        (into []
          (mapcat
            (fn [{:keys [face facing depth shade-normal centroid]}]
-             (let [face-style   (or (:face/style face) base-style)
-                   shade-normal (if (neg? facing)
-                                  (m/v* shade-normal -1)
-                                  shade-normal)
-                   vert-colors  (:face/vertex-colors face)
-                   verts        (:face/vertices face)]
-               (if vert-colors
-                 ;; Fan-triangulate for vertex color interpolation
-                 (let [n         (count verts)
-                       center-2d (let [ps (mapv proj-fn verts)
-                                       cx (/ (reduce + (map first ps)) n)
-                                       cy (/ (reduce + (map second ps)) n)]
-                                   [cx cy])
-                       center-color (let [rs (map #(nth % 1) vert-colors)
-                                          gs (map #(nth % 2) vert-colors)
-                                          bs (map #(nth % 3) vert-colors)]
-                                      [:color/rgb
-                                       (int (/ (reduce + rs) n))
-                                       (int (/ (reduce + gs) n))
-                                       (int (/ (reduce + bs) n))])]
+             (let [face-style    (or (:face/style face) base-style)
+                   shade-normal  (if (neg? facing)
+                                   (m/v* shade-normal -1)
+                                   shade-normal)
+                   vert-colors   (:face/vertex-colors face)
+                   vert-normals  (:face/vertex-normals face)
+                   verts         (:face/vertices face)]
+               (if (or vert-colors vert-normals)
+                 ;; Fan-triangulate for per-vertex interpolation
+                 (let [n          (count verts)
+                       center-2d  (let [ps (mapv proj-fn verts)
+                                        cx (/ (reduce + (map first ps)) n)
+                                        cy (/ (reduce + (map second ps)) n)]
+                                    [cx cy])
+                       center-color (when vert-colors
+                                      (let [rs (map #(nth % 1) vert-colors)
+                                            gs (map #(nth % 2) vert-colors)
+                                            bs (map #(nth % 3) vert-colors)]
+                                        [:color/rgb
+                                         (int (/ (reduce + rs) n))
+                                         (int (/ (reduce + gs) n))
+                                         (int (/ (reduce + bs) n))]))
+                       center-normal (when vert-normals
+                                       (m/normalize
+                                         (reduce m/v+ [0.0 0.0 0.0] vert-normals)))]
                    (for [i (range n)
                          :let [j  (mod (inc i) n)
                                p0 (proj-fn (nth verts i))
                                p1 (proj-fn (nth verts j))
-                               c0 (nth vert-colors i)
-                               c1 (nth vert-colors j)
-                               ;; Average color for this sub-triangle
-                               avg-color (lerp-color
-                                           (lerp-color c0 c1 0.5)
-                                           center-color 0.333)
-                               tri-style (assoc (or face-style {}) :style/fill avg-color)
-                               shaded    (shade-face-style tri-style shade-normal
+                               ;; Per-sub-triangle shading normal
+                               tri-shade-normal
+                               (if vert-normals
+                                 (let [n0 (nth vert-normals i)
+                                       n1 (nth vert-normals j)]
+                                   (m/normalize
+                                     (reduce m/v+ [0.0 0.0 0.0]
+                                       [n0 n1 center-normal])))
+                                 shade-normal)
+                               tri-shade-normal (if (neg? facing)
+                                                  (m/v* tri-shade-normal -1)
+                                                  tri-shade-normal)
+                               ;; Per-sub-triangle color
+                               tri-style (if vert-colors
+                                           (let [c0 (nth vert-colors i)
+                                                 c1 (nth vert-colors j)
+                                                 avg (lerp-color
+                                                       (lerp-color c0 c1 0.5)
+                                                       center-color 0.333)]
+                                             (assoc (or face-style {}) :style/fill avg))
+                                           face-style)
+                               shaded    (shade-face-style tri-style tri-shade-normal
                                            norm-light-dir light cam-dir
                                            lights centroid)
                                expanded  (expand-polygon [p0 p1 center-2d])]]

@@ -644,6 +644,55 @@
                                                       [:color/rgb 50 100 200]]}))]
       (is (every? :face/vertex-colors result)))))
 
+;; --- normal/bump maps ---
+
+(deftest normal-map-mesh-test
+  (let [mesh (-> (s3d/sphere-mesh 1.0 8 4)
+                 (s3d/uv-project {:uv/method :spherical}))
+        mapped (s3d/normal-map-mesh mesh
+                 {:normal-map/field (field/noise-field :scale 5.0 :seed 42)
+                  :normal-map/strength 0.5})]
+    (testing "every face has vertex normals"
+      (doseq [face mapped]
+        (is (some? (:face/vertex-normals face)))
+        (is (= (count (:face/vertices face))
+               (count (:face/vertex-normals face))))))
+    (testing "normals are perturbed (different from face normal)"
+      (let [face (first mapped)
+            face-n (m/normalize (:face/normal face))
+            vert-ns (:face/vertex-normals face)]
+        (is (some #(not= face-n %) vert-ns))))))
+
+(deftest normal-map-mesh-with-selector-test
+  (let [mesh (-> (s3d/cube-mesh [0 0 0] 2)
+                 (s3d/uv-project {:uv/method :box}))
+        mapped (s3d/normal-map-mesh mesh
+                 {:select/by :normal :select/direction [0 1 0] :select/tolerance 0.1
+                  :normal-map/field (field/noise-field :scale 3.0)
+                  :normal-map/strength 0.3})]
+    (testing "only selected faces get vertex normals"
+      (is (some :face/vertex-normals mapped))
+      (is (some #(nil? (:face/vertex-normals %)) mapped)))))
+
+(deftest render-mesh-vertex-normals-test
+  (let [proj (s3d/isometric {:scale 50 :origin [200 200]})
+        mesh (-> (s3d/sphere-mesh 1.0 8 4)
+                 (s3d/uv-project {:uv/method :spherical})
+                 (s3d/paint-mesh {:color/source :uv
+                                  :color/type :field
+                                  :color/field (field/noise-field :scale 2.0 :seed 7)
+                                  :color/palette [[:color/rgb 200 100 50]
+                                                  [:color/rgb 50 100 200]]})
+                 (s3d/normal-map-mesh {:normal-map/field (field/noise-field :scale 5.0 :seed 42)
+                                       :normal-map/strength 0.5}))
+        result (s3d/render-mesh proj mesh
+                 {:light {:light/direction [1 2 1]
+                          :light/ambient 0.2 :light/intensity 0.8}
+                  :shading :smooth})]
+    (testing "renders without error"
+      (is (= :group (:node/type result)))
+      (is (pos? (count (:group/children result)))))))
+
 ;; --- face selection + polygonal modeling ---
 
 (deftest extrude-faces-all-test
