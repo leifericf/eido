@@ -213,6 +213,12 @@
     :ellipse (let [{:keys [cx cy rx ry]} clip]
                (Ellipse2D$Double. (double (- cx rx)) (double (- cy ry))
                                    (double (* 2.0 rx)) (double (* 2.0 ry))))
+    :arc     (let [{:keys [cx cy rx ry]} clip]
+               (Ellipse2D$Double. (double (- cx rx)) (double (- cy ry))
+                                   (double (* 2.0 rx)) (double (* 2.0 ry))))
+    :line    (let [{:keys [x1 y1 x2 y2]} clip]
+               (java.awt.geom.Line2D$Double. (double x1) (double y1)
+                                              (double x2) (double y2)))
     :path    (build-path (:commands clip))
     (throw (ex-info (str "Unknown clip op: " op) {:op op}))))
 

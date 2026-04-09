@@ -132,3 +132,33 @@
       (is (= [200 0 0] (pixel-rgb img 70 50)))
       ;; Right rect area should have hatch content (not pure white)
       (is (some? img)))))
+
+;; --- arc and line geometry fill tests ---
+
+(deftest hatch-fill-on-arc-test
+  (testing "hatch fill on arc geometry does not throw"
+    (let [semantic (ir/container
+                     [200 200]
+                     (color/resolve-color [:color/rgb 255 255 255])
+                     [(ir/draw-item
+                        (ir/arc-geometry [100 100] 50 50 0 270)
+                        :fill {:fill/type :hatch
+                               :hatch/angle 45
+                               :hatch/spacing 5
+                               :hatch/stroke {:color [:color/rgb 0 0 0] :width 1}})])
+          img (render-semantic semantic)]
+      (is (some? img)))))
+
+(deftest hatch-fill-on-line-test
+  (testing "hatch fill on line geometry does not throw"
+    (let [semantic (ir/container
+                     [200 200]
+                     (color/resolve-color [:color/rgb 255 255 255])
+                     [(ir/draw-item
+                        (ir/line-geometry [10 100] [190 100])
+                        :fill {:fill/type :hatch
+                               :hatch/angle 0
+                               :hatch/spacing 5
+                               :hatch/stroke {:color [:color/rgb 0 0 0] :width 1}})])
+          img (render-semantic semantic)]
+      (is (some? img)))))

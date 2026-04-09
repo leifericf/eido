@@ -150,6 +150,19 @@
     :shape/line (let [[x1 y1] (:line/from node)
                       [x2 y2] (:line/to node)]
                   [[:move-to [x1 y1]] [:line-to [x2 y2]]])
+    :shape/arc (let [[cx cy] (:arc/center node)
+                     rx (double (:arc/rx node))
+                     ry (double (:arc/ry node))
+                     kx (* rx 0.5522847498)
+                     ky (* ry 0.5522847498)]
+                 ;; Approximate as full ellipse; arc clipping is not
+                 ;; supported for path-based transforms
+                 [[:move-to [(+ cx rx) cy]]
+                  [:curve-to [(+ cx rx) (+ cy ky)] [(+ cx kx) (+ cy ry)] [cx (+ cy ry)]]
+                  [:curve-to [(- cx kx) (+ cy ry)] [(- cx rx) (+ cy ky)] [(- cx rx) cy]]
+                  [:curve-to [(- cx rx) (- cy ky)] [(- cx kx) (- cy ry)] [cx (- cy ry)]]
+                  [:curve-to [(+ cx kx) (- cy ry)] [(+ cx rx) (- cy ky)] [(+ cx rx) cy]]
+                  [:close]])
     nil))
 
 (defn warp-node

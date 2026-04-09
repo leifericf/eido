@@ -65,6 +65,13 @@
                        :line    {:node/type :shape/line
                                  :line/from (:line/from geom)
                                  :line/to   (:line/to geom)}
+                       :arc     {:node/type  :shape/arc
+                                 :arc/center (:arc/center geom)
+                                 :arc/rx     (:arc/rx geom)
+                                 :arc/ry     (:arc/ry geom)
+                                 :arc/start  (:arc/start geom)
+                                 :arc/extent (:arc/extent geom)
+                                 :arc/mode   (get geom :arc/mode :open)}
                        (throw (ex-info "Cannot convert geometry to path for transform"
                                        {:geometry/type (:geometry/type geom)})))]
       (warp/shape->path-commands scene-node))))

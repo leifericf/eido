@@ -77,6 +77,20 @@
                {:node/type     :shape/path
                 :path/commands (:path/commands geom)}
 
+               :arc
+               {:node/type  :shape/arc
+                :arc/center (:arc/center geom)
+                :arc/rx     (:arc/rx geom)
+                :arc/ry     (:arc/ry geom)
+                :arc/start  (:arc/start geom)
+                :arc/extent (:arc/extent geom)
+                :arc/mode   (get geom :arc/mode :open)}
+
+               :line
+               {:node/type :shape/line
+                :line/from (:line/from geom)
+                :line/to   (:line/to geom)}
+
                (throw (ex-info "Cannot reconstruct scene node for geometry type"
                                {:geometry/type (:geometry/type geom)})))]
     (cond-> base
@@ -122,6 +136,29 @@
       (let [[x y] (:rect/xy node)
             [w h] (:rect/size node)]
         (ir/->RectOp :rect x y w h (:rect/corner-radius node)
+                      fill stroke-clr stroke-w opacity
+                      stroke-cap stroke-join stroke-dash
+                      nil clip))
+      :shape/ellipse
+      (let [[cx cy] (:ellipse/center node)]
+        (ir/->EllipseOp :ellipse cx cy
+                         (:ellipse/rx node) (:ellipse/ry node)
+                         fill stroke-clr stroke-w opacity
+                         stroke-cap stroke-join stroke-dash
+                         nil clip))
+      :shape/arc
+      (let [[cx cy] (:arc/center node)]
+        (ir/->ArcOp :arc cx cy
+                     (:arc/rx node) (:arc/ry node)
+                     (:arc/start node) (:arc/extent node)
+                     (get node :arc/mode :open)
+                     fill stroke-clr stroke-w opacity
+                     stroke-cap stroke-join stroke-dash
+                     nil clip))
+      :shape/line
+      (let [[x1 y1] (:line/from node)
+            [x2 y2] (:line/to node)]
+        (ir/->LineOp :line x1 y1 x2 y2
                       fill stroke-clr stroke-w opacity
                       stroke-cap stroke-join stroke-dash
                       nil clip))
