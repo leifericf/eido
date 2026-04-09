@@ -85,13 +85,15 @@
   []
   [{:category "Drawing"
     :id       "drawing"
+    :intro    [:div
+               [:p "Everything in Eido starts with shapes. You describe " [:em "what"] " something looks like — not " [:em "how"] " to draw it. There's no canvas, no drawing loop, no mutable state. Just data that says \"here's a circle at this position with this color.\" Eido reads that description and produces the image."]]
     :sections
     [{:id    "shapes"
       :title "Shapes"
       :content
       [:div
-       [:p "Everything in Eido starts with shapes. You describe a shape as a map — a collection of key-value pairs that says "
-        [:em "what"] " the shape is, " [:em "where"] " it goes, and " [:em "how"] " it looks. Eido takes care of drawing it."]
+       [:p "You describe a shape as a map — a collection of key-value pairs that says "
+        [:em "what"] " the shape is, " [:em "where"] " it goes, and " [:em "how"] " it looks:"]
        [:p "Here are the basic building blocks:"]
        [:h4 "Rectangle"]
        [:pre {:data-img "docs-rect.png"} [:code
@@ -196,6 +198,8 @@
 
    {:category "Styling"
     :id       "styling"
+    :intro    [:div
+               [:p "Shapes on their own are just geometry. Styling is what makes them visible — fills, strokes, gradients, and textures. Eido gives you a wide range of options, from flat colors to procedural hatching, all specified as data in the same shape map."]]
     :sections
     [{:id    "colors"
       :title "Colors"
@@ -297,6 +301,8 @@
 
    {:category "Composition"
     :id       "composition"
+    :intro    [:div
+               [:p "Once you have shapes, you'll want to combine them — layer them, group them, clip one inside another, or transform them as a unit. Composition tools let you build complex images from simple pieces without losing control."]]
     :sections
     [{:id    "groups"
       :title "Groups"
@@ -692,6 +698,8 @@
 
    {:category "Animation"
     :id       "animation"
+    :intro    [:div
+               [:p "Animation in Eido is just a sequence of scenes — one per frame. There's no timeline, no keyframe system, no mutable state. You write a function that turns a progress value into a scene, and Eido calls it once per frame to produce a GIF or video."]]
     :sections
     [{:id    "animation-basics"
       :title "Creating Animations"

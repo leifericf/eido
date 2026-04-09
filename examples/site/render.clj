@@ -667,18 +667,18 @@
          [:body
           [:div.container
            [:nav.nav
-            [:a.nav-logo {:href (str prefix "/index.html")} "Eido"]
+            [:a.nav-logo {:href (str prefix "/")} "Eido"]
             [:ul.nav-links
-             [:li [:a {:href (str prefix "/index.html")
+             [:li [:a {:href (str prefix "/")
                        :style (when (= active-page :home) "color: #e0ddd5")}
                    "Home"]]
-             [:li [:a {:href (str prefix "/gallery/index.html")
+             [:li [:a {:href (str prefix "/gallery/")
                        :style (when (= active-page :gallery) "color: #e0ddd5")}
                    "Gallery"]]
-             [:li [:a {:href (str prefix "/docs/index.html")
+             [:li [:a {:href (str prefix "/guide/")
                        :style (when (= active-page :docs) "color: #e0ddd5")}
-                   "Docs"]]
-             [:li [:a {:href (str prefix "/api/index.html")
+                   "Guide"]]
+             [:li [:a {:href (str prefix "/api/")
                        :style (when (= active-page :api) "color: #e0ddd5")}
                    "API"]]
              [:li [:a {:href "https://github.com/leifericf/eido"} "GitHub"]]]]
@@ -704,8 +704,8 @@
        [:p {:style "color: #6a6a7a; font-size: 0.85rem; margin-top: 0.3rem; font-style: italic;"} "From Greek " [:em "eido"] " \u2014 \"I see\""]
        [:div#hero-images.hero-images]
        [:div.hero-links
-        [:a.hero-link.hero-link--primary {:href "./gallery/index.html"} "Browse Gallery"]
-        [:a.hero-link.hero-link--secondary {:href "./docs/index.html"} "Read the Docs"]]]
+        [:a.hero-link.hero-link--primary {:href "./gallery/"} "Browse Gallery"]
+        [:a.hero-link.hero-link--secondary {:href "./guide/"} "Read the Guide"]]]
       [:section.features
        (for [{:keys [title desc]} (pages/features)]
          [:div.feature
@@ -889,15 +889,15 @@ function filterGallery(tag) {
 }
 "))])))
 
-;; --- Docs page ---
+;; --- Guide page ---
 
 (defn generate-docs-html
-  "Generates the feature docs page HTML."
+  "Generates the user guide page HTML."
   []
   (let [categories (pages/docs-categories)]
-    (html-page {:title "Docs" :active-page :docs :depth 1}
-      [:h1.page-title "Documentation"]
-      [:p.page-subtitle "Feature reference for Eido's declarative image language."]
+    (html-page {:title "Guide" :active-page :docs :depth 1}
+      [:h1.page-title "Guide"]
+      [:p.page-subtitle "A hands-on tour of Eido — from first shapes to generative art."]
       [:div.docs-layout
        [:nav.docs-sidebar
         (for [{:keys [category id sections]} categories]
@@ -1017,8 +1017,8 @@ document.querySelectorAll('pre code').forEach(function(el) {
     (write-page! out-dir "gallery/index.html"
       (generate-gallery-html examples-by-category))
 
-    (println "Generating docs...")
-    (write-page! out-dir "docs/index.html"
+    (println "Generating guide...")
+    (write-page! out-dir "guide/index.html"
       (generate-docs-html))
 
     (println "Generating API reference...")
