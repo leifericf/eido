@@ -577,6 +577,110 @@
                 :face/normal (m/face-normal new-verts))))
           mesh)))
 
+;; --- subdivision ---
+
+(defn- edge-key
+  "Returns a canonical key for an edge between two 3D points.
+  Sorts the endpoints so edge [a b] and [b a] produce the same key."
+  [a b]
+  (if (neg? (compare (vec a) (vec b))) [a b] [b a]))
+
+(defn- subdivide-once
+  "One iteration of Catmull-Clark subdivision."
+  [mesh]
+  (let [;; 1. Compute face points (centroids) and index faces
+        face-data (mapv (fn [face]
+                          (let [verts (:face/vertices face)]
+                            {:vertices verts
+                             :style    (:face/style face)
+                             :point    (m/face-centroid verts)}))
+                        mesh)
+
+        ;; 2. Build edge→faces map and compute edge points
+        edge-faces (reduce
+                     (fn [acc [fi fd]]
+                       (let [verts (:vertices fd)
+                             n     (count verts)]
+                         (reduce (fn [acc i]
+                                   (let [j  (mod (inc i) n)
+                                         ek (edge-key (nth verts i) (nth verts j))]
+                                     (update acc ek (fnil conj []) fi)))
+                                 acc (range n))))
+                     {} (map-indexed vector face-data))
+
+        edge-points (reduce-kv
+                      (fn [acc ek face-indices]
+                        (let [[a b] ek
+                              mid   (m/lerp a b 0.5)]
+                          (if (= 2 (count face-indices))
+                            ;; Interior edge: average of edge midpoint and adjacent face points
+                            (let [fp0 (:point (nth face-data (first face-indices)))
+                                  fp1 (:point (nth face-data (second face-indices)))]
+                              (assoc acc ek (m/v* (reduce m/v+ [mid fp0 fp1]) (/ 1.0 3.0))))
+                            ;; Boundary edge: just midpoint
+                            (assoc acc ek mid))))
+                      {} edge-faces)
+
+        ;; 3. Compute new vertex positions
+        ;; Build vertex→faces and vertex→edges maps
+        vert-faces (reduce
+                     (fn [acc [fi fd]]
+                       (reduce (fn [acc v]
+                                 (update acc v (fnil conj []) fi))
+                               acc (:vertices fd)))
+                     {} (map-indexed vector face-data))
+
+        vert-edges (reduce-kv
+                     (fn [acc ek _]
+                       (let [[a b] ek]
+                         (-> acc
+                             (update a (fnil conj #{}) ek)
+                             (update b (fnil conj #{}) ek))))
+                     {} edge-faces)
+
+        new-verts  (reduce-kv
+                     (fn [acc v fi-list]
+                       (let [n  (count fi-list)
+                             ;; Average of face points
+                             fp (m/v* (reduce m/v+ (mapv #(:point (nth face-data %)) fi-list))
+                                      (/ 1.0 n))
+                             ;; Average of edge midpoints
+                             edges   (get vert-edges v)
+                             ep (if (seq edges)
+                                  (m/v* (reduce m/v+ (mapv (fn [[a b]] (m/lerp a b 0.5)) edges))
+                                        (/ 1.0 (count edges)))
+                                  v)
+                             ;; Catmull-Clark formula: (F + 2R + (n-3)P) / n
+                             new-pos (m/v* (m/v+ (m/v+ fp (m/v* ep 2.0))
+                                                 (m/v* v (- n 3.0)))
+                                           (/ 1.0 n))]
+                         (assoc acc v new-pos)))
+                     {} vert-faces)]
+
+    ;; 4. Generate new quad faces
+    (into []
+      (mapcat
+        (fn [{:keys [vertices style point]}]
+          (let [n (count vertices)]
+            (for [i (range n)
+                  :let [j  (mod (inc i) n)
+                        v0 (get new-verts (nth vertices i))
+                        e0 (get edge-points (edge-key (nth vertices i) (nth vertices j)))
+                        fp point
+                        e1 (get edge-points (edge-key (nth vertices (mod (dec i) n))
+                                                      (nth vertices i)))]]
+              (make-face [v0 e0 fp e1] style))))
+        face-data))))
+
+(defn subdivide
+  "Applies Catmull-Clark subdivision to a mesh.
+  iterations: number of subdivision passes (each 4× face count).
+  Returns a new mesh of quad faces."
+  [mesh iterations]
+  (if (<= iterations 0)
+    mesh
+    (recur (subdivide-once mesh) (dec iterations))))
+
 ;; --- face selection ---
 
 (defn- make-face-selector

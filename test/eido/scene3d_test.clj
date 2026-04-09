@@ -321,6 +321,57 @@
                   :segments 6})]
       (is (= 12 (count mesh))))))
 
+;; --- subdivision ---
+
+(deftest subdivide-cube-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        sub1 (s3d/subdivide mesh 1)]
+    (testing "one iteration on a cube: 6 faces * 4 = 24 quads"
+      (is (= 24 (count sub1))))
+    (testing "all subdivided faces are quads"
+      (doseq [face sub1]
+        (is (= 4 (count (:face/vertices face))))))
+    (testing "all faces have normals"
+      (doseq [face sub1]
+        (is (some? (:face/normal face)))))))
+
+(deftest subdivide-two-iterations-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        sub2 (s3d/subdivide mesh 2)]
+    (testing "two iterations: 6 * 4 * 4 = 96 quads"
+      (is (= 96 (count sub2))))))
+
+(deftest subdivide-preserves-style-test
+  (let [mesh (mapv #(assoc % :face/style {:style/fill [:color/rgb 200 100 50]})
+               (s3d/cube-mesh [0 0 0] 2))
+        sub (s3d/subdivide mesh 1)]
+    (testing "face style propagates to subdivided faces"
+      (doseq [face sub]
+        (is (= {:style/fill [:color/rgb 200 100 50]} (:face/style face)))))))
+
+(deftest subdivide-icosahedron-test
+  (let [mesh (s3d/icosahedron-mesh 1.0)
+        sub  (s3d/subdivide mesh 1)]
+    (testing "icosahedron (20 tris) → 60 quads after one iteration"
+      (is (= 60 (count sub))))
+    (testing "all subdivided faces are quads"
+      (doseq [face sub]
+        (is (= 4 (count (:face/vertices face))))))))
+
+(deftest subdivide-zero-iterations-test
+  (let [mesh (s3d/cube-mesh)]
+    (testing "0 iterations returns mesh unchanged"
+      (is (= mesh (s3d/subdivide mesh 0))))))
+
+(deftest subdivide-composes-with-deform-test
+  (testing "deform then subdivide works"
+    (let [result (-> (s3d/cube-mesh [0 0 0] 2)
+                     (s3d/deform-mesh {:deform/type :twist
+                                       :deform/axis :y
+                                       :deform/amount 0.5})
+                     (s3d/subdivide 1))]
+      (is (= 24 (count result))))))
+
 ;; --- per-face color ---
 
 (deftest color-mesh-field-test
