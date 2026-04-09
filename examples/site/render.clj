@@ -224,17 +224,7 @@
                                :circle/center [x y]
                                :circle/radius 15
                                :style/fill [:color/rgb 200 0 0]})))
-        sphere-proj (s3d/perspective
-                      {:scale 100 :origin [200 200]
-                       :yaw 0.5 :pitch -0.3 :distance 5})
-        sphere-light {:light/direction [1 1 0.5]
-                      :light/ambient 0.2
-                      :light/intensity 0.8}
-        sphere-result (s3d/sphere sphere-proj [0 0 0] 1.5
-                        {:style {:style/fill [:color/rgb 100 150 255]}
-                         :light sphere-light})
-        sphere-nodes (if (sequential? sphere-result)
-                       (vec sphere-result) [sphere-result])]
+        ]
     {"docs-rect.png"
      {:image/size [300 200] :image/background bg
       :image/nodes [{:node/type :shape/rect
@@ -380,17 +370,6 @@
                        :style/fill [:color/rgb 0 0 255]
                        :node/opacity 0.5}]}]}
 
-     "docs-clipping.png"
-     {:image/size [400 400] :image/background bg
-      :image/nodes [{:node/type :group
-                     :group/clip {:node/type :shape/circle
-                                  :circle/center [200 200]
-                                  :circle/radius 80}
-                     :group/children
-                     [{:node/type :shape/rect
-                       :rect/xy [120 120] :rect/size [160 160]
-                       :style/fill [:color/rgb 255 0 0]}]}]}
-
      "docs-grid.png"
      {:image/size [420 420] :image/background bg
       :image/nodes grid-nodes}
@@ -413,10 +392,6 @@
                                     :seed 42}
                      :style/stroke {:color [:color/rgb 100 150 100]
                                     :width 1}}]}
-
-     "docs-3d-sphere.png"
-     {:image/size [400 400] :image/background bg
-      :image/nodes sphere-nodes}
 
      ;; --- Generative docs scenes ---
 
@@ -634,6 +609,125 @@
                      :text/font {:font/family "SansSerif" :font/size 10}
                      :style/fill [:color/rgb 140 140 150]}]))
                editions))})
+
+     ;; --- Additional docs scenes ---
+
+     "docs-strokes.png"
+     {:image/size [400 200] :image/background bg
+      :image/nodes
+      [{:node/type :shape/path
+        :path/commands [[:move-to [30 50]] [:line-to [180 50]]]
+        :style/stroke {:color [:color/rgb 40 40 40] :width 6 :cap :round}}
+       {:node/type :shape/path
+        :path/commands [[:move-to [220 50]] [:line-to [370 50]]]
+        :style/stroke {:color [:color/rgb 40 40 40] :width 6 :cap :butt}}
+       {:node/type :shape/path
+        :path/commands [[:move-to [30 120]] [:line-to [370 120]]]
+        :style/stroke {:color [:color/rgb 80 120 200] :width 3 :dash [15 8]}}
+       {:node/type :shape/path
+        :path/commands [[:move-to [30 160]] [:line-to [370 160]]]
+        :style/stroke {:color [:color/rgb 200 80 80] :width 3 :dash [5 12]}}]}
+
+     "docs-clipping.png"
+     {:image/size [300 300] :image/background bg
+      :image/nodes
+      [{:node/type :group
+        :group/clip {:node/type :shape/circle
+                     :circle/center [150 150]
+                     :circle/radius 100}
+        :group/children
+        [{:node/type :shape/rect
+          :rect/xy [50 50] :rect/size [100 200]
+          :style/fill [:color/rgb 220 50 50]}
+         {:node/type :shape/rect
+          :rect/xy [150 50] :rect/size [100 200]
+          :style/fill [:color/rgb 50 100 220]}
+         {:node/type :shape/rect
+          :rect/xy [50 50] :rect/size [200 100]
+          :style/fill [:color/rgba 255 220 0 0.5]}]}]}
+
+     "docs-compositing.png"
+     {:image/size [300 200] :image/background bg
+      :image/nodes
+      [{:node/type :shape/circle
+        :circle/center [110 100] :circle/radius 70
+        :style/fill [:color/rgb 220 50 50]}
+       {:node/type :shape/circle
+        :circle/center [190 100] :circle/radius 70
+        :style/fill [:color/rgb 50 100 220]
+        :node/opacity 0.6}]}
+
+     "docs-transforms.png"
+     {:image/size [400 200] :image/background bg
+      :image/nodes
+      (vec (for [i (range 5)]
+             {:node/type :shape/rect
+              :rect/xy [0 0] :rect/size [40 40]
+              :node/transform [[:transform/translate (+ 50 (* i 75)) 80]
+                               [:transform/rotate (* i 0.3)]]
+              :style/fill [:color/hsl (* i 60) 0.6 0.5]
+              :style/stroke {:color [:color/rgb 40 40 40] :width 1}}))}
+
+     "docs-noise-field.png"
+     {:image/size [400 300] :image/background [:color/rgb 20 20 30]
+      :image/nodes
+      (vec (for [x (range 0 400 6)
+                 y (range 0 300 6)]
+             (let [v (noise/perlin2d (* x 0.015) (* y 0.015) {:seed 42})
+                   brightness (+ 0.5 (* 0.5 v))]
+               {:node/type :shape/rect
+                :rect/xy [x y] :rect/size [5 5]
+                :style/fill [:color/rgb
+                             (int (* 255 brightness 0.3))
+                             (int (* 255 brightness 0.7))
+                             (int (* 255 brightness))]})))}
+
+     "docs-animation.gif"
+     {:frames
+      (anim/frames 40
+        (fn [t]
+          {:image/size [250 250]
+           :image/background [:color/rgb 30 30 40]
+           :image/nodes
+           [{:node/type :shape/circle
+             :circle/center [125 125]
+             :circle/radius (max 1 (* 90 t))
+             :style/fill [:color/hsl (* 360 t) 0.8 0.5]}]}))
+      :fps 20}
+
+     "docs-easing.png"
+     {:image/size [400 200] :image/background bg
+      :image/nodes
+      (vec (concat
+             ;; Linear (gray dots)
+             (for [i (range 20)]
+               (let [t (/ i 19.0)]
+                 {:node/type :shape/circle
+                  :circle/center [(+ 30 (* 340 t)) (- 180 (* 150 t))]
+                  :circle/radius 3
+                  :style/fill [:color/rgb 180 180 180]}))
+             ;; Ease-in-out (colored dots)
+             (for [i (range 20)]
+               (let [t (/ i 19.0)
+                     et (anim/ease-in-out t)]
+                 {:node/type :shape/circle
+                  :circle/center [(+ 30 (* 340 t)) (- 180 (* 150 et))]
+                  :circle/radius 4
+                  :style/fill [:color/rgb 80 140 220]}))))}
+
+     "docs-3d-sphere.png"
+     (let [proj (s3d/perspective
+                  {:scale 120 :origin [200 200]
+                   :yaw 0.5 :pitch -0.3 :distance 5})
+           light {:light/direction [1 1 0.5]
+                  :light/ambient 0.25
+                  :light/intensity 0.8}
+           result (s3d/sphere proj [0 0 0] 1.5
+                    {:style {:style/fill [:color/rgb 100 150 255]}
+                     :light light
+                     :subdivisions 3})]
+       {:image/size [400 400] :image/background bg
+        :image/nodes (if (sequential? result) (vec result) [result])})
 
      }))
 

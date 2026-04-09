@@ -234,18 +234,17 @@
       :title "Strokes"
       :content
       [:div
-       [:p "Strokes are the outlines around shapes. You can control the width, the shape of line endings (caps), how corners look (joins), and add dashed patterns:"]
-       [:pre [:code
-              ";; Rounded line endings and beveled corners
-{:style/stroke {:color [:color/rgb 0 0 0]
-                :width 4
-                :cap :round      ;; :butt, :round, or :square
-                :join :bevel}}   ;; :miter, :round, or :bevel
+       [:p "Strokes are the outlines around shapes. You can control the width, the shape of line endings (caps), and add dashed patterns:"]
+       [:pre {:data-img "docs-strokes.png"} [:code
+              ";; Thick rounded caps (top left) vs. butt caps (top right)
+{:style/stroke {:color [:color/name \"black\"]
+                :width 6
+                :cap :round}}    ;; :butt, :round, or :square
 
-;; Dashed lines
-{:style/stroke {:color [:color/rgb 0 0 0]
-                :width 2
-                :dash [10 5]}}   ;; alternating dash and gap lengths"]]
+;; Dashed lines in different patterns
+{:style/stroke {:color [:color/name \"royalblue\"]
+                :width 3
+                :dash [15 8]}}   ;; alternating dash and gap lengths"]]
        [:p "A shape can have both a fill and a stroke — the stroke is drawn on top."]]}
 
      {:id    "gradients"
@@ -331,41 +330,50 @@
       :title "Clipping"
       :content
       [:div
-       [:p "Clipping restricts a group's visible area to a shape — like looking through a window. Only the parts of the children that fall inside the clip shape are drawn:"]
+       [:p "Clipping restricts a group's visible area to a shape — like looking through a circular window. Here, three overlapping colored rectangles are clipped to a circle:"]
        [:pre {:data-img "docs-clipping.png"} [:code
               "{:node/type :group
  :group/clip {:node/type :shape/circle
-              :circle/center [200 200]
-              :circle/radius 80}
+              :circle/center [150 150]
+              :circle/radius 100}
  :group/children
  [{:node/type :shape/rect
-   :rect/xy [120 120]
-   :rect/size [160 160]
-   :style/fill [:color/name \"red\"]}]}
-;; Only the part of the rectangle inside the circle is visible"]]]}
+   :rect/xy [50 50] :rect/size [100 200]
+   :style/fill [:color/name \"red\"]}
+  {:node/type :shape/rect
+   :rect/xy [150 50] :rect/size [100 200]
+   :style/fill [:color/name \"royalblue\"]}
+  {:node/type :shape/rect
+   :rect/xy [50 50] :rect/size [200 100]
+   :style/fill [:color/rgba 255 220 0 0.5]}]}"]]]}
 
      {:id    "compositing"
       :title "Compositing"
       :content
       [:div
-       [:p "Blend modes control how overlapping shapes combine visually — like layer blend modes in Photoshop:"]
-       [:pre [:code
-              "{:node/type :group
- :group/children [...]
- :node/opacity 0.5
- :composite/blend :screen}  ;; :src-over, :multiply, :screen, etc."]]]}
+       [:p "Control how overlapping shapes blend together. Opacity makes shapes see-through, and blend modes combine colors in different ways — like layer modes in Photoshop:"]
+       [:pre {:data-img "docs-compositing.png"} [:code
+              ";; Two overlapping circles — the blue one is 60% transparent
+{:node/type :shape/circle
+ :circle/center [110 100] :circle/radius 70
+ :style/fill [:color/name \"red\"]}
+{:node/type :shape/circle
+ :circle/center [190 100] :circle/radius 70
+ :style/fill [:color/name \"royalblue\"]
+ :node/opacity 0.6}"]]
+       [:p "Available blend modes: " [:code ":src-over"] " (default), " [:code ":multiply"]
+        ", " [:code ":screen"] ", " [:code ":overlay"] ", and more."]]}
 
      {:id    "transforms"
       :title "Transforms"
       :content
       [:div
-       [:p "Move, rotate, scale, and skew any shape or group. Transforms are applied in order — translate first, then rotate, then scale:"]
-       [:pre [:code
-              "{:node/transform [[:transform/translate 100 50]
-                  [:transform/rotate 0.785]      ;; angle in radians
-                  [:transform/scale 1.5 1.5]
-                  [:transform/shear-x 0.3]]}     ;; skew"]]
-       [:p "Transforms compose through the tree — a shape inside a translated group that is itself translated will move by the sum of both translations."]]}]}
+       [:p "Move, rotate, scale, and skew any shape or group. Here, five squares are translated to different positions and progressively rotated:"]
+       [:pre {:data-img "docs-transforms.png"} [:code
+              ";; Each square is translated and rotated a bit more than the last
+{:node/transform [[:transform/translate 100 80]
+                  [:transform/rotate 0.3]]}     ;; angle in radians"]]
+       [:p "Transforms compose through the tree — a shape inside a translated group inherits the group's transform, then applies its own on top."]]}]}
 
    {:category "Generative"
     :id       "generative"
@@ -426,8 +434,8 @@
       :title "Noise"
       :content
       [:div
-       [:p "Noise is the secret ingredient behind organic-looking generative art. Unlike plain random numbers (which look like TV static), noise produces " [:em "smooth"] " randomness — nearby points get similar values, creating natural-looking gradients, hills, and flows. It's the foundation for clouds, terrain, flowing water, and most generative textures."]
-       [:pre [:code
+       [:p "Noise is the secret ingredient behind organic-looking generative art. Unlike plain random numbers (which look like TV static), noise produces " [:em "smooth"] " randomness — nearby points get similar values, creating natural-looking gradients, hills, and flows:"]
+       [:pre {:data-img "docs-noise-field.png"} [:code
               "(require '[eido.gen.noise :as noise])
 
 ;; Smooth 2D noise: feed in a position, get a value from -1 to 1
@@ -437,10 +445,9 @@
 (noise/perlin3d x y z)
 
 ;; Fractal noise: layer multiple scales for richer detail
-;; (like zooming into a coastline — detail at every level)
 (noise/fbm noise/perlin2d x y
   {:octaves 4 :seed 42})"]]
-       [:p "The " [:code ":seed"] " controls which particular landscape you get. Same seed, same landscape. Try different seeds to explore variations."]]}
+       [:p "The " [:code ":seed"] " controls which particular landscape you get. Same seed, same landscape. The " [:code ":octaves"] " parameter in " [:code "fbm"] " adds layers of detail — like zooming into a coastline where you see detail at every scale."]]}
 
      {:id    "particles"
       :title "Particles"
@@ -708,22 +715,22 @@
       [:div
        [:p "An animation in Eido is just a sequence of scenes — one per frame. There's no timeline, no keyframe system, no mutable state. You write a function that takes a progress value "
         [:code "t"] " (from 0 to 1) and returns a scene. Eido calls it once per frame:"]
-       [:pre [:code
+       [:pre {:data-img "docs-animation.gif"} [:code
               "(require '[eido.animate :as anim])
 
 (def frames
-  (anim/frames 60    ;; 60 frames total
+  (anim/frames 40    ;; 40 frames total
     (fn [t]          ;; t goes from 0.0 to 1.0
-      {:image/size [200 200]
+      {:image/size [250 250]
        :image/background [:color/rgb 30 30 40]
        :image/nodes
        [{:node/type :shape/circle
-         :circle/center [100 100]
-         :circle/radius (* 80 t)    ;; grows over time
+         :circle/center [125 125]
+         :circle/radius (* 90 t)    ;; grows over time
          :style/fill [:color/hsl (* 360 t) 0.8 0.5]}]})))
 
 ;; Render as animated GIF
-(eido/render frames {:output \"grow.gif\" :fps 30})"]]
+(eido/render frames {:output \"grow.gif\" :fps 20})"]]
        [:p "Since frames are just data, you can manipulate them with all the usual tools — "
         [:code "map"] ", " [:code "filter"] ", " [:code "concat"]
         " — to build complex sequences from simple parts."]]}
@@ -732,8 +739,8 @@
       :title "Easing & Helpers"
       :content
       [:div
-       [:p "Easing functions make motion feel natural. Instead of moving at a constant speed, things can accelerate, decelerate, bounce, or overshoot:"]
-       [:pre [:code
+       [:p "Easing functions make motion feel natural. Instead of moving at a constant speed (gray), things can accelerate and decelerate smoothly (blue):"]
+       [:pre {:data-img "docs-easing.png"} [:code
               "(anim/ease-in t)            ;; slow start, fast finish
 (anim/ease-out t)           ;; fast start, slow finish
 (anim/ease-in-out t)        ;; slow start and finish
@@ -759,14 +766,15 @@
               "(require '[eido.scene3d :as s3d])
 
 (let [proj (s3d/perspective
-             {:scale 100 :origin [200 200]
+             {:scale 120 :origin [200 200]
               :yaw 0.5 :pitch -0.3 :distance 5})
       light {:light/direction [1 1 0.5]
-             :light/ambient 0.2
+             :light/ambient 0.25
              :light/intensity 0.8}]
   (s3d/sphere proj [0 0 0] 1.5
-    {:style {:style/fill [:color/rgb 100 150 255]}
-     :light light}))"]]
+    {:style {:style/fill [:color/name \"cornflowerblue\"]}
+     :light light
+     :subdivisions 3}))  ;; higher = smoother sphere"]]
        [:p "Available primitives: " [:code "sphere"] ", " [:code "cube"] ", "
         [:code "cone"] ", " [:code "torus"] ", " [:code "cylinder"]
         ". Load arbitrary meshes from OBJ files with " [:code "eido.io.obj/load-obj"] "."]
