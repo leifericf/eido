@@ -16,7 +16,7 @@
     [eido.gen.stipple :as stipple]
     [eido.ir :as ir]
     [eido.ir.program :as program])
-  ;; NOTE: no dependency on eido.compile — fill lowering is self-sufficient
+  ;; NOTE: no dependency on eido.engine.compile — fill lowering is self-sufficient
   (:import
     [java.awt.image BufferedImage]))
 

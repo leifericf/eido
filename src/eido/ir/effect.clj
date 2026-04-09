@@ -15,7 +15,7 @@
   (:require
     [eido.color :as color]
     [eido.ir :as ir]))
-  ;; NOTE: no dependency on eido.compile — effect lowering is self-sufficient
+  ;; NOTE: no dependency on eido.engine.compile — effect lowering is self-sufficient
 
 ;; --- effect constructors ---
 
