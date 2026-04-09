@@ -577,6 +577,104 @@
                 :face/normal (m/face-normal new-verts))))
           mesh)))
 
+;; --- face selection ---
+
+(defn- make-face-selector
+  "Builds a predicate fn from a selector descriptor.
+  Returns (fn [face centroid normal] -> boolean)."
+  [opts]
+  (case (:select/by opts)
+    :all (fn [_face _centroid _normal] true)
+
+    :normal
+    (let [dir   (m/normalize (:select/direction opts))
+          tol   (double (get opts :select/tolerance 0.3))]
+      (fn [_face _centroid normal]
+        (> (m/dot (m/normalize normal) dir) (- 1.0 tol))))
+
+    :field
+    (let [f     (:select/field opts)
+          thresh (double (get opts :select/threshold 0.0))]
+      (fn [_face centroid _normal]
+        (let [[cx _cy cz] centroid]
+          (> (field/evaluate f (double cx) (double cz)) thresh))))
+
+    :axis
+    (let [axis (get opts :select/axis :y)
+          lo   (double (get opts :select/min Double/NEGATIVE_INFINITY))
+          hi   (double (get opts :select/max Double/POSITIVE_INFINITY))]
+      (fn [_face centroid _normal]
+        (let [v (axis-component axis centroid)]
+          (and (>= v lo) (<= v hi)))))))
+
+;; --- polygonal modeling ---
+
+(defn extrude-faces
+  "Extrudes selected faces along their normals.
+  opts:
+    :select/*       - face selector (see make-face-selector)
+    :extrude/amount - distance to push faces
+    :extrude/scale  - optional scale factor toward centroid (default 1.0)"
+  [mesh opts]
+  (let [sel    (make-face-selector opts)
+        amount (double (get opts :extrude/amount 1.0))
+        scale  (double (get opts :extrude/scale 1.0))]
+    (into []
+      (mapcat
+        (fn [face]
+          (let [verts    (:face/vertices face)
+                centroid (m/face-centroid verts)
+                normal   (m/normalize (:face/normal face))]
+            (if (sel face centroid (:face/normal face))
+              (let [n     (count verts)
+                    ;; Scale vertices toward centroid then push along normal
+                    cap-verts (mapv (fn [v]
+                                     (let [scaled (m/lerp centroid v scale)]
+                                       (m/v+ scaled (m/v* normal amount))))
+                                   verts)
+                    cap   (make-face cap-verts (:face/style face))
+                    ;; Side-wall quads connecting original edge to extruded edge
+                    walls (for [i (range n)
+                                :let [j  (mod (inc i) n)
+                                      v0 (nth verts i)
+                                      v1 (nth verts j)
+                                      v2 (nth cap-verts j)
+                                      v3 (nth cap-verts i)]]
+                            (make-face [v0 v1 v2 v3] (:face/style face)))]
+                (into [cap] walls))
+              [face])))
+        mesh))))
+
+(defn inset-faces
+  "Insets selected faces, creating a smaller inner face and border quads.
+  opts:
+    :select/*      - face selector
+    :inset/amount  - how far to shrink inward (0-1 fraction of distance to centroid)"
+  [mesh opts]
+  (let [sel (make-face-selector opts)
+        amt (double (get opts :inset/amount 0.2))]
+    (into []
+      (mapcat
+        (fn [face]
+          (let [verts    (:face/vertices face)
+                centroid (m/face-centroid verts)
+                normal   (:face/normal face)]
+            (if (sel face centroid normal)
+              (let [n          (count verts)
+                    inner-verts (mapv #(m/lerp % centroid amt) verts)
+                    inner-face (make-face inner-verts (:face/style face))
+                    ;; Border quads between outer and inner edges
+                    borders    (for [i (range n)
+                                     :let [j  (mod (inc i) n)
+                                           o0 (nth verts i)
+                                           o1 (nth verts j)
+                                           i0 (nth inner-verts i)
+                                           i1 (nth inner-verts j)]]
+                                 (make-face [o0 o1 i1 i0] (:face/style face)))]
+                (into [inner-face] borders))
+              [face])))
+        mesh))))
+
 ;; --- mesh utilities ---
 
 (defn merge-meshes

@@ -321,6 +321,108 @@
                   :segments 6})]
       (is (= 12 (count mesh))))))
 
+;; --- face selection + polygonal modeling ---
+
+(deftest extrude-faces-all-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        extruded (s3d/extrude-faces mesh {:select/by :all
+                                          :extrude/amount 0.5})]
+    (testing "each face becomes cap + side walls"
+      ;; 6 original quad faces → 6 caps + 6*4 side walls = 30 faces
+      (is (= 30 (count extruded))))
+    (testing "all faces have normals"
+      (doseq [face extruded]
+        (is (some? (:face/normal face)))))))
+
+(deftest extrude-faces-by-normal-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        ;; Select only upward-facing faces
+        extruded (s3d/extrude-faces mesh {:select/by :normal
+                                          :select/direction [0 1 0]
+                                          :select/tolerance 0.1
+                                          :extrude/amount 1.0})]
+    (testing "only top face extruded: 5 unchanged + 1 cap + 4 walls = 10"
+      (is (= 10 (count extruded))))))
+
+(deftest extrude-faces-with-scale-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        extruded (s3d/extrude-faces mesh {:select/by :normal
+                                          :select/direction [0 1 0]
+                                          :select/tolerance 0.1
+                                          :extrude/amount 1.0
+                                          :extrude/scale 0.5})]
+    (testing "cap vertices are scaled toward centroid"
+      (let [cap-face (first (filter
+                              (fn [f]
+                                (let [ys (map second (:face/vertices f))]
+                                  (every? #(> % 2.5) ys)))
+                              extruded))
+            cap-verts (:face/vertices cap-face)
+            xs (map first cap-verts)]
+        (is (< (- (apply max xs) (apply min xs)) 2.0))))))
+
+(deftest extrude-faces-by-field-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        extruded (s3d/extrude-faces mesh
+                   {:select/by :field
+                    :select/field (field/constant-field 1.0)
+                    :select/threshold 0.5
+                    :extrude/amount 0.5})]
+    (testing "constant field above threshold selects all faces"
+      (is (= 30 (count extruded))))))
+
+(deftest extrude-faces-chaining-test
+  (testing "chained extrusions build on each other"
+    (let [mesh (s3d/cube-mesh [0 0 0] 2)
+          result (-> mesh
+                     (s3d/extrude-faces {:select/by :normal
+                                         :select/direction [0 1 0]
+                                         :select/tolerance 0.1
+                                         :extrude/amount 1.0})
+                     (s3d/extrude-faces {:select/by :normal
+                                         :select/direction [0 1 0]
+                                         :select/tolerance 0.1
+                                         :extrude/amount 0.5}))]
+      (is (pos? (count result)))
+      (testing "highest vertices are above original + both extrusions"
+        (let [max-y (apply max (map second (mapcat :face/vertices result)))]
+          (is (> max-y 3.0)))))))
+
+(deftest extrude-faces-by-axis-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        extruded (s3d/extrude-faces mesh {:select/by :axis
+                                          :select/axis :y
+                                          :select/min 1.5
+                                          :select/max 3.0
+                                          :extrude/amount 0.5})]
+    (testing "selects faces with centroids in y range"
+      (is (> (count extruded) (count mesh))))))
+
+(deftest inset-faces-all-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        inset (s3d/inset-faces mesh {:select/by :all
+                                     :inset/amount 0.2})]
+    (testing "each face becomes inner face + border quads"
+      ;; 6 faces × (1 inner + 4 border) = 30
+      (is (= 30 (count inset))))))
+
+(deftest inset-faces-by-normal-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        inset (s3d/inset-faces mesh {:select/by :normal
+                                     :select/direction [0 1 0]
+                                     :select/tolerance 0.1
+                                     :inset/amount 0.3})]
+    (testing "only top face inset: 5 unchanged + 1 inner + 4 border = 10"
+      (is (= 10 (count inset))))))
+
+(deftest inset-then-extrude-test
+  (testing "inset + extrude creates recessed panels"
+    (let [mesh (s3d/cube-mesh [0 0 0] 2)
+          result (-> mesh
+                     (s3d/inset-faces {:select/by :all :inset/amount 0.2})
+                     (s3d/extrude-faces {:select/by :all :extrude/amount -0.1}))]
+      (is (pos? (count result))))))
+
 ;; --- mesh deformations ---
 
 (deftest deform-mesh-twist-test
