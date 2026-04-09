@@ -87,3 +87,19 @@
   (testing "weighted-choice selects from options"
     (let [params (series/series-params spec-with-weights 42 0)]
       (is (some #{(:tier params)} [:common :rare :epic])))))
+
+;; --- convenience helper tests ---
+
+(deftest derive-traits-test
+  (testing "categorizes values into buckets"
+    (let [params {:density 42 :speed 5}
+          buckets {:density [[20 "sparse"] [40 "medium"] [100 "dense"]]
+                   :speed [[3 "slow"] [7 "medium"] [10 "fast"]]}
+          traits (series/derive-traits params buckets)]
+      (is (= "dense" (:density traits)))
+      (is (= "medium" (:speed traits)))))
+  (testing "passes through params without buckets"
+    (let [traits (series/derive-traits {:hue 200 :density 15}
+                                       {:density [[20 "sparse"] [100 "dense"]]})]
+      (is (= 200 (:hue traits)))
+      (is (= "sparse" (:density traits))))))

@@ -1,7 +1,8 @@
 (ns eido.gen.vary
   (:require
     [eido.color.palette :as palette]
-    [eido.gen.noise :as noise]))
+    [eido.gen.noise :as noise]
+    [eido.gen.prob :as prob]))
 
 ;; --- override generators ---
 
@@ -65,7 +66,31 @@
             (range (count children))
             children))))
 
+;; --- convenience helpers ---
+
+(defn ^{:convenience true :convenience-for 'eido.gen.vary/by-index}
+  by-palette
+  "Generates n fill overrides from a palette with optional weights.
+  Wraps (by-index n (fn [i] {:style/fill ...}))."
+  ([n palette seed]
+   (mapv (fn [i] {:style/fill (nth palette (mod i (count palette)))})
+         (range n)))
+  ([n palette weights seed]
+   (let [colors (palette/weighted-sample palette weights n seed)]
+     (mapv (fn [c] {:style/fill c}) colors))))
+
+(defn ^{:convenience true :convenience-for 'eido.gen.vary/by-noise}
+  by-noise-palette
+  "Generates fill overrides by mapping noise to palette colors.
+  Wraps (by-noise positions scale seed (fn [v] {:style/fill (gradient-map ...)}))."
+  [positions noise-scale seed palette]
+  (let [stops (mapv (fn [i c] [(/ (double i) (max 1 (dec (count palette)))) c])
+                    (range) palette)]
+    (by-noise positions noise-scale seed
+      (fn [v] {:style/fill (palette/gradient-map stops (+ 0.5 (* 0.5 v)))}))))
+
 (comment
   (by-index 5 (fn [i] {:node/opacity (/ (double i) 4.0)}))
   (by-gradient 5 [[0.0 [:color/rgb 255 0 0]] [1.0 [:color/rgb 0 0 255]]])
+  (by-palette 5 [[:color/rgb 255 0 0] [:color/rgb 0 255 0]] 42)
   )

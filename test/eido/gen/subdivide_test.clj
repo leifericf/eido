@@ -54,3 +54,14 @@
           nodes (sub/subdivide->nodes rects (constantly [:color/rgb 200 100 50]))]
       (is (= (count rects) (count nodes)))
       (is (every? #(= :shape/rect (:node/type %)) nodes)))))
+
+;; --- convenience helper tests ---
+
+(deftest subdivide->palette-nodes-test
+  (testing "produces colored rect nodes"
+    (let [rects (sub/subdivide 0 0 200 200 {:seed 42})
+          pal [[:color/rgb 255 0 0] [:color/rgb 0 255 0] [:color/rgb 0 0 255]]
+          nodes (sub/subdivide->palette-nodes rects pal 42)]
+      (is (= (count rects) (count nodes)))
+      (is (every? #(= :shape/rect (:node/type %)) nodes))
+      (is (every? :style/fill nodes)))))

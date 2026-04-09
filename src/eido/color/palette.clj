@@ -165,6 +165,16 @@
   [palette seed]
   (prob/shuffle-seeded palette seed))
 
+;; --- convenience helpers ---
+
+(defn ^{:convenience true}
+  with-roles
+  "Attaches role names to a palette for readable access.
+  Wraps (zipmap roles palette).
+  Example: (with-roles [:bg :primary :accent] pal) => {:bg c1 :primary c2 :accent c3}"
+  [roles palette]
+  (zipmap roles palette))
+
 (comment
   (complementary [:color/rgb 255 0 0])
   (analogous [:color/rgb 255 0 0] 5)

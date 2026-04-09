@@ -83,6 +83,21 @@
            :style/fill (color-fn cell)})
         rects))
 
+;; --- convenience helpers ---
+
+(defn ^{:convenience true :convenience-for 'eido.gen.subdivide/subdivide->nodes}
+  subdivide->palette-nodes
+  "Subdivision rects to styled nodes with palette colors.
+  Wraps (subdivide->nodes rects (fn [...] (prob/pick palette seed)))."
+  ([rects palette seed]
+   (subdivide->palette-nodes rects palette seed {}))
+  ([rects palette seed style]
+   (mapv (fn [{[x y w h] :rect :as cell}]
+           (merge {:node/type :shape/rect :rect/xy [x y] :rect/size [w h]
+                   :style/fill (prob/pick palette (+ (hash cell) (long seed)))}
+                  style))
+         rects)))
+
 (comment
   (subdivide 0 0 400 400 {:seed 42})
   (subdivide 0 0 400 400 {:depth 3 :padding 4 :seed 42})

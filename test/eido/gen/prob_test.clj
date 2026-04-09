@@ -142,3 +142,17 @@
   (testing "returns an element from items"
     (let [items [:a :b :c]]
       (is (some #{(prob/pick-weighted items [1 2 3] 42)} items)))))
+
+;; --- convenience helper tests ---
+
+(deftest mixture-test
+  (testing "returns n values"
+    (let [src1 (prob/uniform 50 0.0 10.0 42)
+          src2 (prob/uniform 50 90.0 100.0 99)
+          result (prob/mixture [src1 src2] [1 1] 20 42)]
+      (is (= 20 (count result)))))
+  (testing "deterministic"
+    (let [src1 (prob/uniform 50 0.0 10.0 42)
+          src2 (prob/uniform 50 90.0 100.0 99)]
+      (is (= (prob/mixture [src1 src2] [1 1] 20 42)
+             (prob/mixture [src1 src2] [1 1] 20 42))))))

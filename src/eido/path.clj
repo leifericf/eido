@@ -133,3 +133,4 @@
 (import-fn aesthetic/smooth-commands)
 (import-fn aesthetic/jittered-commands)
 (import-fn aesthetic/dash-commands)
+(import-fn aesthetic/stylize)

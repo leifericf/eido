@@ -63,6 +63,25 @@
   [spec master-seed start end]
   (mapv #(series-params spec master-seed %) (range start end)))
 
+;; --- convenience helpers ---
+
+(defn ^{:convenience true :convenience-for 'eido.gen.series/series-params}
+  derive-traits
+  "Categorizes continuous parameter values into named labels.
+  Wraps a simple threshold lookup over a params map.
+  buckets: {:param [[threshold label] ...]}
+  Example: (derive-traits {:density 42} {:density [[20 \"sparse\"] [40 \"medium\"] [100 \"dense\"]]})"
+  [params buckets]
+  (into {}
+        (map (fn [[k v]]
+               (if-let [ranges (get buckets k)]
+                 [k (or (some (fn [[thresh label]]
+                                (when (<= (double v) (double thresh)) label))
+                              ranges)
+                        (second (last ranges)))]
+                 [k v])))
+        params))
+
 (comment
   (edition-seed 42 0)
   (edition-seed 42 1)

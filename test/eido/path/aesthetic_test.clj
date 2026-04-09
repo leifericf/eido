@@ -82,3 +82,16 @@
     (let [d1 (aes/dash-commands line-cmds {:dash [20.0 10.0] :offset 0.0})
           d2 (aes/dash-commands line-cmds {:dash [20.0 10.0] :offset 5.0})]
       (is (not= d1 d2)))))
+
+;; --- convenience helper tests ---
+
+(deftest stylize-test
+  (testing "chains smooth then jitter"
+    (let [result (aes/stylize line-cmds [{:op :smooth :samples 20}
+                                          {:op :jitter :amount 2.0 :seed 42}])]
+      (is (vector? result))
+      (is (= :move-to (ffirst result)))))
+  (testing "dash as last step returns vector of segments"
+    (let [result (aes/stylize line-cmds [{:op :dash :dash [20.0 10.0]}])]
+      (is (vector? result))
+      (is (> (count result) 0)))))

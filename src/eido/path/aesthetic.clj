@@ -123,6 +123,23 @@
                     (recur (+ on-start period)
                            (conj dashes dash-cmds))))))))))))
 
+;; --- convenience helpers ---
+
+(defn ^{:convenience true :convenience-for 'eido.path.aesthetic/smooth-commands}
+  stylize
+  "Applies path aesthetic transforms described as data.
+  Wraps smooth-commands, jittered-commands, dash-commands in sequence.
+  steps: vector of {:op :smooth/:jitter/:dash, ...opts}.
+  Example: (stylize cmds [{:op :smooth :samples 40} {:op :dash :dash [10 5]}])"
+  [commands steps]
+  (reduce (fn [cmds {:keys [op] :as step}]
+            (let [opts (dissoc step :op)]
+              (case op
+                :smooth (smooth-commands cmds opts)
+                :jitter (jittered-commands cmds opts)
+                :dash   (dash-commands cmds opts))))
+          commands steps))
+
 (comment
   (smooth-commands
     [[:move-to [0.0 0.0]] [:line-to [50.0 20.0]]

@@ -65,3 +65,14 @@
           nodes   (circle/pack->nodes circles {:style {:style/fill [:color/rgb 255 0 0]}})]
       (is (= (count circles) (count nodes)))
       (is (every? #(= :shape/circle (:node/type %)) nodes)))))
+
+;; --- convenience helper tests ---
+
+(deftest pack->colored-nodes-test
+  (testing "produces colored circle nodes"
+    (let [circles (circle/circle-pack 0 0 200 200 {:max-circles 10 :seed 42})
+          pal [[:color/rgb 255 0 0] [:color/rgb 0 255 0] [:color/rgb 0 0 255]]
+          nodes (circle/pack->colored-nodes circles pal 42)]
+      (is (= (count circles) (count nodes)))
+      (is (every? #(= :shape/circle (:node/type %)) nodes))
+      (is (every? :style/fill nodes)))))

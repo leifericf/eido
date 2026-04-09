@@ -109,6 +109,22 @@
   (let [idx (weighted-choice weights seed)]
     (nth items idx)))
 
+;; --- convenience helpers ---
+
+(defn ^{:convenience true}
+  mixture
+  "Samples n values from a mix of source vectors, weighted by mix-weights.
+  Wraps weighted-choice to select which source to draw from.
+  Example: (mixture [(uniform 100 1 5 s1) (gaussian 100 20 3 s2)] [3 1] 50 seed)"
+  [sources mix-weights n seed]
+  (let [rng (make-rng seed)
+        cdf (build-cdf mix-weights)]
+    (mapv (fn [_]
+            (let [src-idx (sample-cdf cdf (.nextDouble rng))
+                  src (nth sources src-idx)]
+              (nth src (.nextInt rng (count src)))))
+          (clojure.core/range n))))
+
 (comment
   (make-rng 42)
   (uniform 5 0.0 10.0 42)

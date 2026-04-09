@@ -181,3 +181,10 @@
   (testing "contains same colors"
     (is (= (set test-palette)
            (set (palette/shuffle-palette test-palette 42))))))
+
+(deftest with-roles-test
+  (testing "creates role map from palette"
+    (let [pal [[:color/rgb 255 0 0] [:color/rgb 0 255 0] [:color/rgb 0 0 255]]
+          roles (palette/with-roles [:bg :primary :accent] pal)]
+      (is (= [:color/rgb 255 0 0] (:bg roles)))
+      (is (= [:color/rgb 0 0 255] (:accent roles))))))

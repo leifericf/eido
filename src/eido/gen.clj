@@ -141,3 +141,11 @@
 (import-fn boids/step-flock)
 (import-fn boids/simulate-flock)
 (import-fn boids/flock->nodes)
+
+;; convenience helpers
+(import-fn prob/mixture)
+(import-fn vary/by-palette)
+(import-fn vary/by-noise-palette)
+(import-fn circle/pack->colored-nodes)
+(import-fn subdivide/subdivide->palette-nodes)
+(import-fn series/derive-traits)
