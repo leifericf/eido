@@ -321,6 +321,63 @@
                   :segments 6})]
       (is (= 12 (count mesh))))))
 
+;; --- smooth shading ---
+
+(deftest render-mesh-smooth-shading-test
+  (let [proj (s3d/isometric {:scale 50 :origin [200 200]})
+        mesh (-> (s3d/cube-mesh [0 0 0] 2) (s3d/subdivide {:iterations 1}))
+        flat   (s3d/render-mesh proj mesh
+                 {:style {:style/fill [:color/rgb 200 200 200]}
+                  :light {:light/direction [1 0 0]
+                          :light/ambient 0.1 :light/intensity 0.9}})
+        smooth (s3d/render-mesh proj mesh
+                 {:style {:style/fill [:color/rgb 200 200 200]}
+                  :light {:light/direction [1 0 0]
+                          :light/ambient 0.1 :light/intensity 0.9}
+                  :shading :smooth})]
+    (testing "smooth produces same number of faces as flat"
+      (is (= (count (:group/children flat))
+             (count (:group/children smooth)))))
+    (testing "smooth shading changes brightness distribution on cube"
+      ;; With flat shading, each face has a single distinct brightness.
+      ;; With smooth shading, vertex normal averaging blends brightness
+      ;; across the sharp 90° cube edges, so the set of unique fill
+      ;; values will differ.
+      (let [flat-fills   (set (map :style/fill (:group/children flat)))
+            smooth-fills (set (map :style/fill (:group/children smooth)))]
+        (is (not= flat-fills smooth-fills))))))
+
+;; --- auto-smooth ---
+
+(deftest auto-smooth-edges-cube-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        hard (s3d/auto-smooth-edges mesh {:angle (/ Math/PI 4)})]
+    (testing "cube has all hard edges (90° angles)"
+      (is (= 12 (count hard))))))
+
+(deftest auto-smooth-edges-sphere-test
+  (let [mesh (s3d/sphere-mesh 1.0 8 4)
+        hard (s3d/auto-smooth-edges mesh {:angle (/ Math/PI 4)})]
+    (testing "sphere has few hard edges (smooth surface)"
+      (is (< (count hard) 10)))))
+
+(deftest subdivide-with-hard-edges-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        hard (s3d/auto-smooth-edges mesh {:angle (/ Math/PI 4)})
+        sub-soft (s3d/subdivide mesh {:iterations 2})
+        sub-hard (s3d/subdivide mesh {:iterations 2 :hard-edges hard})]
+    (testing "same face count"
+      (is (= (count sub-soft) (count sub-hard))))
+    (testing "hard edges produce different vertices than soft"
+      (is (not= (mapv :face/vertices sub-soft)
+                (mapv :face/vertices sub-hard))))
+    (testing "hard-edge subdivision stays closer to original bounds"
+      (let [bounds-hard (s3d/mesh-bounds sub-hard)
+            bounds-soft (s3d/mesh-bounds sub-soft)]
+        ;; With hard edges, the cube retains more of its original shape
+        (is (> (first (:max bounds-hard))
+               (first (:max bounds-soft))))))))
+
 ;; --- mirror ---
 
 (deftest mirror-mesh-reflect-test
