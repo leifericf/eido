@@ -171,3 +171,15 @@
         (m/face-centroid [[0 0 0] [2 2 2]])))
   (is (approx= [1.0 1.0 0.0]
         (m/face-centroid [[0 0 0] [1 1 0] [2 2 0]]))))
+
+;; --- lerp ---
+
+(deftest lerp-test
+  (testing "t=0 returns a"
+    (is (approx= [1.0 2.0 3.0] (m/lerp [1 2 3] [4 5 6] 0.0))))
+  (testing "t=1 returns b"
+    (is (approx= [4.0 5.0 6.0] (m/lerp [1 2 3] [4 5 6] 1.0))))
+  (testing "t=0.5 returns midpoint"
+    (is (approx= [2.5 3.5 4.5] (m/lerp [1 2 3] [4 5 6] 0.5))))
+  (testing "t=0.25"
+    (is (approx= [1.75 2.75 3.75] (m/lerp [1 2 3] [4 5 6] 0.25)))))

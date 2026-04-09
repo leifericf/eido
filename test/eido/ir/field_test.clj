@@ -52,3 +52,26 @@
       (let [f (field/noise-field :scale 0.1 :variant variant :seed 42)]
         (is (double? (field/evaluate f 5.0 5.0))
             (str "variant " variant " should return double"))))))
+
+;; --- 3D evaluation ---
+
+(deftest evaluate-3d-test
+  (testing "noise field evaluates at 3D coordinates"
+    (let [f (field/noise-field :scale 1.0 :variant :raw :seed 42)]
+      (is (double? (field/evaluate-3d f 1.5 2.3 0.7)))
+      (is (<= -1.0 (field/evaluate-3d f 1.5 2.3 0.7) 1.0))))
+  (testing "constant field ignores z"
+    (let [f (field/constant-field 0.5)]
+      (is (= 0.5 (field/evaluate-3d f 10.0 20.0 30.0)))))
+  (testing "distance field uses x and y only"
+    (let [f (field/distance-field [0.0 0.0])]
+      (is (< (Math/abs (- 5.0 (field/evaluate-3d f 3.0 4.0 99.0))) 0.001))))
+  (testing "all noise variants work in 3D"
+    (doseq [variant [:raw :fbm :turbulence :ridge]]
+      (let [f (field/noise-field :scale 0.1 :variant variant :seed 42)]
+        (is (double? (field/evaluate-3d f 5.0 5.0 5.0))
+            (str "3D variant " variant " should return double")))))
+  (testing "3D evaluation is deterministic"
+    (let [f (field/noise-field :scale 0.05 :seed 123)]
+      (is (= (field/evaluate-3d f 10.0 20.0 30.0)
+             (field/evaluate-3d f 10.0 20.0 30.0))))))

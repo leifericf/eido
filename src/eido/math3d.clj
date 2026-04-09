@@ -42,6 +42,16 @@
       [0.0 0.0 0.0]
       (v* v (/ 1.0 m)))))
 
+(defn lerp
+  "Linear interpolation between two 3D vectors.
+  t=0 returns a, t=1 returns b."
+  [[ax ay az] [bx by bz] t]
+  (let [t (double t)
+        s (- 1.0 t)]
+    [(+ (* s (double ax)) (* t (double bx)))
+     (+ (* s (double ay)) (* t (double by)))
+     (+ (* s (double az)) (* t (double bz)))]))
+
 (defn smoothstep
   "Hermite interpolation between edge0 and edge1.
   Returns 0 when x <= edge0, 1 when x >= edge1, smooth curve between."
