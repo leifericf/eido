@@ -53,14 +53,16 @@
     :namespaces '[eido.path eido.scene eido.text]}
    {:category "Path Operations"
     :namespaces '[eido.path.stroke eido.path.distort eido.path.warp
-                  eido.path.morph eido.path.decorate]}
+                  eido.path.morph eido.path.decorate eido.path.aesthetic]}
    {:category "Color"
     :namespaces '[eido.color eido.color.palette]}
    {:category "Generative"
     :namespaces '[eido.gen.noise eido.gen.flow eido.gen.contour
                   eido.gen.scatter eido.gen.voronoi eido.gen.lsystem
                   eido.gen.particle eido.gen.stipple eido.gen.hatch
-                  eido.gen.vary]}
+                  eido.gen.vary eido.gen.prob eido.gen.circle
+                  eido.gen.subdivide eido.gen.series eido.gen.ca
+                  eido.gen.boids]}
    {:category "Animation"
     :namespaces '[eido.animate]}
    {:category "3D"
@@ -673,9 +675,11 @@ function filterGallery(tag) {
             (for [{sec-id :id sec-title :title} sections]
               [:li [:a {:href (str "#" sec-id)} sec-title]])]])]
        [:div.docs-content
-        (for [{:keys [category id sections]} categories]
+        (for [{:keys [category id sections intro]} categories]
           [:div.docs-category {:id id}
            [:h2.docs-category-title category]
+           (when intro
+             [:div.docs-category-intro (insert-doc-previews intro)])
            (for [{sec-id :id sec-title :title content :content} sections]
              [:section.docs-section {:id sec-id}
               [:h3 sec-title]

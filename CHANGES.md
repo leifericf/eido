@@ -1,5 +1,29 @@
 # Changes
 
+## Unreleased
+
+### New modules
+
+- **`eido.gen.prob`** — Seeded probability distributions and sampling utilities. Uniform, Gaussian, weighted choice, weighted sampling, deterministic shuffle, coin flip, pick. All functions take an explicit seed for reproducible results — no global RNG state.
+- **`eido.path.aesthetic`** — High-level path aesthetic helpers. `smooth-commands` (Catmull-Rom curve fitting from path commands), `jittered-commands` (organic noise displacement), `dash-commands` (arc-length dash segmentation). Re-exported from `eido.path`.
+- **`eido.gen.circle`** — Variable-radius circle packing with spatial grid acceleration. Supports rectangular regions and arbitrary closed paths via `circle-pack-in-path`. Includes `pack->nodes` for scene integration.
+- **`eido.gen.subdivide`** — Recursive rectangular subdivision (binary space partitioning). Configurable depth, min-size, split ratios, orientation bias, and padding. Includes `subdivide->nodes`.
+- **`eido.gen.series`** — Long-form generative series utilities for seed-driven workflows (Art Blocks / fxhash style). `edition-seed` uses murmur3-style hashing for uncorrelated per-edition seeds. `series-params` samples from typed parameter specs (uniform, gaussian, choice, weighted-choice, boolean).
+- **`eido.gen.ca`** — Cellular automata (Game of Life, Highlife, custom rules) and Gray-Scott reaction-diffusion simulation. Primitive arrays for performance. Named RD presets: coral, mitosis, waves, spots.
+- **`eido.gen.boids`** — Flocking simulation with steering behaviors (separation, alignment, cohesion, seek, flee, wander). Spatial grid for O(n) neighbor lookup. Presets: `classic`, `murmuration`. Includes `flock->nodes` for rendering as oriented triangles or circles.
+
+### Enhancements
+
+- **`eido.color.palette`** — Add `weighted-pick`, `weighted-sample`, `weighted-gradient`, and `shuffle-palette` for artist-friendly color frequency control
+- **`eido.gen`** — Re-export all new module functions via the `eido.gen` facade namespace
+- **`eido.path`** — Re-export `smooth-commands`, `jittered-commands`, `dash-commands` from `eido.path.aesthetic`
+
+### Docs
+
+- Add documentation sections for probability/randomness, circle packing, subdivision, weighted palettes, path aesthetics, long-form series, cellular automata, reaction-diffusion, and boids
+- Add new namespaces to API reference: `eido.gen.prob`, `eido.gen.circle`, `eido.gen.subdivide`, `eido.gen.series`, `eido.gen.ca`, `eido.gen.boids`, `eido.path.aesthetic`
+- Add gallery examples: circle pack with weighted palette, Mondrian grid, reaction-diffusion coral, boids murmuration, dashed flow field, series preview grid
+
 ## v1.0.0-beta1 — Bug Fixes & Stabilization
 
 ### Bug fixes
