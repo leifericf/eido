@@ -490,6 +490,95 @@
 
 ;; --- Combined CSS generation ---
 
+(def architecture-styles
+  [[:.arch-layout {:display              "grid"
+                   :grid-template-columns "180px 1fr"
+                   :gap                  "3rem"
+                   :max-width            "900px"
+                   :margin               "0 auto"}]
+   (at-media {:max-width "768px"}
+     [:.arch-layout {:grid-template-columns "1fr"}]
+     [:.arch-sidebar {:display "none"}])
+   [:.arch-sidebar {:position   "sticky"
+                    :top        "1rem"
+                    :max-height "calc(100vh - 2rem)"
+                    :font-size  "0.85rem"}]
+   [".arch-sidebar a" {:color           (:text-muted colors)
+                       :text-decoration "none"
+                       :display         "block"
+                       :padding         "0.3rem 0"
+                       :font-size       "0.85rem"}]
+   [".arch-sidebar a:hover" {:color (:text colors)}]
+   [:.arch-content {:min-width 0}]
+   [:.arch-section {:margin-bottom "4rem"}]
+   [".arch-section h2" {:font-size      "1.4rem"
+                        :font-weight    "700"
+                        :margin-bottom  "1rem"
+                        :padding-bottom "0.5rem"
+                        :border-bottom  (str "1px solid " (:border colors))}]
+   [".arch-section h4" {:font-size     "1rem"
+                        :font-weight   "600"
+                        :margin-top    "1.5rem"
+                        :margin-bottom "0.5rem"
+                        :color         (:text colors)}]
+   [".arch-section p" {:color         (:text-muted colors)
+                       :line-height   "1.7"
+                       :margin-bottom "1rem"}]
+   [".arch-section pre" {:margin-bottom "1rem"}]
+   [".arch-section ul" {:color          (:text-muted colors)
+                        :line-height    "1.7"
+                        :margin-bottom  "1rem"
+                        :padding-left   "1.5rem"}]
+   [".arch-section li" {:margin-bottom "0.3rem"}]
+   ;; Pipeline diagram
+   [:.arch-pipeline {:display       "flex"
+                     :align-items   "center"
+                     :gap           "0.3rem"
+                     :overflow-x    "auto"
+                     :padding       "1.5rem 0"
+                     :margin-bottom "1rem"}]
+   [:.arch-step {:background    (:bg-card colors)
+                 :border        (str "1px solid " (:border colors))
+                 :border-radius "8px"
+                 :padding       "0.8rem 1rem"
+                 :text-align    "center"
+                 :min-width     "100px"
+                 :flex-shrink   "0"}]
+   [:.arch-step--final {:background (:accent colors)
+                        :border-color (:accent colors)
+                        :color "#fff"}]
+   [".arch-step--final .arch-step-desc" {:color "rgba(255,255,255,0.7)"}]
+   [:.arch-step-label {:font-weight "600"
+                       :font-size   "0.85rem"
+                       :color       (:text colors)}]
+   [:.arch-step-desc {:font-size "0.75rem"
+                      :color     (:text-muted colors)
+                      :margin-top "0.2rem"}]
+   [:.arch-arrow {:color     (:text-muted colors)
+                  :font-size "1.2rem"
+                  :flex-shrink "0"}]
+   ;; Error block
+   [:.arch-error {:background  "rgba(200, 50, 50, 0.08)"
+                  :border-left "3px solid rgba(200, 50, 50, 0.4)"}]
+   ;; Source link
+   [:.arch-src-link {:color           (:accent colors)
+                     :font-size       "0.85rem"
+                     :text-decoration "none"}]
+   [".arch-src-link:hover" {:text-decoration "underline"}]
+   ;; Source map table
+   [:.arch-source-table {:width         "100%"
+                         :border-collapse "collapse"
+                         :font-size     "0.85rem"
+                         :margin-bottom "1rem"}]
+   [".arch-source-table th" {:text-align    "left"
+                             :padding       "0.5rem 0.75rem"
+                             :border-bottom (str "2px solid " (:border colors))
+                             :color         (:text colors)
+                             :font-weight   "600"}]
+   [".arch-source-table td" {:padding       "0.4rem 0.75rem"
+                             :border-bottom (str "1px solid " (:border colors))
+                             :color         (:text-muted colors)}]])
+
 (defn site-css []
   (garden/css
     (concat base-styles
@@ -499,4 +588,5 @@
             gallery-styles
             docs-styles
             api-styles
+            architecture-styles
             page-title-styles)))

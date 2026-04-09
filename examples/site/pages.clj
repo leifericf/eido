@@ -1,5 +1,5 @@
 (ns site.pages
-  "Static content for eido website pages — landing page, features, docs.")
+  "Static content for eido website pages — landing page, features, docs, architecture.")
 
 ;; --- Landing page ---
 
@@ -1168,3 +1168,278 @@
 ;; Or disable per-scene with a key
 (eido/render (assoc scene :eido/validate false))"]]
        [:p [:code "*validate*"] " defaults to " [:code "true"] ". Validation adds roughly 7% overhead per render, so skipping it in tight iteration loops makes a noticeable difference."]]}]}])
+
+;; --- Architecture page ---
+
+(def github-base "https://github.com/leifericf/eido/blob/main/")
+
+(defn arch-src-link
+  "Creates a GitHub source link for a file path."
+  [path label]
+  [:a.arch-src-link {:href (str github-base path) :target "_blank"} label])
+
+(defn architecture-sections
+  "Content for the 'How Eido Works' architecture page."
+  []
+  [;; --- The Big Picture ---
+   {:id "big-picture"
+    :title "The Big Picture"
+    :content
+    [:div
+     [:p "A scene in Eido is a plain Clojure map. It goes through a pipeline of pure data transformations — validation, compilation, lowering, rendering — and comes out as pixels. No GPU, no OpenGL, no mutable state. Just functions that turn data into data, until the last step paints it onto a "
+      [:code "BufferedImage"] " using Java2D."]
+     [:div.arch-pipeline
+      [:div.arch-step [:div.arch-step-label "Scene Map"] [:div.arch-step-desc "your data"]]
+      [:div.arch-arrow "\u2192"]
+      [:div.arch-step [:div.arch-step-label "Validate"] [:div.arch-step-desc "spec check"]]
+      [:div.arch-arrow "\u2192"]
+      [:div.arch-step [:div.arch-step-label "Semantic IR"] [:div.arch-step-desc "draw items"]]
+      [:div.arch-arrow "\u2192"]
+      [:div.arch-step [:div.arch-step-label "Lower"] [:div.arch-step-desc "expand generators"]]
+      [:div.arch-arrow "\u2192"]
+      [:div.arch-step [:div.arch-step-label "Concrete Ops"] [:div.arch-step-desc "flat records"]]
+      [:div.arch-arrow "\u2192"]
+      [:div.arch-step.arch-step--final [:div.arch-step-label "Render"] [:div.arch-step-desc "Java2D \u2192 pixels"]]]
+     [:p "Each step is a pure function. The scene map goes in one end, a "
+      [:code "BufferedImage"] " comes out the other. Every intermediate result is inspectable data — you can print it, diff it, serialize it. The rendering backend (currently Java2D) is isolated behind the concrete ops layer, so a future WebGL or Skia backend would only need to implement the final step."]]}
+
+   ;; --- Step 1: Scene Map ---
+   {:id "scene-map"
+    :title "Step 1: The Scene Map"
+    :content
+    [:div
+     [:p "Everything starts here. A scene is a map with three keys — the canvas size, a background color, and a vector of nodes. Each node is itself a map describing a shape, a group, or a generator:"]
+     [:pre {:data-img "docs-arch-input.png"} [:code
+            "{:image/size [400 300]
+ :image/background [:color/name \"linen\"]
+ :image/nodes
+ [{:node/type     :shape/circle
+   :circle/center [200 150]
+   :circle/radius 80
+   :style/fill    [:color/name \"coral\"]}
+  {:node/type     :shape/rect
+   :rect/xy       [50 50]
+   :rect/size     [100 60]
+   :style/fill    [:color/name \"steelblue\"]}]}"]]
+     [:p "That's the entire input. No classes, no builder patterns, no inheritance. Nodes can be shapes ("
+      [:code ":shape/circle"] ", " [:code ":shape/rect"] ", " [:code ":shape/path"]
+      "), groups (" [:code ":group"] " with " [:code ":group/children"]
+      "), or generators (" [:code ":flow-field"] ", " [:code ":contour"] ", " [:code ":scatter"]
+      ") that produce shapes during compilation."]
+     [:p (arch-src-link "src/eido/core.clj" "View eido.core on GitHub")]]}
+
+   ;; --- Step 2: Validation ---
+   {:id "validation"
+    :title "Step 2: Validation"
+    :content
+    [:div
+     [:p "Before any work happens, the scene is validated against a comprehensive spec. Color formats, node types, transform syntax, path commands — all checked. If something's wrong, you get a clear error pointing to exactly where:"]
+     [:pre.arch-error [:code
+            "Invalid scene
+3 validation errors:
+
+  1. at [:image/nodes 0 :circle/radius]: positive number, got: -5
+  2. at [:image/nodes 1 :style/fill 0]: known color format, got: :color/invalid
+  3. at [:image/nodes 1 :rect/size]: vector of [w h], got: 100"]]
+     [:p "Each error tells you the path into the data structure, what was expected, and what was found. This catches mistakes at the boundary — before they become mysterious rendering glitches deep in the pipeline."]
+     [:p "Validation uses " [:code "clojure.spec.alpha"]
+      " with multimethod dispatch on " [:code ":node/type"]
+      ". It's optional — bind " [:code "eido/*validate*"]
+      " to " [:code "false"] " for faster REPL iteration once your scene structure is stable."]
+     [:p (arch-src-link "src/eido/validate.clj" "View validation on GitHub") " · "
+      (arch-src-link "src/eido/spec.clj" "View spec definitions on GitHub")]]}
+
+   ;; --- Step 3: Semantic IR ---
+   {:id "semantic-ir"
+    :title "Step 3: Semantic IR"
+    :content
+    [:div
+     [:p "The scene map is compiled into a " [:em "semantic intermediate representation"]
+      " — a structured container that preserves your intent. Shapes become draw items with separate slots for geometry, fill, stroke, effects, and transforms. Generators and procedural fills are kept as-is — they haven't been expanded yet."]
+     [:pre [:code
+            ";; A circle node becomes a draw item:
+{:item/geometry {:geometry/type :circle
+                 :geometry/cx 200 :geometry/cy 150
+                 :geometry/r 80}
+ :item/fill     {:r 255 :g 127 :b 80 :a 1.0}
+ :item/stroke   nil
+ :item/opacity  1.0
+ :item/transforms []}
+
+;; A flow-field generator is preserved, not yet expanded:
+{:item/generator {:generator/type :flow-field
+                  :flow-field/bounds [0 0 400 300]
+                  :flow-field/opts {:density 20 :steps 30 :seed 42}}
+ :item/fill {:r 0 :g 0 :b 0 :a 1.0}}"]]
+     [:p "Why two layers? Because generators like flow fields produce " [:em "hundreds"] " of path nodes when expanded. Keeping them as compact descriptions in the semantic IR means you can inspect, serialize, and diff scenes efficiently. The expansion happens in the next step — lowering."]
+     [:p "The IR container wraps everything in a rendering pass structure:"]
+     [:pre [:code
+            "{:ir/version 1
+ :ir/size [400 300]
+ :ir/background {:r 250 :g 240 :b 230 :a 1.0}
+ :ir/passes [{:pass/id :draw-main
+              :pass/type :draw-geometry
+              :pass/items [draw-item-1 draw-item-2 ...]}]
+ :ir/outputs {:default :framebuffer}}"]]
+     [:p (arch-src-link "src/eido/engine/compile.clj" "View compilation on GitHub")]]}
+
+   ;; --- Step 4: Lowering ---
+   {:id "lowering"
+    :title "Step 4: Lowering"
+    :content
+    [:div
+     [:p "This is where the magic happens. Lowering walks the semantic IR and expands everything into concrete drawing operations. Generators become shapes. Procedural fills become clipped lines or dots. Effects become offscreen buffer operations."]
+     [:h4 "Generator expansion"]
+     [:p "A flow-field description becomes hundreds of actual path nodes:"]
+     [:pre {:data-img "docs-arch-flowfield.png"} [:code
+            ";; Before lowering (semantic IR):
+{:generator/type :flow-field
+ :flow-field/bounds [0 0 400 300]
+ :flow-field/opts {:density 25 :steps 30 :seed 42}}
+
+;; After lowering (concrete ops):
+[PathOp{:commands [[:move-to [23 45]] [:line-to [25 47]] ...]}
+ PathOp{:commands [[:move-to [67 12]] [:line-to [69 14]] ...]}
+ PathOp{:commands [[:move-to [112 89]] [:line-to [114 91]] ...]}
+ ... ;; ~80 path ops from one generator
+]"]]
+     [:p "Each generator type calls its corresponding " [:code "eido.gen.*"]
+      " module — flow fields call " [:code "eido.gen.flow/flow-field"]
+      ", scatter calls " [:code "eido.gen.scatter/scatter->nodes"]
+      ", and so on. The lowering step bridges the gap between the artist's intent and the renderer's needs."]
+     [:h4 "Fill expansion"]
+     [:p "Procedural fills like hatching and stippling are expanded into actual geometry, clipped to the shape they fill:"]
+     [:pre {:data-img "docs-arch-hatch.png"} [:code
+            ";; Before: a circle with a hatch fill (semantic IR)
+{:geometry/type :circle :geometry/r 80
+ :fill {:fill/type :hatch
+        :hatch/angle 45 :hatch/spacing 4}}
+
+;; After: concrete line ops clipped to the circle
+[PathOp{:commands [...] :clip circle-area}
+ PathOp{:commands [...] :clip circle-area}
+ ...]"]]
+     [:h4 "Effect wrapping"]
+     [:p "Effects like shadows and glows become offscreen buffer operations — the shape is painted to a temporary image, the effect is applied, then composited onto the main canvas:"]
+     [:pre [:code
+            ";; Shadow effect → duplicate shape + blur + offset
+BufferOp{:composite :src-over
+         :filter {:type :blur :radius 8}
+         :transforms [[:translate 4 4]]
+         :ops [CircleOp{...shadow-color...}]}
+CircleOp{...original-shape...}"]]
+     [:p (arch-src-link "src/eido/ir/lower.clj" "View lowering on GitHub") " · "
+      (arch-src-link "src/eido/ir/generator.clj" "View generator expansion on GitHub") " · "
+      (arch-src-link "src/eido/ir/fill.clj" "View fill expansion on GitHub")]]}
+
+   ;; --- Step 5: Concrete Ops ---
+   {:id "concrete-ops"
+    :title "Step 5: Concrete Ops"
+    :content
+    [:div
+     [:p "After lowering, the entire scene is a flat vector of records — one per visible shape. No more nesting, no more generators, no more deferred computation. Just a sequence of drawing instructions:"]
+     [:pre [:code
+            "[CircleOp {:cx 200 :cy 150 :r 80
+            :fill {:r 255 :g 127 :b 80 :a 1.0}
+            :stroke-color nil :opacity 1.0
+            :transforms [] :clip nil}
+ RectOp   {:x 50 :y 50 :w 100 :h 60
+            :fill {:r 70 :g 130 :b 180 :a 1.0}
+            :stroke-color nil :opacity 1.0
+            :transforms [] :clip nil}]"]]
+     [:p "Each op is a Clojure record — a compiled JVM class with O(1) field access, but still implementing " [:code "IPersistentMap"] " so you can use " [:code "(:cx op)"] " like a regular map. The op types are:"]
+     [:ul
+      [:li [:code "RectOp"] " — rectangles (with optional corner radius)"]
+      [:li [:code "CircleOp"] " — circles"]
+      [:li [:code "EllipseOp"] " — ellipses"]
+      [:li [:code "ArcOp"] " — arcs and pie slices"]
+      [:li [:code "LineOp"] " — line segments"]
+      [:li [:code "PathOp"] " — arbitrary paths (bezier curves, polygons, freeform)"]
+      [:li [:code "BufferOp"] " — compositing groups (contains child ops, rendered to offscreen buffer)"]]
+     [:p "This flat structure is what the renderer consumes. It's also what the SVG exporter reads — both backends work from the same concrete ops, just painting to different targets."]
+     [:p (arch-src-link "src/eido/engine/compile.clj" "View op records on GitHub")]]}
+
+   ;; --- Step 6: Rendering ---
+   {:id "rendering"
+    :title "Step 6: Rendering"
+    :content
+    [:div
+     [:p "The renderer walks the op vector top to bottom, painting each shape onto a " [:code "BufferedImage"] " using Java2D's " [:code "Graphics2D"] " API. For each op:"]
+     [:pre [:code
+            ";; Pseudocode for the rendering loop:
+(for-each op in ops
+  1. Save Graphics2D state
+  2. Apply transforms (translate, rotate, scale)
+  3. Set clip region (if present)
+  4. Set opacity via AlphaComposite
+  5. Convert geometry to Java2D Shape
+  6. Fill the shape (solid, gradient, or texture)
+  7. Stroke the shape (if stroke specified)
+  8. Restore Graphics2D state)"]]
+     [:p [:code "BufferOp"] " groups get special handling — their children are rendered to a temporary offscreen image, post-processing filters (blur, grain, posterize) are applied, then the result is composited onto the main canvas using the specified blend mode (" [:code ":src-over"] ", " [:code ":multiply"] ", " [:code ":screen"] ", etc.)."]
+     [:p "Java2D handles antialiasing, sub-pixel positioning, and bezier curve rasterization. Eido doesn't implement a software rasterizer — it leans on the JVM's mature 2D graphics stack."]
+     [:p (arch-src-link "src/eido/engine/render.clj" "View renderer on GitHub")]]}
+
+   ;; --- Step 7: Output ---
+   {:id "output"
+    :title "Step 7: Output"
+    :content
+    [:div
+     [:p "The " [:code "BufferedImage"] " is the universal intermediate. Every raster output format reads from it:"]
+     [:ul
+      [:li [:strong "PNG"] " — via " [:code "ImageIO.write"] " (with optional DPI metadata for print)"]
+      [:li [:strong "JPEG"] " — ARGB composited onto white, then written with quality setting"]
+      [:li [:strong "GIF"] " — single frame via ImageIO, animated via a custom GIF encoder that writes frame delays and loop flags"]
+      [:li [:strong "BMP"] " — via ImageIO (RGB)"]]
+     [:p "SVG takes a completely different path — it reads the concrete ops directly and emits XML elements (" [:code "<rect>"] ", " [:code "<circle>"] ", " [:code "<path>"] ") instead of painting pixels. Same ops, different output."]
+     [:p "Animations are just sequences of scenes. Eido renders each frame independently, then stitches them together:"]
+     [:pre [:code
+            ";; 60 scenes → 60 BufferedImages → animated GIF
+(eido/render
+  (anim/frames 60
+    (fn [t] {:image/size [400 300] ...}))
+  {:output \"animation.gif\" :fps 30})"]]
+     [:p (arch-src-link "src/eido/engine/gif.clj" "View GIF encoder on GitHub") " · "
+      (arch-src-link "src/eido/engine/svg.clj" "View SVG exporter on GitHub")]]}
+
+   ;; --- Design Decisions ---
+   {:id "design"
+    :title "Design Decisions"
+    :content
+    [:div
+     [:h4 "Why two IR layers?"]
+     [:p "The semantic IR keeps the artist's intent intact — a flow field is one compact description, not 200 path nodes. This makes scenes diffable, serializable, and inspectable. The concrete IR is optimized for rendering — flat, no generators, every shape fully resolved. Separating these concerns means you can work with scenes at the right level of abstraction for each task."]
+     [:h4 "Why CPU rendering?"]
+     [:p "Java2D runs everywhere the JVM runs — no GPU drivers, no platform-specific shader compilation, no WebGL context limits. The output is deterministic (same input → same pixels, always), which matters for reproducible generative art. For the image sizes generative artists typically work with (up to ~4K), CPU rendering is fast enough. A GPU backend could be added later by implementing the concrete ops → pixels step without changing anything else."]
+     [:h4 "Why records for concrete ops?"]
+     [:p [:code "defrecord"] " gives O(1) field access (compiled JVM class) while still acting as an immutable map. The renderer touches " [:code ":cx"] ", " [:code ":cy"] ", " [:code ":fill"]
+      " etc. on every op — fast field access matters in the inner loop."]
+     [:h4 "Why expand generators during lowering?"]
+     [:p "Generators depend on geometry for their output (a flow field needs to know its bounds, a hatch fill needs the shape it's filling). By the time lowering runs, geometry is resolved. Expanding earlier would require passing incomplete information; expanding later would force the renderer to understand generators. Lowering is the natural boundary."]
+     [:h4 "Data all the way down"]
+     [:p "Every intermediate result in the pipeline is printable, serializable Clojure data. No opaque objects, no hidden state. You can " [:code "prn"]
+      " the semantic IR, " [:code "prn"] " the concrete ops, save them to a file, load them back, or write tests against them. This is the core design principle — the image is a value."]]}
+
+   ;; --- Source Map ---
+   {:id "source-map"
+    :title "Source Map"
+    :content
+    [:div
+     [:p "Key namespaces and what they do:"]
+     [:table.arch-source-table
+      [:thead [:tr [:th "Namespace"] [:th "Role"] [:th "Source"]]]
+      [:tbody
+       [:tr [:td [:code "eido.core"]] [:td "Entry point — " [:code "render"] ", file I/O, format detection"] [:td (arch-src-link "src/eido/core.clj" "core.clj")]]
+       [:tr [:td [:code "eido.validate"]] [:td "Scene validation with detailed error messages"] [:td (arch-src-link "src/eido/validate.clj" "validate.clj")]]
+       [:tr [:td [:code "eido.spec"]] [:td "Spec definitions for nodes, colors, transforms"] [:td (arch-src-link "src/eido/spec.clj" "spec.clj")]]
+       [:tr [:td [:code "eido.engine.compile"]] [:td "Scene → Semantic IR, concrete op records"] [:td (arch-src-link "src/eido/engine/compile.clj" "compile.clj")]]
+       [:tr [:td [:code "eido.ir.lower"]] [:td "Semantic IR → Concrete ops (generator expansion, fill resolution)"] [:td (arch-src-link "src/eido/ir/lower.clj" "lower.clj")]]
+       [:tr [:td [:code "eido.ir.generator"]] [:td "Expands flow-field, scatter, voronoi, contour, etc."] [:td (arch-src-link "src/eido/ir/generator.clj" "generator.clj")]]
+       [:tr [:td [:code "eido.ir.fill"]] [:td "Expands hatch and stipple fills into geometry"] [:td (arch-src-link "src/eido/ir/fill.clj" "fill.clj")]]
+       [:tr [:td [:code "eido.ir.effect"]] [:td "Wraps effects (shadow, glow, blur) as buffer ops"] [:td (arch-src-link "src/eido/ir/effect.clj" "effect.clj")]]
+       [:tr [:td [:code "eido.engine.render"]] [:td "Concrete ops → BufferedImage via Java2D"] [:td (arch-src-link "src/eido/engine/render.clj" "render.clj")]]
+       [:tr [:td [:code "eido.engine.svg"]] [:td "Concrete ops → SVG XML string"] [:td (arch-src-link "src/eido/engine/svg.clj" "svg.clj")]]
+       [:tr [:td [:code "eido.engine.gif"]] [:td "Animated GIF encoder"] [:td (arch-src-link "src/eido/engine/gif.clj" "gif.clj")]]
+       [:tr [:td [:code "eido.gen.*"]] [:td "Generative modules (noise, flow, circle packing, boids, etc.)"] [:td (arch-src-link "src/eido/gen/" "gen/")]]
+       [:tr [:td [:code "eido.color"]] [:td "Color parsing, conversion, and manipulation"] [:td (arch-src-link "src/eido/color.clj" "color.clj")]]
+       [:tr [:td [:code "eido.scene"]] [:td "Layout helpers and node constructors"] [:td (arch-src-link "src/eido/scene.clj" "scene.clj")]]]]]}])

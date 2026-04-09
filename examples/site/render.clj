@@ -677,6 +677,39 @@
                :image/nodes (nth fire-frames i)})))
         :fps 25})
 
+     ;; --- Architecture page scenes ---
+
+     "docs-arch-input.png"
+     {:image/size [400 300] :image/background [:color/name "linen"]
+      :image/nodes
+      [{:node/type :shape/circle
+        :circle/center [200 150] :circle/radius 80
+        :style/fill [:color/name "coral"]}
+       {:node/type :shape/rect
+        :rect/xy [50 50] :rect/size [100 60]
+        :style/fill [:color/name "steelblue"]}]}
+
+     "docs-arch-flowfield.png"
+     (let [paths (flow/flow-field 20 20 360 260
+                   {:density 25 :steps 30 :step-size 3 :seed 42})]
+       {:image/size [400 300] :image/background bg
+        :image/nodes
+        (mapv (fn [path-node i]
+                (assoc path-node
+                  :style/stroke {:color [:color/hsl (mod (* i 15) 360) 0.5 0.45]
+                                 :width 1.2}))
+              paths (range))})
+
+     "docs-arch-hatch.png"
+     {:image/size [300 250] :image/background bg
+      :image/nodes [{:node/type :shape/circle
+                     :circle/center [150 125] :circle/radius 100
+                     :style/fill {:fill/type :hatch
+                                  :hatch/angle 45
+                                  :hatch/spacing 5
+                                  :hatch/stroke-width 1
+                                  :hatch/color [:color/rgb 60 50 40]}}]}
+
      ;; --- Additional docs scenes ---
 
      "docs-strokes.png"
@@ -844,6 +877,9 @@
              [:li [:a {:href (str prefix "/api/")
                        :style (when (= active-page :api) "color: #e0ddd5")}
                    "API"]]
+             [:li [:a {:href (str prefix "/architecture/")
+                       :style (when (= active-page :architecture) "color: #e0ddd5")}
+                   "How It Works"]]
              [:li [:a {:href "https://github.com/leifericf/eido"} "GitHub"]]]]
            [:main body]
            [:footer.footer
@@ -868,7 +904,8 @@
        [:div#hero-images.hero-images]
        [:div.hero-links
         [:a.hero-link.hero-link--primary {:href "./gallery/"} "Browse Gallery"]
-        [:a.hero-link.hero-link--secondary {:href "./guide/"} "Read the Guide"]]]
+        [:a.hero-link.hero-link--secondary {:href "./guide/"} "Read the Guide"]
+        [:a.hero-link.hero-link--secondary {:href "./architecture/"} "How It Works"]]]
       [:section.features
        (for [{:keys [title desc]} (pages/features)]
          [:div.feature
@@ -1195,6 +1232,30 @@ function filterAPI(query) {
 "))])))
 
 
+;; --- Architecture page ---
+
+(defn generate-architecture-html
+  "Generates the 'How Eido Works' architecture page."
+  []
+  (let [sections (pages/architecture-sections)]
+    (html-page {:title "How Eido Works" :active-page :architecture :depth 1}
+      [:h1.page-title "How Eido Works"]
+      [:p.page-subtitle "From data to pixels — a tour of the rendering pipeline"]
+      [:div.arch-layout
+       [:nav.arch-sidebar
+        (for [{:keys [id title]} sections]
+          [:div [:a {:href (str "#" id)} title]])]
+       [:div.arch-content
+        (for [{:keys [id title content]} sections]
+          [:section.arch-section {:id id}
+           [:h2 title]
+           (insert-doc-previews content)])]]
+      [:script (h/raw (str highlight-clj-js "
+document.querySelectorAll('.arch-content pre code').forEach(function(el) {
+  el.innerHTML = highlightClj(el.textContent);
+});
+"))])))
+
 ;; --- Site builder ---
 
 (defn write-page! [out-dir path html]
@@ -1235,6 +1296,10 @@ function filterAPI(query) {
     (println "Generating API reference...")
     (write-page! out-dir "api/index.html"
       (generate-api-html))
+
+    (println "Generating architecture page...")
+    (write-page! out-dir "architecture/index.html"
+      (generate-architecture-html))
 
     ;; CNAME file for custom domain
     (spit (io/file out-dir "CNAME") "eido.leifericf.com")
