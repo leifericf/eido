@@ -20,9 +20,11 @@
 
 ### Docs
 
-- Add documentation sections for probability/randomness, circle packing, subdivision, weighted palettes, path aesthetics, long-form series, cellular automata, reaction-diffusion, and boids
+- Rewrite Generative docs category with artist-friendly language, progressive examples, and "how to tweak" guidance throughout
+- Add 14 rendered inline previews (including animated boids gif) to generative docs sections — all generated during CI site build
+- Add documentation sections for controlling randomness, circle packing, subdivision, weighted palettes, path aesthetics (smooth/jitter/dash with visual comparisons), long-form series, cellular automata, reaction-diffusion, and boids
 - Add new namespaces to API reference: `eido.gen.prob`, `eido.gen.circle`, `eido.gen.subdivide`, `eido.gen.series`, `eido.gen.ca`, `eido.gen.boids`, `eido.path.aesthetic`
-- Add gallery examples: circle pack with weighted palette, Mondrian grid, reaction-diffusion coral, boids murmuration, dashed flow field, series preview grid
+- Add 26 gallery examples showcasing generative features: circle packing (solid, in-path, subdivided), Mondrian grid, reaction-diffusion (coral, spots, mitosis, waves), boids (murmuration, trails, predator/prey), dashed flow, series preview, voronoi glass, trembling grid, painted flow, CA quilt, stippled sphere, contour elevation, dot cloud, dashed L-system, hatched subdivision, morphing waves, packed typography, depth gradient, terrain stripes, edition gallery
 
 ## v1.0.0-beta1 — Bug Fixes & Stabilization
 
