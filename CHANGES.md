@@ -47,6 +47,7 @@
 - Add rendered visuals to Colors, Strokes, Clipping, Compositing, Transforms, Noise, Particles, Animation, and Easing sections
 - Add category intros for Drawing, Styling, Composition, Animation, and Generative
 - Add 26 gallery examples showcasing generative features: circle packing (solid, in-path, subdivided), Mondrian grid, reaction-diffusion (coral, spots, mitosis, waves), boids (murmuration, trails, predator/prey), dashed flow, series preview, voronoi glass, trembling grid, painted flow, CA quilt, stippled sphere, contour elevation, dot cloud, dashed L-system, hatched subdivision, morphing waves, packed typography, depth gradient, terrain stripes, edition gallery
+- Tag all 148 gallery examples with feature tags for filter bar (noise, flow-field, particles, circle-packing, boids, 3d, animation, palette, etc.)
 
 ## v1.0.0-beta1 — Bug Fixes & Stabilization
 
