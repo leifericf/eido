@@ -1148,10 +1148,14 @@ document.querySelectorAll('pre code').forEach(function(el) {
              [:p.api-ns-doc ns-doc])
            (for [{:keys [name arglists doc convenience? wraps]} vars]
              [:div.api-var
+              ;; Badge + wraps in top-right corner
+              (when convenience?
+                [:div.api-var-meta
+                 [:span.api-var-badge "Helper"]
+                 (when wraps
+                   [:div.api-var-wraps "Wraps " [:code wraps]])])
               ;; Signature block — one line per arity
               [:div.api-var-sig
-               (when convenience?
-                 [:span.api-var-badge "Helper"])
                (if (seq arglists)
                  (for [arglist arglists]
                    [:div.api-var-arity
@@ -1162,10 +1166,6 @@ document.querySelectorAll('pre code').forEach(function(el) {
                      ")"]])
                  [:div.api-var-arity
                   [:code [:span.api-var-name name]]])]
-              ;; Wraps link for convenience functions
-              (when wraps
-                [:div.api-var-wraps "Wraps: "
-                 [:code wraps]])
               ;; Docstring with code formatting
               (when doc
                 [:div.api-var-doc

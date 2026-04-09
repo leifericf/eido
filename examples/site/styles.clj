@@ -394,7 +394,8 @@
                :border        (str "1px solid " (:border colors))
                :border-radius "8px"
                :padding       "1.25rem"
-               :margin-bottom "1rem"}]
+               :margin-bottom "1rem"
+               :position      "relative"}]
    [:.api-var-sig {:margin-bottom "0.5rem"}]
    [:.api-var-arity {:margin-bottom "0.2rem"}]
    [".api-var-arity code" {:font-family "'JetBrains Mono', monospace"
@@ -406,6 +407,10 @@
    [:.api-var-name {:font-weight "600"
                     :color       (:accent colors)}]
    [:.api-var-args {:color (:text-muted colors)}]
+   [:.api-var-meta {:position      "absolute"
+                    :top           "1rem"
+                    :right         "1.25rem"
+                    :text-align    "right"}]
    [:.api-var-badge {:display       "inline-block"
                      :font-size     "0.7rem"
                      :font-weight   "600"
@@ -414,12 +419,10 @@
                      :padding       "0.15rem 0.5rem"
                      :border-radius "9999px"
                      :background    "rgba(192, 160, 100, 0.15)"
-                     :color         "#c0a064"
-                     :margin-bottom "0.4rem"}]
-   [:.api-var-wraps {:font-size   "0.82rem"
+                     :color         "#c0a064"}]
+   [:.api-var-wraps {:font-size   "0.78rem"
                      :color       (:text-muted colors)
-                     :margin-top  "0.2rem"
-                     :margin-bottom "0.2rem"}]
+                     :margin-top  "0.25rem"}]
    [".api-var-wraps code" {:font-family "'JetBrains Mono', monospace"
                            :font-size   "0.8rem"
                            :color       (:accent colors)}]
