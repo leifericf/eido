@@ -6,6 +6,7 @@
     [eido.ir.field :as field]
     [eido.ir.material :as material]
     [eido.obj :as obj]
+    [eido.scatter :as scatter]
     [eido.scene3d :as s3d]))
 
 ;; --- 1. Utah Teapot (static) ---
@@ -881,6 +882,83 @@
                  :light/intensity 0.85}
          :shading :smooth})]}))
 
+;; --- 33. Scatter Forest ---
+
+(defn ^{:example {:output "3d-scatter-forest.png"
+                  :title  "Scatter Forest"
+                  :desc   "2D Poisson scatter distribution placing 3D tree meshes — bridging scatter to mesh instancing."}}
+  scatter-forest []
+  (let [;; Simple tree: cone on cylinder
+        tree (s3d/merge-meshes
+               [(s3d/cylinder-mesh 0.08 0.4 6)
+                {:style/fill [:color/rgb 120 80 40]}]
+               [(-> (s3d/cone-mesh 0.25 0.5 8)
+                    (s3d/translate-mesh [0 0.4 0]))
+                {:style/fill [:color/rgb 50 120 40]}])
+        points (mapv (fn [[x y]] [(* 0.8 x) 0 (* 0.8 y)])
+                 (scatter/poisson-disk -3 -3 6 6 1.2 42))
+        forest (s3d/instance-mesh tree {:positions points
+                                        :rotate-y {:range [0 6.28] :seed 42}})
+        proj (s3d/look-at (s3d/orthographic {:scale 40 :origin [200 220]})
+                          [4 3 5] [0 0.3 0])]
+    {:image/size [400 400]
+     :image/background [:color/rgb 180 200 220]
+     :image/nodes
+     [(s3d/render-mesh proj forest
+        {:light {:light/direction [1 2 0.5]
+                 :light/ambient 0.3
+                 :light/intensity 0.7}})]}))
+
+;; --- 34. Hatched Sphere ---
+
+(defn ^{:example {:output "3d-hatched-sphere.png"
+                  :title  "Hatched Sphere"
+                  :desc   "Non-photorealistic rendering — 3D sphere with cross-hatch fill whose density varies by lighting."}}
+  hatched-sphere []
+  (let [mesh (s3d/sphere-mesh 1.5 12 8)
+        proj (s3d/orbit (s3d/orthographic {:scale 60 :origin [200 200]})
+                        [0 0 0] 5 0.4 -0.3)]
+    {:image/size [400 400]
+     :image/background [:color/rgb 255 250 240]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:style {:style/fill-type :hatch
+                 :style/fill [:color/rgb 255 250 235]
+                 :hatch/angle 30
+                 :hatch/spacing 3
+                 :hatch/color [:color/rgb 40 30 20]
+                 :hatch/stroke-width 0.5}
+         :light {:light/direction [1 2 1]
+                 :light/ambient 0.2 :light/intensity 0.8}
+         :cull-back false})]}))
+
+;; --- 35. L-System Tree ---
+
+(defn ^{:example {:output "3d-lsystem-tree.png"
+                  :title  "L-System Tree"
+                  :desc   "Branching organic structure from L-system rules swept into 3D mesh tubes."}}
+  lsystem-tree []
+  (let [mesh (-> (s3d/lsystem-mesh {:axiom "F"
+                                     :rules {"F" "FF[+F][-F][^F]"}
+                                     :iterations 3
+                                     :angle 25
+                                     :length 0.3
+                                     :profile [[0.03 0] [0 0.03] [-0.03 0] [0 -0.03]]
+                                     :segments 4})
+                 (s3d/color-mesh {:color/type :axis-gradient
+                                  :color/axis :y
+                                  :color/palette [[:color/rgb 100 60 30]
+                                                  [:color/rgb 60 120 40]]}))
+        proj (s3d/look-at (s3d/orthographic {:scale 80 :origin [200 280]})
+                          [1 1.5 2] [0 0.8 0])]
+    {:image/size [400 400]
+     :image/background [:color/rgb 230 235 225]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:light {:light/direction [1 2 0.5]
+                 :light/ambient 0.25
+                 :light/intensity 0.75}})]}))
+
 (comment
   ;; Evaluate individual examples at the REPL:
   (utah-teapot)
@@ -914,4 +992,7 @@
   (auto-smooth-cube)
   (greebled-panel)
   (vertex-painted-sphere)
-  (procedural-textured-sphere))
+  (procedural-textured-sphere)
+  (scatter-forest)
+  (hatched-sphere)
+  (lsystem-tree))
