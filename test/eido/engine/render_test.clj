@@ -1,7 +1,7 @@
-(ns eido.render-test
+(ns eido.engine.render-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.render :as render])
+    [eido.engine.render :as render])
   (:import
     [java.awt.image BufferedImage]))
 

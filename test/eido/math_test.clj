@@ -1,7 +1,7 @@
-(ns eido.math3d-test
+(ns eido.math-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.math3d :as m]))
+    [eido.math :as m]))
 
 (def ^:private eps 1e-9)
 

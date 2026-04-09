@@ -96,7 +96,7 @@
 (deftest compile-throws-on-invalid-test
   (testing "validate-scene! throws ex-info with :errors for invalid scene"
     (try
-      ((requiring-resolve 'eido.compile/validate-scene!) {:bad "scene"})
+      ((requiring-resolve 'eido.engine.compile/validate-scene!) {:bad "scene"})
       (is false "should have thrown")
       (catch clojure.lang.ExceptionInfo e
         (is (str/starts-with? (.getMessage e) "Invalid scene"))

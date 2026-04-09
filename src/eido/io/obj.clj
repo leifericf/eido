@@ -1,8 +1,8 @@
-(ns eido.obj
+(ns eido.io.obj
   "Wavefront OBJ and MTL parser. Pure functions: string in, mesh data out."
   (:require
     [clojure.string :as str]
-    [eido.math3d :as m]))
+    [eido.math :as m]))
 
 ;; --- MTL parsing ---
 

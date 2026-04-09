@@ -5,7 +5,7 @@
   Usage: start a REPL, load this file, evaluate the comment block."
   (:require
     [eido.core :as eido]
-    [eido.math3d :as m]
+    [eido.math :as m]
     [eido.scene3d :as s3d]))
 
 ;; --- helpers ---

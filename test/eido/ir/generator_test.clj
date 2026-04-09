@@ -5,7 +5,7 @@
     [eido.ir :as ir]
     [eido.ir.generator :as gen]
     [eido.ir.lower :as lower]
-    [eido.render :as render]))
+    [eido.engine.render :as render]))
 
 ;; --- helpers ---
 

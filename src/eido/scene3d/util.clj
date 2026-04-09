@@ -2,7 +2,7 @@
   "Shared utilities for scene3d sub-modules."
   (:require
     [eido.ir.field :as field]
-    [eido.math3d :as m]))
+    [eido.math :as m]))
 
 ;; --- face construction ---
 

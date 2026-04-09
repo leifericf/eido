@@ -1,7 +1,7 @@
-(ns eido.gif-test
+(ns eido.engine.gif-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.gif :as gif])
+    [eido.engine.gif :as gif])
   (:import
     [java.awt Color Graphics2D]
     [java.awt.image BufferedImage]

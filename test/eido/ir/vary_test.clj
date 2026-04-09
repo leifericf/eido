@@ -6,7 +6,7 @@
     [eido.ir.generator :as gen]
     [eido.ir.lower :as lower]
     [eido.ir.vary :as vary]
-    [eido.render :as render]))
+    [eido.engine.render :as render]))
 
 (deftest by-index-test
   (let [desc (vary/by-index 5 (fn [i] {:node/opacity (/ (double i) 4.0)}))

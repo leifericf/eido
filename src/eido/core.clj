@@ -2,10 +2,10 @@
   (:require
     [clojure.edn :as edn]
     [clojure.string :as str]
-    [eido.compile :as compile]
-    [eido.gif :as gif]
-    [eido.render :as render]
-    [eido.svg :as svg]
+    [eido.engine.compile :as compile]
+    [eido.engine.gif :as gif]
+    [eido.engine.render :as render]
+    [eido.engine.svg :as svg]
     [eido.validate :as validate])
   (:import
     [java.awt Color Graphics2D]

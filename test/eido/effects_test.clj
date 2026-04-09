@@ -1,7 +1,7 @@
 (ns eido.effects-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.compile :as compile]
+    [eido.engine.compile :as compile]
     [eido.core :as eido]))
 
 (deftest shadow-compile-test

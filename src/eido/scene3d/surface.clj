@@ -2,7 +2,7 @@
   "UV projection, face coloring, vertex painting, and material maps."
   (:require
     [eido.ir.field :as field]
-    [eido.math3d :as m]
+    [eido.math :as m]
     [eido.scene3d.util :as u]))
 
 ;; --- UV projection ---

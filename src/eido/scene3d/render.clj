@@ -3,7 +3,7 @@
   convenience wrappers, and text mesh."
   (:require
     [eido.gen.hatch :as hatch]
-    [eido.math3d :as m]
+    [eido.math :as m]
     [eido.scene :as scene]
     [eido.scene3d.camera :as camera]
     [eido.scene3d.mesh :as mesh]

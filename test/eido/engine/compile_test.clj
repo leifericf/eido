@@ -1,7 +1,7 @@
-(ns eido.compile-test
+(ns eido.engine.compile-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.compile :as compile]))
+    [eido.engine.compile :as compile]))
 
 (deftest compile-rect-test
   (testing "compiles a rectangle node into IR op"

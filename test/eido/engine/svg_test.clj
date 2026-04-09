@@ -1,7 +1,7 @@
-(ns eido.svg-test
+(ns eido.engine.svg-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.svg :as svg]))
+    [eido.engine.svg :as svg]))
 
 (deftest svg-wrapper-test
   (testing "wraps content in svg element with dimensions"

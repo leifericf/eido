@@ -1,7 +1,7 @@
 (ns eido.scene3d.topology
   "Mesh topology: adjacency, subdivision, and auto-smoothing."
   (:require
-    [eido.math3d :as m]
+    [eido.math :as m]
     [eido.scene3d.util :as u]))
 
 ;; --- mesh adjacency ---

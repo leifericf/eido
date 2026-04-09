@@ -12,7 +12,7 @@
   Standard light types for 3D scene illumination."
   (:require
     [eido.color :as color]
-    [eido.math3d :as m]))
+    [eido.math :as m]))
 
 ;; --- material constructors ---
 

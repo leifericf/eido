@@ -2,7 +2,7 @@
   (:require
     [eido.animate :as anim]
     [eido.color :as color]
-    [eido.math3d :as m3]))
+    [eido.math :as m3]))
 
 ;; --- private vector math (2D and 3D) ---
 

@@ -2,7 +2,7 @@
   "Mesh transforms, deformations, and mirror operations."
   (:require
     [eido.ir.field :as field]
-    [eido.math3d :as m]
+    [eido.math :as m]
     [eido.gen.noise :as noise]
     [eido.scene3d.util :as u]))
 

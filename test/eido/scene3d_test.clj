@@ -2,7 +2,7 @@
   (:require
     [clojure.test :refer [deftest is testing]]
     [eido.ir.field :as field]
-    [eido.math3d :as m]
+    [eido.math :as m]
     [eido.scene3d :as s3d]))
 
 (def ^:private eps 1e-9)

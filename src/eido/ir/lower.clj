@@ -419,7 +419,7 @@
 
 (defn lower
   "Lowers a semantic IR container to the concrete format
-  consumed by eido.render and eido.svg."
+  consumed by eido.engine.render and eido.engine.svg."
   [ir-container]
   (let [passes (:ir/passes ir-container)
         ops    (reduce (fn [acc pass]

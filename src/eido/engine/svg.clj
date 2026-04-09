@@ -1,4 +1,4 @@
-(ns eido.svg
+(ns eido.engine.svg
   (:require
     [clojure.string :as str]))
 

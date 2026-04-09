@@ -1,4 +1,4 @@
-(ns eido.compile
+(ns eido.engine.compile
   (:refer-clojure :exclude [compile])
   (:require
     [eido.color :as color]

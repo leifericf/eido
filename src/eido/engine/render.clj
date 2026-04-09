@@ -1,4 +1,4 @@
-(ns eido.render
+(ns eido.engine.render
   (:require
     [eido.color :as color])
   (:import

@@ -1,4 +1,4 @@
-(ns eido.gif
+(ns eido.engine.gif
   (:import
     [java.awt.image BufferedImage]
     [java.io File]

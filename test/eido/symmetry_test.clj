@@ -1,7 +1,7 @@
 (ns eido.symmetry-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.compile :as compile]))
+    [eido.engine.compile :as compile]))
 
 (deftest radial-symmetry-test
   (testing "radial symmetry produces n copies"

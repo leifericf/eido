@@ -2,7 +2,7 @@
   (:require
     [clojure.test :refer [deftest is testing]]
     [eido.ir.material :as material]
-    [eido.math3d :as m]
+    [eido.math :as m]
     [eido.scene3d :as s3d]))
 
 (deftest phong-constructor-test

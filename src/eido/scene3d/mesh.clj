@@ -2,7 +2,7 @@
   "Mesh constructors: primitives, platonic solids, and parametric generators."
   (:require
     [eido.ir.field :as field]
-    [eido.math3d :as m]
+    [eido.math :as m]
     [eido.scene3d.util :as u]))
 
 ;; --- mesh constructors ---

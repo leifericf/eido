@@ -1,4 +1,4 @@
-(ns eido.math3d)
+(ns eido.math)
 
 ;; --- vector operations ---
 

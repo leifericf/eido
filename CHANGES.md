@@ -50,6 +50,20 @@ Generative/procedural modules grouped under `eido.gen.*`:
 
 - `eido.palette` → `eido.color.palette`
 
+### Math & I/O
+
+- `eido.math3d` → `eido.math`
+- `eido.obj` → `eido.io.obj`
+
+### Engine internals — `eido.engine.*`
+
+Internal pipeline namespaces moved under `eido.engine.*`:
+
+- `eido.compile` → `eido.engine.compile`
+- `eido.render` → `eido.engine.render`
+- `eido.svg` → `eido.engine.svg`
+- `eido.gif` → `eido.engine.gif`
+
 ### Migration guide
 
 Update your `require` forms to use the new namespace paths. The `eido.scene3d`, `eido.path`, and `eido.gen` facades re-export everything, so existing code using `[eido.scene3d :as s3d]` or `[eido.path :as path]` works without changes. For sub-modules that were imported directly (e.g., `[eido.noise :as noise]`), update to `[eido.gen.noise :as noise]`.

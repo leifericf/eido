@@ -2,11 +2,11 @@
   (:require
     [clojure.test :refer [deftest is testing]]
     [eido.color :as color]
-    [eido.compile :as compile]
+    [eido.engine.compile :as compile]
     [eido.ir :as ir]
     [eido.ir.fill :as fill]
     [eido.ir.lower :as lower]
-    [eido.render :as render]))
+    [eido.engine.render :as render]))
 
 ;; --- helpers ---
 

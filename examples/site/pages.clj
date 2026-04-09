@@ -518,7 +518,7 @@
      :light light}))"]]
        [:p "Available primitives: " [:code "sphere"] ", " [:code "cube"] ", "
         [:code "cone"] ", " [:code "torus"] ", " [:code "cylinder"]
-        ". Load arbitrary meshes from OBJ files with " [:code "eido.obj/load-obj"] "."]
+        ". Load arbitrary meshes from OBJ files with " [:code "eido.io.obj/load-obj"] "."]
        [:h4 "Camera types"]
        [:pre [:code
               ";; Perspective — objects shrink with distance

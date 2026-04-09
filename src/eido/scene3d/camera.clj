@@ -1,7 +1,7 @@
 (ns eido.scene3d.camera
   "Projection constructors and camera utilities."
   (:require
-    [eido.math3d :as m]))
+    [eido.math :as m]))
 
 ;; --- projection constructors ---
 

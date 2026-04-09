@@ -6,7 +6,7 @@
     [eido.ir.effect :as effect]
     [eido.ir.fill :as fill]
     [eido.ir.lower :as lower]
-    [eido.render :as render]))
+    [eido.engine.render :as render]))
 
 ;; --- helpers ---
 

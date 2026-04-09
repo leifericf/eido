@@ -4,7 +4,7 @@
     [eido.ir.field :as field]
     [eido.gen.lsystem :as lsystem]
     [eido.gen.noise :as noise]
-    [eido.math3d :as m]
+    [eido.math :as m]
     [eido.scene3d.mesh :as mesh]
     [eido.scene3d.transform :as xform]
     [eido.scene3d.util :as u]))

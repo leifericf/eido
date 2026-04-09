@@ -1,7 +1,7 @@
 (ns eido.pattern-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.compile :as compile]))
+    [eido.engine.compile :as compile]))
 
 (deftest pattern-fill-compiles-test
   (testing "pattern fill expands to buffer with tiled content"

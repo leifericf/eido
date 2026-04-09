@@ -5,7 +5,7 @@
     [eido.animate :as anim]
     [eido.ir.field :as field]
     [eido.ir.material :as material]
-    [eido.obj :as obj]
+    [eido.io.obj :as obj]
     [eido.gen.scatter :as scatter]
     [eido.scene3d :as s3d]))
 

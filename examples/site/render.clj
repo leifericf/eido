@@ -59,9 +59,8 @@
    {:category "Generative"
     :namespaces '[eido.gen.noise eido.gen.flow eido.gen.contour
                   eido.gen.scatter eido.gen.voronoi eido.gen.lsystem
-                  eido.gen.particle eido.gen.stipple eido.gen.hatch]}
-   {:category "Variation"
-    :namespaces '[eido.gen.vary]}
+                  eido.gen.particle eido.gen.stipple eido.gen.hatch
+                  eido.gen.vary]}
    {:category "Animation"
     :namespaces '[eido.animate]}
    {:category "3D"
@@ -69,6 +68,10 @@
                   eido.scene3d.transform eido.scene3d.topology
                   eido.scene3d.surface eido.scene3d.modeling
                   eido.scene3d.render]}
+   {:category "I/O"
+    :namespaces '[eido.io.obj]}
+   {:category "Math"
+    :namespaces '[eido.math]}
    {:category "Visual Computation"
     :namespaces '[eido.ir eido.ir.domain eido.ir.resource
                   eido.ir.fill eido.ir.effect eido.ir.field

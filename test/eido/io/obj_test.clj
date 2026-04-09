@@ -1,8 +1,8 @@
-(ns eido.obj-test
+(ns eido.io.obj-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.math3d :as m]
-    [eido.obj :as obj]
+    [eido.math :as m]
+    [eido.io.obj :as obj]
     [eido.scene3d :as s3d]))
 
 ;; --- MTL parsing ---
