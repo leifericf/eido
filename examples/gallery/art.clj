@@ -7,7 +7,7 @@
     [eido.gen.lsystem :as lsystem]
     [eido.path.morph :as morph]
     [eido.gen.noise :as noise]
-    [eido.palette :as palette]
+    [eido.color.palette :as palette]
     [eido.path :as path]
     [eido.gen.scatter :as scatter]
     [eido.scene :as scene]

@@ -1,4 +1,7 @@
 (ns eido.color
+  "Color parsing, conversion, and manipulation.
+
+  See also eido.color.palette for color harmonies & gradients."
   (:require
     [clojure.string :as str]))
 
@@ -343,3 +346,4 @@
   (rotate-hue [:color/rgb 255 0 0] 120)
   (lerp [:color/rgb 0 0 0] [:color/rgb 255 255 255] 0.5)
   )
+

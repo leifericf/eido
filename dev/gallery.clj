@@ -6,7 +6,7 @@
     [eido.core :as eido]
     [eido.gen.flow :as flow]
     [eido.gen.noise :as noise]
-    [eido.palette :as palette]
+    [eido.color.palette :as palette]
     [eido.gen.scatter :as scatter]
     [eido.scene :as scene]
     [eido.gen.lsystem :as lsystem]

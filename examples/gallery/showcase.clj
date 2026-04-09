@@ -5,7 +5,7 @@
     [eido.animate :as anim]
     [eido.gen.flow :as flow]
     [eido.gen.noise :as noise]
-    [eido.palette :as palette]
+    [eido.color.palette :as palette]
     [eido.gen.scatter :as scatter]
     [eido.scene :as scene]
     [eido.scene3d :as s3d]

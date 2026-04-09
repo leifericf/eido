@@ -1,7 +1,7 @@
-(ns eido.palette-test
+(ns eido.color.palette-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.palette :as palette]))
+    [eido.color.palette :as palette]))
 
 ;; --- complementary ---
 

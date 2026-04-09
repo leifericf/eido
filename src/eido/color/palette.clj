@@ -1,4 +1,4 @@
-(ns eido.palette
+(ns eido.color.palette
   (:require
     [eido.color :as color]))
 

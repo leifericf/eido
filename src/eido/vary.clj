@@ -1,7 +1,7 @@
 (ns eido.vary
   (:require
-    [eido.gen.noise :as noise]
-    [eido.palette :as palette]))
+    [eido.color.palette :as palette]
+    [eido.gen.noise :as noise]))
 
 ;; --- override generators ---
 
