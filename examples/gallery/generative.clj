@@ -46,7 +46,7 @@
               :circle/center [x y]
               :circle/radius r
               :style/fill    color
-              :style/stroke  {:color [:color/rgba 40 30 20 80] :width 0.5}})
+              :style/stroke  {:color [:color/rgba 40 30 20 0.3] :width 0.5}})
            circles colors)}))
 
 ;; --- 2. Mondrian Subdivision ---
@@ -255,15 +255,17 @@
     {:image/size [w h]
      :image/background [:color/rgb 20 20 25]
      :image/nodes
-     (mapv (fn [{:keys [polygon]} i]
-             (let [cmds (into [[:move-to (first polygon)]]
-                              (mapv (fn [p] [:line-to p]) (rest polygon)))
-                   cmds (conj cmds [:close])]
-               {:node/type :shape/path
-                :path/commands cmds
-                :style/fill (prob/pick-weighted jewels weights (+ i 42))
-                :style/stroke {:color [:color/rgb 20 20 25] :width 3}}))
-           cells (range))}))
+     (vec (keep-indexed
+            (fn [i {:keys [polygon]}]
+              (when (and polygon (>= (count polygon) 3))
+                (let [cmds (into [[:move-to (mapv double (first polygon))]]
+                                 (mapv (fn [p] [:line-to (mapv double p)]) (rest polygon)))
+                      cmds (conj cmds [:close])]
+                  {:node/type :shape/path
+                   :path/commands cmds
+                   :style/fill (prob/pick-weighted jewels weights (+ i 42))
+                   :style/stroke {:color [:color/rgb 20 20 25] :width 3}})))
+            cells))}))
 
 ;; --- 9. Reaction-Diffusion Spots ---
 
@@ -308,7 +310,7 @@
                :circle/center [cx cy]
                :circle/radius 12
                :style/fill [:color/hsl hue 0.5 0.6]
-               :style/stroke {:color [:color/rgba 0 0 0 40] :width 0.5}})))}))
+               :style/stroke {:color [:color/rgba 0 0 0 0.15] :width 0.5}})))}))
 
 ;; --- 11. Flow Field with Noise-Colored Strokes ---
 
@@ -478,21 +480,17 @@
   lsystem-dashed []
   (let [w 500 h 600
         cmds (lsystem/lsystem->path-cmds
-               {:axiom "F" :rules {"F" "FF+[+F-F-F]-[-F+F+F]"}
-                :iterations 3 :angle 25 :step 12
-                :start [250 580] :heading -90})]
+               "F" {"F" "FF+[+F-F-F]-[-F+F+F]"}
+               3 25 10 [250 580] -90)
+        jittered (aesthetic/jittered-commands cmds {:amount 1.5 :seed 42})
+        dashes (aesthetic/dash-commands jittered {:dash [8.0 4.0]})]
     {:image/size [w h]
      :image/background [:color/rgb 250 248 240]
      :image/nodes
-     (vec (mapcat
-            (fn [path-cmds i]
-              (let [jittered (aesthetic/jittered-commands path-cmds {:amount 1.5 :seed (+ i 10)})
-                    dashes (aesthetic/dash-commands jittered {:dash [8.0 4.0]})]
-                (mapv (fn [d]
-                        {:node/type :shape/path :path/commands d
-                         :style/stroke {:color [:color/rgb 60 80 50] :width 1.2}})
-                      (or dashes [path-cmds]))))
-            cmds (range)))}))
+     (mapv (fn [d]
+             {:node/type :shape/path :path/commands d
+              :style/stroke {:color [:color/rgb 60 80 50] :width 1.2}})
+           (or dashes [cmds]))}))
 
 ;; --- 18. RD Mitosis Animation ---
 

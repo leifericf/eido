@@ -13,6 +13,7 @@
     [eido.gen.flow :as flow]
     [eido.gen.noise :as noise]
     [eido.gen.prob :as prob]
+    [eido.gen.series :as series]
     [eido.gen.subdivide :as subdivide]
     [eido.path.aesthetic :as aesthetic]
     [eido.scene :as scene]
@@ -473,7 +474,7 @@
                 {:node/type :shape/circle
                  :circle/center [x y] :circle/radius r
                  :style/fill c
-                 :style/stroke {:color [:color/rgba 40 30 20 60] :width 0.5}})
+                 :style/stroke {:color [:color/rgba 40 30 20 0.25] :width 0.5}})
               circles colors)})
 
      "docs-circle-pack-star.png"
@@ -523,7 +524,7 @@
        {:image/size [500 220] :image/background bg
         :image/nodes
         [{:node/type :shape/path :path/commands raw-cmds
-          :style/stroke {:color [:color/rgba 180 180 180 180] :width 2}}
+          :style/stroke {:color [:color/rgba 180 180 180 0.7] :width 2}}
          {:node/type :shape/path :path/commands smooth
           :style/stroke {:color [:color/rgb 200 60 60] :width 2.5}}]})
 
@@ -534,7 +535,7 @@
        {:image/size [500 200] :image/background bg
         :image/nodes
         [{:node/type :shape/path :path/commands cmds
-          :style/stroke {:color [:color/rgba 180 180 180 180] :width 1.5}}
+          :style/stroke {:color [:color/rgba 180 180 180 0.7] :width 1.5}}
          {:node/type :shape/path :path/commands j1
           :node/transform [[:transform/translate 0 -30]]
           :style/stroke {:color [:color/rgb 60 120 200] :width 1.5}}
@@ -614,7 +615,7 @@
      "docs-series-grid.png"
      (let [spec {:hue {:type :uniform :lo 0.0 :hi 360.0}
                  :r   {:type :gaussian :mean 20.0 :sd 8.0}}
-           editions (mapv #(assoc (eido.gen.series/series-params spec 42 %)
+           editions (mapv #(assoc (series/series-params spec 42 %)
                                   :edition %)
                           (range 9))]
        {:image/size [400 400] :image/background [:color/rgb 30 30 35]
