@@ -184,3 +184,20 @@
       ;; Corner pixel (white background)
       (is (= (pixel-rgb legacy-img 5 5)
              (pixel-rgb new-img 5 5))))))
+
+;; --- geometry-bounds tests ---
+
+(deftest geometry-bounds-arc-test
+  (testing "arc geometry returns bounding box from center and radii"
+    (let [bounds (ir/geometry-bounds {:geometry/type :arc
+                                      :arc/center [100 100]
+                                      :arc/rx 50 :arc/ry 30
+                                      :arc/start 0 :arc/extent 90})]
+      (is (= [50 70 100 60] bounds)))))
+
+(deftest geometry-bounds-line-test
+  (testing "line geometry returns bounding box from endpoints"
+    (let [bounds (ir/geometry-bounds {:geometry/type :line
+                                      :line/from [10 80]
+                                      :line/to [100 20]})]
+      (is (= [10 20 90.0 60.0] bounds)))))

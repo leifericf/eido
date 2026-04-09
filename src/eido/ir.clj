@@ -146,6 +146,15 @@
                    rx      (:ellipse/rx geom)
                    ry      (:ellipse/ry geom)]
                [(- cx rx) (- cy ry) (* 2 rx) (* 2 ry)])
+    :arc    (let [[cx cy] (:arc/center geom)
+                  rx      (:arc/rx geom)
+                  ry      (:arc/ry geom)]
+              [(- cx rx) (- cy ry) (* 2 rx) (* 2 ry)])
+    :line   (let [[x1 y1] (:line/from geom)
+                  [x2 y2] (:line/to geom)]
+              [(min x1 x2) (min y1 y2)
+               (Math/abs (double (- x2 x1)))
+               (Math/abs (double (- y2 y1)))])
     :path   (let [pts (keep (fn [[cmd & args]]
                               (when (#{:move-to :line-to} cmd)
                                 (first args)))
