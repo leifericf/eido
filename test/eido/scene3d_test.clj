@@ -805,6 +805,41 @@
     (testing "only top face inset: 5 unchanged + 1 inner + 4 border = 10"
       (is (= 10 (count inset))))))
 
+;; --- NPR rendering ---
+
+(deftest render-mesh-hatch-test
+  (let [proj (s3d/isometric {:scale 50 :origin [200 200]})
+        mesh (s3d/cube-mesh [0 0 0] 2)
+        result (s3d/render-mesh proj mesh
+                 {:style {:style/fill-type :hatch
+                          :style/fill [:color/rgb 240 235 225]
+                          :hatch/angle 45
+                          :hatch/spacing 4
+                          :hatch/color [:color/rgb 30 30 30]
+                          :hatch/stroke-width 0.5}
+                  :light {:light/direction [1 2 1]
+                          :light/ambient 0.3 :light/intensity 0.7}})]
+    (testing "produces more nodes than faces (hatch lines added)"
+      (is (> (count (:group/children result)) 3)))
+    (testing "contains path nodes (hatch lines)"
+      (let [paths (filter #(= :shape/path (:node/type %)) (:group/children result))]
+        (is (pos? (count paths)))))))
+
+(deftest render-mesh-stipple-test
+  (let [proj (s3d/isometric {:scale 50 :origin [200 200]})
+        mesh (s3d/cube-mesh [0 0 0] 2)
+        result (s3d/render-mesh proj mesh
+                 {:style {:style/fill-type :stipple
+                          :style/fill [:color/rgb 240 235 225]
+                          :stipple/density 0.4
+                          :stipple/radius 1.0
+                          :stipple/color [:color/rgb 30 30 30]}
+                  :light {:light/direction [1 2 1]
+                          :light/ambient 0.3 :light/intensity 0.7}})]
+    (testing "produces nodes including circles (stipple dots)"
+      (let [circles (filter #(= :shape/circle (:node/type %)) (:group/children result))]
+        (is (pos? (count circles)))))))
+
 ;; --- instancing ---
 
 (deftest instance-mesh-basic-test

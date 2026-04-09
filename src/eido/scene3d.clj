@@ -1,9 +1,11 @@
 (ns eido.scene3d
   (:require
+    [eido.hatch :as hatch]
     [eido.ir.field :as field]
     [eido.math3d :as m]
     [eido.noise :as noise]
     [eido.scene :as scene]
+    [eido.stipple :as stipple]
     [eido.text :as text]))
 
 (declare mesh-bounds)
@@ -1458,6 +1460,44 @@
                    (+ cy (* dy s))]))))
           projected)))
 
+;; --- NPR rendering helpers ---
+
+(defn- npr-face-nodes
+  "Generates hatch or stipple nodes for a projected face polygon.
+  Returns a vector of scene nodes (lines or circles) within the face bounds."
+  [projected face-style brightness depth]
+  (let [xs (map first projected)
+        ys (map second projected)
+        bx (apply min xs) by (apply min ys)
+        bw (- (apply max xs) bx) bh (- (apply max ys) by)
+        fill-type (:style/fill-type face-style)]
+    (case fill-type
+      :hatch
+      (let [angle   (get face-style :hatch/angle 45)
+            spacing (max 1.0 (* (double (get face-style :hatch/spacing 4)) brightness))
+            color   (get face-style :hatch/color [:color/rgb 30 30 30])
+            stroke-w (get face-style :hatch/stroke-width 0.5)
+            lines   (hatch/hatch-lines bx by bw bh {:angle angle :spacing spacing})]
+        (mapv (fn [[x1 y1 x2 y2]]
+                (assoc {:node/type :shape/path
+                        :path/commands [[:move-to [x1 y1]] [:line-to [x2 y2]]]
+                        :style/stroke {:color color :width stroke-w}}
+                  :node/depth depth))
+              lines))
+
+      :stipple
+      (let [density (min 1.0 (* brightness (double (get face-style :stipple/density 0.5))))
+            radius  (get face-style :stipple/radius 1.0)
+            seed    (get face-style :stipple/seed (hash projected))
+            color   (get face-style :stipple/color [:color/rgb 30 30 30])
+            nodes   (stipple/stipple-fill->nodes bx by bw bh
+                      {:stipple/density density :stipple/radius radius
+                       :stipple/seed seed :stipple/color color})]
+        (mapv #(assoc % :node/depth depth) nodes))
+
+      ;; Unknown fill-type — return empty
+      [])))
+
 ;; --- render-mesh ---
 
 (defn- render-wireframe
@@ -1621,13 +1661,31 @@
                      (assoc (merge (scene/polygon expanded) shaded)
                        :node/depth depth)))
                  ;; Standard single-color face
-                 (let [shaded    (shade-face-style face-style shade-normal
-                                                   norm-light-dir light cam-dir
-                                                   lights centroid)
-                       projected (mapv proj-fn verts)
+                 (let [projected (mapv proj-fn verts)
                        expanded  (expand-polygon projected)]
-                   [(assoc (merge (scene/polygon expanded) shaded)
-                      :node/depth depth)]))))
+                   (if (:style/fill-type face-style)
+                     ;; NPR rendering: hatch or stipple
+                     (let [has-light (or light (seq lights))
+                           brightness (if has-light
+                                        (let [l (or light (first lights))
+                                              amb (double (get l :light/ambient 0.3))
+                                              int (double (or (:light/multiplier l)
+                                                              (:light/intensity l) 0.7))
+                                              cos (m/dot shade-normal
+                                                    (m/normalize (or (:light/direction l) [0 1 0])))]
+                                          (min 1.0 (+ amb (* int (max 0.0 cos)))))
+                                        1.0)
+                           bg-node (assoc (scene/polygon expanded)
+                                     :style/fill (get face-style :style/fill [:color/rgb 255 255 255])
+                                     :node/depth depth)
+                           npr-nodes (npr-face-nodes projected face-style brightness depth)]
+                       (into [bg-node] npr-nodes))
+                     ;; Solid fill
+                     (let [shaded (shade-face-style face-style shade-normal
+                                                    norm-light-dir light cam-dir
+                                                    lights centroid)]
+                       [(assoc (merge (scene/polygon expanded) shaded)
+                          :node/depth depth)]))))))
            processed))})))
 
 ;; --- depth sorting ---
