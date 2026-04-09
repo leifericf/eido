@@ -917,8 +917,8 @@
        [:h2 {:style "font-size: 1.5rem; margin-bottom: 1rem"} "How it works"]
        (pages/quick-start-content)]
       [:section {:style "margin-top: 2rem"}
-       [:h2 {:style "font-size: 1.5rem; margin-bottom: 1rem"} "Installation"]
-       [:pre [:code (pages/install-code)]]]
+       [:h2 {:style "font-size: 1.5rem; margin-bottom: 1rem"} "Getting Started"]
+       (pages/install-content)]
       [:script (h/raw (str highlight-clj-js "
 document.querySelectorAll('pre code').forEach(function(el) {
   el.innerHTML = highlightClj(el.textContent);
