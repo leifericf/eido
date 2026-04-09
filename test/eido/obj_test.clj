@@ -206,6 +206,38 @@ f 4 5 6
       (is (clojure.string/includes? (:mtl result) "newmtl"))
       (is (clojure.string/includes? (:mtl result) "Kd")))))
 
+(deftest parse-obj-texture-coords-test
+  (let [obj-text "v 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0.0 0.0\nvt 1.0 0.0\nvt 0.0 1.0\nf 1/1 2/2 3/3\n"
+        mesh (obj/parse-obj obj-text {})]
+    (is (= 1 (count mesh)))
+    (is (= [[0.0 0.0] [1.0 0.0] [0.0 1.0]]
+           (:face/texture-coords (first mesh))))))
+
+(deftest parse-obj-full-vtn-refs-test
+  (let [obj-text "v 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0.5 0.5\nvn 0 0 1\nf 1/1/1 2/1/1 3/1/1\n"
+        mesh (obj/parse-obj obj-text {})]
+    (is (= [[0.5 0.5] [0.5 0.5] [0.5 0.5]]
+           (:face/texture-coords (first mesh))))
+    (is (= [0.0 0.0 1.0] (:face/normal (first mesh))))))
+
+(deftest write-obj-with-uvs-test
+  (let [mesh [{:face/vertices [[0.0 0.0 0.0] [1.0 0.0 0.0] [0.0 1.0 0.0]]
+               :face/normal [0.0 0.0 1.0]
+               :face/texture-coords [[0.0 0.0] [1.0 0.0] [0.0 1.0]]}]
+        obj-str (obj/write-obj mesh)]
+    (is (clojure.string/includes? obj-str "vt "))
+    (is (re-find #"f \d+/\d+/\d+" obj-str))))
+
+(deftest write-obj-uv-roundtrip-test
+  (let [mesh [{:face/vertices [[0.0 0.0 0.0] [1.0 0.0 0.0] [0.0 1.0 0.0]]
+               :face/normal [0.0 0.0 1.0]
+               :face/texture-coords [[0.0 0.0] [1.0 0.0] [0.5 1.0]]}]
+        obj-str (obj/write-obj mesh)
+        reimported (obj/parse-obj obj-str {})]
+    (is (= 1 (count reimported)))
+    (is (= (:face/texture-coords (first mesh))
+           (:face/texture-coords (first reimported))))))
+
 (deftest write-obj-roundtrip-test
   (let [mesh (s3d/platonic-mesh :tetrahedron 1.0)
         obj-str (obj/write-obj mesh)

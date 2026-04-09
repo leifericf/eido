@@ -51,12 +51,20 @@
   (let [parts (str/split (str/trim (subs line 3)) #"\s+")]
     (mapv #(Double/parseDouble %) (take 3 parts))))
 
+(defn- parse-texcoord [line]
+  (let [parts (str/split (str/trim (subs line 3)) #"\s+")]
+    [(Double/parseDouble (first parts))
+     (Double/parseDouble (second parts))]))
+
 (defn- parse-face-ref
-  "Parses a single face vertex reference like '1', '1//2', or '1/2/3'.
-  Returns [vertex-idx normal-idx-or-nil]."
+  "Parses a single face vertex reference like '1', '1/2', '1//3', or '1/2/3'.
+  Returns [vertex-idx texcoord-idx-or-nil normal-idx-or-nil]."
   [ref-str]
   (let [parts (str/split ref-str #"/")]
     [(Integer/parseInt (first parts))
+     (when (and (>= (count parts) 2)
+                (not (str/blank? (nth parts 1))))
+       (Integer/parseInt (nth parts 1)))
      (when (and (= 3 (count parts))
                 (not (str/blank? (nth parts 2))))
        (Integer/parseInt (nth parts 2)))]))
@@ -88,6 +96,7 @@
 
 (defn write-obj
   "Generates OBJ text from a mesh (vector of face maps).
+  Exports texture coordinates when :face/texture-coords is present.
   opts:
     :name - object name (default \"mesh\")
     :mtl  - if true, includes material references; returns {:obj str :mtl str}
@@ -96,9 +105,16 @@
   ([mesh opts]
    (let [obj-name  (get opts :name "mesh")
          emit-mtl? (get opts :mtl false)
+         has-uvs?  (some :face/texture-coords mesh)
          ;; Collect unique vertices and build index map
          all-verts (vec (distinct (mapcat :face/vertices mesh)))
          vert-idx  (into {} (map-indexed (fn [i v] [v (inc i)])) all-verts)
+         ;; Collect unique texture coords
+         all-texcoords (when has-uvs?
+                         (vec (distinct (mapcat #(or (:face/texture-coords %) [])
+                                               mesh))))
+         texcoord-idx  (when has-uvs?
+                         (into {} (map-indexed (fn [i tc] [tc (inc i)])) all-texcoords))
          ;; Collect unique normals
          all-normals (vec (distinct (map :face/normal mesh)))
          normal-idx  (into {} (map-indexed (fn [i n] [n (inc i)])) all-normals)
@@ -106,7 +122,6 @@
          style-groups (if emit-mtl?
                         (group-by :face/style mesh)
                         {nil mesh})
-         ;; Build material name map
          style->mtl (when emit-mtl?
                       (into {}
                         (map-indexed (fn [i [style _]]
@@ -114,15 +129,16 @@
                                                 (str "mat_" i)
                                                 "default")])
                                      style-groups)))
-         ;; Write vertex lines
          v-lines (mapv (fn [[x y z]]
                          (str "v " (double x) " " (double y) " " (double z)))
                        all-verts)
-         ;; Write normal lines
+         vt-lines (when has-uvs?
+                    (mapv (fn [[u v]]
+                            (str "vt " (double u) " " (double v)))
+                          all-texcoords))
          vn-lines (mapv (fn [[x y z]]
                           (str "vn " (double x) " " (double y) " " (double z)))
                         all-normals)
-         ;; Write face lines grouped by material
          f-lines (into []
                    (mapcat
                      (fn [[style faces]]
@@ -130,16 +146,21 @@
                                         [(str "usemtl " (get style->mtl style))])]
                          (into (vec mtl-line)
                            (map (fn [face]
-                                  (let [vi (map #(get vert-idx %) (:face/vertices face))
-                                        ni (get normal-idx (:face/normal face))]
+                                  (let [vis  (map #(get vert-idx %) (:face/vertices face))
+                                        ni   (get normal-idx (:face/normal face))
+                                        uvs  (:face/texture-coords face)
+                                        tis  (when uvs (map #(get texcoord-idx %) uvs))]
                                     (str "f " (str/join " "
-                                                (map #(str % "//" ni) vi)))))
+                                                (if tis
+                                                  (map (fn [vi ti] (str vi "/" ti "/" ni)) vis tis)
+                                                  (map #(str % "//" ni) vis))))))
                                 faces))))
                      style-groups))
          obj-str (str/join "\n"
                    (concat [(str "# Eido OBJ export")
                             (str "o " obj-name)]
                            v-lines
+                           (or vt-lines [])
                            vn-lines
                            f-lines
                            [""]))]
@@ -162,53 +183,66 @@
     :materials     - map from material name to style (from parse-mtl)
     :default-style - style for faces with no material assignment
 
-  Supported directives: v, vn, vt (parsed but not stored), f, usemtl,
+  Supported directives: v, vn, vt, f, usemtl,
   g (group name → :face/group), s (smooth group → :face/smooth-group),
-  o (object name, ignored). All others are silently skipped."
+  o (object name, ignored). All others are silently skipped.
+
+  Texture coordinates (vt) are stored as :face/texture-coords when present."
   [text opts]
   (let [lines     (str/split-lines text)
         materials (get opts :materials {})
         default   (get opts :default-style nil)]
     (first
       (reduce
-        (fn [[faces vertices normals current-mtl current-group smooth-group] line]
+        (fn [[faces vertices texcoords normals current-mtl current-group smooth-group] line]
           (let [trimmed (str/trim line)]
             (cond
               (or (str/blank? trimmed) (str/starts-with? trimmed "#"))
-              [faces vertices normals current-mtl current-group smooth-group]
+              [faces vertices texcoords normals current-mtl current-group smooth-group]
+
+              (str/starts-with? trimmed "vt ")
+              [faces vertices (conj texcoords (parse-texcoord trimmed)) normals
+               current-mtl current-group smooth-group]
 
               (and (str/starts-with? trimmed "v ")
                    (not (str/starts-with? trimmed "vt"))
                    (not (str/starts-with? trimmed "vn")))
-              [faces (conj vertices (parse-vertex trimmed)) normals
+              [faces (conj vertices (parse-vertex trimmed)) texcoords normals
                current-mtl current-group smooth-group]
 
               (str/starts-with? trimmed "vn ")
-              [faces vertices (conj normals (parse-normal trimmed))
+              [faces vertices texcoords (conj normals (parse-normal trimmed))
                current-mtl current-group smooth-group]
 
               (str/starts-with? trimmed "usemtl ")
               (let [name (str/trim (subs trimmed 7))]
-                [faces vertices normals name current-group smooth-group])
+                [faces vertices texcoords normals name current-group smooth-group])
 
               (str/starts-with? trimmed "g ")
               (let [name (str/trim (subs trimmed 2))]
-                [faces vertices normals current-mtl name smooth-group])
+                [faces vertices texcoords normals current-mtl name smooth-group])
 
               (str/starts-with? trimmed "s ")
               (let [val (str/trim (subs trimmed 2))
                     sg  (when-not (= val "off") val)]
-                [faces vertices normals current-mtl current-group sg])
+                [faces vertices texcoords normals current-mtl current-group sg])
 
               (str/starts-with? trimmed "f ")
               (let [refs    (mapv parse-face-ref
                                  (str/split (str/trim (subs trimmed 2)) #"\s+"))
                     v-count (count vertices)
+                    t-count (count texcoords)
                     n-count (count normals)
-                    verts   (mapv (fn [[vi _ni]]
+                    verts   (mapv (fn [[vi _ti _ni]]
                                    (nth vertices (resolve-index vi v-count)))
                                  refs)
-                    normal  (let [[_vi ni] (first refs)]
+                    uvs     (when (some second refs)
+                              (mapv (fn [[_vi ti _ni]]
+                                      (if ti
+                                        (nth texcoords (resolve-index ti t-count))
+                                        [0.0 0.0]))
+                                    refs))
+                    normal  (let [[_vi _ti ni] (first refs)]
                               (if (and ni (pos? n-count))
                                 (nth normals (resolve-index ni n-count))
                                 (m/face-normal verts)))
@@ -216,11 +250,12 @@
                     face    (cond-> {:face/vertices verts
                                      :face/normal   normal}
                               style         (assoc :face/style style)
+                              uvs           (assoc :face/texture-coords uvs)
                               current-group (assoc :face/group current-group)
                               smooth-group  (assoc :face/smooth-group smooth-group))]
-                [(conj faces face) vertices normals current-mtl current-group smooth-group])
+                [(conj faces face) vertices texcoords normals current-mtl current-group smooth-group])
 
               :else
-              [faces vertices normals current-mtl current-group smooth-group])))
-        [[] [] [] nil nil nil]
+              [faces vertices texcoords normals current-mtl current-group smooth-group])))
+        [[] [] [] [] nil nil nil]
         lines))))
