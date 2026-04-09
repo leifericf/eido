@@ -163,13 +163,13 @@
                   :desc   "15 pendulums with increasing frequencies create wave patterns."}}
   pendulum-wave []
   {:frames
-   (anim/frames 80
+   (anim/frames 150
      (fn [t]
        {:image/size [500 400]
         :image/background [:color/rgb 245 243 238]
         :image/nodes
         (vec (for [p (range 15)]
-               (let [freq (+ 6 p)
+               (let [freq (+ 1.5 (* p 0.15))
                      angle (* (Math/sin (* t 2 Math/PI freq)) 0.9)
                      pivot-x (+ 30 (* p 31.4))
                      bob-x (+ pivot-x (* 250 (Math/sin angle)))
