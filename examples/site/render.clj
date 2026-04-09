@@ -1092,10 +1092,13 @@ document.querySelectorAll('pre code').forEach(function(el) {
   "Extracts API info from a var."
   [v]
   (let [m (meta v)]
-    {:name     (str (:name m))
-     :arglists (:arglists m)
-     :doc      (:doc m)
-     :added    (:added m)}))
+    {:name          (str (:name m))
+     :arglists      (:arglists m)
+     :doc           (:doc m)
+     :added         (:added m)
+     :convenience?  (:convenience m)
+     :wraps         (when-let [s (:convenience-for m)]
+                      (name s))}))
 
 (defn generate-api-html
   "Generates the API reference page from eido namespace metadata."
@@ -1143,10 +1146,12 @@ document.querySelectorAll('pre code').forEach(function(el) {
            [:h2.api-ns-title ns-name]
            (when ns-doc
              [:p.api-ns-doc ns-doc])
-           (for [{:keys [name arglists doc]} vars]
+           (for [{:keys [name arglists doc convenience? wraps]} vars]
              [:div.api-var
               ;; Signature block — one line per arity
               [:div.api-var-sig
+               (when convenience?
+                 [:span.api-var-badge "Helper"])
                (if (seq arglists)
                  (for [arglist arglists]
                    [:div.api-var-arity
@@ -1157,6 +1162,10 @@ document.querySelectorAll('pre code').forEach(function(el) {
                      ")"]])
                  [:div.api-var-arity
                   [:code [:span.api-var-name name]]])]
+              ;; Wraps link for convenience functions
+              (when wraps
+                [:div.api-var-wraps "Wraps: "
+                 [:code wraps]])
               ;; Docstring with code formatting
               (when doc
                 [:div.api-var-doc

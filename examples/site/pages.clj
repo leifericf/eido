@@ -70,10 +70,18 @@
                       0.8 0.5]}]})))
 
 (eido/render frames {:output \"grow.gif\" :fps 30})"]]
-   [:p "Eido supports 148 CSS color names, plus RGB, HSL, hex, and more — see the "
+   [:p "Convenience helpers let you write the same thing more concisely:"]
+   [:pre [:code
+          ";; Shorthand — same circle, fewer keystrokes
+(require '[eido.scene :as scene])
+(require '[eido.color :as color])
+
+(scene/circle-node [200 200] 120 (color/hsl 0 0.8 0.5))"]]
+   [:p "Low-level control when you need it, high-level convenience when you don't. Every example in the "
+    [:a {:href "./gallery/"} "gallery"]
+    " works this way — pure data in, image out. See the "
     [:a {:href "./guide/"} "Guide"]
-    " for details. Every example in the " [:a {:href "./gallery/"} "gallery"]
-    " works this way — pure data in, image out."]])
+    " to get started."]])
 
 (defn install-code []
   "io.github.leifericf/eido {:git/tag \"v1.0.0-beta1\" :git/sha \"65fcfac\"}")

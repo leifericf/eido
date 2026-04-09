@@ -406,6 +406,23 @@
    [:.api-var-name {:font-weight "600"
                     :color       (:accent colors)}]
    [:.api-var-args {:color (:text-muted colors)}]
+   [:.api-var-badge {:display       "inline-block"
+                     :font-size     "0.7rem"
+                     :font-weight   "600"
+                     :text-transform "uppercase"
+                     :letter-spacing "0.05em"
+                     :padding       "0.15rem 0.5rem"
+                     :border-radius "9999px"
+                     :background    "rgba(192, 160, 100, 0.15)"
+                     :color         "#c0a064"
+                     :margin-bottom "0.4rem"}]
+   [:.api-var-wraps {:font-size   "0.82rem"
+                     :color       (:text-muted colors)
+                     :margin-top  "0.2rem"
+                     :margin-bottom "0.2rem"}]
+   [".api-var-wraps code" {:font-family "'JetBrains Mono', monospace"
+                           :font-size   "0.8rem"
+                           :color       (:accent colors)}]
    [:.api-var-doc {:margin-top  "0.6rem"
                    :font-size   "0.9rem"
                    :color       (:text-muted colors)
