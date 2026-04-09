@@ -160,7 +160,7 @@
                   (cond
                     (== mx ax) (/ ax total)
                     (== mx ay) (/ (+ ax ay) total)
-                    :else      (/ (- total 0.01) total)))))))]
+                    :else      1.0))))))]
     (mapv (fn [face]
             (let [verts    (:face/vertices face)
                   centroid (m/face-centroid verts)
@@ -230,7 +230,7 @@
                   (cond
                     (== mx ax) (/ ax total)
                     (== mx ay) (/ (+ ax ay) total)
-                    :else      (/ (- total 0.01) total)))))))]
+                    :else      1.0))))))]
     (mapv (fn [face]
             (let [verts    (:face/vertices face)
                   centroid (m/face-centroid verts)

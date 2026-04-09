@@ -47,3 +47,15 @@
       (is (every? :face/style m)))
     (testing "styles contain fill from the palette"
       (is (every? #(some #{(:style/fill (:face/style %))} palette) m)))))
+
+(deftest color-mesh-normal-map-z-dominant-test
+  (testing "normal-map assigns last palette color to +Z faces"
+    (let [palette [[:color/rgb 255 0 0] [:color/rgb 0 255 0] [:color/rgb 0 0 255]]
+          ;; Create a single flat face with +Z normal
+          face {:face/vertices [[0 0 0] [1 0 0] [1 1 0] [0 1 0]]
+                :face/normal [0.0 0.0 1.0]}
+          m (surface/color-mesh [face] {:color/type    :normal-map
+                                        :color/palette palette})]
+      (is (= [:color/rgb 0 0 255]
+             (:style/fill (:face/style (first m))))
+          "+Z face should get last palette color (blue)"))))
