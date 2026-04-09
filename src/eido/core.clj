@@ -44,11 +44,18 @@
   [scene]
   (validate/explain scene))
 
+(def ^:dynamic *validate*
+  "Controls whether scene validation runs before compilation.
+  Defaults to true. Bind to false in REPL/watch workflows for faster
+  re-renders. The `show` and `watch-*` dev helpers automatically skip
+  validation after the first successful render."
+  true)
+
 (defn- validated-compile
   "Validates then compiles a scene.
-  Skips validation if the scene has :eido/validate false."
+  Skips validation if *validate* is false or scene has :eido/validate false."
   [scene]
-  (when-not (false? (:eido/validate scene))
+  (when (and *validate* (not (false? (:eido/validate scene))))
     (compile/validate-scene! scene))
   (compile/compile scene))
 
@@ -278,7 +285,11 @@
     (render frames {:format :svg :fps 30})        → animated SVG string
 
   Common opts: :scale, :transparent-background, :quality (JPEG), :dpi (PNG),
-               :loop (GIF, default true), :prefix (frame sequence)."
+               :loop (GIF, default true), :prefix (frame sequence).
+
+  Validation: scenes are validated before compilation by default. Bind
+  *validate* to false for faster REPL iteration, or set :eido/validate
+  false on the scene map."
   ([input] (render input {}))
   ([input opts]
    (let [output (:output opts)

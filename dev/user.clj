@@ -9,11 +9,18 @@
 
 (defonce ^:private frame (atom nil))
 
+(defonce ^:private validated? (atom false))
+
 (defn show
   "Renders a scene and displays it in a reusable window.
-  Call repeatedly to update the display."
+  Call repeatedly to update the display. Validates the first render;
+  skips validation on subsequent calls for faster iteration."
   [scene]
-  (let [^BufferedImage img (eido/render scene)
+  (let [^BufferedImage img (if @validated?
+                             (binding [eido/*validate* false]
+                               (eido/render scene))
+                             (do (reset! validated? true)
+                                 (eido/render scene)))
         w (.getWidth img)
         h (.getHeight img)]
     (SwingUtilities/invokeAndWait

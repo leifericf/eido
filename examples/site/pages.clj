@@ -894,4 +894,15 @@
 ;;      :group, :shape/arc, :shape/circle, ..."]]
        [:p "You can also format error data with " [:code "format-errors"] ":"]
        [:pre [:code "(eido/format-errors (eido/validate scene))"]]
-       [:p "Invalid scenes throw " [:code "ex-info"] " with " [:code ":errors"] " in the exception data and a human-readable message, so you always know what went wrong."]]}]}])
+       [:p "Invalid scenes throw " [:code "ex-info"] " with " [:code ":errors"] " in the exception data and a human-readable message, so you always know what went wrong."]
+       [:h4 "Validation in the REPL"]
+       [:p "The dev helpers " [:code "show"] ", " [:code "watch-file"] ", and " [:code "watch-scene"] " validate the first render, then skip validation on subsequent re-renders for faster iteration. This gives you error checking when starting up while keeping the feedback loop fast."]
+       [:p "To control validation explicitly, bind " [:code "eido/*validate*"] ":"]
+       [:pre [:code
+              ";; Skip validation for fast re-renders
+(binding [eido/*validate* false]
+  (eido/render scene))
+
+;; Or disable per-scene with a key
+(eido/render (assoc scene :eido/validate false))"]]
+       [:p [:code "*validate*"] " defaults to " [:code "true"] ". Validation adds roughly 7% overhead per render, so skipping it in tight iteration loops makes a noticeable difference."]]}]}])
