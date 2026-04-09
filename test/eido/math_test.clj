@@ -50,26 +50,22 @@
 
 ;; --- rotations ---
 
-(deftest rotate-x-test
-  (testing "90 degrees rotates Y to Z"
-    (let [result (m/rotate-x [0 1 0] (/ Math/PI 2))]
+(deftest rotate-test
+  (testing "X: 90 degrees rotates Y to Z"
+    (let [result (m/rotate [0 1 0] :x (/ Math/PI 2))]
       (is (approx= [0.0 0.0 1.0] result))))
-  (testing "identity rotation"
-    (is (approx= [1.0 2.0 3.0] (m/rotate-x [1 2 3] 0)))))
-
-(deftest rotate-y-test
-  (testing "90 degrees rotates Z to X"
-    (let [result (m/rotate-y [0 0 1] (/ Math/PI 2))]
+  (testing "X: identity rotation"
+    (is (approx= [1.0 2.0 3.0] (m/rotate [1 2 3] :x 0))))
+  (testing "Y: 90 degrees rotates Z to X"
+    (let [result (m/rotate [0 0 1] :y (/ Math/PI 2))]
       (is (approx= [1.0 0.0 0.0] result))))
-  (testing "identity rotation"
-    (is (approx= [1.0 2.0 3.0] (m/rotate-y [1 2 3] 0)))))
-
-(deftest rotate-z-test
-  (testing "90 degrees rotates X to Y"
-    (let [result (m/rotate-z [1 0 0] (/ Math/PI 2))]
+  (testing "Y: identity rotation"
+    (is (approx= [1.0 2.0 3.0] (m/rotate [1 2 3] :y 0))))
+  (testing "Z: 90 degrees rotates X to Y"
+    (let [result (m/rotate [1 0 0] :z (/ Math/PI 2))]
       (is (approx= [0.0 1.0 0.0] result))))
-  (testing "identity rotation"
-    (is (approx= [1.0 2.0 3.0] (m/rotate-z [1 2 3] 0)))))
+  (testing "Z: identity rotation"
+    (is (approx= [1.0 2.0 3.0] (m/rotate [1 2 3] :z 0)))))
 
 ;; --- projections ---
 

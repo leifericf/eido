@@ -16,27 +16,20 @@
             (assoc face :face/vertices new-verts)))
         mesh))
 
-(defn- rotate-fn [axis]
-  (case axis
-    :x m/rotate-x
-    :y m/rotate-y
-    :z m/rotate-z))
-
 (defn rotate-mesh
   "Rotates all vertices and normals in a mesh around the given axis.
   axis: :x, :y, or :z. angle: radians."
   [mesh axis angle]
-  (let [rot (rotate-fn axis)]
-    (mapv (fn [face]
-            (let [new-verts  (mapv #(rot % angle) (:face/vertices face))
-                  new-normal (rot (:face/normal face) angle)]
-              (cond-> (assoc face
-                        :face/vertices new-verts
-                        :face/normal new-normal)
-                (:face/vertex-normals face)
-                (assoc :face/vertex-normals
-                  (mapv #(rot % angle) (:face/vertex-normals face))))))
-          mesh)))
+  (mapv (fn [face]
+          (let [new-verts  (mapv #(m/rotate % axis angle) (:face/vertices face))
+                new-normal (m/rotate (:face/normal face) axis angle)]
+            (cond-> (assoc face
+                      :face/vertices new-verts
+                      :face/normal new-normal)
+              (:face/vertex-normals face)
+              (assoc :face/vertex-normals
+                (mapv #(m/rotate % axis angle) (:face/vertex-normals face))))))
+        mesh))
 
 (defn scale-mesh
   "Scales all vertices in a mesh. factor is a number (uniform) or [sx sy sz]."
@@ -70,9 +63,8 @@
   (let [pos (u/axis-component axis vertex)
         range (- (double ax-max) (double ax-min))
         t (if (zero? range) 0.0 (/ (- pos (double ax-min)) range))
-        angle (* (double amount) t)
-        rot (case axis :x m/rotate-x :y m/rotate-y :z m/rotate-z)]
-    (rot vertex angle)))
+        angle (* (double amount) t)]
+    (m/rotate vertex axis angle)))
 
 (defn- deform-taper
   "Scales the cross-section perpendicular to axis by position along it."
@@ -95,8 +87,8 @@
         t (if (zero? range) 0.0 (/ (- pos (double ax-min)) range))
         angle (* (double amount) t)
         ;; Bend around perpendicular axis: Y bends around Z, X around Y, Z around X
-        rot (case axis :x m/rotate-y :y m/rotate-z :z m/rotate-x)]
-    (rot vertex angle)))
+        bend-axis (case axis :x :y :y :z :z :x)]
+    (m/rotate vertex bend-axis angle)))
 
 (defn- deform-inflate
   "Pushes each vertex along its face normal by a fixed amount."

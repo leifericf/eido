@@ -61,32 +61,21 @@
 
 ;; --- rotations ---
 
-(defn rotate-x
-  "Rotates a point around the X axis by angle (radians)."
-  [[x y z] angle]
+(defn rotate
+  "Rotates a point around the given axis (:x, :y, or :z) by angle (radians)."
+  [[x y z] axis angle]
   (let [c (Math/cos angle)
         s (Math/sin angle)]
-    [(double x)
-     (- (* (double y) c) (* (double z) s))
-     (+ (* (double y) s) (* (double z) c))]))
-
-(defn rotate-y
-  "Rotates a point around the Y axis by angle (radians)."
-  [[x y z] angle]
-  (let [c (Math/cos angle)
-        s (Math/sin angle)]
-    [(+ (* (double x) c) (* (double z) s))
-     (double y)
-     (- (* (double z) c) (* (double x) s))]))
-
-(defn rotate-z
-  "Rotates a point around the Z axis by angle (radians)."
-  [[x y z] angle]
-  (let [c (Math/cos angle)
-        s (Math/sin angle)]
-    [(- (* (double x) c) (* (double y) s))
-     (+ (* (double x) s) (* (double y) c))
-     (double z)]))
+    (case axis
+      :x [(double x)
+          (- (* (double y) c) (* (double z) s))
+          (+ (* (double y) s) (* (double z) c))]
+      :y [(+ (* (double x) c) (* (double z) s))
+          (double y)
+          (- (* (double z) c) (* (double x) s))]
+      :z [(- (* (double x) c) (* (double y) s))
+          (+ (* (double x) s) (* (double y) c))
+          (double z)])))
 
 ;; --- projection ---
 
@@ -122,9 +111,9 @@
         pitch (get projection :projection/pitch 0.0)
         roll  (get projection :projection/roll 0.0)]
     (-> point
-        (rotate-y (- yaw))
-        (rotate-x (- pitch))
-        (rotate-z (- roll)))))
+        (rotate :y (- yaw))
+        (rotate :x (- pitch))
+        (rotate :z (- roll)))))
 
 (defn make-projector
   "Returns a function that projects 3D points to 2D screen coordinates.
