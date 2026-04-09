@@ -3,6 +3,7 @@
   {:category "3D Scenes"}
   (:require
     [eido.animate :as anim]
+    [eido.ir.field :as field]
     [eido.ir.material :as material]
     [eido.obj :as obj]
     [eido.scene3d :as s3d]))
@@ -505,6 +506,191 @@
                     [:color/rgb 5 5 5]
                     :multiplier 0.1)]})]}))
 
+;; --- 19. Organic Sculpture ---
+
+(defn ^{:example {:output "3d-organic-sculpture.png"
+                  :title  "Organic Sculpture"
+                  :desc   "A cube deformed with noise, subdivided, and colored by field — the full sculpting pipeline."}}
+  organic-sculpture []
+  (let [mesh (-> (s3d/cube-mesh [-1 -1 -1] 2)
+                 (s3d/deform-mesh {:deform/type :displace
+                                   :deform/field (field/noise-field :scale 1.8 :variant :fbm :seed 7)
+                                   :deform/amplitude 0.4})
+                 (s3d/subdivide 2)
+                 (s3d/color-mesh {:color/type :field
+                                  :color/field (field/noise-field :scale 2.0 :variant :fbm :seed 7)
+                                  :color/palette [[:color/rgb 180 100 60]
+                                                  [:color/rgb 220 170 100]
+                                                  [:color/rgb 80 50 40]]}))
+        proj (s3d/orbit (s3d/orthographic {:scale 70 :origin [200 200]})
+                        [0 0 0] 5 0.6 -0.35)]
+    {:image/size [400 400]
+     :image/background [:color/rgb 30 28 35]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:light {:light/direction [1 2 0.5]
+                 :light/ambient 0.25
+                 :light/intensity 0.75}})]}))
+
+;; --- 20. Alien Landscape ---
+
+(defn ^{:example {:output "3d-alien-landscape.png"
+                  :title  "Alien Landscape"
+                  :desc   "Ridge noise heightfield with altitude-banded colors and dramatic lighting."}}
+  alien-landscape []
+  (let [mesh (-> (s3d/heightfield-mesh
+                   {:field  (field/noise-field :scale 0.4 :variant :ridge :seed 99)
+                    :bounds [-4 -4 8 8]
+                    :grid   [32 32]
+                    :height 2.5})
+                 (s3d/color-mesh {:color/type :axis-gradient
+                                  :color/axis :y
+                                  :color/palette [[:color/rgb 30 50 40]
+                                                  [:color/rgb 140 120 80]
+                                                  [:color/rgb 200 190 170]
+                                                  [:color/rgb 255 255 255]]}))
+        proj (s3d/look-at (s3d/perspective {:scale 55 :origin [200 220]
+                                            :distance 8})
+                          [5 4 6] [0 0.5 0])]
+    {:image/size [400 400]
+     :image/background [:color/rgb 60 70 90]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:light {:light/direction [1 1.5 0.3]
+                 :light/ambient 0.2
+                 :light/intensity 0.8}
+         :cull-back false})]}))
+
+;; --- 21. Coral Growth ---
+
+(defn ^{:example {:output "3d-coral-growth.png"
+                  :title  "Coral Growth"
+                  :desc   "A sphere with noise-selected faces extruded outward, creating organic coral-like forms."}}
+  coral-growth []
+  (let [mesh (-> (s3d/sphere-mesh 1.2 12 8)
+                 (s3d/extrude-faces {:select/by :field
+                                     :select/field (field/noise-field :scale 1.5 :seed 33)
+                                     :select/threshold 0.1
+                                     :extrude/amount 0.6
+                                     :extrude/scale 0.7})
+                 (s3d/color-mesh {:color/type :axis-gradient
+                                  :color/axis :y
+                                  :color/palette [[:color/rgb 200 80 100]
+                                                  [:color/rgb 255 160 120]
+                                                  [:color/rgb 255 220 180]]}))
+        proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
+                        [0 0 0] 5 0.8 -0.3)]
+    {:image/size [400 400]
+     :image/background [:color/rgb 20 30 50]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:light {:light/direction [1 2 1]
+                 :light/ambient 0.2
+                 :light/intensity 0.8}})]}))
+
+;; --- 22. Twisted Vase ---
+
+(defn ^{:example {:output "3d-twisted-vase.png"
+                  :title  "Twisted Vase"
+                  :desc   "A revolved profile twisted and colored with a warm gradient."}}
+  twisted-vase []
+  (let [mesh (-> (s3d/revolve-mesh
+                   {:profile [[0.0 0.0] [0.8 0.1] [0.9 0.4] [0.6 0.8]
+                              [0.4 1.2] [0.5 1.6] [0.7 2.0] [0.6 2.2]
+                              [0.3 2.4] [0.0 2.5]]
+                    :segments 16})
+                 (s3d/deform-mesh {:deform/type :twist
+                                   :deform/axis :y
+                                   :deform/amount 1.5})
+                 (s3d/color-mesh {:color/type :axis-gradient
+                                  :color/axis :y
+                                  :color/palette [[:color/rgb 160 80 40]
+                                                  [:color/rgb 210 160 100]
+                                                  [:color/rgb 180 120 70]]}))
+        proj (s3d/look-at (s3d/orthographic {:scale 55 :origin [200 230]})
+                          [3 2 4] [0 1.2 0])]
+    {:image/size [400 400]
+     :image/background [:color/rgb 240 235 225]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:light {:light/direction [1 2 0.5]
+                 :light/ambient 0.3
+                 :light/intensity 0.7}
+         :cull-back false})]}))
+
+;; --- 23. Crystal Cluster ---
+
+(defn ^{:example {:output "3d-crystal-cluster.png"
+                  :title  "Crystal Cluster"
+                  :desc   "An icosahedron with noise-extruded faces creating sharp crystalline growths."}}
+  crystal-cluster []
+  (let [mesh (-> (s3d/icosahedron-mesh 1.0)
+                 (s3d/extrude-faces {:select/by :field
+                                     :select/field (field/noise-field :scale 2.5 :seed 17)
+                                     :select/threshold 0.0
+                                     :extrude/amount 0.8
+                                     :extrude/scale 0.3})
+                 (s3d/color-mesh {:color/type :normal-map
+                                  :color/palette [[:color/rgb 100 140 220]
+                                                  [:color/rgb 160 200 255]
+                                                  [:color/rgb 80 100 180]]}))
+        proj (s3d/orbit (s3d/orthographic {:scale 60 :origin [200 200]})
+                        [0 0 0] 5 0.5 -0.35)]
+    {:image/size [400 400]
+     :image/background [:color/rgb 15 15 25]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:light {:light/direction [1 2 1]
+                 :light/ambient 0.15
+                 :light/intensity 0.85}})]}))
+
+;; --- 24. Geometric Panels ---
+
+(defn ^{:example {:output "3d-geometric-panels.png"
+                  :title  "Geometric Panels"
+                  :desc   "A dodecahedron with every face inset and extruded, creating faceted panel geometry."}}
+  geometric-panels []
+  (let [mesh (-> (s3d/dodecahedron-mesh 1.8)
+                 (s3d/inset-faces {:select/by :all :inset/amount 0.2})
+                 (s3d/extrude-faces {:select/by :field
+                                     :select/field (field/noise-field :scale 3.0 :seed 55)
+                                     :select/threshold -0.2
+                                     :extrude/amount -0.15})
+                 (s3d/color-mesh {:color/type :field
+                                  :color/field (field/noise-field :scale 1.0 :seed 55)
+                                  :color/palette [[:color/rgb 200 180 60]
+                                                  [:color/rgb 220 100 40]
+                                                  [:color/rgb 180 60 80]]}))
+        proj (s3d/orbit (s3d/orthographic {:scale 55 :origin [200 200]})
+                        [0 0 0] 5 0.7 -0.4)]
+    {:image/size [400 400]
+     :image/background [:color/rgb 35 30 40]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:light {:light/direction [1 2 0.5]
+                 :light/ambient 0.2
+                 :light/intensity 0.8}})]}))
+
+;; --- 25. Geodesic Sphere ---
+
+(defn ^{:example {:output "3d-geodesic-sphere.png"
+                  :title  "Geodesic Sphere"
+                  :desc   "An icosahedron subdivided twice — a geodesic sphere with uniform face distribution."}}
+  geodesic-sphere []
+  (let [mesh (-> (s3d/icosahedron-mesh 1.5)
+                 (s3d/subdivide 2))
+        proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
+                        [0 0 0] 5 0.4 -0.3)]
+    {:image/size [400 400]
+     :image/background [:color/rgb 245 243 238]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:style {:style/fill [:color/rgb 100 160 200]
+                 :style/stroke {:color [:color/rgb 60 100 140] :width 0.3}}
+         :light {:light/direction [1 2 1]
+                 :light/ambient 0.25
+                 :light/intensity 0.75}})]}))
+
 (comment
   ;; Evaluate individual examples at the REPL:
   (utah-teapot)
@@ -524,4 +710,11 @@
   (glossy-torus)
   (material-showcase)
   (colored-point-lights)
-  (spotlight-scene))
+  (spotlight-scene)
+  (organic-sculpture)
+  (alien-landscape)
+  (coral-growth)
+  (twisted-vase)
+  (crystal-cluster)
+  (geometric-panels)
+  (geodesic-sphere))
