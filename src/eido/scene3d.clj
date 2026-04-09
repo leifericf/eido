@@ -515,9 +515,12 @@
     (mapv (fn [face]
             (let [new-verts  (mapv #(rot % angle) (:face/vertices face))
                   new-normal (rot (:face/normal face) angle)]
-              (assoc face
-                :face/vertices new-verts
-                :face/normal new-normal)))
+              (cond-> (assoc face
+                        :face/vertices new-verts
+                        :face/normal new-normal)
+                (:face/vertex-normals face)
+                (assoc :face/vertex-normals
+                  (mapv #(rot % angle) (:face/vertex-normals face))))))
           mesh)))
 
 (defn scale-mesh
@@ -534,10 +537,14 @@
                         (* (double y) sy)
                         (* (double z) sz)])))]
     (mapv (fn [face]
-            (let [new-verts (mapv scale-fn (:face/vertices face))]
-              (assoc face
-                :face/vertices new-verts
-                :face/normal (m/face-normal new-verts))))
+            (let [new-verts (mapv scale-fn (:face/vertices face))
+                  new-normal (m/face-normal new-verts)]
+              (cond-> (assoc face
+                        :face/vertices new-verts
+                        :face/normal new-normal)
+                ;; Recompute vertex normals after non-uniform scale
+                (:face/vertex-normals face)
+                (dissoc :face/vertex-normals))))
           mesh)))
 
 ;; --- mesh deformations ---
@@ -550,9 +557,11 @@
 (defn- axis-range
   "Returns [min max] of the given axis across all vertices in a mesh."
   [axis mesh]
-  (let [vals (map #(axis-component axis %)
-               (mapcat :face/vertices mesh))]
-    [(apply min vals) (apply max vals)]))
+  (let [vals (seq (map #(axis-component axis %)
+                    (mapcat :face/vertices mesh)))]
+    (if vals
+      [(apply min vals) (apply max vals)]
+      [0.0 0.0])))
 
 (defn- deform-twist
   "Rotates each vertex around axis proportional to its position along it."
@@ -634,9 +643,11 @@
             (let [normal (:face/normal face)
                   new-verts (mapv #(deform-fn % normal descriptor ar)
                               (:face/vertices face))]
-              (assoc face
-                :face/vertices new-verts
-                :face/normal (m/face-normal new-verts))))
+              (cond-> (assoc face
+                        :face/vertices new-verts
+                        :face/normal (m/face-normal new-verts))
+                ;; Invalidate per-vertex normals — must be recomputed after deformation
+                (:face/vertex-normals face) (dissoc :face/vertex-normals))))
           mesh)))
 
 ;; --- mirror ---
@@ -659,8 +670,10 @@
                                                          :z [x y (- (double z))]))
                                                      verts)
                                 ;; Reverse winding to fix normals
-                                reversed (vec (reverse mirrored-verts))]
-                            (make-face reversed (:face/style face))))
+                                reversed (vec (reverse mirrored-verts))
+                                new-face (make-face reversed (:face/style face))]
+                            ;; Preserve all face attributes
+                            (merge (dissoc face :face/vertices :face/normal) new-face)))
                         mesh)]
     (if merge?
       (into mesh reflected)
@@ -1028,11 +1041,14 @@
                   ax (abs (double nx))
                   ay (abs (double ny))
                   az (abs (double nz))
-                  mx (max ax ay az)]
-              (cond
-                (== mx ax) (/ ax (+ ax ay az))
-                (== mx ay) (/ (+ ax ay) (+ ax ay az))
-                :else      (/ (+ ax ay az -0.01) (+ ax ay az))))))]
+                  total (+ ax ay az)]
+              (if (zero? total)
+                0.5
+                (let [mx (max ax ay az)]
+                  (cond
+                    (== mx ax) (/ ax total)
+                    (== mx ay) (/ (+ ax ay) total)
+                    :else      (/ (- total 0.01) total)))))))]
     (mapv (fn [face]
             (let [verts    (:face/vertices face)
                   centroid (m/face-centroid verts)
@@ -1095,17 +1111,21 @@
                   ax (abs (double nx))
                   ay (abs (double ny))
                   az (abs (double nz))
-                  mx (max ax ay az)]
-              (cond
-                (== mx ax) (/ ax (+ ax ay az))
-                (== mx ay) (/ (+ ax ay) (+ ax ay az))
-                :else      (/ (+ ax ay az -0.01) (+ ax ay az))))))]
+                  total (+ ax ay az)]
+              (if (zero? total)
+                0.5
+                (let [mx (max ax ay az)]
+                  (cond
+                    (== mx ax) (/ ax total)
+                    (== mx ay) (/ (+ ax ay) total)
+                    :else      (/ (- total 0.01) total)))))))]
     (mapv (fn [face]
             (let [verts    (:face/vertices face)
                   centroid (m/face-centroid verts)
                   normal   (:face/normal face)
                   uvs      (:face/texture-coords face)]
-              (if (or (nil? sel) (sel face centroid normal))
+              (if (and (or (nil? sel) (sel face centroid normal))
+                       (or (not uv-source?) uvs))
                 (let [colors (mapv (fn [v i]
                                      (let [uv (when uvs (nth uvs i nil))]
                                        (palette-color palette (vert-t-fn v normal uv))))
@@ -1381,8 +1401,9 @@
                         (let [[lo hi] (:range rot-y)]
                           (+ (double lo) (* (.nextDouble ^java.util.Random rng)
                                             (- (double hi) (double lo))))))
-                placed (cond-> (translate-mesh mesh final-pos)
-                         angle (rotate-mesh :y angle))]
+                placed (-> mesh
+                           (cond-> angle (rotate-mesh :y angle))
+                           (translate-mesh final-pos))]
             placed))
         positions))))
 
@@ -1429,7 +1450,11 @@
                   noise-val (if detail-field
                               (* 0.5 (+ 1.0 (field/evaluate detail-field
                                               (double cx) (double cz))))
-                              (rand))
+                              ;; Deterministic fallback: derive from centroid position
+                              (* 0.5 (+ 1.0 (noise/perlin3d (+ (double cx) 0.37)
+                                                             (double _cy)
+                                                             (+ (double cz) 0.71)
+                                                             nil))))
                   depth     (+ (double d-min) (* noise-val (- (double d-max) (double d-min))))
                   normal    (m/normalize (:face/normal face))
                   new-verts (mapv #(m/v+ % (m/v* normal depth)) verts)]
@@ -1456,12 +1481,14 @@
 (defn mesh-bounds
   "Returns the axis-aligned bounding box of a mesh as {:min [x y z] :max [x y z]}."
   [mesh]
-  (let [all-verts (mapcat :face/vertices mesh)
-        xs (map #(nth % 0) all-verts)
-        ys (map #(nth % 1) all-verts)
-        zs (map #(nth % 2) all-verts)]
-    {:min [(apply min xs) (apply min ys) (apply min zs)]
-     :max [(apply max xs) (apply max ys) (apply max zs)]}))
+  (let [all-verts (seq (mapcat :face/vertices mesh))]
+    (if all-verts
+      (let [xs (map #(nth % 0) all-verts)
+            ys (map #(nth % 1) all-verts)
+            zs (map #(nth % 2) all-verts)]
+        {:min [(apply min xs) (apply min ys) (apply min zs)]
+         :max [(apply max xs) (apply max ys) (apply max zs)]})
+      {:min [0.0 0.0 0.0] :max [0.0 0.0 0.0]})))
 
 (defn mesh-center
   "Returns the center point of a mesh's bounding box."
