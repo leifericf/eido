@@ -945,7 +945,7 @@
     (testing "faces are displaced outward by varying amounts"
       (let [bounds-orig (s3d/mesh-bounds mesh)
             bounds-detail (s3d/mesh-bounds detaild)]
-        ;; Greebled mesh should extend beyond original in at least one dimension
+        ;; Detailed mesh should extend beyond original in at least one dimension
         (is (or (> (first (:max bounds-detail)) (first (:max bounds-orig)))
                 (> (second (:max bounds-detail)) (second (:max bounds-orig)))
                 (> (nth (:max bounds-detail) 2) (nth (:max bounds-orig) 2))))))))

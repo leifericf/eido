@@ -795,10 +795,10 @@
                  :light/intensity 0.8}
          :shading :smooth})]}))
 
-;; --- 30. Greebled Panel ---
+;; --- 30. Detailed Panel ---
 
 (defn ^{:example {:output "3d-detailed-panel.png"
-                  :title  "Greebled Panel"
+                  :title  "Detailed Panel"
                   :desc   "A cube with noise-driven surface detail — procedural mechanical panels."}}
   detailed-panel []
   (let [mesh (-> (s3d/cube-mesh [-1 -1 -1] 2)
