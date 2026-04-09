@@ -805,6 +805,41 @@
     (testing "only top face inset: 5 unchanged + 1 inner + 4 border = 10"
       (is (= 10 (count inset))))))
 
+;; --- instancing ---
+
+(deftest instance-mesh-basic-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 1)
+        positions [[0 0 0] [3 0 0] [0 0 3]]
+        instanced (s3d/instance-mesh mesh {:positions positions})]
+    (testing "3 instances of 6-face cube = 18 faces"
+      (is (= 18 (count instanced))))
+    (testing "instances are at different positions"
+      (let [bounds (s3d/mesh-bounds instanced)]
+        (is (> (first (:max bounds)) 2.0))
+        (is (> (nth (:max bounds) 2) 2.0))))))
+
+(deftest instance-mesh-with-rotation-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 1)
+        instanced (s3d/instance-mesh mesh
+                    {:positions [[0 0 0] [3 0 0]]
+                     :rotate-y {:range [0 Math/PI] :seed 42}})]
+    (testing "rotated instances have different vertex positions"
+      (let [first-6 (take 6 instanced)
+            last-6  (drop 6 instanced)]
+        (is (not= (mapv :face/vertices first-6)
+                  (mapv :face/vertices last-6)))))))
+
+(deftest instance-mesh-composes-test
+  (testing "instanced mesh can be colored"
+    (let [result (-> (s3d/platonic-mesh :tetrahedron 0.3)
+                     (s3d/instance-mesh {:positions [[0 0 0] [1 0 0] [0 0 1]]})
+                     (s3d/color-mesh {:color/type :axis-gradient
+                                      :color/axis :y
+                                      :color/palette [[:color/rgb 100 0 0]
+                                                      [:color/rgb 0 0 100]]}))]
+      (is (= 12 (count result)))
+      (is (every? #(some? (get-in % [:face/style :style/fill])) result)))))
+
 ;; --- convenience helpers ---
 
 (deftest bevel-faces-test

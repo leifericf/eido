@@ -1268,6 +1268,43 @@
               [face])))
         mesh))))
 
+;; --- instancing ---
+
+(defn instance-mesh
+  "Places copies of a mesh at multiple positions.
+  Bridges 2D scatter distributions to 3D mesh placement.
+  opts:
+    :positions - vector of [x y z] positions
+    :jitter    - {:amount n :seed s} random positional jitter
+    :rotate-y  - {:range [min max] :seed s} random Y-axis rotation per instance"
+  [mesh opts]
+  (let [positions (:positions opts)
+        jitter    (:jitter opts)
+        rot-y     (:rotate-y opts)
+        rng       (when (or jitter rot-y)
+                    (java.util.Random.
+                      (long (or (:seed jitter) (:seed rot-y) 0))))]
+    (into []
+      (mapcat
+        (fn [pos]
+          (let [;; Optional jitter
+                offset (if jitter
+                         (let [a (double (:amount jitter))]
+                           [(* a (- (* 2.0 (.nextDouble ^java.util.Random rng)) 1.0))
+                            0.0
+                            (* a (- (* 2.0 (.nextDouble ^java.util.Random rng)) 1.0))])
+                         [0 0 0])
+                final-pos (m/v+ pos offset)
+                ;; Optional Y rotation
+                angle (when rot-y
+                        (let [[lo hi] (:range rot-y)]
+                          (+ (double lo) (* (.nextDouble ^java.util.Random rng)
+                                            (- (double hi) (double lo))))))
+                placed (cond-> (translate-mesh mesh final-pos)
+                         angle (rotate-mesh :y angle))]
+            placed))
+        positions))))
+
 ;; --- convenience helpers ---
 
 (defn bevel-faces
