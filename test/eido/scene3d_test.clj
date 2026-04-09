@@ -636,6 +636,51 @@
                      (s3d/extrude-faces {:select/by :all :extrude/amount -0.1}))]
       (is (pos? (count result))))))
 
+;; --- sweep mesh ---
+
+(deftest sweep-mesh-straight-test
+  (let [mesh (s3d/sweep-mesh
+               {:profile [[0.5 0] [0 0.5] [-0.5 0] [0 -0.5]]
+                :path [[0 0 0] [0 0 3]]
+                :segments 4})]
+    (testing "4 profile edges * 3 path segments = 12 quads"
+      (is (= 12 (count mesh))))
+    (testing "all faces are quads"
+      (doseq [face mesh]
+        (is (= 4 (count (:face/vertices face))))))))
+
+(deftest sweep-mesh-curved-test
+  (let [mesh (s3d/sweep-mesh
+               {:profile [[0.3 0] [0 0.3] [-0.3 0] [0 -0.3]]
+                :path [[0 0 0] [1 1 0] [2 0 0] [3 1 0]]
+                :segments 12})]
+    (testing "produces correct face count"
+      (is (= (* 4 11) (count mesh))))))
+
+(deftest sweep-mesh-closed-test
+  (let [mesh (s3d/sweep-mesh
+               {:profile [[0.3 0] [0 0.3] [-0.3 0] [0 -0.3]]
+                :path [[1 0 0] [0 0 1] [-1 0 0] [0 0 -1]]
+                :segments 16
+                :closed true})]
+    (testing "closed sweep connects last ring to first"
+      (is (= (* 4 16) (count mesh))))))
+
+(deftest sweep-mesh-composes-test
+  (testing "sweep composes with deform and color"
+    (let [result (-> (s3d/sweep-mesh
+                       {:profile [[0.2 0] [0 0.2] [-0.2 0] [0 -0.2]]
+                        :path [[0 0 0] [1 1 0] [2 0 0]]
+                        :segments 8})
+                     (s3d/deform-mesh {:deform/type :twist
+                                       :deform/axis :x
+                                       :deform/amount 1.0})
+                     (s3d/color-mesh {:color/type :axis-gradient
+                                      :color/axis :x
+                                      :color/palette [[:color/rgb 255 0 0]
+                                                      [:color/rgb 0 0 255]]}))]
+      (is (pos? (count result))))))
+
 ;; --- mesh deformations ---
 
 (deftest deform-mesh-twist-test

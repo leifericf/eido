@@ -412,6 +412,80 @@
                   v3 (get-in rings [s1 p])]]
         (make-face [v0 v1 v2 v3])))))
 
+;; --- sweep mesh ---
+
+(defn- interpolate-path
+  "Linearly interpolates a path of 3D waypoints into n evenly spaced points."
+  [waypoints n]
+  (let [segs (dec (count waypoints))
+        seg-lengths (mapv (fn [i]
+                            (m/magnitude (m/v- (nth waypoints (inc i))
+                                              (nth waypoints i))))
+                          (range segs))
+        ;; Cumulative distances at each waypoint
+        cum-dists (reductions + 0.0 seg-lengths)
+        total     (last cum-dists)]
+    (vec
+      (for [i (range n)]
+        (let [t    (if (= 1 n) 0.0 (/ (double i) (dec n)))
+              dist (* t total)]
+          ;; Find which segment this distance falls in
+          (loop [seg 0]
+            (if (>= seg segs)
+              (last waypoints)
+              (let [d0 (nth cum-dists seg)
+                    d1 (nth cum-dists (inc seg))
+                    seg-len (- d1 d0)]
+                (if (or (<= dist d1) (= seg (dec segs)))
+                  (let [local-t (if (zero? seg-len) 0.0
+                                  (/ (- dist d0) seg-len))]
+                    (m/lerp (nth waypoints seg)
+                            (nth waypoints (inc seg))
+                            (min 1.0 local-t)))
+                  (recur (inc seg)))))))))))
+
+(defn sweep-mesh
+  "Creates a mesh by sweeping a 2D profile along a 3D path.
+  opts:
+    :profile  - vector of [x y] pairs defining the cross-section
+    :path     - vector of [x y z] waypoints defining the sweep path
+    :segments - number of steps along the path
+    :closed   - if true, connect last ring back to first (default false)"
+  [{:keys [profile path segments closed]}]
+  (let [seg     (int segments)
+        pts     (interpolate-path path (if closed (inc seg) seg))
+        n-prof  (count profile)
+        ;; Compute tangent and local frame at each point
+        rings   (vec
+                  (for [i (range (count pts))]
+                    (let [;; Tangent from finite differences
+                          tangent (m/normalize
+                                    (if (< i (dec (count pts)))
+                                      (m/v- (nth pts (inc i)) (nth pts i))
+                                      (m/v- (nth pts i) (nth pts (dec i)))))
+                          ;; Find a perpendicular axis
+                          up (if (> (abs (m/dot tangent [0 1 0])) 0.99)
+                               [1 0 0]
+                               [0 1 0])
+                          right (m/normalize (m/cross tangent up))
+                          actual-up (m/cross right tangent)
+                          pos (nth pts i)]
+                      (mapv (fn [[px py]]
+                              (m/v+ pos (m/v+ (m/v* right (double px))
+                                              (m/v* actual-up (double py)))))
+                            profile))))
+        n-rings (if closed seg (count rings))]
+    (into []
+      (for [s (range (if closed seg (dec n-rings)))
+            p (range n-prof)
+            :let [s1 (mod (inc s) n-rings)
+                  p1 (mod (inc p) n-prof)
+                  v0 (get-in rings [s p])
+                  v1 (get-in rings [s p1])
+                  v2 (get-in rings [s1 p1])
+                  v3 (get-in rings [s1 p])]]
+        (make-face [v0 v1 v2 v3])))))
+
 ;; --- mesh transforms ---
 
 (defn translate-mesh
