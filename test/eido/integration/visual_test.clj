@@ -1,4 +1,4 @@
-(ns eido.visual-test
+(ns eido.integration.visual-test
   "Visual regression tests — renders deterministic scenes and compares
   pixel-by-pixel against committed reference PNGs."
   (:require

@@ -1,4 +1,4 @@
-(ns eido.pattern-test
+(ns eido.integration.pattern-test
   (:require
     [clojure.test :refer [deftest is testing]]
     [eido.engine.compile :as compile]))

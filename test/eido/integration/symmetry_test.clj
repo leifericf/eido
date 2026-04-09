@@ -1,4 +1,4 @@
-(ns eido.symmetry-test
+(ns eido.integration.symmetry-test
   (:require
     [clojure.test :refer [deftest is testing]]
     [eido.engine.compile :as compile]))

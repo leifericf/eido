@@ -1,4 +1,4 @@
-(ns eido.effects-test
+(ns eido.integration.effects-test
   (:require
     [clojure.test :refer [deftest is testing]]
     [eido.engine.compile :as compile]
