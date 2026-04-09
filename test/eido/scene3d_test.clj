@@ -603,6 +603,37 @@
       ;; face is fan-triangulated, producing more children.
       (is (> (count (:group/children result)) 3)))))
 
+(deftest paint-mesh-uv-source-test
+  (let [mesh (-> (s3d/sphere-mesh 1.0 8 4)
+                 (s3d/uv-project {:uv/method :spherical}))
+        painted (s3d/paint-mesh mesh
+                  {:color/source :uv
+                   :color/type :field
+                   :color/field (field/noise-field :scale 2.0 :variant :fbm :seed 42)
+                   :color/palette [[:color/rgb 0 0 0]
+                                   [:color/rgb 255 255 255]]})]
+    (testing "UV-based painting produces vertex colors"
+      (is (every? :face/vertex-colors painted)))
+    (testing "colors vary (noise sampled at UV coords)"
+      (let [all-colors (mapcat :face/vertex-colors painted)]
+        (is (> (count (distinct all-colors)) 1))))))
+
+(deftest paint-mesh-uv-vs-position-different-test
+  (let [mesh (-> (s3d/sphere-mesh 1.0 8 4)
+                 (s3d/uv-project {:uv/method :spherical}))
+        by-pos (s3d/paint-mesh mesh {:color/type :field
+                                     :color/field (field/noise-field :scale 1.0 :seed 1)
+                                     :color/palette [[:color/rgb 0 0 0]
+                                                     [:color/rgb 255 255 255]]})
+        by-uv  (s3d/paint-mesh mesh {:color/source :uv
+                                     :color/type :field
+                                     :color/field (field/noise-field :scale 1.0 :seed 1)
+                                     :color/palette [[:color/rgb 0 0 0]
+                                                     [:color/rgb 255 255 255]]})]
+    (testing "UV and position sources produce different colors"
+      (is (not= (mapv :face/vertex-colors by-pos)
+                (mapv :face/vertex-colors by-uv))))))
+
 (deftest paint-mesh-composes-test
   (testing "paint composes with other operations in pipeline"
     (let [result (-> (s3d/platonic-mesh :icosahedron 1.0)

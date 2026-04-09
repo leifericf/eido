@@ -1045,39 +1045,49 @@
 ;; --- vertex color ---
 
 (defn paint-mesh
-  "Assigns per-vertex colors from a field/gradient/normal-map.
-  Like color-mesh but samples at each vertex position for smooth interpolation.
-  When :select/by is present, only selected faces get vertex colors.
+  "Assigns per-vertex colors by sampling a field at vertex positions.
+  When :color/source is :uv, samples at vertex UV coordinates instead of
+  3D positions — this is the bridge from Eido's 2D procedural system to 3D.
   opts:
     :color/type    - :field, :axis-gradient, or :normal-map
+    :color/source  - :position (default) or :uv (requires :face/texture-coords)
     :color/palette - vector of [:color/rgb r g b] colors
     :color/field   - field descriptor (for :field type)
     :color/axis    - :x, :y, or :z (for :axis-gradient type)
     :select/*      - optional face selector"
   [mesh opts]
-  (let [palette (:color/palette opts)
-        sel     (when (:select/by opts) (make-face-selector opts))
-        bounds  (when (= :axis-gradient (:color/type opts))
-                  (axis-range (get opts :color/axis :y) mesh))
+  (let [palette   (:color/palette opts)
+        uv-source? (= :uv (:color/source opts))
+        sel       (when (:select/by opts) (make-face-selector opts))
+        bounds    (when (= :axis-gradient (:color/type opts))
+                    (axis-range (get opts :color/axis :y) mesh))
         vert-t-fn
         (case (:color/type opts)
           :field
           (let [f (:color/field opts)]
-            (fn [vertex _normal]
-              (let [[x _y z] vertex]
-                (* 0.5 (+ 1.0 (field/evaluate f (double x) (double z)))))))
+            (if uv-source?
+              (fn [_vertex _normal uv]
+                (let [[u v] uv]
+                  (* 0.5 (+ 1.0 (field/evaluate f (double u) (double v))))))
+              (fn [vertex _normal _uv]
+                (let [[x _y z] vertex]
+                  (* 0.5 (+ 1.0 (field/evaluate f (double x) (double z))))))))
 
           :axis-gradient
           (let [axis    (get opts :color/axis :y)
                 [lo hi] bounds
                 range   (- (double hi) (double lo))]
-            (fn [vertex _normal]
-              (if (zero? range)
-                0.5
-                (/ (- (axis-component axis vertex) (double lo)) range))))
+            (if uv-source?
+              ;; For UV source, axis-gradient maps V coordinate
+              (fn [_vertex _normal uv]
+                (second uv))
+              (fn [vertex _normal _uv]
+                (if (zero? range)
+                  0.5
+                  (/ (- (axis-component axis vertex) (double lo)) range)))))
 
           :normal-map
-          (fn [_vertex normal]
+          (fn [_vertex normal _uv]
             (let [[nx ny nz] (m/normalize normal)
                   ax (abs (double nx))
                   ay (abs (double ny))
@@ -1090,11 +1100,13 @@
     (mapv (fn [face]
             (let [verts    (:face/vertices face)
                   centroid (m/face-centroid verts)
-                  normal   (:face/normal face)]
+                  normal   (:face/normal face)
+                  uvs      (:face/texture-coords face)]
               (if (or (nil? sel) (sel face centroid normal))
-                (let [colors (mapv (fn [v]
-                                     (palette-color palette (vert-t-fn v normal)))
-                                   verts)]
+                (let [colors (mapv (fn [v i]
+                                     (let [uv (when uvs (nth uvs i nil))]
+                                       (palette-color palette (vert-t-fn v normal uv))))
+                                   verts (range))]
                   (assoc face :face/vertex-colors colors))
                 face)))
           mesh)))
