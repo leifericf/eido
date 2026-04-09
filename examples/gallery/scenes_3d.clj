@@ -514,16 +514,16 @@
                   :desc   "A cube deformed with noise, subdivided, and colored by field — the full sculpting pipeline."}}
   organic-sculpture []
   (let [mesh (-> (s3d/cube-mesh [-1 -1 -1] 2)
-                 (s3d/deform-mesh {:deform/type :displace
-                                   :deform/field (field/noise-field :scale 1.8 :variant :fbm :seed 7)
-                                   :deform/amplitude 0.4})
                  (s3d/subdivide {:iterations 2})
+                 (s3d/deform-mesh {:deform/type :displace
+                                   :deform/field (field/noise-field :scale 1.5 :variant :fbm :seed 7)
+                                   :deform/amplitude 0.15})
                  (s3d/color-mesh {:color/type :field
                                   :color/field (field/noise-field :scale 2.0 :variant :fbm :seed 7)
                                   :color/palette [[:color/rgb 180 100 60]
                                                   [:color/rgb 220 170 100]
                                                   [:color/rgb 80 50 40]]}))
-        proj (s3d/orbit (s3d/orthographic {:scale 70 :origin [200 200]})
+        proj (s3d/orbit (s3d/orthographic {:scale 55 :origin [200 200]})
                         [0 0 0] 5 0.6 -0.35)]
     {:image/size [400 400]
      :image/background [:color/rgb 30 28 35]
@@ -939,18 +939,20 @@
                   :desc   "Branching organic structure from L-system rules swept into 3D mesh tubes."}}
   lsystem-tree []
   (let [mesh (-> (s3d/lsystem-mesh {:axiom "F"
-                                     :rules {"F" "FF[+F][-F][^F]"}
-                                     :iterations 3
-                                     :angle 25
-                                     :length 0.3
-                                     :profile [[0.03 0] [0 0.03] [-0.03 0] [0 -0.03]]
-                                     :segments 4})
+                                     :rules {"F" "FF[&+F][&-F][&^F]"}
+                                     :iterations 4
+                                     :angle 28
+                                     :length 0.1
+                                     :profile [[0.03 0] [0.021 0.021] [0 0.03] [-0.021 0.021]
+                                               [-0.03 0] [-0.021 -0.021] [0 -0.03] [0.021 -0.021]]
+                                     :segments 3})
                  (s3d/color-mesh {:color/type :axis-gradient
                                   :color/axis :y
-                                  :color/palette [[:color/rgb 100 60 30]
-                                                  [:color/rgb 60 120 40]]}))
-        proj (s3d/look-at (s3d/orthographic {:scale 80 :origin [200 280]})
-                          [1 1.5 2] [0 0.8 0])]
+                                  :color/palette [[:color/rgb 100 65 30]
+                                                  [:color/rgb 70 110 40]
+                                                  [:color/rgb 45 130 50]]}))
+        proj (s3d/look-at (s3d/orthographic {:scale 80 :origin [200 320]})
+                          [2 2 3] [0 1.2 0])]
     {:image/size [400 400]
      :image/background [:color/rgb 230 235 225]
      :image/nodes

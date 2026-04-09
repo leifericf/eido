@@ -1541,9 +1541,55 @@
 
 ;; --- NPR rendering helpers ---
 
+(defn- point-in-polygon?
+  "Tests if a 2D point is inside a polygon using the ray casting algorithm."
+  [[px py] polygon]
+  (let [n (count polygon)]
+    (loop [i 0 j (dec n) inside false]
+      (if (>= i n)
+        inside
+        (let [[xi yi] (nth polygon i)
+              [xj yj] (nth polygon j)
+              intersect (and (not= (> yi py) (> yj py))
+                             (< px (+ xi (* (/ (- xj xi) (- yj yi))
+                                            (- py yi)))))]
+          (recur (inc i) i (if intersect (not inside) inside)))))))
+
+(defn- clip-line-to-polygon
+  "Clips a line segment to a convex-ish polygon. Returns [x1 y1 x2 y2] or nil."
+  [[x1 y1 x2 y2] polygon]
+  (let [n   (count polygon)
+        dx  (- (double x2) (double x1))
+        dy  (- (double y2) (double y1))
+        ;; Find all intersection parameters t along the line
+        ts  (for [i (range n)
+                  :let [j  (mod (inc i) n)
+                        [ex1 ey1] (nth polygon i)
+                        [ex2 ey2] (nth polygon j)
+                        edx (- (double ex2) (double ex1))
+                        edy (- (double ey2) (double ey1))
+                        denom (- (* dx edy) (* dy edx))]
+                  :when (not (zero? denom))
+                  :let [t (/ (- (* (- (double ex1) (double x1)) edy)
+                                (* (- (double ey1) (double y1)) edx))
+                             denom)
+                        u (/ (- (* (- (double ex1) (double x1)) dy)
+                                (* (- (double ey1) (double y1)) dx))
+                             denom)]
+                  :when (and (>= u 0.0) (<= u 1.0)
+                             (>= t 0.0) (<= t 1.0))]
+              t)
+        ts  (sort ts)]
+    (when (>= (count ts) 2)
+      (let [t0 (first ts)
+            t1 (last ts)]
+        [(+ (double x1) (* t0 dx)) (+ (double y1) (* t0 dy))
+         (+ (double x1) (* t1 dx)) (+ (double y1) (* t1 dy))]))))
+
 (defn- npr-face-nodes
   "Generates hatch or stipple nodes for a projected face polygon.
-  Returns a vector of scene nodes (lines or circles) within the face bounds."
+  Hatch lines are clipped to the face polygon boundary.
+  Returns a vector of scene nodes (lines or circles) within the face."
   [projected face-style brightness depth]
   (let [xs (map first projected)
         ys (map second projected)
@@ -1552,29 +1598,36 @@
         fill-type (:style/fill-type face-style)]
     (case fill-type
       :hatch
-      (let [angle   (get face-style :hatch/angle 45)
-            spacing (max 1.0 (* (double (get face-style :hatch/spacing 4)) brightness))
-            color   (get face-style :hatch/color [:color/rgb 30 30 30])
+      (let [angle    (get face-style :hatch/angle 45)
+            spacing  (max 1.0 (* (double (get face-style :hatch/spacing 4)) brightness))
+            color    (get face-style :hatch/color [:color/rgb 30 30 30])
             stroke-w (get face-style :hatch/stroke-width 0.5)
-            lines   (hatch/hatch-lines bx by bw bh {:angle angle :spacing spacing})]
-        (mapv (fn [[x1 y1 x2 y2]]
-                (assoc {:node/type :shape/path
-                        :path/commands [[:move-to [x1 y1]] [:line-to [x2 y2]]]
-                        :style/stroke {:color color :width stroke-w}}
-                  :node/depth depth))
-              lines))
+            lines    (hatch/hatch-lines bx by bw bh {:angle angle :spacing spacing})
+            poly     (vec projected)]
+        (into []
+          (keep (fn [line]
+                  (when-let [[cx1 cy1 cx2 cy2] (clip-line-to-polygon line poly)]
+                    (assoc {:node/type :shape/path
+                            :path/commands [[:move-to [cx1 cy1]] [:line-to [cx2 cy2]]]
+                            :style/stroke {:color color :width stroke-w}}
+                      :node/depth depth))))
+          lines))
 
       :stipple
       (let [density (min 1.0 (* brightness (double (get face-style :stipple/density 0.5))))
             radius  (get face-style :stipple/radius 1.0)
             seed    (get face-style :stipple/seed (hash projected))
             color   (get face-style :stipple/color [:color/rgb 30 30 30])
+            poly    (vec projected)
             nodes   (stipple/stipple-fill->nodes bx by bw bh
                       {:stipple/density density :stipple/radius radius
                        :stipple/seed seed :stipple/color color})]
-        (mapv #(assoc % :node/depth depth) nodes))
+        (into []
+          (keep (fn [node]
+                  (when (point-in-polygon? (:circle/center node) poly)
+                    (assoc node :node/depth depth))))
+          nodes))
 
-      ;; Unknown fill-type — return empty
       [])))
 
 ;; --- render-mesh ---
