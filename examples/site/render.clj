@@ -797,7 +797,7 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
                       vec)]
     (html-page {:title "Gallery" :active-page :gallery :depth 1}
       [:h1.page-title "Gallery"]
-      [:p.page-subtitle "100 examples — every one renders from code."]
+      [:p.page-subtitle "Every image on this page was rendered from code."]
       ;; Tag filter bar
       (when (seq all-tags)
         [:div.gallery-filter
