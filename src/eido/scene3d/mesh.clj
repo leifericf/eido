@@ -269,7 +269,7 @@
                   i1 (+ i 1)
                   i2 (+ i cols)
                   i3 (+ i cols 1)]]
-        (u/make-face [(pts i) (pts i1) (pts i3) (pts i2)])))))
+        (u/make-face [(pts i) (pts i2) (pts i3) (pts i1)])))))
 
 ;; --- surface of revolution ---
 

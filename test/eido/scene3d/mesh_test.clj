@@ -61,3 +61,17 @@
       (is (= 6 (count m))))
     (testing "all faces are quads"
       (is (every? #(= 4 (count (:face/vertices %))) m)))))
+
+(deftest heightfield-mesh-normals-test
+  (testing "flat heightfield normals point up (+Y)"
+    (let [faces (mesh/heightfield-mesh
+                  {:field {:field/type :field/constant :field/value 0.0}
+                   :bounds [0 0 2 2]
+                   :grid [3 3]
+                   :height 1.0})]
+      (is (pos? (count faces)))
+      (is (every? (fn [face]
+                    (let [[_ ny _] (:face/normal face)]
+                      (pos? ny)))
+                  faces)
+          "all face normals should point up for a flat surface"))))
