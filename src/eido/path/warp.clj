@@ -97,27 +97,36 @@
 
 ;; --- recursive group warping ---
 
+(defn- subdivide-rect-edges
+  "Subdivides a rectangle's edges into n segments per side for smoother
+  warping. Returns a vector of path commands (move-to + line-to + close)."
+  [x y w h n]
+  (let [x (double x) y (double y)
+        w (double w) h (double h)
+        n (double n)
+        top    (for [i (range (inc (int n)))]
+                 [(+ x (* w (/ i n))) y])
+        right  (for [i (range 1 (inc (int n)))]
+                 [(+ x w) (+ y (* h (/ i n)))])
+        bottom (for [i (range (dec (int n)) -1 -1)]
+                 [(+ x (* w (/ i n))) (+ y h)])
+        left   (for [i (range (dec (int n)) 0 -1)]
+                 [x (+ y (* h (/ i n)))])]
+    (into [[:move-to (first top)]]
+          (concat
+            (mapv (fn [p] [:line-to p]) (rest top))
+            (mapv (fn [p] [:line-to p]) right)
+            (mapv (fn [p] [:line-to p]) bottom)
+            (mapv (fn [p] [:line-to p]) left)
+            [[:close]]))))
+
 (defn shape->path-commands
   "Converts a primitive shape node to path commands."
   [node]
   (case (:node/type node)
     :shape/rect (let [[x y] (:rect/xy node)
-                      [w h] (:rect/size node)
-                      x (double x) y (double y)
-                      w (double w) h (double h)
-                      ;; Subdivide edges for smoother warping
-                      n 20
-                      top    (for [i (range (inc n))] [(+ x (* w (/ i (double n)))) y])
-                      right  (for [i (range 1 (inc n))] [(+ x w) (+ y (* h (/ i (double n))))])
-                      bottom (for [i (range (dec n) -1 -1)] [(+ x (* w (/ i (double n)))) (+ y h)])
-                      left   (for [i (range (dec n) 0 -1)] [x (+ y (* h (/ i (double n))))])]
-                  (into [[:move-to (first top)]]
-                        (concat
-                          (mapv (fn [p] [:line-to p]) (rest top))
-                          (mapv (fn [p] [:line-to p]) right)
-                          (mapv (fn [p] [:line-to p]) bottom)
-                          (mapv (fn [p] [:line-to p]) left)
-                          [[:close]])))
+                      [w h] (:rect/size node)]
+                  (subdivide-rect-edges x y w h 20))
     :shape/circle (let [[cx cy] (:circle/center node)
                         r (double (:circle/radius node))
                         k (* r 0.5522847498)] ;; kappa for cubic approx
