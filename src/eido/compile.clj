@@ -14,7 +14,7 @@
     [eido.path.warp :as warp]
     [eido.text :as text]
     [eido.validate :as validate]
-    [eido.vary :as vary]))
+    [eido.gen.vary :as vary]))
 
 ;; Legacy compile-tree, compile-node, compile-style, and related helpers
 ;; have been removed. The compilation pipeline now routes through

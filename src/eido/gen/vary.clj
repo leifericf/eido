@@ -1,4 +1,4 @@
-(ns eido.vary
+(ns eido.gen.vary
   (:require
     [eido.color.palette :as palette]
     [eido.gen.noise :as noise]))

@@ -12,7 +12,7 @@
     [eido.gen.lsystem :as lsystem]
     [eido.path.morph :as morph]
     [eido.path :as path]
-    [eido.vary :as vary]
+    [eido.gen.vary :as vary]
     [eido.gen.voronoi :as voronoi]))
 
 ;; --- 1. Ink Landscape — hatching + distortion + variable-width strokes ---

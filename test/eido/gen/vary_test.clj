@@ -1,7 +1,7 @@
-(ns eido.vary-test
+(ns eido.gen.vary-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.vary :as vary]))
+    [eido.gen.vary :as vary]))
 
 (deftest by-index-test
   (testing "generates n overrides via index function"

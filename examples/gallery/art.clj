@@ -11,7 +11,7 @@
     [eido.path :as path]
     [eido.gen.scatter :as scatter]
     [eido.scene :as scene]
-    [eido.vary :as vary]
+    [eido.gen.vary :as vary]
     [eido.gen.voronoi :as voronoi]))
 
 ;; --- 1. Ink Landscape ---

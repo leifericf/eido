@@ -61,7 +61,7 @@
                   eido.gen.scatter eido.gen.voronoi eido.gen.lsystem
                   eido.gen.particle eido.gen.stipple eido.gen.hatch]}
    {:category "Variation"
-    :namespaces '[eido.vary]}
+    :namespaces '[eido.gen.vary]}
    {:category "Animation"
     :namespaces '[eido.animate]}
    {:category "3D"

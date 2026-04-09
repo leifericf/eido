@@ -22,7 +22,7 @@
     [eido.ir.lower :as lower]
     [eido.ir.vary :as ir-vary]
     [eido.path.decorate :as decorator]
-    [eido.vary :as vary]))
+    [eido.gen.vary :as vary]))
   ;; NOTE: no dependency on eido.compile — generator lowering is self-sufficient
 
 ;; --- generator constructors ---

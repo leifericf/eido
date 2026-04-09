@@ -12,6 +12,7 @@
     eido.gen.particle — particle systems with emitters & forces
     eido.gen.stipple  — Poisson disk sampling & stipple fills
     eido.gen.hatch    — hatch line pattern generation
+    eido.gen.vary     — per-item variation (by-index, by-noise, by-gradient)
 
   Users can require this namespace for the full API, or require
   sub-namespaces directly for finer-grained imports."
@@ -24,6 +25,7 @@
     [eido.gen.particle :as particle]
     [eido.gen.scatter :as scatter]
     [eido.gen.stipple :as stipple]
+    [eido.gen.vary :as vary]
     [eido.gen.voronoi :as voronoi]))
 
 ;; --- re-export helper ---
@@ -78,3 +80,10 @@
 ;; hatch
 (import-fn hatch/hatch-lines)
 (import-fn hatch/hatch-fill->nodes)
+
+;; vary
+(import-fn vary/by-index)
+(import-fn vary/by-position)
+(import-fn vary/by-noise)
+(import-fn vary/by-gradient)
+(import-fn vary/apply-overrides)

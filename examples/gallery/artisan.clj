@@ -13,7 +13,7 @@
     [eido.gen.scatter :as scatter]
     [eido.scene :as scene]
     [eido.scene3d :as s3d]
-    [eido.vary :as vary]
+    [eido.gen.vary :as vary]
     [eido.gen.voronoi :as voronoi]))
 
 ;; --- 1. Woodcut Landscape ---

@@ -42,6 +42,7 @@ Generative/procedural modules grouped under `eido.gen.*`:
 - `eido.particle` → `eido.gen.particle`
 - `eido.stipple` → `eido.gen.stipple`
 - `eido.hatch` → `eido.gen.hatch`
+- `eido.vary` → `eido.gen.vary`
 
 `eido.gen` facade re-exports all sub-module vars.
 

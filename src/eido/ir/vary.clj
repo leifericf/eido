@@ -10,7 +10,7 @@
     :vary/by-noise    — noise-sampled at each position
     :vary/by-gradient — interpolated color gradient"
   (:require
-    [eido.vary :as vary]))
+    [eido.gen.vary :as vary]))
 
 ;; --- vary constructors ---
 
