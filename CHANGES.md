@@ -66,7 +66,13 @@ Internal pipeline namespaces moved under `eido.engine.*`:
 
 ### Migration guide
 
-Update your `require` forms to use the new namespace paths. The `eido.scene3d`, `eido.path`, and `eido.gen` facades re-export everything, so existing code using `[eido.scene3d :as s3d]` or `[eido.path :as path]` works without changes. For sub-modules that were imported directly (e.g., `[eido.noise :as noise]`), update to `[eido.gen.noise :as noise]`.
+Update your `require` forms to use the new namespace paths:
+
+- **Facades** (`eido.scene3d`, `eido.path`, `eido.gen`) re-export everything, so `[eido.scene3d :as s3d]` and `[eido.path :as path]` work without changes.
+- **Direct imports** need updating: e.g., `[eido.noise :as noise]` → `[eido.gen.noise :as noise]`, `[eido.palette :as palette]` → `[eido.color.palette :as palette]`.
+- **Math**: `[eido.math3d :as m]` → `[eido.math :as m]`.
+- **OBJ**: `[eido.obj :as obj]` → `[eido.io.obj :as obj]`.
+- **Engine internals** (`eido.compile`, `eido.render`, `eido.svg`, `eido.gif`) are now under `eido.engine.*`. These are not part of the public API — if you were importing them directly, update accordingly.
 
 ## v1.0.0-alpha9 — 3D Sculpting Pipeline & 2D↔3D Bridge
 
