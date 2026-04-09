@@ -232,6 +232,27 @@
         e2 (v- v2 v0)]
     (cross e1 e2)))
 
+(defn face-tangent-bitangent
+  "Computes tangent and bitangent vectors for a face given its first three
+  vertices and their UV coordinates. Returns [tangent bitangent] as
+  normalized 3D vectors, or nil if the UV triangle is degenerate."
+  [[v0 v1 v2] [uv0 uv1 uv2]]
+  (let [e1    (v- v1 v0)
+        e2    (v- v2 v0)
+        duv1  [(- (double (first uv1)) (first uv0))
+               (- (double (second uv1)) (second uv0))]
+        duv2  [(- (double (first uv2)) (first uv0))
+               (- (double (second uv2)) (second uv0))]
+        det   (- (* (first duv1) (second duv2))
+                 (* (first duv2) (second duv1)))]
+    (when-not (zero? det)
+      (let [inv-det (/ 1.0 det)
+            t (normalize (v+ (v* e1 (* inv-det (second duv2)))
+                             (v* e2 (* inv-det (- (second duv1))))))
+            b (normalize (v+ (v* e1 (* inv-det (- (first duv2))))
+                             (v* e2 (* inv-det (first duv1)))))]
+        [t b]))))
+
 (defn face-centroid
   "Returns the centroid (average position) of a set of 3D points."
   [vertices]

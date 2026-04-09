@@ -166,6 +166,18 @@
     (let [n (m/face-normal [[0 0 0] [0 1 0] [1 0 0]])]
       (is (approx= [0.0 0.0 -1.0] (m/normalize n))))))
 
+(deftest face-tangent-bitangent-test
+  (testing "XZ plane triangle with standard UVs"
+    (let [[t b] (m/face-tangent-bitangent
+                  [[0 0 0] [1 0 0] [0 0 1]]
+                  [[0 0] [1 0] [0 1]])]
+      (is (approx= [1.0 0.0 0.0] t))
+      (is (approx= [0.0 0.0 1.0] b))))
+  (testing "degenerate UV returns nil"
+    (is (nil? (m/face-tangent-bitangent
+                [[0 0 0] [1 0 0] [0 1 0]]
+                [[0 0] [0 0] [0 0]])))))
+
 (deftest face-centroid-test
   (is (approx= [1.0 1.0 1.0]
         (m/face-centroid [[0 0 0] [2 2 2]])))
