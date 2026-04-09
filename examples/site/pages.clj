@@ -1263,14 +1263,21 @@
     :content
     [:div
      [:p "Before any work happens, the scene is validated against a comprehensive spec. Color formats, node types, transform syntax, path commands — all checked. If something's wrong, you get a clear error pointing to exactly where:"]
+     [:p "For example, if you pass a negative radius, a made-up color format, and a number where a vector was expected:"]
      [:pre.arch-error [:code
-            "Invalid scene
-3 validation errors:
+            ";; This scene has three deliberate mistakes:
+;; {:image/nodes [{:circle/radius -5}
+;;                {:style/fill [:color/invalid ...]}
+;;                {:rect/size 100}]}
+;;
+;; Eido catches all of them before rendering:
+
+Invalid scene — 3 validation errors:
 
   1. at [:image/nodes 0 :circle/radius]: positive number, got: -5
   2. at [:image/nodes 1 :style/fill 0]: known color format, got: :color/invalid
   3. at [:image/nodes 1 :rect/size]: vector of [w h], got: 100"]]
-     [:p "Each error tells you the path into the data structure, what was expected, and what was found. This catches mistakes at the boundary — before they become mysterious rendering glitches deep in the pipeline."]
+     [:p "Each error tells you the path into the data structure, what was expected, and what was found. Mistakes are caught at the boundary — before they become mysterious rendering glitches deep in the pipeline."]
      [:p "Validation uses " [:code "clojure.spec.alpha"]
       " with multimethod dispatch on " [:code ":node/type"]
       ". It's optional — bind " [:code "eido/*validate*"]
