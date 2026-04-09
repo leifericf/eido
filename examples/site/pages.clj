@@ -1418,7 +1418,9 @@ CircleOp{...original-shape...}"]]
      [:p "Generators depend on geometry for their output (a flow field needs to know its bounds, a hatch fill needs the shape it's filling). By the time lowering runs, geometry is resolved. Expanding earlier would require passing incomplete information; expanding later would force the renderer to understand generators. Lowering is the natural boundary."]
      [:h4 "Data all the way down"]
      [:p "Every intermediate result in the pipeline is printable, serializable Clojure data. No opaque objects, no hidden state. You can " [:code "prn"]
-      " the semantic IR, " [:code "prn"] " the concrete ops, save them to a file, load them back, or write tests against them. This is the core design principle — the image is a value."]]}
+      " the semantic IR, " [:code "prn"] " the concrete ops, save them to a file, load them back, or write tests against them. Hell, even store them in a "
+      [:a {:href "https://www.datomic.com" :target "_blank"} "Datomic"]
+      " database if you want. This is the core design principle — the image is a value."]]}
 
    ;; --- Source Map ---
    {:id "source-map"
