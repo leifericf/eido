@@ -736,3 +736,24 @@
                      :rect/size [50 50]}]}]}
           op (first (:ir/ops (compile/compile scene)))]
       (is (= :rect (:op op))))))
+
+;; --- path/decorated compilation tests ---
+
+(deftest compile-path-decorated-test
+  (testing "path/decorated compiles and generates circle ops along path"
+    (let [scene {:image/size [200 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :path/decorated
+                   :path/commands [[:move-to [0.0 50.0]]
+                                   [:line-to [200.0 50.0]]]
+                   :decorator/shape {:node/type :shape/circle
+                                     :circle/center [0 0]
+                                     :circle/radius 3}
+                   :decorator/spacing 20}]}
+          ir (compile/compile scene)
+          ops (:ir/ops ir)]
+      (is (pos? (count ops))
+          "path/decorated should produce at least one circle op")
+      (is (every? #(= :circle (:op %)) ops)
+          "all ops should be circles"))))

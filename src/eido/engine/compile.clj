@@ -425,7 +425,7 @@
 
     :path/decorated
     {:generator/type          :generator/decorator
-     :generator/path-commands (:decorator/path node)
+     :generator/path-commands (:path/commands node)
      :generator/shape         (:decorator/shape node)
      :generator/spacing       (get node :decorator/spacing 20)
      :generator/rotate?       (get node :decorator/rotate? true)
