@@ -291,12 +291,12 @@
       :image/nodes helper-nodes}
 
      "docs-text.png"
-     {:image/size [300 150] :image/background bg
+     {:image/size [250 120] :image/background bg
       :image/nodes [{:node/type :shape/text
                      :text/content "Hello"
                      :text/font {:font/family "Serif" :font/size 48
                                  :font/weight :bold}
-                     :text/origin [50 100]
+                     :text/origin [125 80]
                      :text/align :center
                      :style/fill [:color/rgb 0 0 0]}]}
 
@@ -313,12 +313,12 @@
                      :style/fill [:color/rgb 100 100 100]}]}
 
      "docs-text-on-path.png"
-     {:image/size [500 250] :image/background bg
+     {:image/size [400 200] :image/background bg
       :image/nodes [{:node/type :shape/text-on-path
                      :text/content "ALONG A CURVE"
                      :text/font {:font/family "SansSerif" :font/size 24}
-                     :text/path [[:move-to [50 200]]
-                                 [:curve-to [150 50] [350 50] [450 200]]]
+                     :text/path [[:move-to [30 170]]
+                                 [:curve-to [120 30] [280 30] [370 170]]]
                      :text/offset 10
                      :text/spacing 1
                      :style/fill [:color/rgb 0 0 0]}]}

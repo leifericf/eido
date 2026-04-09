@@ -44,12 +44,12 @@
    [:p "In Eido, an image is just a description — a plain data structure that says what the image contains. Here's a red circle on a light background:"]
    [:pre [:code
           "{:image/size [400 400]                       ;; 400x400 pixels
- :image/background [:color/rgb 245 243 238]  ;; warm off-white
+ :image/background [:color/name \"linen\"]      ;; warm off-white
  :image/nodes
  [{:node/type     :shape/circle
    :circle/center [200 200]                  ;; center of the canvas
    :circle/radius 120
-   :style/fill    [:color/rgb 200 50 50]}]}  ;; red fill"]]
+   :style/fill    [:color/name \"crimson\"]}]}  ;; red fill"]]
    [:p "That's it — no drawing commands, no canvas API, no mutable state. You describe "
     [:em "what you see"] ", and Eido renders it. To produce an image file:"]
    [:pre [:code
@@ -70,7 +70,9 @@
                       0.8 0.5]}]})))
 
 (eido/render frames {:output \"grow.gif\" :fps 30})"]]
-   [:p "Every example in the " [:a {:href "./gallery/index.html"} "gallery"]
+   [:p "Eido supports 148 CSS color names, plus RGB, HSL, hex, and more — see the "
+    [:a {:href "./guide/"} "Guide"]
+    " for details. Every example in the " [:a {:href "./gallery/"} "gallery"]
     " works this way — pure data in, image out."]])
 
 (defn install-code []
@@ -94,33 +96,32 @@
       [:div
        [:p "You describe a shape as a map — a collection of key-value pairs that says "
         [:em "what"] " the shape is, " [:em "where"] " it goes, and " [:em "how"] " it looks:"]
-       [:p "Here are the basic building blocks:"]
        [:h4 "Rectangle"]
        [:pre {:data-img "docs-rect.png"} [:code
               "{:node/type :shape/rect
  :rect/xy [50 50]          ;; top-left corner position
  :rect/size [200 100]      ;; width and height
- :style/fill [:color/rgb 0 128 255]}"]]
+ :style/fill [:color/name \"dodgerblue\"]}"]]
        [:p "Add rounded corners with " [:code ":rect/corner-radius"] ":"]
        [:pre {:data-img "docs-rect-rounded.png"} [:code
               "{:node/type :shape/rect
  :rect/xy [50 50]
  :rect/size [200 100]
  :rect/corner-radius 16
- :style/fill [:color/rgb 0 128 255]}"]]
+ :style/fill [:color/name \"dodgerblue\"]}"]]
        [:h4 "Circle"]
        [:pre {:data-img "docs-circle.png"} [:code
               "{:node/type :shape/circle
  :circle/center [200 200]  ;; center point
  :circle/radius 80         ;; radius in pixels
- :style/stroke {:color [:color/rgb 0 0 0] :width 2}}"]]
+ :style/stroke {:color [:color/name \"black\"] :width 2}}"]]
        [:h4 "Ellipse"]
        [:pre {:data-img "docs-ellipse.png"} [:code
               "{:node/type :shape/ellipse
  :ellipse/center [200 200]
  :ellipse/rx 120            ;; horizontal radius
  :ellipse/ry 60             ;; vertical radius
- :style/fill [:color/rgb 200 50 50]}"]]
+ :style/fill [:color/name \"indianred\"]}"]]
        [:h4 "Arc"]
        [:p "A partial ellipse — like a pie slice or an open curve:"]
        [:pre {:data-img "docs-arc.png"} [:code
@@ -129,15 +130,15 @@
  :arc/rx 80 :arc/ry 80
  :arc/start 0 :arc/extent 270   ;; degrees
  :arc/mode :pie                  ;; :open, :chord, or :pie
- :style/fill [:color/rgb 255 200 50]}"]]
+ :style/fill [:color/name \"gold\"]}"]]
        [:h4 "Line"]
        [:pre {:data-img "docs-line.png"} [:code
               "{:node/type :shape/line
  :line/from [50 50]
  :line/to [350 250]
- :style/stroke {:color [:color/rgb 0 0 0] :width 2}}"]]
+ :style/stroke {:color [:color/name \"black\"] :width 2}}"]]
        [:h4 "Path"]
-       [:p "For anything that isn't a basic shape, use a path. Paths are sequences of drawing commands — move to a point, draw a line, draw a curve, and close the shape. This is how you create arbitrary freeform shapes:"]
+       [:p "For anything that isn't a basic shape, use a path. Paths are sequences of drawing commands — move to a point, draw a line, draw a curve, and close the shape:"]
        [:pre {:data-img "docs-path.png"} [:code
               "{:node/type :shape/path
  :path/commands [[:move-to [100 200]]          ;; pick up the pen
@@ -147,7 +148,7 @@
                  [:quad-to [250 250]           ;; quadratic bezier curve
                            [200 200]]          ;;   (one control point + end)
                  [:close]]                     ;; connect back to start
- :style/fill [:color/rgb 255 200 50]}"]]
+ :style/fill [:color/name \"gold\"]}"]]
        [:h4 "Convenience helpers"]
        [:p "The " [:code "eido.scene"] " namespace provides shortcuts for common shapes:"]
        [:pre {:data-img "docs-helpers.png"} [:code
@@ -170,7 +171,7 @@
  :text/font    {:font/family \"Serif\" :font/size 48 :font/weight :bold}
  :text/origin  [50 100]       ;; baseline-left anchor
  :text/align   :center        ;; :left (default), :center, :right
- :style/fill   [:color/rgb 0 0 0]}"]]
+ :style/fill   [:color/name \"black\"]}"]]
        [:h4 "Per-glyph control"]
        [:p "Style each character independently — great for rainbow text, animated reveals, or creative typography:"]
        [:pre {:data-img "docs-text-glyphs.png"} [:code
@@ -178,9 +179,9 @@
  :text/content \"COLOR\"
  :text/font    {:font/family \"SansSerif\" :font/size 64}
  :text/origin  [50 100]
- :text/glyphs  [{:glyph/index 0 :style/fill [:color/rgb 255 0 0]}
-                {:glyph/index 1 :style/fill [:color/rgb 0 255 0]}]
- :style/fill   [:color/rgb 100 100 100]}  ;; default for unlisted glyphs"]]
+ :text/glyphs  [{:glyph/index 0 :style/fill [:color/name \"red\"]}
+                {:glyph/index 1 :style/fill [:color/name \"limegreen\"]}]
+ :style/fill   [:color/name \"gray\"]}  ;; default for unlisted glyphs"]]
        [:h4 "Text on a path"]
        [:p "Make text follow any curve:"]
        [:pre {:data-img "docs-text-on-path.png"} [:code
@@ -191,7 +192,7 @@
                 [:curve-to [150 50] [350 50] [450 200]]]
  :text/offset  10             ;; start distance along path
  :text/spacing 1              ;; extra inter-glyph spacing
- :style/fill   [:color/rgb 0 0 0]}"]]
+ :style/fill   [:color/name \"black\"]}"]]
        [:p "Fonts reference system fonts by name. Java's built-in fonts — "
         [:code "\"Serif\""] ", " [:code "\"SansSerif\""] ", " [:code "\"Monospaced\""]
         " — work on every system."]]}]}
@@ -313,7 +314,7 @@
        [:pre {:data-img "docs-group.png"} [:code
               "{:node/type :group
  :node/transform [[:transform/translate 200 200]]
- :style/fill [:color/rgb 255 0 0]
+ :style/fill [:color/name \"red\"]
  :node/opacity 0.8
  :group/children
  [{:node/type :shape/circle        ;; inherits red fill
@@ -322,8 +323,8 @@
   {:node/type :shape/rect
    :rect/xy [-30 -30]
    :rect/size [60 60]
-   :style/fill [:color/rgb 0 0 255]  ;; overrides with blue
-   :node/opacity 0.5}]}"            ;; effective opacity: 0.8 * 0.5 = 0.4
+   :style/fill [:color/name \"blue\"]  ;; overrides with blue
+   :node/opacity 0.5}]}"              ;; effective opacity: 0.8 * 0.5 = 0.4
               ]]]}
 
      {:id    "clipping"
@@ -340,7 +341,7 @@
  [{:node/type :shape/rect
    :rect/xy [120 120]
    :rect/size [160 160]
-   :style/fill [:color/rgb 255 0 0]}]}
+   :style/fill [:color/name \"red\"]}]}
 ;; Only the part of the rectangle inside the circle is visible"]]]}
 
      {:id    "compositing"
