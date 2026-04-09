@@ -18,7 +18,7 @@
 
 (defn poisson-disk
   "Generates well-distributed points via Poisson disk sampling.
-  Delegates to eido.stipple/poisson-disk."
+  Delegates to eido.gen.stipple/poisson-disk."
   [bx by bw bh min-dist seed]
   (stipple/poisson-disk bx by bw bh min-dist seed))
 

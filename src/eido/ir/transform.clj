@@ -18,7 +18,7 @@
 (defn distortion
   "Creates a distort transform descriptor.
   method: :noise | :wave | :roughen | :jitter
-  opts: method-specific params (see eido.distort)."
+  opts: method-specific params (see eido.path.distort)."
   [method opts]
   (merge {:transform/type   :transform/distort
           :distort/method   method}
@@ -27,7 +27,7 @@
 (defn warp-transform
   "Creates a warp transform descriptor.
   method: :wave | :twist | :fisheye | :bulge | :bend
-  params: method-specific params (see eido.warp)."
+  params: method-specific params (see eido.path.warp)."
   [method params]
   (merge {:transform/type :transform/warp
           :warp/method    method}

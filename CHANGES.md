@@ -1,5 +1,58 @@
 # Changes
 
+## v1.0.0-alpha10 — Namespace Restructuring
+
+**Breaking change**: Major namespace reorganization to improve API discoverability and documentation structure as Eido matures toward a stable release. This is a one-time restructuring effort to establish clean, consistent namespace boundaries.
+
+### 3D — `eido.scene3d` split into sub-modules
+
+The monolithic `eido.scene3d` (2083 lines) is now split into 8 focused sub-namespaces. The `eido.scene3d` facade re-exports all public vars, so `(require '[eido.scene3d :as s3d])` continues to work unchanged.
+
+- `eido.scene3d.camera` — projections & camera positioning
+- `eido.scene3d.mesh` — primitive constructors, platonic solids, parametric generators
+- `eido.scene3d.transform` — translate, rotate, scale, deformations, mirror
+- `eido.scene3d.topology` — subdivision, auto-smooth, face adjacency
+- `eido.scene3d.surface` — UV projection, coloring, painting, material maps
+- `eido.scene3d.modeling` — extrude/inset/bevel faces, L-system mesh, instancing
+- `eido.scene3d.render` — shading, NPR, render-mesh, depth-sort, convenience, text-3d
+- `eido.scene3d.util` — shared helpers (make-face, mesh-bounds, etc.)
+
+### Path operations — `eido.path.*`
+
+Path manipulation functions grouped under `eido.path.*`:
+
+- `eido.stroke` → `eido.path.stroke`
+- `eido.distort` → `eido.path.distort`
+- `eido.warp` → `eido.path.warp`
+- `eido.morph` → `eido.path.morph`
+- `eido.decorator` → `eido.path.decorate`
+
+`eido.path` retains its boolean ops and re-exports all sub-module vars.
+
+### Generative tools — `eido.gen.*`
+
+Generative/procedural modules grouped under `eido.gen.*`:
+
+- `eido.noise` → `eido.gen.noise`
+- `eido.flow` → `eido.gen.flow`
+- `eido.contour` → `eido.gen.contour`
+- `eido.scatter` → `eido.gen.scatter`
+- `eido.voronoi` → `eido.gen.voronoi`
+- `eido.lsystem` → `eido.gen.lsystem`
+- `eido.particle` → `eido.gen.particle`
+- `eido.stipple` → `eido.gen.stipple`
+- `eido.hatch` → `eido.gen.hatch`
+
+`eido.gen` facade re-exports all sub-module vars.
+
+### Color — `eido.color.*`
+
+- `eido.palette` → `eido.color.palette`
+
+### Migration guide
+
+Update your `require` forms to use the new namespace paths. The `eido.scene3d`, `eido.path`, and `eido.gen` facades re-export everything, so existing code using `[eido.scene3d :as s3d]` or `[eido.path :as path]` works without changes. For sub-modules that were imported directly (e.g., `[eido.noise :as noise]`), update to `[eido.gen.noise :as noise]`.
+
 ## v1.0.0-alpha9 — 3D Sculpting Pipeline & 2D↔3D Bridge
 
 ### 3D mesh operations

@@ -50,18 +50,25 @@
   [{:category "Core"
     :namespaces '[eido.core]}
    {:category "Drawing"
-    :namespaces '[eido.path eido.scene]}
-   {:category "Styling"
-    :namespaces '[eido.color eido.hatch eido.palette eido.stipple eido.stroke]}
-   {:category "Effects"
-    :namespaces '[eido.decorator eido.distort eido.flow eido.morph eido.warp]}
+    :namespaces '[eido.path eido.scene eido.text]}
+   {:category "Path Operations"
+    :namespaces '[eido.path.stroke eido.path.distort eido.path.warp
+                  eido.path.morph eido.path.decorate]}
+   {:category "Color"
+    :namespaces '[eido.color eido.color.palette]}
    {:category "Generative"
-    :namespaces '[eido.contour eido.lsystem eido.noise eido.particle
-                  eido.scatter eido.vary eido.voronoi]}
+    :namespaces '[eido.gen.noise eido.gen.flow eido.gen.contour
+                  eido.gen.scatter eido.gen.voronoi eido.gen.lsystem
+                  eido.gen.particle eido.gen.stipple eido.gen.hatch]}
+   {:category "Variation"
+    :namespaces '[eido.vary]}
    {:category "Animation"
     :namespaces '[eido.animate]}
    {:category "3D"
-    :namespaces '[eido.scene3d]}
+    :namespaces '[eido.scene3d eido.scene3d.camera eido.scene3d.mesh
+                  eido.scene3d.transform eido.scene3d.topology
+                  eido.scene3d.surface eido.scene3d.modeling
+                  eido.scene3d.render]}
    {:category "Visual Computation"
     :namespaces '[eido.ir eido.ir.domain eido.ir.resource
                   eido.ir.fill eido.ir.effect eido.ir.field

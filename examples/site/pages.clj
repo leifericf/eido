@@ -400,7 +400,7 @@
       [:div
        [:p "Contour lines connect points of equal value — like elevation lines on a topographic map. Eido generates them from noise fields using the marching squares algorithm:"]
        [:pre {:data-img "docs-contour.png"} [:code
-              "(require '[eido.contour :as contour])
+              "(require '[eido.gen.contour :as contour])
 
 {:node/type :contour
  :contour/bounds [0 0 500 400]
@@ -416,7 +416,7 @@
       [:div
        [:p "Noise functions produce smooth, organic-looking randomness — like clouds, terrain, or flowing water. Unlike random numbers, nearby inputs give nearby outputs, creating natural gradients:"]
        [:pre [:code
-              "(require '[eido.noise :as noise])
+              "(require '[eido.gen.noise :as noise])
 
 (noise/perlin2d x y)           ;; smooth 2D noise (-1 to 1)
 (noise/perlin3d x y z)         ;; 3D noise (use z as time for animation)
@@ -429,7 +429,7 @@
       [:div
        [:p "Particle systems simulate many small objects (sparks, snowflakes, smoke) moving under physics forces. You configure the behavior as data — emitter position, lifetime, gravity, wind — and Eido simulates the result deterministically:"]
        [:pre [:code
-              "(require '[eido.particle :as particle])
+              "(require '[eido.gen.particle :as particle])
 
 ;; Pre-compute 60 frames of fire particles
 (let [frames (vec (particle/simulate
@@ -587,7 +587,7 @@
        [:pre [:code
               "(require '[eido.ir.field :as field])
 
-;; Noise field — wraps eido.noise with configurable parameters
+;; Noise field — wraps eido.gen.noise with configurable parameters
 (def f (field/noise-field :scale 0.02 :variant :fbm
                           :seed 42 :octaves 6))
 
