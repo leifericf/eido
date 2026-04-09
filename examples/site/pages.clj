@@ -216,11 +216,11 @@
       [:div
        [:p "Eido understands several color formats. Use whichever feels natural — they all work everywhere:"]
        [:pre {:data-img "docs-color-formats.png"} [:code
-              "[:color/name \"coral\"]        ;; 148 CSS named colors
-[:color/rgb 255 127 80]      ;; red, green, blue (0-255)
-[:color/rgba 255 127 80 0.5] ;; with transparency (0-1)
-[:color/hsl 16 1.0 0.66]    ;; hue, saturation, lightness
-[:color/hex \"#FF7F50\"]      ;; hex notation"]]
+              "[:color/name \"coral\"]         ;; 148 CSS named colors
+[:color/rgb 255 127 80]       ;; red, green, blue (0-255)
+[:color/rgba 255 127 80 0.5]  ;; with transparency (0-1)
+[:color/hsl 16 1.0 0.66]     ;; hue, saturation, lightness
+[:color/hex \"#FF7F50\"]       ;; hex notation"]]
        [:p "All five lines above describe the same color — coral. Use whichever format suits your workflow."]
        [:h4 "Color manipulation"]
        [:p "Adjust colors programmatically — lighten, darken, blend, or shift the hue:"]
