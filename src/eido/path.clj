@@ -7,6 +7,7 @@
     eido.path.morph    — path interpolation
     eido.path.decorate — path decoration"
   (:require
+    [eido.path.aesthetic :as aesthetic]
     [eido.path.decorate :as decorate]
     [eido.path.distort :as distort]
     [eido.path.morph :as morph]
@@ -127,3 +128,8 @@
 
 ;; decorate
 (import-fn decorate/decorate-path)
+
+;; aesthetic
+(import-fn aesthetic/smooth-commands)
+(import-fn aesthetic/jittered-commands)
+(import-fn aesthetic/dash-commands)
