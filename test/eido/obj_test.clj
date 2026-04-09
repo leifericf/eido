@@ -1,7 +1,9 @@
 (ns eido.obj-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.obj :as obj]))
+    [eido.math3d :as m]
+    [eido.obj :as obj]
+    [eido.scene3d :as s3d]))
 
 ;; --- MTL parsing ---
 
@@ -158,3 +160,58 @@ f 4 5 6
   (testing "object directives don't break parsing"
     (let [mesh (obj/parse-obj obj-with-objects {})]
       (is (= 2 (count mesh))))))
+
+(deftest parse-obj-groups-test
+  (let [mesh (obj/parse-obj "g top\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\ng bottom\nv 0 0 1\nv 1 0 1\nv 0 1 1\nf 4 5 6\n" {})]
+    (is (= "top" (:face/group (first mesh))))
+    (is (= "bottom" (:face/group (second mesh))))))
+
+(deftest parse-obj-smooth-groups-test
+  (let [mesh (obj/parse-obj "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 1\ns 1\nf 1 2 3\ns off\nf 1 3 4\n" {})]
+    (is (= "1" (:face/smooth-group (first mesh))))
+    (is (nil? (:face/smooth-group (second mesh))))))
+
+;; --- OBJ export ---
+
+(deftest write-obj-basic-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 1)
+        obj-str (obj/write-obj mesh)]
+    (testing "produces valid OBJ string"
+      (is (string? obj-str))
+      (is (clojure.string/includes? obj-str "v "))
+      (is (clojure.string/includes? obj-str "vn "))
+      (is (clojure.string/includes? obj-str "f ")))))
+
+(deftest write-obj-vertex-count-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 1)
+        obj-str (obj/write-obj mesh)
+        v-lines (filter #(re-matches #"v \S+ \S+ \S+" %) (clojure.string/split-lines obj-str))]
+    (testing "cube has 8 unique vertices"
+      (is (= 8 (count v-lines))))))
+
+(deftest write-obj-with-materials-test
+  (let [mesh (s3d/merge-meshes
+               [(s3d/cube-mesh [0 0 0] 1)
+                {:style/fill [:color/rgb 255 0 0]}]
+               [(s3d/cube-mesh [2 0 0] 1)
+                {:style/fill [:color/rgb 0 0 255]}])
+        result (obj/write-obj mesh {:mtl true})]
+    (testing "returns map with :obj and :mtl"
+      (is (map? result))
+      (is (string? (:obj result)))
+      (is (string? (:mtl result))))
+    (testing "OBJ includes usemtl directives"
+      (is (clojure.string/includes? (:obj result) "usemtl")))
+    (testing "MTL includes material definitions"
+      (is (clojure.string/includes? (:mtl result) "newmtl"))
+      (is (clojure.string/includes? (:mtl result) "Kd")))))
+
+(deftest write-obj-roundtrip-test
+  (let [mesh (s3d/platonic-mesh :tetrahedron 1.0)
+        obj-str (obj/write-obj mesh)
+        reimported (obj/parse-obj obj-str {})]
+    (testing "roundtrip preserves face count"
+      (is (= (count mesh) (count reimported))))
+    (testing "roundtrip preserves vertex count per face"
+      (is (= (map #(count (:face/vertices %)) mesh)
+             (map #(count (:face/vertices %)) reimported))))))
