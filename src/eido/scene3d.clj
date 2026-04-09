@@ -280,6 +280,155 @@
                 (make-face [(nth base-pts j) (nth base-pts i) apex]))]
     (into [base-face] sides)))
 
+;; --- platonic solids ---
+
+(defn tetrahedron-mesh
+  "Returns a regular tetrahedron inscribed in a sphere of the given radius."
+  [radius]
+  (let [r  (double radius)
+        ;; Vertices of a regular tetrahedron inscribed in a unit sphere
+        a  (/ 1.0 3.0)
+        b  (/ (Math/sqrt 8.0) 3.0)
+        c  (/ (Math/sqrt 2.0) 3.0)
+        d  (/ (Math/sqrt 6.0) 3.0)
+        v0 (m/v* [0.0 1.0 0.0] r)
+        v1 (m/v* [(- b) (- a) 0.0] r)
+        v2 (m/v* [c (- a) d] r)
+        v3 (m/v* [c (- a) (- d)] r)]
+    [(make-face [v0 v2 v1])
+     (make-face [v0 v3 v2])
+     (make-face [v0 v1 v3])
+     (make-face [v1 v2 v3])]))
+
+(defn octahedron-mesh
+  "Returns a regular octahedron inscribed in a sphere of the given radius."
+  [radius]
+  (let [r  (double radius)
+        px [r 0.0 0.0]  nx [(- r) 0.0 0.0]
+        py [0.0 r 0.0]  ny [0.0 (- r) 0.0]
+        pz [0.0 0.0 r]  nz [0.0 0.0 (- r)]]
+    [(make-face [py pz px])
+     (make-face [py px nz])
+     (make-face [py nz nx])
+     (make-face [py nx pz])
+     (make-face [ny px pz])
+     (make-face [ny nz px])
+     (make-face [ny nx nz])
+     (make-face [ny pz nx])]))
+
+(defn dodecahedron-mesh
+  "Returns a regular dodecahedron inscribed in a sphere of the given radius."
+  [radius]
+  (let [r   (double radius)
+        phi (/ (+ 1.0 (Math/sqrt 5.0)) 2.0)
+        ip  (/ 1.0 phi)
+        ;; Normalize to unit sphere, then scale by radius
+        raw [[1 1 1] [1 1 -1] [1 -1 1] [1 -1 -1]
+             [-1 1 1] [-1 1 -1] [-1 -1 1] [-1 -1 -1]
+             [0 ip phi] [0 ip (- phi)] [0 (- ip) phi] [0 (- ip) (- phi)]
+             [ip phi 0] [ip (- phi) 0] [(- ip) phi 0] [(- ip) (- phi) 0]
+             [phi 0 ip] [phi 0 (- ip)] [(- phi) 0 ip] [(- phi) 0 (- ip)]]
+        verts (mapv (fn [v] (m/v* (m/normalize (mapv double v)) r)) raw)
+        ;; 12 pentagonal faces (vertex indices, CCW from outside)
+        faces [[0 16 2 10 8] [0 8 4 14 12] [16 17 1 9 3] [1 12 14 5 9]
+               [2 16 17 3 13] [4 18 6 15 14] [0 12 1 17 16] [5 19 18 4 8]
+               [6 10 2 13 15] [3 9 5 19 7] [7 11 3 13 15] [7 19 18 6 15]]
+        ;; Fix winding: ensure normals point outward
+        make-pent (fn [idxs]
+                    (let [vs (mapv verts idxs)
+                          centroid (m/face-centroid vs)
+                          n (m/face-normal vs)]
+                      (if (pos? (m/dot n centroid))
+                        (make-face vs)
+                        (make-face (vec (reverse vs))))))]
+    (mapv make-pent faces)))
+
+(defn icosahedron-mesh
+  "Returns a regular icosahedron inscribed in a sphere of the given radius."
+  [radius]
+  (let [r   (double radius)
+        phi (/ (+ 1.0 (Math/sqrt 5.0)) 2.0)
+        ;; 12 vertices of a regular icosahedron on a unit sphere
+        raw [[0 1 phi] [0 1 (- phi)] [0 -1 phi] [0 -1 (- phi)]
+             [1 phi 0] [1 (- phi) 0] [-1 phi 0] [-1 (- phi) 0]
+             [phi 0 1] [phi 0 -1] [(- phi) 0 1] [(- phi) 0 -1]]
+        verts (mapv (fn [v] (m/v* (m/normalize (mapv double v)) r)) raw)
+        ;; 20 triangular faces (CCW from outside)
+        face-indices [[0 2 8]  [0 8 4]  [0 4 6]  [0 6 10] [0 10 2]
+                      [2 10 7] [2 7 5]  [2 5 8]  [8 5 9]  [8 9 4]
+                      [4 9 1]  [4 1 6]  [6 1 11] [6 11 10] [10 11 7]
+                      [3 5 7]  [3 9 5]  [3 1 9]  [3 11 1] [3 7 11]]
+        make-tri (fn [idxs]
+                   (let [vs (mapv verts idxs)
+                         centroid (m/face-centroid vs)
+                         n (m/face-normal vs)]
+                     (if (pos? (m/dot n centroid))
+                       (make-face vs)
+                       (make-face (vec (reverse vs))))))]
+    (mapv make-tri face-indices)))
+
+;; --- heightfield ---
+
+(defn heightfield-mesh
+  "Creates a mesh from a 2D field sampled on a grid.
+  opts:
+    :field  - field descriptor (noise, constant, distance)
+    :bounds - [x z width depth] defining the sampling area
+    :grid   - [cols rows] number of sample points
+    :height - maximum Y displacement"
+  [{:keys [field bounds grid height]}]
+  (let [[bx bz bw bd] bounds
+        [cols rows] grid
+        h     (double (or height 1.0))
+        dx    (/ (double bw) (dec (int cols)))
+        dz    (/ (double bd) (dec (int rows)))
+        ;; Sample grid of Y values
+        pts   (vec (for [r (range rows)
+                         c (range cols)]
+                     (let [x (+ (double bx) (* c dx))
+                           z (+ (double bz) (* r dz))
+                           y (* h (field/evaluate field x z))]
+                       [x y z])))]
+    (into []
+      (for [r (range (dec rows))
+            c (range (dec cols))
+            :let [i  (+ (* r cols) c)
+                  i1 (+ i 1)
+                  i2 (+ i cols)
+                  i3 (+ i cols 1)]]
+        (make-face [(pts i) (pts i1) (pts i3) (pts i2)])))))
+
+;; --- surface of revolution ---
+
+(defn revolve-mesh
+  "Creates a mesh by revolving a 2D profile around the Y axis.
+  opts:
+    :profile  - vector of [radius height] pairs defining the cross-section
+    :segments - number of rotation steps around the axis"
+  [{:keys [profile segments]}]
+  (let [seg   (int segments)
+        step  (/ (* 2.0 Math/PI) seg)
+        pts   (vec profile)
+        n     (count pts)
+        ;; Generate rings of 3D points
+        rings (vec (for [s (range seg)]
+                     (let [a (* s step)
+                           ca (Math/cos a)
+                           sa (Math/sin a)]
+                       (mapv (fn [[r h]]
+                               (let [r (double r)]
+                                 [(* r ca) (double h) (* r sa)]))
+                             pts))))]
+    (into []
+      (for [s  (range seg)
+            p  (range (dec n))
+            :let [s1 (mod (inc s) seg)
+                  v0 (get-in rings [s p])
+                  v1 (get-in rings [s (inc p)])
+                  v2 (get-in rings [s1 (inc p)])
+                  v3 (get-in rings [s1 p])]]
+        (make-face [v0 v1 v2 v3])))))
+
 ;; --- mesh transforms ---
 
 (defn translate-mesh

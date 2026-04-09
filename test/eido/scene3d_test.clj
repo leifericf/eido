@@ -1,6 +1,7 @@
 (ns eido.scene3d-test
   (:require
     [clojure.test :refer [deftest is testing]]
+    [eido.ir.field :as field]
     [eido.math3d :as m]
     [eido.scene3d :as s3d]))
 
@@ -221,6 +222,104 @@
         scaled (s3d/scale-mesh mesh [1 2 3])]
     (is (approx= [1.0 4.0 9.0]
           (first (:face/vertices (first scaled)))))))
+
+;; --- mesh deformations ---
+
+;; --- platonic solids ---
+
+(deftest tetrahedron-mesh-test
+  (let [mesh (s3d/tetrahedron-mesh 1.0)]
+    (is (= 4 (count mesh)))
+    (testing "each face is a triangle"
+      (doseq [face mesh]
+        (is (= 3 (count (:face/vertices face))))))
+    (testing "vertices are approximately radius 1 from origin"
+      (doseq [face mesh
+              v (:face/vertices face)]
+        (is (< (abs (- (m/magnitude v) 1.0)) 0.01))))))
+
+(deftest octahedron-mesh-test
+  (let [mesh (s3d/octahedron-mesh 1.0)]
+    (is (= 8 (count mesh)))
+    (doseq [face mesh]
+      (is (= 3 (count (:face/vertices face)))))))
+
+(deftest dodecahedron-mesh-test
+  (let [mesh (s3d/dodecahedron-mesh 1.0)]
+    (is (= 12 (count mesh)))
+    (testing "each face is a pentagon"
+      (doseq [face mesh]
+        (is (= 5 (count (:face/vertices face))))))))
+
+(deftest icosahedron-mesh-test
+  (let [mesh (s3d/icosahedron-mesh 1.0)]
+    (is (= 20 (count mesh)))
+    (testing "each face is a triangle"
+      (doseq [face mesh]
+        (is (= 3 (count (:face/vertices face))))))
+    (testing "vertices are approximately radius 1 from origin"
+      (doseq [face mesh
+              v (:face/vertices face)]
+        (is (< (abs (- (m/magnitude v) 1.0)) 0.01))))))
+
+(deftest platonic-scaling-test
+  (testing "radius parameter scales the solid"
+    (let [r2 (s3d/icosahedron-mesh 2.0)]
+      (doseq [face r2
+              v (:face/vertices face)]
+        (is (< (abs (- (m/magnitude v) 2.0)) 0.02))))))
+
+;; --- heightfield ---
+
+(deftest heightfield-mesh-test
+  (let [mesh (s3d/heightfield-mesh
+               {:field {:field/type :field/constant :field/value 0.5}
+                :bounds [-1 -1 2 2]
+                :grid [4 4]
+                :height 2.0})]
+    (testing "4x4 grid produces 9 quads (3x3 cells)"
+      (is (= 9 (count mesh))))
+    (testing "each face is a quad"
+      (doseq [face mesh]
+        (is (= 4 (count (:face/vertices face))))))
+    (testing "constant field produces flat surface at height*value"
+      (let [ys (map second (mapcat :face/vertices mesh))]
+        (is (every? #(< (abs (- % 1.0)) 0.01) ys))))))
+
+(deftest heightfield-mesh-noise-test
+  (let [mesh (s3d/heightfield-mesh
+               {:field (field/noise-field :scale 1.0 :variant :fbm :seed 42)
+                :bounds [0 0 4 4]
+                :grid [8 8]
+                :height 1.0})]
+    (testing "8x8 grid produces 49 quads"
+      (is (= 49 (count mesh))))
+    (testing "heights vary with noise"
+      (let [ys (map second (mapcat :face/vertices mesh))]
+        (is (> (count (distinct (map #(Math/round (* 100.0 (double %))) ys))) 1))))))
+
+;; --- surface of revolution ---
+
+(deftest revolve-mesh-test
+  (let [mesh (s3d/revolve-mesh
+               {:profile [[0 0] [1.0 0.5] [0.5 1.0] [0 1.5]]
+                :segments 8})]
+    (testing "3 profile segments * 8 rotation segments = 24 quads"
+      (is (= 24 (count mesh))))
+    (testing "each face is a quad"
+      (doseq [face mesh]
+        (is (= 4 (count (:face/vertices face))))))
+    (testing "top/bottom vertices on Y axis"
+      (let [all-verts (mapcat :face/vertices mesh)
+            bottom-verts (filter #(< (abs (second %)) 0.01) all-verts)]
+        (is (seq bottom-verts))))))
+
+(deftest revolve-mesh-closed-test
+  (testing "first and last ring connect seamlessly"
+    (let [mesh (s3d/revolve-mesh
+                 {:profile [[0.5 0] [1.0 0.5] [0.5 1.0]]
+                  :segments 6})]
+      (is (= 12 (count mesh))))))
 
 ;; --- mesh deformations ---
 
