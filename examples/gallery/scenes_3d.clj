@@ -516,7 +516,7 @@
                  (s3d/deform-mesh {:deform/type :displace
                                    :deform/field (field/noise-field :scale 1.8 :variant :fbm :seed 7)
                                    :deform/amplitude 0.4})
-                 (s3d/subdivide 2)
+                 (s3d/subdivide {:iterations 2})
                  (s3d/color-mesh {:color/type :field
                                   :color/field (field/noise-field :scale 2.0 :variant :fbm :seed 7)
                                   :color/palette [[:color/rgb 180 100 60]
@@ -624,7 +624,7 @@
                   :title  "Crystal Cluster"
                   :desc   "An icosahedron with noise-extruded faces creating sharp crystalline growths."}}
   crystal-cluster []
-  (let [mesh (-> (s3d/icosahedron-mesh 1.0)
+  (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.0)
                  (s3d/extrude-faces {:select/by :field
                                      :select/field (field/noise-field :scale 2.5 :seed 17)
                                      :select/threshold 0.0
@@ -650,7 +650,7 @@
                   :title  "Geometric Panels"
                   :desc   "A dodecahedron with every face inset and extruded, creating faceted panel geometry."}}
   geometric-panels []
-  (let [mesh (-> (s3d/dodecahedron-mesh 1.8)
+  (let [mesh (-> (s3d/platonic-mesh :dodecahedron 1.8)
                  (s3d/inset-faces {:select/by :all :inset/amount 0.2})
                  (s3d/extrude-faces {:select/by :field
                                      :select/field (field/noise-field :scale 3.0 :seed 55)
@@ -677,8 +677,8 @@
                   :title  "Geodesic Sphere"
                   :desc   "An icosahedron subdivided twice — a geodesic sphere with uniform face distribution."}}
   geodesic-sphere []
-  (let [mesh (-> (s3d/icosahedron-mesh 1.5)
-                 (s3d/subdivide 2))
+  (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.5)
+                 (s3d/subdivide {:iterations 2}))
         proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
                         [0 0 0] 5 0.4 -0.3)]
     {:image/size [400 400]
@@ -690,6 +690,35 @@
          :light {:light/direction [1 2 1]
                  :light/ambient 0.25
                  :light/intensity 0.75}})]}))
+
+;; --- 26. Mirrored Sculpture ---
+
+(defn ^{:example {:output "3d-mirrored-sculpture.png"
+                  :title  "Mirrored Sculpture"
+                  :desc   "A noise-deformed shape mirrored and merged for bilateral symmetry."}}
+  mirrored-sculpture []
+  (let [mesh (-> (s3d/platonic-mesh :octahedron 1.2)
+                 (s3d/deform-mesh {:deform/type :displace
+                                   :deform/field (field/noise-field :scale 2.0 :variant :fbm :seed 13)
+                                   :deform/amplitude 0.4})
+                 (s3d/deform-mesh {:deform/type :taper
+                                   :deform/axis :y
+                                   :deform/amount 0.3})
+                 (s3d/mirror-mesh {:mirror/axis :x :mirror/merge true})
+                 (s3d/color-mesh {:color/type :axis-gradient
+                                  :color/axis :y
+                                  :color/palette [[:color/rgb 60 40 80]
+                                                  [:color/rgb 180 120 160]
+                                                  [:color/rgb 220 200 180]]}))
+        proj (s3d/orbit (s3d/orthographic {:scale 60 :origin [200 200]})
+                        [0 0 0] 5 0.5 -0.3)]
+    {:image/size [400 400]
+     :image/background [:color/rgb 25 22 30]
+     :image/nodes
+     [(s3d/render-mesh proj mesh
+        {:light {:light/direction [1 2 0.5]
+                 :light/ambient 0.2
+                 :light/intensity 0.8}})]}))
 
 (comment
   ;; Evaluate individual examples at the REPL:
@@ -717,4 +746,5 @@
   (twisted-vase)
   (crystal-cluster)
   (geometric-panels)
-  (geodesic-sphere))
+  (geodesic-sphere)
+  (mirrored-sculpture))

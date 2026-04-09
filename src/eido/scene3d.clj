@@ -282,90 +282,73 @@
 
 ;; --- platonic solids ---
 
-(defn tetrahedron-mesh
-  "Returns a regular tetrahedron inscribed in a sphere of the given radius."
-  [radius]
-  (let [r  (double radius)
-        ;; Vertices of a regular tetrahedron inscribed in a unit sphere
-        a  (/ 1.0 3.0)
-        b  (/ (Math/sqrt 8.0) 3.0)
-        c  (/ (Math/sqrt 2.0) 3.0)
-        d  (/ (Math/sqrt 6.0) 3.0)
-        v0 (m/v* [0.0 1.0 0.0] r)
-        v1 (m/v* [(- b) (- a) 0.0] r)
-        v2 (m/v* [c (- a) d] r)
-        v3 (m/v* [c (- a) (- d)] r)]
-    [(make-face [v0 v2 v1])
-     (make-face [v0 v3 v2])
-     (make-face [v0 v1 v3])
-     (make-face [v1 v2 v3])]))
+(defn- make-indexed-faces
+  "Creates faces from indexed vertex data, fixing winding for outward normals."
+  [verts face-indices]
+  (mapv (fn [idxs]
+          (let [vs (mapv verts idxs)
+                centroid (m/face-centroid vs)
+                n (m/face-normal vs)]
+            (if (pos? (m/dot n centroid))
+              (make-face vs)
+              (make-face (vec (reverse vs))))))
+        face-indices))
 
-(defn octahedron-mesh
-  "Returns a regular octahedron inscribed in a sphere of the given radius."
-  [radius]
-  (let [r  (double radius)
-        px [r 0.0 0.0]  nx [(- r) 0.0 0.0]
+(defn- platonic-tetrahedron [r]
+  (let [a (/ 1.0 3.0)
+        b (/ (Math/sqrt 8.0) 3.0)
+        c (/ (Math/sqrt 2.0) 3.0)
+        d (/ (Math/sqrt 6.0) 3.0)]
+    [(make-face [(m/v* [0.0 1.0 0.0] r) (m/v* [c (- a) d] r) (m/v* [(- b) (- a) 0.0] r)])
+     (make-face [(m/v* [0.0 1.0 0.0] r) (m/v* [c (- a) (- d)] r) (m/v* [c (- a) d] r)])
+     (make-face [(m/v* [0.0 1.0 0.0] r) (m/v* [(- b) (- a) 0.0] r) (m/v* [c (- a) (- d)] r)])
+     (make-face [(m/v* [(- b) (- a) 0.0] r) (m/v* [c (- a) d] r) (m/v* [c (- a) (- d)] r)])]))
+
+(defn- platonic-octahedron [r]
+  (let [px [r 0.0 0.0]  nx [(- r) 0.0 0.0]
         py [0.0 r 0.0]  ny [0.0 (- r) 0.0]
         pz [0.0 0.0 r]  nz [0.0 0.0 (- r)]]
-    [(make-face [py pz px])
-     (make-face [py px nz])
-     (make-face [py nz nx])
-     (make-face [py nx pz])
-     (make-face [ny px pz])
-     (make-face [ny nz px])
-     (make-face [ny nx nz])
-     (make-face [ny pz nx])]))
+    [(make-face [py pz px]) (make-face [py px nz])
+     (make-face [py nz nx]) (make-face [py nx pz])
+     (make-face [ny px pz]) (make-face [ny nz px])
+     (make-face [ny nx nz]) (make-face [ny pz nx])]))
 
-(defn dodecahedron-mesh
-  "Returns a regular dodecahedron inscribed in a sphere of the given radius."
-  [radius]
-  (let [r   (double radius)
-        phi (/ (+ 1.0 (Math/sqrt 5.0)) 2.0)
+(defn- platonic-dodecahedron [r]
+  (let [phi (/ (+ 1.0 (Math/sqrt 5.0)) 2.0)
         ip  (/ 1.0 phi)
-        ;; Normalize to unit sphere, then scale by radius
         raw [[1 1 1] [1 1 -1] [1 -1 1] [1 -1 -1]
              [-1 1 1] [-1 1 -1] [-1 -1 1] [-1 -1 -1]
              [0 ip phi] [0 ip (- phi)] [0 (- ip) phi] [0 (- ip) (- phi)]
              [ip phi 0] [ip (- phi) 0] [(- ip) phi 0] [(- ip) (- phi) 0]
              [phi 0 ip] [phi 0 (- ip)] [(- phi) 0 ip] [(- phi) 0 (- ip)]]
-        verts (mapv (fn [v] (m/v* (m/normalize (mapv double v)) r)) raw)
-        ;; 12 pentagonal faces (vertex indices, CCW from outside)
-        faces [[0 16 2 10 8] [0 8 4 14 12] [16 17 1 9 3] [1 12 14 5 9]
-               [2 16 17 3 13] [4 18 6 15 14] [0 12 1 17 16] [5 19 18 4 8]
-               [6 10 2 13 15] [3 9 5 19 7] [7 11 3 13 15] [7 19 18 6 15]]
-        ;; Fix winding: ensure normals point outward
-        make-pent (fn [idxs]
-                    (let [vs (mapv verts idxs)
-                          centroid (m/face-centroid vs)
-                          n (m/face-normal vs)]
-                      (if (pos? (m/dot n centroid))
-                        (make-face vs)
-                        (make-face (vec (reverse vs))))))]
-    (mapv make-pent faces)))
+        verts (mapv (fn [v] (m/v* (m/normalize (mapv double v)) r)) raw)]
+    (make-indexed-faces verts
+      [[0 16 2 10 8] [0 8 4 14 12] [16 17 1 9 3] [1 12 14 5 9]
+       [2 16 17 3 13] [4 18 6 15 14] [0 12 1 17 16] [5 19 18 4 8]
+       [6 10 2 13 15] [3 9 5 19 7] [7 11 3 13 15] [7 19 18 6 15]])))
 
-(defn icosahedron-mesh
-  "Returns a regular icosahedron inscribed in a sphere of the given radius."
-  [radius]
-  (let [r   (double radius)
-        phi (/ (+ 1.0 (Math/sqrt 5.0)) 2.0)
-        ;; 12 vertices of a regular icosahedron on a unit sphere
+(defn- platonic-icosahedron [r]
+  (let [phi (/ (+ 1.0 (Math/sqrt 5.0)) 2.0)
         raw [[0 1 phi] [0 1 (- phi)] [0 -1 phi] [0 -1 (- phi)]
              [1 phi 0] [1 (- phi) 0] [-1 phi 0] [-1 (- phi) 0]
              [phi 0 1] [phi 0 -1] [(- phi) 0 1] [(- phi) 0 -1]]
-        verts (mapv (fn [v] (m/v* (m/normalize (mapv double v)) r)) raw)
-        ;; 20 triangular faces (CCW from outside)
-        face-indices [[0 2 8]  [0 8 4]  [0 4 6]  [0 6 10] [0 10 2]
-                      [2 10 7] [2 7 5]  [2 5 8]  [8 5 9]  [8 9 4]
-                      [4 9 1]  [4 1 6]  [6 1 11] [6 11 10] [10 11 7]
-                      [3 5 7]  [3 9 5]  [3 1 9]  [3 11 1] [3 7 11]]
-        make-tri (fn [idxs]
-                   (let [vs (mapv verts idxs)
-                         centroid (m/face-centroid vs)
-                         n (m/face-normal vs)]
-                     (if (pos? (m/dot n centroid))
-                       (make-face vs)
-                       (make-face (vec (reverse vs))))))]
-    (mapv make-tri face-indices)))
+        verts (mapv (fn [v] (m/v* (m/normalize (mapv double v)) r)) raw)]
+    (make-indexed-faces verts
+      [[0 2 8]  [0 8 4]  [0 4 6]  [0 6 10] [0 10 2]
+       [2 10 7] [2 7 5]  [2 5 8]  [8 5 9]  [8 9 4]
+       [4 9 1]  [4 1 6]  [6 1 11] [6 11 10] [10 11 7]
+       [3 5 7]  [3 9 5]  [3 1 9]  [3 11 1] [3 7 11]])))
+
+(defn platonic-mesh
+  "Returns a platonic solid inscribed in a sphere of the given radius.
+  type: :tetrahedron, :octahedron, :dodecahedron, or :icosahedron."
+  [type radius]
+  (let [r (double radius)]
+    (case type
+      :tetrahedron  (platonic-tetrahedron r)
+      :octahedron   (platonic-octahedron r)
+      :dodecahedron (platonic-dodecahedron r)
+      :icosahedron  (platonic-icosahedron r))))
 
 ;; --- heightfield ---
 
@@ -577,6 +560,33 @@
                 :face/normal (m/face-normal new-verts))))
           mesh)))
 
+;; --- mirror ---
+
+(defn mirror-mesh
+  "Reflects a mesh across an axis plane through the origin.
+  opts:
+    :mirror/axis  - :x, :y, or :z (which axis plane to reflect across)
+    :mirror/merge - if true, return original + reflection combined (default false)"
+  [mesh opts]
+  (let [axis  (:mirror/axis opts)
+        merge? (get opts :mirror/merge false)
+        reflected (mapv (fn [face]
+                          (let [verts (:face/vertices face)
+                                ;; Negate the axis component
+                                mirrored-verts (mapv (fn [[x y z]]
+                                                       (case axis
+                                                         :x [(- (double x)) y z]
+                                                         :y [x (- (double y)) z]
+                                                         :z [x y (- (double z))]))
+                                                     verts)
+                                ;; Reverse winding to fix normals
+                                reversed (vec (reverse mirrored-verts))]
+                            (make-face reversed (:face/style face))))
+                        mesh)]
+    (if merge?
+      (into mesh reflected)
+      reflected)))
+
 ;; --- subdivision ---
 
 (defn- edge-key
@@ -674,12 +684,14 @@
 
 (defn subdivide
   "Applies Catmull-Clark subdivision to a mesh.
-  iterations: number of subdivision passes (each 4× face count).
+  opts:
+    :iterations - number of subdivision passes (each 4× face count)
   Returns a new mesh of quad faces."
-  [mesh iterations]
-  (if (<= iterations 0)
-    mesh
-    (recur (subdivide-once mesh) (dec iterations))))
+  [mesh opts]
+  (let [iterations (get opts :iterations 1)]
+    (if (<= iterations 0)
+      mesh
+      (recur (subdivide-once mesh) {:iterations (dec iterations)}))))
 
 ;; --- face selection ---
 
@@ -737,13 +749,16 @@
 
 (defn color-mesh
   "Colors each face based on a descriptor.
+  When :select/by is present, only selected faces are colored; others pass through.
   opts:
     :color/type    - :field, :axis-gradient, or :normal-map
     :color/palette - vector of [:color/rgb r g b] colors
     :color/field   - field descriptor (for :field type)
-    :color/axis    - :x, :y, or :z (for :axis-gradient type)"
+    :color/axis    - :x, :y, or :z (for :axis-gradient type)
+    :select/*      - optional face selector (defaults to all faces)"
   [mesh opts]
   (let [palette (:color/palette opts)
+        sel     (when (:select/by opts) (make-face-selector opts))
         bounds  (when (= :axis-gradient (:color/type opts))
                   (let [axis (get opts :color/axis :y)]
                     (axis-range axis mesh)))
@@ -769,7 +784,6 @@
           :normal-map
           (fn [_face _centroid normal]
             (let [[nx ny nz] (m/normalize normal)
-                  ;; Map normal components to [0,1] range and use dominant axis
                   ax (abs (double nx))
                   ay (abs (double ny))
                   az (abs (double nz))
@@ -781,11 +795,13 @@
     (mapv (fn [face]
             (let [verts    (:face/vertices face)
                   centroid (m/face-centroid verts)
-                  normal   (:face/normal face)
-                  t        (color-fn face centroid normal)
-                  color    (palette-color palette t)
-                  style    (merge (:face/style face) {:style/fill color})]
-              (assoc face :face/style style)))
+                  normal   (:face/normal face)]
+              (if (or (nil? sel) (sel face centroid normal))
+                (let [t     (color-fn face centroid normal)
+                      color (palette-color palette t)
+                      style (merge (:face/style face) {:style/fill color})]
+                  (assoc face :face/style style))
+                face)))
           mesh)))
 
 ;; --- polygonal modeling ---

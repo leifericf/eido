@@ -227,8 +227,8 @@
 
 ;; --- platonic solids ---
 
-(deftest tetrahedron-mesh-test
-  (let [mesh (s3d/tetrahedron-mesh 1.0)]
+(deftest platonic-tetrahedron-test
+  (let [mesh (s3d/platonic-mesh :tetrahedron 1.0)]
     (is (= 4 (count mesh)))
     (testing "each face is a triangle"
       (doseq [face mesh]
@@ -238,21 +238,21 @@
               v (:face/vertices face)]
         (is (< (abs (- (m/magnitude v) 1.0)) 0.01))))))
 
-(deftest octahedron-mesh-test
-  (let [mesh (s3d/octahedron-mesh 1.0)]
+(deftest platonic-octahedron-test
+  (let [mesh (s3d/platonic-mesh :octahedron 1.0)]
     (is (= 8 (count mesh)))
     (doseq [face mesh]
       (is (= 3 (count (:face/vertices face)))))))
 
-(deftest dodecahedron-mesh-test
-  (let [mesh (s3d/dodecahedron-mesh 1.0)]
+(deftest platonic-dodecahedron-test
+  (let [mesh (s3d/platonic-mesh :dodecahedron 1.0)]
     (is (= 12 (count mesh)))
     (testing "each face is a pentagon"
       (doseq [face mesh]
         (is (= 5 (count (:face/vertices face))))))))
 
-(deftest icosahedron-mesh-test
-  (let [mesh (s3d/icosahedron-mesh 1.0)]
+(deftest platonic-icosahedron-test
+  (let [mesh (s3d/platonic-mesh :icosahedron 1.0)]
     (is (= 20 (count mesh)))
     (testing "each face is a triangle"
       (doseq [face mesh]
@@ -264,7 +264,7 @@
 
 (deftest platonic-scaling-test
   (testing "radius parameter scales the solid"
-    (let [r2 (s3d/icosahedron-mesh 2.0)]
+    (let [r2 (s3d/platonic-mesh :icosahedron 2.0)]
       (doseq [face r2
               v (:face/vertices face)]
         (is (< (abs (- (m/magnitude v) 2.0)) 0.02))))))
@@ -321,11 +321,45 @@
                   :segments 6})]
       (is (= 12 (count mesh))))))
 
+;; --- mirror ---
+
+(deftest mirror-mesh-reflect-test
+  (let [mesh (s3d/cube-mesh [1 0 0] 1)
+        mirrored (s3d/mirror-mesh mesh {:mirror/axis :x})]
+    (testing "same face count as original"
+      (is (= (count mesh) (count mirrored))))
+    (testing "X coordinates are negated"
+      (let [orig-xs (map first (mapcat :face/vertices mesh))
+            mirr-xs (map first (mapcat :face/vertices mirrored))]
+        (is (every? neg? (map * orig-xs mirr-xs)))))))
+
+(deftest mirror-mesh-merge-test
+  (let [mesh (s3d/cube-mesh [1 0 0] 1)
+        merged (s3d/mirror-mesh mesh {:mirror/axis :x :mirror/merge true})]
+    (testing "merged has double the faces"
+      (is (= (* 2 (count mesh)) (count merged))))))
+
+(deftest mirror-mesh-y-axis-test
+  (let [mesh [(s3d/make-face [[0 1 0] [1 2 0] [1 1 0]])]
+        mirrored (s3d/mirror-mesh mesh {:mirror/axis :y})]
+    (testing "Y coordinates are negated"
+      (let [mirr-ys (map second (mapcat :face/vertices mirrored))]
+        (is (every? #(<= (double %) 0.0) mirr-ys))))))
+
+(deftest mirror-mesh-composes-test
+  (testing "mirror composes with deform in pipeline"
+    (let [result (-> (s3d/cube-mesh [1 0 0] 1)
+                     (s3d/deform-mesh {:deform/type :twist
+                                       :deform/axis :y
+                                       :deform/amount 0.5})
+                     (s3d/mirror-mesh {:mirror/axis :x :mirror/merge true}))]
+      (is (= 12 (count result))))))
+
 ;; --- subdivision ---
 
 (deftest subdivide-cube-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        sub1 (s3d/subdivide mesh 1)]
+        sub1 (s3d/subdivide mesh {:iterations 1})]
     (testing "one iteration on a cube: 6 faces * 4 = 24 quads"
       (is (= 24 (count sub1))))
     (testing "all subdivided faces are quads"
@@ -337,21 +371,21 @@
 
 (deftest subdivide-two-iterations-test
   (let [mesh (s3d/cube-mesh [0 0 0] 2)
-        sub2 (s3d/subdivide mesh 2)]
+        sub2 (s3d/subdivide mesh {:iterations 2})]
     (testing "two iterations: 6 * 4 * 4 = 96 quads"
       (is (= 96 (count sub2))))))
 
 (deftest subdivide-preserves-style-test
   (let [mesh (mapv #(assoc % :face/style {:style/fill [:color/rgb 200 100 50]})
                (s3d/cube-mesh [0 0 0] 2))
-        sub (s3d/subdivide mesh 1)]
+        sub (s3d/subdivide mesh {:iterations 1})]
     (testing "face style propagates to subdivided faces"
       (doseq [face sub]
         (is (= {:style/fill [:color/rgb 200 100 50]} (:face/style face)))))))
 
 (deftest subdivide-icosahedron-test
-  (let [mesh (s3d/icosahedron-mesh 1.0)
-        sub  (s3d/subdivide mesh 1)]
+  (let [mesh (s3d/platonic-mesh :icosahedron 1.0)
+        sub  (s3d/subdivide mesh {:iterations 1})]
     (testing "icosahedron (20 tris) → 60 quads after one iteration"
       (is (= 60 (count sub))))
     (testing "all subdivided faces are quads"
@@ -361,7 +395,7 @@
 (deftest subdivide-zero-iterations-test
   (let [mesh (s3d/cube-mesh)]
     (testing "0 iterations returns mesh unchanged"
-      (is (= mesh (s3d/subdivide mesh 0))))))
+      (is (= mesh (s3d/subdivide mesh {:iterations 0}))))))
 
 (deftest subdivide-composes-with-deform-test
   (testing "deform then subdivide works"
@@ -369,7 +403,7 @@
                      (s3d/deform-mesh {:deform/type :twist
                                        :deform/axis :y
                                        :deform/amount 0.5})
-                     (s3d/subdivide 1))]
+                     (s3d/subdivide {:iterations 1}))]
       (is (= 24 (count result))))))
 
 ;; --- per-face color ---
@@ -415,6 +449,21 @@
     (testing "faces get different colors based on normal direction"
       (let [fills (map #(get-in % [:face/style :style/fill]) colored)]
         (is (> (count (distinct fills)) 1))))))
+
+(deftest color-mesh-with-selector-test
+  (let [mesh (s3d/cube-mesh [0 0 0] 2)
+        colored (s3d/color-mesh mesh
+                  {:select/by :normal :select/direction [0 1 0] :select/tolerance 0.1
+                   :color/type :axis-gradient
+                   :color/axis :y
+                   :color/palette [[:color/rgb 0 0 0]
+                                   [:color/rgb 255 255 255]]})]
+    (testing "only selected faces get colored"
+      (let [styled   (filter #(some? (get-in % [:face/style :style/fill])) colored)
+            unstyled (filter #(nil? (get-in % [:face/style :style/fill])) colored)]
+        (is (pos? (count styled)))
+        (is (pos? (count unstyled)))
+        (is (= (count mesh) (count colored)))))))
 
 (deftest color-mesh-preserves-other-style-test
   (let [mesh (mapv #(assoc % :face/style {:style/stroke {:color [:color/rgb 0 0 0] :width 1}})
