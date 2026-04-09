@@ -3,13 +3,13 @@
   {:category "Showcase"}
   (:require
     [eido.animate :as anim]
-    [eido.flow :as flow]
-    [eido.noise :as noise]
+    [eido.gen.flow :as flow]
+    [eido.gen.noise :as noise]
     [eido.palette :as palette]
-    [eido.scatter :as scatter]
+    [eido.gen.scatter :as scatter]
     [eido.scene :as scene]
     [eido.scene3d :as s3d]
-    [eido.voronoi :as voronoi]))
+    [eido.gen.voronoi :as voronoi]))
 
 ;; --- 1. Aurora Borealis ---
 

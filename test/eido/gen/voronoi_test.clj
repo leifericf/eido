@@ -1,7 +1,7 @@
-(ns eido.voronoi-test
+(ns eido.gen.voronoi-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.voronoi :as voronoi]))
+    [eido.gen.voronoi :as voronoi]))
 
 (deftest voronoi-cells-count-test
   (testing "produces one cell per point"

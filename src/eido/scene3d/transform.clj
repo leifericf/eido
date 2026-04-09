@@ -3,7 +3,7 @@
   (:require
     [eido.ir.field :as field]
     [eido.math3d :as m]
-    [eido.noise :as noise]
+    [eido.gen.noise :as noise]
     [eido.scene3d.util :as u]))
 
 ;; --- mesh transforms ---

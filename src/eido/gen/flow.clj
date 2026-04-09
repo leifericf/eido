@@ -1,6 +1,6 @@
-(ns eido.flow
+(ns eido.gen.flow
   (:require
-    [eido.noise :as noise]))
+    [eido.gen.noise :as noise]))
 
 (defn- trace-streamline
   "Traces a single streamline from a starting point.

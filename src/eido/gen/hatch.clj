@@ -1,4 +1,4 @@
-(ns eido.hatch)
+(ns eido.gen.hatch)
 
 ;; --- line generation ---
 

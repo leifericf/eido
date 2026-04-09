@@ -1,4 +1,4 @@
-(ns eido.voronoi)
+(ns eido.gen.voronoi)
 
 ;; --- half-plane clipping ---
 

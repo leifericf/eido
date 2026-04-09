@@ -1,6 +1,6 @@
 (ns eido.path.distort
   (:require
-    [eido.noise :as noise]))
+    [eido.gen.noise :as noise]))
 
 ;; --- distortion functions ---
 

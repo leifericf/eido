@@ -1,4 +1,4 @@
-(ns eido.particle
+(ns eido.gen.particle
   (:require
     [eido.animate :as anim]
     [eido.color :as color]

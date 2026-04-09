@@ -12,10 +12,10 @@
   and are expanded to concrete geometry during lowering."
   (:require
     [eido.color :as color]
-    [eido.hatch :as hatch]
+    [eido.gen.hatch :as hatch]
+    [eido.gen.stipple :as stipple]
     [eido.ir :as ir]
-    [eido.ir.program :as program]
-    [eido.stipple :as stipple])
+    [eido.ir.program :as program])
   ;; NOTE: no dependency on eido.compile — fill lowering is self-sufficient
   (:import
     [java.awt.image BufferedImage]))

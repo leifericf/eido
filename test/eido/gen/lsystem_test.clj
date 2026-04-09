@@ -1,7 +1,7 @@
-(ns eido.lsystem-test
+(ns eido.gen.lsystem-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.lsystem :as lsystem]))
+    [eido.gen.lsystem :as lsystem]))
 
 (deftest expand-string-test
   (testing "applies rules to axiom"

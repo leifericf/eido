@@ -1,4 +1,4 @@
-(ns eido.stipple)
+(ns eido.gen.stipple)
 
 ;; --- Poisson disk sampling ---
 

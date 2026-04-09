@@ -1,7 +1,7 @@
-(ns eido.scatter
+(ns eido.gen.scatter
   (:require
-    [eido.noise :as noise]
-    [eido.stipple :as stipple]))
+    [eido.gen.noise :as noise]
+    [eido.gen.stipple :as stipple]))
 
 ;; --- distribution generators ---
 

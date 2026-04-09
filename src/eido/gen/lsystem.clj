@@ -1,4 +1,4 @@
-(ns eido.lsystem)
+(ns eido.gen.lsystem)
 
 ;; --- string rewriting ---
 

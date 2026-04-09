@@ -6,7 +6,7 @@
     [eido.ir.field :as field]
     [eido.ir.material :as material]
     [eido.obj :as obj]
-    [eido.scatter :as scatter]
+    [eido.gen.scatter :as scatter]
     [eido.scene3d :as s3d]))
 
 ;; --- 1. Utah Teapot (static) ---

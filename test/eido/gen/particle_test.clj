@@ -1,7 +1,7 @@
-(ns eido.particle-test
+(ns eido.gen.particle-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.particle :as particle]
+    [eido.gen.particle :as particle]
     [eido.scene3d :as s3d]))
 
 ;; --- determinism ---

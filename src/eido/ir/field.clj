@@ -10,7 +10,7 @@
     :field/constant   — uniform value everywhere
     :field/distance   — distance from a point"
   (:require
-    [eido.noise :as noise]))
+    [eido.gen.noise :as noise]))
 
 ;; --- field constructors ---
 

@@ -1,7 +1,7 @@
-(ns eido.hatch-test
+(ns eido.gen.hatch-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.hatch :as hatch]))
+    [eido.gen.hatch :as hatch]))
 
 ;; --- line generation ---
 

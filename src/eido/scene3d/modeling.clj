@@ -2,9 +2,9 @@
   "Polygonal modeling operations: extrude, inset, bevel, detail, L-system, instancing."
   (:require
     [eido.ir.field :as field]
-    [eido.lsystem :as lsystem]
+    [eido.gen.lsystem :as lsystem]
+    [eido.gen.noise :as noise]
     [eido.math3d :as m]
-    [eido.noise :as noise]
     [eido.scene3d.mesh :as mesh]
     [eido.scene3d.transform :as xform]
     [eido.scene3d.util :as u]))

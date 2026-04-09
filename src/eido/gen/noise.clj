@@ -1,4 +1,4 @@
-(ns eido.noise)
+(ns eido.gen.noise)
 
 ;; --- permutation table ---
 

@@ -3,18 +3,18 @@
   {:category "Artisan"}
   (:require
     [eido.animate :as anim]
-    [eido.contour :as contour]
-    [eido.flow :as flow]
-    [eido.lsystem :as lsystem]
+    [eido.gen.contour :as contour]
+    [eido.gen.flow :as flow]
+    [eido.gen.lsystem :as lsystem]
     [eido.path.morph :as morph]
-    [eido.noise :as noise]
+    [eido.gen.noise :as noise]
     [eido.palette :as palette]
     [eido.path :as path]
-    [eido.scatter :as scatter]
+    [eido.gen.scatter :as scatter]
     [eido.scene :as scene]
     [eido.scene3d :as s3d]
     [eido.vary :as vary]
-    [eido.voronoi :as voronoi]))
+    [eido.gen.voronoi :as voronoi]))
 
 ;; --- 1. Woodcut Landscape ---
 

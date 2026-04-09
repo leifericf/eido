@@ -1,7 +1,7 @@
-(ns eido.stipple-test
+(ns eido.gen.stipple-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.stipple :as stipple]))
+    [eido.gen.stipple :as stipple]))
 
 ;; --- poisson disk sampling ---
 

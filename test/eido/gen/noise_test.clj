@@ -1,7 +1,7 @@
-(ns eido.noise-test
+(ns eido.gen.noise-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.noise :as noise]))
+    [eido.gen.noise :as noise]))
 
 ;; --- perlin2d ---
 

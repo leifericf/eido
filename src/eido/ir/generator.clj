@@ -13,16 +13,16 @@
     :generator/delaunay   — Delaunay triangulation edges
     :generator/decorator  — shapes placed along a path"
   (:require
-    [eido.contour :as contour]
-    [eido.path.decorate :as decorator]
-    [eido.flow :as flow]
+    [eido.gen.contour :as contour]
+    [eido.gen.flow :as flow]
+    [eido.gen.noise :as noise]
+    [eido.gen.particle :as particle]
+    [eido.gen.scatter :as scatter]
+    [eido.gen.voronoi :as voronoi]
     [eido.ir.lower :as lower]
     [eido.ir.vary :as ir-vary]
-    [eido.noise :as noise]
-    [eido.particle :as particle]
-    [eido.scatter :as scatter]
-    [eido.vary :as vary]
-    [eido.voronoi :as voronoi]))
+    [eido.path.decorate :as decorator]
+    [eido.vary :as vary]))
   ;; NOTE: no dependency on eido.compile — generator lowering is self-sufficient
 
 ;; --- generator constructors ---

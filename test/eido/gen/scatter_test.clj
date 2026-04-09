@@ -1,7 +1,7 @@
-(ns eido.scatter-test
+(ns eido.gen.scatter-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.scatter :as scatter]))
+    [eido.gen.scatter :as scatter]))
 
 ;; --- distribution generators ---
 

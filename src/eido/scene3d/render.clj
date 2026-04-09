@@ -2,7 +2,7 @@
   "3D rendering: shading, NPR, mesh projection, depth sorting,
   convenience wrappers, and text mesh."
   (:require
-    [eido.hatch :as hatch]
+    [eido.gen.hatch :as hatch]
     [eido.math3d :as m]
     [eido.scene :as scene]
     [eido.scene3d.camera :as camera]
@@ -10,7 +10,7 @@
     [eido.scene3d.topology :as topology]
     [eido.scene3d.transform :as xform]
     [eido.scene3d.util :as u]
-    [eido.stipple :as stipple]
+    [eido.gen.stipple :as stipple]
     [eido.text :as text]))
 
 ;; --- shading ---

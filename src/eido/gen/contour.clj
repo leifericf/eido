@@ -1,6 +1,6 @@
-(ns eido.contour
+(ns eido.gen.contour
   (:require
-    [eido.noise :as noise]))
+    [eido.gen.noise :as noise]))
 
 ;; --- marching squares ---
 

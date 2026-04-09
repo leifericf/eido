@@ -2,7 +2,7 @@
   (:require
     [clojure.test :refer [deftest is testing]]
     [eido.ir.field :as field]
-    [eido.noise :as noise]))
+    [eido.gen.noise :as noise]))
 
 (deftest noise-field-constructor-test
   (let [f (field/noise-field :scale 0.02 :variant :fbm :seed 42 :octaves 6)]

@@ -1,8 +1,8 @@
-(ns eido.flow-test
+(ns eido.gen.flow-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.flow :as flow]
-    [eido.noise :as noise]))
+    [eido.gen.flow :as flow]
+    [eido.gen.noise :as noise]))
 
 (deftest flow-field-basic-test
   (testing "generates path nodes"

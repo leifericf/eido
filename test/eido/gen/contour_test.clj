@@ -1,8 +1,8 @@
-(ns eido.contour-test
+(ns eido.gen.contour-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.contour :as contour]
-    [eido.noise :as noise]))
+    [eido.gen.contour :as contour]
+    [eido.gen.noise :as noise]))
 
 (deftest contour-lines-basic-test
   (testing "generates path nodes from noise"

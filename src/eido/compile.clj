@@ -2,19 +2,19 @@
   (:refer-clojure :exclude [compile])
   (:require
     [eido.color :as color]
-    [eido.contour :as contour]
-    [eido.flow :as flow]
+    [eido.gen.contour :as contour]
+    [eido.gen.flow :as flow]
+    [eido.gen.lsystem :as lsystem]
+    [eido.gen.scatter :as scatter]
+    [eido.gen.voronoi :as voronoi]
     [eido.ir :as ir]
-    [eido.lsystem :as lsystem]
     [eido.path.decorate :as decorator]
     [eido.path.distort :as distort]
     [eido.path.stroke :as stroke]
     [eido.path.warp :as warp]
-    [eido.scatter :as scatter]
     [eido.text :as text]
     [eido.validate :as validate]
-    [eido.vary :as vary]
-    [eido.voronoi :as voronoi]))
+    [eido.vary :as vary]))
 
 ;; Legacy compile-tree, compile-node, compile-style, and related helpers
 ;; have been removed. The compilation pipeline now routes through
@@ -154,9 +154,9 @@
                                        (assoc :node/transform (:node/transform node))))
                :contour             (let [[bx by bw bh] (:contour/bounds node)
                                           noise-fn (case (get node :contour/fn :perlin)
-                                                     :perlin eido.noise/perlin2d
+                                                     :perlin eido.gen.noise/perlin2d
                                                      :fbm    (fn [x y opts]
-                                                               (eido.noise/fbm eido.noise/perlin2d x y
+                                                               (eido.gen.noise/fbm eido.gen.noise/perlin2d x y
                                                                  (merge opts (:contour/opts node)))))
                                           paths (contour/contour-lines noise-fn bx by bw bh
                                                   (or (:contour/opts node) {}))

@@ -3,7 +3,7 @@
   {:category "Particles"}
   (:require
     [eido.animate :as anim]
-    [eido.particle :as particle]
+    [eido.gen.particle :as particle]
     [eido.scene3d :as s3d]))
 
 ;; --- 1. Campfire ---
