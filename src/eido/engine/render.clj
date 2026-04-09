@@ -302,67 +302,69 @@
     (.setRGB img 0 0 w h data 0 w)))
 
 (defn- box-blur-pass
-  "Single horizontal+vertical box blur pass on ARGB int array."
+  "Single horizontal+vertical box blur pass on ARGB int array.
+  Uses clamped-edge sliding window: out-of-bounds positions repeat the
+  nearest edge pixel so the window always has exactly `diam` samples."
   [^ints src ^ints dst w h radius]
   (let [diam (inc (* 2 radius))
         inv  (/ 1.0 diam)]
     ;; Horizontal pass: src -> dst
     (dotimes [y h]
-      (let [row (* y w)]
-        (loop [x 0 sa 0 sr 0 sg 0 sb 0]
+      (let [row (* y w)
+            ;; Seed the window for x=0: positions [-radius, radius] clamped
+            [sa sr sg sb]
+            (loop [i (- radius) sa (long 0) sr (long 0) sg (long 0) sb (long 0)]
+              (if (> i radius)
+                [sa sr sg sb]
+                (let [ci (max 0 (min (dec w) i))
+                      rv (aget src (+ row ci))]
+                  (recur (inc i)
+                         (+ sa (argb-a rv)) (+ sr (argb-r rv))
+                         (+ sg (argb-g rv)) (+ sb (argb-b rv))))))]
+        (loop [x 0 sa sa sr sr sg sg sb sb]
           (when (< x w)
-            (let [rx (min (dec w) (+ x radius))
-                  rv (aget src (+ row rx))
-                  sa (+ sa (argb-a rv))
-                  sr (+ sr (argb-r rv))
-                  sg (+ sg (argb-g rv))
-                  sb (+ sb (argb-b rv))
-                  lx (- x radius 1)]
-              (if (>= lx 0)
-                (let [lv (aget src (+ row lx))
-                      sa (- sa (argb-a lv))
-                      sr (- sr (argb-r lv))
-                      sg (- sg (argb-g lv))
-                      sb (- sb (argb-b lv))]
-                  (aset dst (+ row x)
-                    (unchecked-int
-                      (pack-argb (int (* sa inv)) (int (* sr inv))
-                                 (int (* sg inv)) (int (* sb inv)))))
-                  (recur (inc x) sa sr sg sb))
-                (do
-                  (aset dst (+ row x)
-                    (unchecked-int
-                      (pack-argb (int (* sa inv)) (int (* sr inv))
-                                 (int (* sg inv)) (int (* sb inv)))))
-                  (recur (inc x) sa sr sg sb))))))))
+            ;; Write the averaged pixel
+            (aset dst (+ row x)
+              (unchecked-int
+                (pack-argb (int (* sa inv)) (int (* sr inv))
+                           (int (* sg inv)) (int (* sb inv)))))
+            ;; Slide window: remove old left edge, add new right edge
+            (let [old-left  (max 0 (- x radius))
+                  new-right (min (dec w) (+ x radius 1))
+                  lv (aget src (+ row old-left))
+                  rv (aget src (+ row new-right))]
+              (recur (inc x)
+                     (+ (- sa (argb-a lv)) (argb-a rv))
+                     (+ (- sr (argb-r lv)) (argb-r rv))
+                     (+ (- sg (argb-g lv)) (argb-g rv))
+                     (+ (- sb (argb-b lv)) (argb-b rv))))))))
     ;; Vertical pass: dst -> src
     (dotimes [x w]
-      (loop [y 0 sa 0 sr 0 sg 0 sb 0]
-        (when (< y h)
-          (let [ry (min (dec h) (+ y radius))
-                rv (aget dst (+ (* ry w) x))
-                sa (+ sa (argb-a rv))
-                sr (+ sr (argb-r rv))
-                sg (+ sg (argb-g rv))
-                sb (+ sb (argb-b rv))
-                ly (- y radius 1)]
-            (if (>= ly 0)
-              (let [lv (aget dst (+ (* ly w) x))
-                    sa (- sa (argb-a lv))
-                    sr (- sr (argb-r lv))
-                    sg (- sg (argb-g lv))
-                    sb (- sb (argb-b lv))]
-                (aset src (+ (* y w) x)
-                  (unchecked-int
-                    (pack-argb (int (* sa inv)) (int (* sr inv))
-                               (int (* sg inv)) (int (* sb inv)))))
-                (recur (inc y) sa sr sg sb))
-              (do
-                (aset src (+ (* y w) x)
-                  (unchecked-int
-                    (pack-argb (int (* sa inv)) (int (* sr inv))
-                               (int (* sg inv)) (int (* sb inv)))))
-                (recur (inc y) sa sr sg sb)))))))))
+      (let [;; Seed the window for y=0: positions [-radius, radius] clamped
+            [sa sr sg sb]
+            (loop [i (- radius) sa (long 0) sr (long 0) sg (long 0) sb (long 0)]
+              (if (> i radius)
+                [sa sr sg sb]
+                (let [ci (max 0 (min (dec h) i))
+                      rv (aget dst (+ (* ci w) x))]
+                  (recur (inc i)
+                         (+ sa (argb-a rv)) (+ sr (argb-r rv))
+                         (+ sg (argb-g rv)) (+ sb (argb-b rv))))))]
+        (loop [y 0 sa sa sr sr sg sg sb sb]
+          (when (< y h)
+            (aset src (+ (* y w) x)
+              (unchecked-int
+                (pack-argb (int (* sa inv)) (int (* sr inv))
+                           (int (* sg inv)) (int (* sb inv)))))
+            (let [old-top    (max 0 (- y radius))
+                  new-bottom (min (dec h) (+ y radius 1))
+                  lv (aget dst (+ (* old-top w) x))
+                  rv (aget dst (+ (* new-bottom w) x))]
+              (recur (inc y)
+                     (+ (- sa (argb-a lv)) (argb-a rv))
+                     (+ (- sr (argb-r lv)) (argb-r rv))
+                     (+ (- sg (argb-g lv)) (argb-g rv))
+                     (+ (- sb (argb-b lv)) (argb-b rv))))))))))
 
 
 (defn- box-blur

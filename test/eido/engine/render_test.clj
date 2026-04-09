@@ -539,3 +539,29 @@
           [r g b] (pixel-rgb img 50 50)]
       (is (< (abs (- r 100)) 2) "black screen preserves red")
       (is (< (abs (- g 50)) 2) "black screen preserves green"))))
+
+;; --- blur filter tests ---
+
+(deftest render-blur-uniform-preserves-color-test
+  (testing "blurring a uniform color image preserves the color everywhere"
+    (let [ir {:ir/size [30 30]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :buffer
+                         :composite :src-over
+                         :filter [:blur 3]
+                         :opacity 1.0
+                         :transforms []
+                         :clip nil
+                         :ops [{:op :rect :x 0 :y 0 :w 30 :h 30
+                                :fill {:r 200 :g 100 :b 50 :a 1.0}
+                                :stroke-color nil :stroke-width nil
+                                :opacity 1.0 :transforms []}]}]}
+          img (render/render ir)]
+      (is (= [200 100 50] (pixel-rgb img 15 15))
+          "center pixel should maintain color after blur")
+      (is (= [200 100 50] (pixel-rgb img 1 1))
+          "near-corner pixel should maintain color after blur")
+      (is (= [200 100 50] (pixel-rgb img 1 15))
+          "left edge pixel should maintain color after blur")
+      (is (= [200 100 50] (pixel-rgb img 15 1))
+          "top edge pixel should maintain color after blur"))))
