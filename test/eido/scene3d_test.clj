@@ -840,6 +840,38 @@
       (let [circles (filter #(= :shape/circle (:node/type %)) (:group/children result))]
         (is (pos? (count circles)))))))
 
+;; --- 3D L-system ---
+
+(deftest lsystem-mesh-basic-test
+  (let [mesh (s3d/lsystem-mesh {:axiom "F"
+                                :rules {"F" "F[+F][-F]"}
+                                :iterations 2
+                                :angle 30
+                                :length 0.5
+                                :profile [[0.05 0] [0 0.05] [-0.05 0] [0 -0.05]]
+                                :segments 4})]
+    (testing "produces faces"
+      (is (pos? (count mesh))))
+    (testing "all faces have normals"
+      (doseq [face mesh]
+        (is (some? (:face/normal face)))))))
+
+(deftest lsystem-mesh-composes-test
+  (testing "L-system mesh composes with color"
+    (let [result (-> (s3d/lsystem-mesh {:axiom "F"
+                                        :rules {"F" "FF[+F][-F]"}
+                                        :iterations 2
+                                        :angle 25
+                                        :length 0.3
+                                        :profile [[0.03 0] [0 0.03] [-0.03 0] [0 -0.03]]
+                                        :segments 4})
+                     (s3d/color-mesh {:color/type :axis-gradient
+                                      :color/axis :y
+                                      :color/palette [[:color/rgb 100 60 30]
+                                                      [:color/rgb 60 120 40]]}))]
+      (is (pos? (count result)))
+      (is (every? #(some? (get-in % [:face/style :style/fill])) result)))))
+
 ;; --- instancing ---
 
 (deftest instance-mesh-basic-test

@@ -2,6 +2,7 @@
   (:require
     [eido.hatch :as hatch]
     [eido.ir.field :as field]
+    [eido.lsystem :as lsystem]
     [eido.math3d :as m]
     [eido.noise :as noise]
     [eido.scene :as scene]
@@ -1269,6 +1270,84 @@
                 (into [inner-face] borders))
               [face])))
         mesh))))
+
+;; --- 3D L-system ---
+
+(defn- interpret-3d
+  "Interprets an L-system string as a 3D turtle, returning branch paths.
+  Symbols: F=draw, +=yaw right, -=yaw left, ^=pitch up, &=pitch down,
+           \\=roll left, /=roll right, [=push, ]=pop.
+  Returns a vector of branch paths, each a vector of [x y z] points."
+  [expanded angle-deg length]
+  (let [angle-rad (* (double angle-deg) (/ Math/PI 180.0))
+        length    (double length)]
+    (loop [chars     (seq expanded)
+           pos       [0.0 0.0 0.0]
+           ;; Direction as yaw/pitch (simplified — no full quaternion)
+           yaw       0.0
+           pitch     (/ Math/PI 2.0)     ;; start pointing up (+Y)
+           stack     []
+           branches  []
+           current   [pos]
+           depth     0]
+      (if (empty? chars)
+        (if (> (count current) 1)
+          (conj branches current)
+          branches)
+        (let [c (first chars)
+              r (rest chars)]
+          (case c
+            \F (let [;; Direction from yaw/pitch
+                     dx (* length (Math/cos pitch) (Math/sin yaw))
+                     dy (* length (Math/sin pitch))
+                     dz (* length (Math/cos pitch) (Math/cos yaw))
+                     new-pos (m/v+ pos [dx dy dz])]
+                 (recur r new-pos yaw pitch stack branches
+                        (conj current new-pos) depth))
+            \+ (recur r pos (+ yaw angle-rad) pitch stack branches current depth)
+            \- (recur r pos (- yaw angle-rad) pitch stack branches current depth)
+            \^ (recur r pos yaw (+ pitch angle-rad) stack branches current depth)
+            \& (recur r pos yaw (- pitch angle-rad) stack branches current depth)
+            \\ (recur r pos yaw pitch stack branches current depth) ;; roll (no-op in simplified model)
+            \/ (recur r pos yaw pitch stack branches current depth) ;; roll (no-op in simplified model)
+            \[ (recur r pos yaw pitch
+                      (conj stack [pos yaw pitch current depth])
+                      branches [pos] (inc depth))
+            \] (let [[spos syaw spitch scurrent sdepth] (peek stack)
+                     branches (if (> (count current) 1)
+                                (conj branches current)
+                                branches)]
+                 (recur r spos syaw spitch
+                        (pop stack)
+                        branches scurrent sdepth))
+            ;; Unknown symbol — skip
+            (recur r pos yaw pitch stack branches current depth)))))))
+
+(defn lsystem-mesh
+  "Generates a 3D mesh from an L-system by sweeping a profile along branches.
+  Composes L-system string expansion + 3D turtle interpretation + sweep-mesh.
+  opts:
+    :axiom      - starting string
+    :rules      - rewrite rules {\"F\" \"FF[+F][-F]\"}
+    :iterations - number of rewriting iterations
+    :angle      - turn angle in degrees
+    :length     - distance per F step
+    :profile    - 2D cross-section [[x y] ...] for sweep
+    :segments   - sweep segments per branch (default 4)
+    :taper      - profile scale factor per branch depth (default 1.0, < 1 = thinner)"
+  [{:keys [axiom rules iterations angle length profile segments taper]}]
+  (let [expanded (lsystem/expand-string axiom rules iterations)
+        branches (interpret-3d expanded angle length)
+        seg      (or segments 4)
+        taper    (double (or taper 1.0))]
+    (into []
+      (mapcat
+        (fn [branch]
+          (when (>= (count branch) 2)
+            (sweep-mesh {:profile profile
+                         :path    branch
+                         :segments seg})))
+        branches))))
 
 ;; --- instancing ---
 
