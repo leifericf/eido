@@ -207,28 +207,23 @@
       :content
       [:div
        [:p "Eido understands several color formats. Use whichever feels natural — they all work everywhere:"]
-       [:pre [:code
-              "[:color/rgb 255 0 0]             ;; red, green, blue (0-255)
-[:color/rgba 255 0 0 0.5]        ;; same, with transparency (0-1)
-[:color/hsl 0 1.0 0.5]           ;; hue (0-360), saturation, lightness
-[:color/hsb 0 1.0 1.0]           ;; hue, saturation, brightness
-[:color/hex \"#FF0000\"]           ;; hex notation
-[:color/name \"coral\"]            ;; 148 CSS named colors"]]
-       [:p "All formats work directly in style maps — just drop them in:"]
-       [:pre [:code
-              "{:style/fill [:color/hsl 200 0.9 0.5]}
-{:style/fill [:color/hex \"#FF6B35\"]}
-{:style/fill [:color/name \"tomato\"]}"]]
+       [:pre {:data-img "docs-color-formats.png"} [:code
+              "[:color/name \"coral\"]        ;; 148 CSS named colors
+[:color/rgb 255 127 80]      ;; red, green, blue (0-255)
+[:color/rgba 255 127 80 0.5] ;; with transparency (0-1)
+[:color/hsl 16 1.0 0.66]    ;; hue, saturation, lightness
+[:color/hex \"#FF7F50\"]      ;; hex notation"]]
+       [:p "All five lines above describe the same color — coral. Use whichever format suits your workflow."]
        [:h4 "Color manipulation"]
-       [:p "The " [:code "eido.color"] " namespace provides functions for adjusting colors — lighten, darken, blend, shift hue:"]
-       [:pre [:code
+       [:p "Adjust colors programmatically — lighten, darken, blend, or shift the hue:"]
+       [:pre {:data-img "docs-color-manip.png"} [:code
               "(require '[eido.color :as color])
 
-(color/lighten [:color/rgb 255 0 0] 0.2)     ;; lighter red
-(color/darken [:color/rgb 255 0 0] 0.2)      ;; darker red
-(color/saturate [:color/rgb 150 100 100] 0.3) ;; more vivid
-(color/rotate-hue [:color/rgb 255 0 0] 120)   ;; shift hue → green
-(color/lerp color-a color-b 0.5)               ;; blend two colors"]]]}
+(color/lighten    [:color/name \"red\"] 0.2) ;; lighter
+(color/darken     [:color/name \"red\"] 0.2) ;; darker
+(color/saturate   [:color/name \"red\"] 0.3) ;; more vivid
+(color/rotate-hue [:color/name \"red\"] 120) ;; shift hue
+(color/lerp color-a color-b 0.5)             ;; blend 50/50"]]]}
 
      {:id    "stroke-styling"
       :title "Strokes"
@@ -454,7 +449,7 @@
       :content
       [:div
        [:p "Particle systems simulate many small objects — sparks, snowflakes, smoke, confetti — moving under physics forces. You describe the behavior (where particles spawn, how long they live, what forces act on them) and Eido simulates the result. Same seed, same simulation, every time."]
-       [:pre [:code
+       [:pre {:data-img "docs-particles.gif"} [:code
               "(require '[eido.gen.particle :as particle])
 
 ;; Pre-compute 60 frames of fire particles

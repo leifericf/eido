@@ -5,6 +5,7 @@
     [clojure.repl :as repl]
     [clojure.string :as str]
     [eido.animate :as anim]
+    [eido.color :as color]
     [eido.color.palette :as palette]
     [eido.core :as eido]
     [eido.gen.boids :as boids]
@@ -12,6 +13,7 @@
     [eido.gen.circle :as circle]
     [eido.gen.flow :as flow]
     [eido.gen.noise :as noise]
+    [eido.gen.particle :as particle]
     [eido.gen.prob :as prob]
     [eido.gen.series :as series]
     [eido.gen.subdivide :as subdivide]
@@ -610,6 +612,71 @@
                      :style/fill [:color/rgb 140 140 150]}]))
                editions))})
 
+     ;; --- Color docs scenes ---
+
+     "docs-color-formats.png"
+     {:image/size [400 100] :image/background bg
+      :image/nodes
+      (vec (map-indexed
+             (fn [i [label color]]
+               {:node/type :group
+                :group/children
+                [{:node/type :shape/rect
+                  :rect/xy [(+ 10 (* i 78)) 10] :rect/size [70 50]
+                  :rect/corner-radius 6
+                  :style/fill color}
+                 {:node/type :shape/text
+                  :text/content label
+                  :text/origin [(+ 45 (* i 78)) 80]
+                  :text/font {:font/family "SansSerif" :font/size 9}
+                  :text/align :center
+                  :style/fill [:color/rgb 100 100 100]}]})
+             [["name" [:color/name "coral"]]
+              ["rgb" [:color/rgb 255 127 80]]
+              ["rgba" [:color/rgba 255 127 80 0.5]]
+              ["hsl" [:color/hsl 16 1.0 0.66]]
+              ["hex" [:color/hex "#FF7F50"]]]))}
+
+     "docs-color-manip.png"
+     (let [base [:color/name "red"]]
+       {:image/size [400 80] :image/background bg
+        :image/nodes
+        (vec (map-indexed
+               (fn [i [label color]]
+                 {:node/type :group
+                  :group/children
+                  [{:node/type :shape/rect
+                    :rect/xy [(+ 10 (* i 65)) 10] :rect/size [55 40]
+                    :rect/corner-radius 5
+                    :style/fill color}
+                   {:node/type :shape/text
+                    :text/content label
+                    :text/origin [(+ 37 (* i 65)) 68]
+                    :text/font {:font/family "SansSerif" :font/size 8}
+                    :text/align :center
+                    :style/fill [:color/rgb 100 100 100]}]})
+               [["original" base]
+                ["lighten" (color/lighten base 0.2)]
+                ["darken" (color/darken base 0.2)]
+                ["saturate" (color/saturate base 0.3)]
+                ["hue+120" (color/rotate-hue base 120)]
+                ["blend" (color/lerp base [:color/name "blue"] 0.5)]]))})
+
+     "docs-particles.gif"
+     (let [fire-frames (vec (particle/simulate
+                              (particle/with-position
+                                particle/fire [200 330])
+                              50 {:fps 25}))]
+       {:frames
+        (anim/frames (count fire-frames)
+          (fn [t]
+            (let [i (min (int (* t (dec (count fire-frames))))
+                         (dec (count fire-frames)))]
+              {:image/size [400 380]
+               :image/background [:color/rgb 20 15 10]
+               :image/nodes (nth fire-frames i)})))
+        :fps 25})
+
      ;; --- Additional docs scenes ---
 
      "docs-strokes.png"
@@ -725,7 +792,8 @@
            result (s3d/sphere proj [0 0 0] 1.5
                     {:style {:style/fill [:color/rgb 100 150 255]}
                      :light light
-                     :subdivisions 3})]
+                     :subdivisions 4
+                     :smooth true})]
        {:image/size [400 400] :image/background bg
         :image/nodes (if (sequential? result) (vec result) [result])})
 
