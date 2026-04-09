@@ -50,10 +50,12 @@
 (defn- get-perm
   "Returns a permutation table for the given seed, caching results."
   [seed]
-  (or (get @perm-cache seed)
-      (let [p (make-perm seed)]
-        (swap! perm-cache assoc seed p)
-        p)))
+  (let [cache (swap! perm-cache
+                (fn [m]
+                  (if (contains? m seed)
+                    m
+                    (assoc m seed (make-perm seed)))))]
+    (get cache seed)))
 
 (defn- perm-at ^long [^ints perm ^long i]
   (aget perm (bit-and i 255)))

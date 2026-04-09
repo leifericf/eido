@@ -106,11 +106,13 @@
   (if dash
     ;; Dashed strokes not cached (float-array identity varies)
     (BasicStroke. w cap join (float 10.0) (float-array dash) (float 0.0))
-    (let [k [w cap join]]
-      (or (get @stroke-cache k)
-          (let [s (BasicStroke. w cap join)]
-            (swap! stroke-cache assoc k s)
-            s)))))
+    (let [k     [w cap join]
+          cache (swap! stroke-cache
+                  (fn [m]
+                    (if (contains? m k)
+                      m
+                      (assoc m k (BasicStroke. w cap join)))))]
+      (get cache k))))
 
 (defn- apply-stroke [^Graphics2D g shape {:keys [stroke-color stroke-width
                                                   stroke-cap stroke-join
