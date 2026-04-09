@@ -1,6 +1,6 @@
 # Changes
 
-## Unreleased
+## v1.0.0-beta2 — Generative Art & Artist Experience
 
 ### New modules
 
