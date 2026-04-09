@@ -64,7 +64,7 @@
 
 ### Gallery
 
-- Add 17 new gallery examples: organic sculpture, alien landscape, coral growth, twisted vase, crystal cluster, geometric panels, geodesic sphere, mirrored sculpture, smooth geodesic, sweep tube, auto-smooth cube, detaild panel, vertex painted sphere, procedural textured sphere, scatter forest, hatched sphere, L-system tree
+- Add 17 new gallery examples: organic sculpture, alien landscape, coral growth, twisted vase, crystal cluster, geometric panels, geodesic sphere, mirrored sculpture, smooth geodesic, sweep tube, auto-smooth cube, detailed panel, vertex painted sphere, procedural textured sphere, scatter forest, hatched sphere, L-system tree
 
 ## v1.0.0-alpha8 — Semantic IR & Procedural Fills
 
