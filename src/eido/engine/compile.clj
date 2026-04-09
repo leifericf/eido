@@ -75,6 +75,197 @@
 ;; expand-effects removed — effects are now handled by eido.ir.effect
 ;; via scene-node->draw-item's effect extraction.
 
+;; --- node expansion helpers ---
+
+(defn- wrap-group
+  "Wraps children in a group node, propagating opacity and transform
+  from the source node."
+  [children node]
+  (cond-> {:node/type      :group
+           :group/children children}
+    (:node/opacity node)
+    (assoc :node/opacity (:node/opacity node))
+    (:node/transform node)
+    (assoc :node/transform (:node/transform node))))
+
+(defn- wrap-path
+  "Wraps path commands in a path node, propagating style, opacity,
+  and transform from the source node."
+  [commands node]
+  (cond-> {:node/type     :shape/path
+           :path/commands commands}
+    (:style/fill node)
+    (assoc :style/fill (:style/fill node))
+    (:style/stroke node)
+    (assoc :style/stroke (:style/stroke node))
+    (:node/opacity node)
+    (assoc :node/opacity (:node/opacity node))
+    (:node/transform node)
+    (assoc :node/transform (:node/transform node))))
+
+(defn- apply-style-overrides
+  "Applies per-item style overrides from an indexed override list.
+  Base style comes from the parent node."
+  [items node overrides style-keys]
+  (vec (map-indexed
+         (fn [i item]
+           (let [ovr (when overrides
+                       (nth overrides (mod i (count overrides))))]
+             (reduce (fn [m k]
+                       (cond-> m
+                         (k node) (assoc k (k node))
+                         (and ovr (k ovr)) (assoc k (k ovr))))
+                     item
+                     style-keys)))
+         items)))
+
+(declare expand-node)
+
+;; --- per-type expanders ---
+
+(defn- expand-scatter [node]
+  (let [children (-> (scatter/scatter->nodes
+                       (:scatter/shape node)
+                       (:scatter/positions node)
+                       (:scatter/jitter node))
+                     (vary/apply-overrides
+                       (:scatter/overrides node)))]
+    (wrap-group children node)))
+
+(defn- expand-voronoi [node]
+  (let [[bx by bw bh] (:voronoi/bounds node)
+        cells (voronoi/voronoi-cells
+                (:voronoi/points node) bx by bw bh)
+        styled (apply-style-overrides
+                 cells node (:voronoi/overrides node)
+                 [:style/fill :style/stroke :node/opacity])]
+    (wrap-group styled node)))
+
+(defn- expand-delaunay [node]
+  (let [[bx by bw bh] (:delaunay/bounds node)
+        edges (voronoi/delaunay-edges
+                (:delaunay/points node) bx by bw bh)
+        styled (mapv #(cond-> %
+                        (:style/stroke node)
+                        (assoc :style/stroke (:style/stroke node)))
+                     edges)]
+    (wrap-group styled node)))
+
+(defn- expand-lsystem [node]
+  (let [cmds (lsystem/lsystem->path-cmds
+               (:lsystem/axiom node)
+               (:lsystem/rules node)
+               (get node :lsystem/iterations 3)
+               (get node :lsystem/angle 25.0)
+               (get node :lsystem/length 5.0)
+               (get node :lsystem/origin [0 0])
+               (get node :lsystem/heading -90.0))]
+    (wrap-path cmds node)))
+
+(defn- expand-contour [node]
+  (let [[bx by bw bh] (:contour/bounds node)
+        noise-fn (case (get node :contour/fn :perlin)
+                   :perlin eido.gen.noise/perlin2d
+                   :fbm    (fn [x y opts]
+                             (eido.gen.noise/fbm
+                               eido.gen.noise/perlin2d x y
+                               (merge opts (:contour/opts node)))))
+        paths (contour/contour-lines noise-fn bx by bw bh
+                (or (:contour/opts node) {}))
+        styled (mapv #(cond-> %
+                        (:style/stroke node)
+                        (assoc :style/stroke (:style/stroke node)))
+                     paths)]
+    (wrap-group styled node)))
+
+(defn- expand-flow-field [node]
+  (let [[bx by bw bh] (:flow/bounds node)
+        paths     (flow/flow-field bx by bw bh
+                    (or (:flow/opts node) {}))
+        overrides (:flow/overrides node)
+        styled    (vec (map-indexed
+                         (fn [i p]
+                           (let [ovr (when overrides
+                                       (nth overrides
+                                         (mod i (count overrides))))]
+                             (cond-> p
+                               (:style/fill node)
+                               (assoc :style/fill (:style/fill node))
+                               (:style/stroke node)
+                               (assoc :style/stroke (:style/stroke node))
+                               (:style/stroke ovr)
+                               (assoc :style/stroke (:style/stroke ovr))
+                               (:node/opacity ovr)
+                               (assoc :node/opacity (:node/opacity ovr)))))
+                         paths))]
+    (wrap-group styled node)))
+
+(defn- expand-symmetry [node]
+  (let [children  (mapv expand-node (:group/children node))
+        sym-type  (:symmetry/type node)
+        overrides (:symmetry/overrides node)
+        sym-children
+        (case sym-type
+          :radial
+          (let [n (:symmetry/n node)
+                [cx cy] (:symmetry/center node [0 0])
+                step (/ (* 2.0 Math/PI) n)]
+            (mapv (fn [i]
+                    {:node/type      :group
+                     :node/transform [[:transform/translate cx cy]
+                                      [:transform/rotate (* i step)]
+                                      [:transform/translate (- cx) (- cy)]]
+                     :group/children children})
+                  (range n)))
+          :bilateral
+          (let [[cx cy] (:symmetry/center node [0 0])
+                axis    (:symmetry/axis node :vertical)
+                mirror  (case axis
+                          :vertical
+                          [[:transform/translate cx 0]
+                           [:transform/scale -1 1]
+                           [:transform/translate (- cx) 0]]
+                          :horizontal
+                          [[:transform/translate 0 cy]
+                           [:transform/scale 1 -1]
+                           [:transform/translate 0 (- cy)]])]
+            [{:node/type :group :group/children children}
+             {:node/type      :group
+              :node/transform mirror
+              :group/children children}])
+          :grid
+          (let [cols (:symmetry/cols node)
+                rows (:symmetry/rows node)
+                [dx dy] (:symmetry/spacing node [100 100])]
+            (into []
+                  (for [row (range rows)
+                        col (range cols)]
+                    {:node/type      :group
+                     :node/transform [[:transform/translate
+                                        (* col dx) (* row dy)]]
+                     :group/children children}))))]
+    (wrap-group (vary/apply-overrides sym-children overrides) node)))
+
+(defn- expand-path-decorated [node]
+  (let [children (-> (decorator/decorate-path
+                       (:path/commands node)
+                       (:decorator/shape node)
+                       (get node :decorator/spacing 20)
+                       (get node :decorator/rotate? true))
+                     (vary/apply-overrides
+                       (:decorator/overrides node)))]
+    (wrap-group children node)))
+
+(defn- expand-group [node]
+  (let [expanded (update node :group/children
+                   #(mapv expand-node %))]
+    (if-let [warp-spec (:group/warp expanded)]
+      (-> (warp/warp-node expanded warp-spec)
+          (dissoc :group/warp))
+      expanded)))
+
+;; --- node expansion dispatcher ---
+
 (defn- expand-node
   "Expands high-level nodes into primitive nodes.
   Text nodes become groups of path nodes. Other nodes pass through."
@@ -83,189 +274,16 @@
                :shape/text         (text/text-node->group node)
                :shape/text-glyphs  (text/text-glyphs-node->group node)
                :shape/text-on-path (text/text-on-path-node->group node)
-               :scatter            (let [children (-> (scatter/scatter->nodes
-                                                         (:scatter/shape node)
-                                                         (:scatter/positions node)
-                                                         (:scatter/jitter node))
-                                                       (vary/apply-overrides
-                                                         (:scatter/overrides node)))]
-                                     (cond-> {:node/type      :group
-                                              :group/children children}
-                                       (:node/opacity node)
-                                       (assoc :node/opacity (:node/opacity node))
-                                       (:node/transform node)
-                                       (assoc :node/transform (:node/transform node))))
-               :voronoi             (let [[bx by bw bh] (:voronoi/bounds node)
-                                          cells (voronoi/voronoi-cells
-                                                  (:voronoi/points node) bx by bw bh)
-                                          overrides (:voronoi/overrides node)
-                                          styled (vec (map-indexed
-                                                        (fn [i cell]
-                                                          (let [ovr (when overrides
-                                                                      (nth overrides (mod i (count overrides))))]
-                                                            (cond-> cell
-                                                              (:style/fill node)
-                                                              (assoc :style/fill (:style/fill node))
-                                                              (:style/stroke node)
-                                                              (assoc :style/stroke (:style/stroke node))
-                                                              (:style/fill ovr)
-                                                              (assoc :style/fill (:style/fill ovr))
-                                                              (:style/stroke ovr)
-                                                              (assoc :style/stroke (:style/stroke ovr))
-                                                              (:node/opacity ovr)
-                                                              (assoc :node/opacity (:node/opacity ovr)))))
-                                                        cells))]
-                                     (cond-> {:node/type :group
-                                              :group/children styled}
-                                       (:node/opacity node)
-                                       (assoc :node/opacity (:node/opacity node))
-                                       (:node/transform node)
-                                       (assoc :node/transform (:node/transform node))))
-               :delaunay            (let [[bx by bw bh] (:delaunay/bounds node)
-                                          edges (voronoi/delaunay-edges
-                                                  (:delaunay/points node) bx by bw bh)
-                                          styled (mapv #(cond-> %
-                                                          (:style/stroke node)
-                                                          (assoc :style/stroke (:style/stroke node)))
-                                                       edges)]
-                                     (cond-> {:node/type :group
-                                              :group/children styled}
-                                       (:node/opacity node)
-                                       (assoc :node/opacity (:node/opacity node))
-                                       (:node/transform node)
-                                       (assoc :node/transform (:node/transform node))))
-               :lsystem             (let [cmds (lsystem/lsystem->path-cmds
-                                                     (:lsystem/axiom node)
-                                                     (:lsystem/rules node)
-                                                     (get node :lsystem/iterations 3)
-                                                     (get node :lsystem/angle 25.0)
-                                                     (get node :lsystem/length 5.0)
-                                                     (get node :lsystem/origin [0 0])
-                                                     (get node :lsystem/heading -90.0))]
-                                     (cond-> {:node/type      :shape/path
-                                              :path/commands  cmds}
-                                       (:style/fill node)
-                                       (assoc :style/fill (:style/fill node))
-                                       (:style/stroke node)
-                                       (assoc :style/stroke (:style/stroke node))
-                                       (:node/opacity node)
-                                       (assoc :node/opacity (:node/opacity node))
-                                       (:node/transform node)
-                                       (assoc :node/transform (:node/transform node))))
-               :contour             (let [[bx by bw bh] (:contour/bounds node)
-                                          noise-fn (case (get node :contour/fn :perlin)
-                                                     :perlin eido.gen.noise/perlin2d
-                                                     :fbm    (fn [x y opts]
-                                                               (eido.gen.noise/fbm eido.gen.noise/perlin2d x y
-                                                                 (merge opts (:contour/opts node)))))
-                                          paths (contour/contour-lines noise-fn bx by bw bh
-                                                  (or (:contour/opts node) {}))
-                                          styled (mapv #(cond-> %
-                                                          (:style/stroke node)
-                                                          (assoc :style/stroke (:style/stroke node)))
-                                                       paths)]
-                                     (cond-> {:node/type :group
-                                              :group/children styled}
-                                       (:node/opacity node)
-                                       (assoc :node/opacity (:node/opacity node))
-                                       (:node/transform node)
-                                       (assoc :node/transform (:node/transform node))))
-               :flow-field          (let [[bx by bw bh] (:flow/bounds node)
-                                          paths (flow/flow-field bx by bw bh
-                                                  (or (:flow/opts node) {}))
-                                          overrides (:flow/overrides node)
-                                          styled (vec (map-indexed
-                                                        (fn [i p]
-                                                          (let [ovr (when overrides
-                                                                      (nth overrides (mod i (count overrides))))]
-                                                            (cond-> p
-                                                              (:style/fill node)
-                                                              (assoc :style/fill (:style/fill node))
-                                                              (:style/stroke node)
-                                                              (assoc :style/stroke (:style/stroke node))
-                                                              (:style/stroke ovr)
-                                                              (assoc :style/stroke (:style/stroke ovr))
-                                                              (:node/opacity ovr)
-                                                              (assoc :node/opacity (:node/opacity ovr)))))
-                                                        paths))]
-                                     (cond-> {:node/type :group
-                                              :group/children styled}
-                                       (:node/opacity node)
-                                       (assoc :node/opacity (:node/opacity node))
-                                       (:node/transform node)
-                                       (assoc :node/transform (:node/transform node))))
-               :symmetry           (let [children (mapv expand-node (:group/children node))
-                                          sym-type (:symmetry/type node)
-                                          overrides (:symmetry/overrides node)]
-                                     (cond-> {:node/type :group
-                                              :group/children
-                                              (vary/apply-overrides
-                                              (case sym-type
-                                                :radial
-                                                (let [n (:symmetry/n node)
-                                                      [cx cy] (:symmetry/center node [0 0])
-                                                      step (/ (* 2.0 Math/PI) n)]
-                                                  (mapv (fn [i]
-                                                          {:node/type :group
-                                                           :node/transform
-                                                           [[:transform/translate cx cy]
-                                                            [:transform/rotate (* i step)]
-                                                            [:transform/translate (- cx) (- cy)]]
-                                                           :group/children children})
-                                                        (range n)))
-                                                :bilateral
-                                                (let [[cx cy] (:symmetry/center node [0 0])
-                                                      axis (:symmetry/axis node :vertical)
-                                                      mirror (case axis
-                                                               :vertical
-                                                               [[:transform/translate cx 0]
-                                                                [:transform/scale -1 1]
-                                                                [:transform/translate (- cx) 0]]
-                                                               :horizontal
-                                                               [[:transform/translate 0 cy]
-                                                                [:transform/scale 1 -1]
-                                                                [:transform/translate 0 (- cy)]])]
-                                                  [{:node/type :group :group/children children}
-                                                   {:node/type :group
-                                                    :node/transform mirror
-                                                    :group/children children}])
-                                                :grid
-                                                (let [cols (:symmetry/cols node)
-                                                      rows (:symmetry/rows node)
-                                                      [dx dy] (:symmetry/spacing node [100 100])]
-                                                  (into []
-                                                        (for [row (range rows)
-                                                              col (range cols)]
-                                                          {:node/type :group
-                                                           :node/transform
-                                                           [[:transform/translate (* col dx) (* row dy)]]
-                                                           :group/children children}))))
-                                              overrides)}
-                                       (:node/opacity node)
-                                       (assoc :node/opacity (:node/opacity node))
-                                       (:node/transform node)
-                                       (assoc :node/transform (:node/transform node))))
-               :path/decorated     (let [children (-> (decorator/decorate-path
-                                                         (:path/commands node)
-                                                         (:decorator/shape node)
-                                                         (get node :decorator/spacing 20)
-                                                         (get node :decorator/rotate? true))
-                                                       (vary/apply-overrides
-                                                         (:decorator/overrides node)))]
-                                     (cond-> {:node/type      :group
-                                              :group/children children}
-                                       (:node/opacity node)
-                                       (assoc :node/opacity (:node/opacity node))
-                                       (:node/transform node)
-                                       (assoc :node/transform (:node/transform node))))
-               :group              (let [expanded (update node :group/children
-                                                          #(mapv expand-node %))]
-                                     (if-let [warp-spec (:group/warp expanded)]
-                                       (-> (warp/warp-node expanded warp-spec)
-                                           (dissoc :group/warp))
-                                       expanded))
+               :scatter            (expand-scatter node)
+               :voronoi            (expand-voronoi node)
+               :delaunay           (expand-delaunay node)
+               :lsystem            (expand-lsystem node)
+               :contour            (expand-contour node)
+               :flow-field         (expand-flow-field node)
+               :symmetry           (expand-symmetry node)
+               :path/decorated     (expand-path-decorated node)
+               :group              (expand-group node)
                node)]
-    ;; Distort transforms and stroke profiles still applied here
     (if (= :shape/path (:node/type node))
       (let [node (apply-distort-transforms node)]
         (if (:stroke/profile node)
