@@ -9,7 +9,7 @@
 - **`eido.gen.circle`** — Variable-radius circle packing with spatial grid acceleration. Supports rectangular regions and arbitrary closed paths via `circle-pack-in-path`. Includes `pack->nodes` for scene integration.
 - **`eido.gen.subdivide`** — Recursive rectangular subdivision (binary space partitioning). Configurable depth, min-size, split ratios, orientation bias, and padding. Includes `subdivide->nodes`.
 - **`eido.gen.series`** — Long-form generative series utilities for seed-driven workflows (Art Blocks / fxhash style). `edition-seed` uses murmur3-style hashing for uncorrelated per-edition seeds. `series-params` samples from typed parameter specs (uniform, gaussian, choice, weighted-choice, boolean).
-- **`eido.gen.ca`** — Cellular automata (Game of Life, Highlife, custom rules) and Gray-Scott reaction-diffusion simulation. Primitive arrays for performance. Named RD presets: coral, mitosis, waves, spots.
+- **`eido.gen.ca`** — Cellular automata (Game of Life, Highlife, custom rules) and Gray-Scott reaction-diffusion simulation. Primitive arrays for performance. Named RD presets: coral, mitosis, ripple, spots.
 - **`eido.gen.boids`** — Flocking simulation with steering behaviors (separation, alignment, cohesion, seek, flee, wander). Spatial grid for O(n) neighbor lookup. Presets: `classic`, `murmuration`. Includes `flock->nodes` for rendering as oriented triangles or circles.
 
 ### Enhancements
@@ -48,6 +48,8 @@
 - Add category intros for Drawing, Styling, Composition, Animation, and Generative
 - Add 26 gallery examples showcasing generative features: circle packing (solid, in-path, subdivided), Mondrian grid, reaction-diffusion (coral, spots, mitosis, waves), boids (murmuration, trails, predator/prey), dashed flow, series preview, voronoi glass, trembling grid, painted flow, CA quilt, stippled sphere, contour elevation, dot cloud, dashed L-system, hatched subdivision, morphing waves, packed typography, depth gradient, terrain stripes, edition gallery
 - Tag all 148 gallery examples with feature tags for filter bar (noise, flow-field, particles, circle-packing, boids, 3d, animation, palette, etc.)
+- Add "How Eido Works" architecture page at `/architecture/` — step-by-step rendering pipeline walkthrough with pipeline diagram, rendered examples, and GitHub source links
+- Add "How It Works" nav link and landing page hero link
 
 ## v1.0.0-beta1 — Bug Fixes & Stabilization
 
