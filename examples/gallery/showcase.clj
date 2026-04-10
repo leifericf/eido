@@ -317,7 +317,7 @@
      :image/nodes
      (vec (mapcat
        (fn [li level]
-         (let [contours (contour/contour-lines noise/simplex2d 0 0 w h
+         (let [contours (contour/contour-lines noise/simplex2d [0 0 w h]
                           {:threshold level :resolution 4
                            :noise-scale 0.008 :seed 42})
                c (nth pal (min li (dec (count pal))))]
