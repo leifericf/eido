@@ -345,9 +345,12 @@
 
 (s/def :eido/version (s/and string? #(re-matches #"\d+\.\d+" %)))
 
+(s/def :image/units #{:cm :mm :in})
+(s/def :image/dpi ::pos-number)
+
 (s/def ::scene
   (s/keys :req [:image/size :image/background :image/nodes]
-          :opt [:eido/version]))
+          :opt [:eido/version :image/units :image/dpi]))
 
 (comment
   ;; Check if a scene conforms

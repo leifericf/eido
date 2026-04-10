@@ -419,6 +419,54 @@
                 :image/background [:color/rgb 0 0 0]
                 :image/nodes []})))))
 
+(deftest scene-units-test
+  (testing "scene with valid units and dpi is valid"
+    (is (s/valid? :eido.spec/scene
+          {:image/size [21.0 29.7]
+           :image/units :cm
+           :image/dpi 300
+           :image/background [:color/rgb 0 0 0]
+           :image/nodes []})))
+
+  (testing "scene with :mm units is valid"
+    (is (s/valid? :eido.spec/scene
+          {:image/size [210.0 297.0]
+           :image/units :mm
+           :image/dpi 300
+           :image/background [:color/rgb 0 0 0]
+           :image/nodes []})))
+
+  (testing "scene with :in units is valid"
+    (is (s/valid? :eido.spec/scene
+          {:image/size [8.5 11.0]
+           :image/units :in
+           :image/dpi 300
+           :image/background [:color/rgb 0 0 0]
+           :image/nodes []})))
+
+  (testing "scene with invalid units keyword is rejected"
+    (is (not (s/valid? :eido.spec/scene
+               {:image/size [100 100]
+                :image/units :furlongs
+                :image/dpi 300
+                :image/background [:color/rgb 0 0 0]
+                :image/nodes []}))))
+
+  (testing "scene with non-positive dpi is rejected"
+    (is (not (s/valid? :eido.spec/scene
+               {:image/size [100 100]
+                :image/units :cm
+                :image/dpi 0
+                :image/background [:color/rgb 0 0 0]
+                :image/nodes []}))))
+
+  (testing "scene with dpi but no units is valid (dpi is metadata-only)"
+    (is (s/valid? :eido.spec/scene
+          {:image/size [800 600]
+           :image/dpi 300
+           :image/background [:color/rgb 0 0 0]
+           :image/nodes []}))))
+
 ;; --- gradient specs ---
 
 (deftest linear-gradient-spec-test

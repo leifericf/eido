@@ -50,6 +50,12 @@
     (some #{:eido/version} via)
     "version string matching \"X.Y\" (e.g. \"1.0\")"
 
+    (some #{:image/units} via)
+    "unit type (:cm, :mm, or :in)"
+
+    (some #{:image/dpi} via)
+    "positive number (dots per inch)"
+
     (some #{:eido.spec/font-spec} via)
     "font map with :font/family (string) and :font/size (positive number)"
 
