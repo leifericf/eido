@@ -193,6 +193,30 @@
 
 ;; --- swatch ---
 
+;; --- min-contrast ---
+
+(deftest min-contrast-test
+  (testing "returns the minimum pairwise contrast"
+    (let [pal [:black :white :red]
+          mc (palette/min-contrast pal)]
+      (is (number? mc))
+      (is (> mc 1.0))))
+  (testing "single-color palette returns Infinity"
+    (is (Double/isInfinite (palette/min-contrast [:red])))))
+
+;; --- sort-by-lightness ---
+
+(deftest sort-by-lightness-test
+  (testing "orders from dark to light"
+    (let [sorted (palette/sort-by-lightness [:white :black :red])]
+      ;; black should be first, white should be last
+      (is (= :black (first sorted)))
+      (is (= :white (last sorted)))))
+  (testing "preserves palette size"
+    (is (= 3 (count (palette/sort-by-lightness [:red :green :blue]))))))
+
+;; --- swatch ---
+
 (deftest swatch-test
   (testing "returns a BufferedImage"
     (let [pal [:red :green :blue :yellow :white]

@@ -23,19 +23,6 @@ Adjusting an entire palette (warmer, cooler, more muted, darker) currently requi
 - Each is a one-liner wrapping `mapv` over existing `color/rotate-hue`, `color/saturate`, `color/desaturate`, `color/lighten`, `color/darken`. The value is in naming the operation at the palette level, not in new algorithms.
 - Warmer = rotate hue toward ~30° (orange), cooler = rotate toward ~210° (blue). Amount parameter controls how far.
 
-### Color contrast checking
-
-Knowing whether two colors have enough visual separation matters for readability, plotter work (ink on paper), and accessibility.
-
-**What to add:**
-- `color/contrast` — WCAG luminance contrast ratio between two colors
-- `color/perceptual-distance` — OKLAB deltaE between two colors
-
-**Implementation notes:**
-- WCAG contrast ratio: convert both colors to relative luminance (`0.2126*R + 0.7152*G + 0.0722*B` after linearizing sRGB), then `(L1 + 0.05) / (L2 + 0.05)`. ~15 lines.
-- OKLAB deltaE: Euclidean distance in OKLAB space. Requires OKLAB conversion (see above). More perceptually meaningful than RGB distance.
-- Both pure functions, no state, no dependencies.
-
 ### Non-linear gradient interpolation
 
 Current gradient mapping is linear only. Quadratic, logarithmic, and easing-function-based gradients produce more natural-feeling transitions — especially for mapping noise or depth to color.

@@ -440,6 +440,38 @@
                   :b (linear->srgb bl) :a alpha}))
      (lerp color-a color-b t))))
 
+;; --- contrast and distance ---
+
+(defn contrast
+  "WCAG 2.0 luminance contrast ratio between two colors.
+  Returns a double >= 1.0 (1 = identical, 21 = black/white).
+  Accepts any color form (vectors, keywords, maps)."
+  [color-a color-b]
+  (let [{ra :r ga :g ba :b} (ensure-map color-a)
+        {rb :r gb :g bb :b} (ensure-map color-b)
+        lum (fn [r g b]
+              (+ (* 0.2126 (srgb->linear r))
+                 (* 0.7152 (srgb->linear g))
+                 (* 0.0722 (srgb->linear b))))
+        la (lum ra ga ba)
+        lb (lum rb gb bb)
+        l1 (max la lb)
+        l2 (min la lb)]
+    (/ (+ l1 0.05) (+ l2 0.05))))
+
+(defn perceptual-distance
+  "OKLAB deltaE — Euclidean distance in OKLAB perceptual color space.
+  Returns a double >= 0.0 (0 = identical colors).
+  More perceptually meaningful than RGB distance.
+  Accepts any color form (vectors, keywords, maps)."
+  [color-a color-b]
+  (let [{ra :r ga :g ba :b} (ensure-map color-a)
+        {rb :r gb :g bb :b} (ensure-map color-b)
+        [La aa ab] (rgb->oklab ra ga ba)
+        [Lb ba2 bb2] (rgb->oklab rb gb bb)
+        dL (- La Lb) da (- aa ba2) db (- ab bb2)]
+    (Math/sqrt (+ (* dL dL) (* da da) (* db db)))))
+
 ;; --- convenience helpers ---
 
 (defn ^{:convenience true}

@@ -287,7 +287,22 @@
         " to inspect any color in perceptual coordinates:"]
        [:pre [:code
               "(color/rgb->oklab 255 0 0)   ;; => [0.628 0.225 0.126]
-(color/rgb->oklch 255 0 0)   ;; => [0.628 0.258 29.2]"]]]}
+(color/rgb->oklch 255 0 0)   ;; => [0.628 0.258 29.2]"]]
+       [:h4 "Color contrast and distance"]
+       [:p "Check whether two colors have enough visual separation — for readability, plotter ink on paper, or accessibility:"]
+       [:pre [:code
+              ";; WCAG luminance contrast ratio (1 = identical, 21 = max)
+(color/contrast :black :white)        ;; => 21.0
+(color/contrast :red :darkred)        ;; => ~2.1
+
+;; Perceptual distance in OKLAB space
+(color/perceptual-distance :red :blue)  ;; => ~0.52
+
+;; Minimum contrast in a palette (all pairs)
+(palette/min-contrast [:red :coral :gold :navy])
+
+;; Sort palette from dark to light (perceptual lightness)
+(palette/sort-by-lightness my-palette)"]]]}
 
      {:id    "stroke-styling"
       :title "Strokes"

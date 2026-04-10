@@ -355,3 +355,28 @@
     (is (= [:color/oklab 0.5 0.1 -0.1] (color/oklab 0.5 0.1 -0.1))))
   (testing "oklch creates color vector"
     (is (= [:color/oklch 0.7 0.15 200] (color/oklch 0.7 0.15 200)))))
+
+;; --- contrast and perceptual distance ---
+
+(deftest contrast-test
+  (testing "black/white has maximum contrast ~21"
+    (let [c (color/contrast :black :white)]
+      (is (< (Math/abs (- c 21.0)) 0.5))))
+  (testing "same color has contrast 1.0"
+    (is (= 1.0 (color/contrast :red :red))))
+  (testing "symmetric"
+    (is (= (color/contrast :red :blue)
+           (color/contrast :blue :red))))
+  (testing "accepts any color form"
+    (is (number? (color/contrast [:color/hsl 180 0.5 0.5] :white)))))
+
+(deftest perceptual-distance-test
+  (testing "same color has distance 0.0"
+    (is (= 0.0 (color/perceptual-distance :red :red))))
+  (testing "symmetric"
+    (is (= (color/perceptual-distance :red :blue)
+           (color/perceptual-distance :blue :red))))
+  (testing "black/white has large distance"
+    (is (> (color/perceptual-distance :black :white) 0.5)))
+  (testing "similar colors have small distance"
+    (is (< (color/perceptual-distance [:color/rgb 100 100 100] [:color/rgb 105 100 100]) 0.05))))

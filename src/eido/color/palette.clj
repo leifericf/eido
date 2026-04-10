@@ -178,6 +178,32 @@
   [roles palette]
   (zipmap roles palette))
 
+;; --- palette analysis ---
+
+(defn ^{:convenience true}
+  min-contrast
+  "Returns the minimum pairwise WCAG contrast ratio in a palette.
+  Wraps (color/contrast) over all pairs. Useful for checking readability."
+  [palette]
+  (let [n (count palette)]
+    (if (<= n 1)
+      Double/POSITIVE_INFINITY
+      (reduce min
+        (for [i (range n)
+              j (range (inc i) n)]
+          (color/contrast (nth palette i) (nth palette j)))))))
+
+(defn ^{:convenience true}
+  sort-by-lightness
+  "Sorts a palette from dark to light using OKLAB perceptual lightness.
+  Wraps (sort-by (fn [c] (first (color/rgb->oklab ...))) palette)."
+  [palette]
+  (vec (sort-by
+         (fn [c]
+           (let [{:keys [r g b]} (color/resolve-color c)]
+             (first (color/rgb->oklab r g b))))
+         palette)))
+
 ;; --- visual preview ---
 
 (defn swatch
