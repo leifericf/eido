@@ -78,15 +78,15 @@
 
 (defn orbit
   "Returns a projection with the camera orbiting target at the given radius.
-  yaw: horizontal orbital angle (radians). pitch: vertical angle (radians).
+  opts: :radius, :yaw (radians), :pitch (radians).
   At yaw=0 pitch=0, camera is at +Z relative to target (consistent with
   the default camera convention)."
-  [base-projection target radius yaw pitch]
-  (let [r  (double radius)
-        cp (Math/cos pitch)
-        sp (Math/sin pitch)
-        cy (Math/cos yaw)
-        sy (Math/sin yaw)
+  [base-projection target opts]
+  (let [r  (double (:radius opts))
+        cp (Math/cos (:pitch opts 0.0))
+        sp (Math/sin (:pitch opts 0.0))
+        cy (Math/cos (:yaw opts 0.0))
+        sy (Math/sin (:yaw opts 0.0))
         eye (m/v+ target [(* r cp sy)
                           (* r (- sp))
                           (* r cp cy)])]

@@ -47,8 +47,10 @@
     {:frames (anim/frames 90
                (fn [t]
                  (let [proj (s3d/orbit (s3d/orthographic {:scale 90 :origin [200 190]})
-                                       (s3d/mesh-center teapot) 4
-                                       (* t 2.0 Math/PI) -0.45)]
+                                       (s3d/mesh-center teapot)
+                                       {:radius 4
+                                        :yaw (* t 2.0 Math/PI)
+                                        :pitch -0.45})]
                    {:image/size [400 400]
                     :image/background [:color/rgb 245 243 238]
                     :image/nodes
@@ -273,7 +275,10 @@
                 :image/nodes
                 (render-camera-scene
                   (s3d/orbit (s3d/orthographic {:scale 55 :origin [200 210]})
-                             [0 0.5 0] 8 (* t 2.0 Math/PI) -0.4))}))
+                             [0 0.5 0]
+                             {:radius 8
+                              :yaw (* t 2.0 Math/PI)
+                              :pitch -0.4}))}))
    :fps 30})
 
 ;; --- 11. Camera: perspective FOV ---
@@ -329,7 +334,10 @@
   {:frames (anim/frames 60
              (fn [t]
                (let [proj (s3d/orbit (s3d/orthographic {:scale 50 :origin [200 200]})
-                                     [0 0 0] 5 (* t 2.0 Math/PI) -0.3)
+                                     [0 0 0]
+                                     {:radius 5
+                                      :yaw (* t 2.0 Math/PI)
+                                      :pitch -0.3})
                      mesh (s3d/torus-mesh 1.5 0.6 20 10)]
                  {:image/size [400 400]
                   :image/background [:color/rgb 20 20 30]
@@ -397,7 +405,10 @@
   {:frames (anim/frames 60
              (fn [t]
                (let [proj (s3d/orbit (s3d/orthographic {:scale 55 :origin [200 200]})
-                                     [0 0 0] 5 (* t 2.0 Math/PI) -0.35)
+                                     [0 0 0]
+                                     {:radius 5
+                                      :yaw (* t 2.0 Math/PI)
+                                      :pitch -0.35})
                      mesh (-> (s3d/torus-mesh 1.5 0.6 24 12)
                               (s3d/rotate-mesh :x 0.3))]
                  {:image/size [400 400]
@@ -546,7 +557,8 @@
                                                   [:color/rgb 220 170 100]
                                                   [:color/rgb 80 50 40]]}))
         proj (s3d/orbit (s3d/orthographic {:scale 70 :origin [200 200]})
-                        [0 0 0] 5 0.6 -0.35)]
+                        [0 0 0]
+                        {:radius 5 :yaw 0.6 :pitch -0.35})]
     {:image/size [400 400]
      :image/background [:color/rgb 30 28 35]
      :image/nodes
@@ -604,7 +616,8 @@
                                                   [:color/rgb 255 160 120]
                                                   [:color/rgb 255 220 180]]}))
         proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
-                        [0 0 0] 5 0.8 -0.3)]
+                        [0 0 0]
+                        {:radius 5 :yaw 0.8 :pitch -0.3})]
     {:image/size [400 400]
      :image/background [:color/rgb 20 30 50]
      :image/nodes
@@ -662,7 +675,8 @@
                                                   [:color/rgb 160 200 255]
                                                   [:color/rgb 80 100 180]]}))
         proj (s3d/orbit (s3d/orthographic {:scale 60 :origin [200 200]})
-                        [0 0 0] 5 0.5 -0.35)]
+                        [0 0 0]
+                        {:radius 5 :yaw 0.5 :pitch -0.35})]
     {:image/size [400 400]
      :image/background [:color/rgb 15 15 25]
      :image/nodes
@@ -690,7 +704,8 @@
                                                   [:color/rgb 220 100 40]
                                                   [:color/rgb 180 60 80]]}))
         proj (s3d/orbit (s3d/orthographic {:scale 55 :origin [200 200]})
-                        [0 0 0] 5 0.7 -0.4)]
+                        [0 0 0]
+                        {:radius 5 :yaw 0.7 :pitch -0.4})]
     {:image/size [400 400]
      :image/background [:color/rgb 35 30 40]
      :image/nodes
@@ -709,7 +724,8 @@
   (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.5)
                  (s3d/subdivide {:iterations 2}))
         proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
-                        [0 0 0] 5 0.4 -0.3)]
+                        [0 0 0]
+                        {:radius 5 :yaw 0.4 :pitch -0.3})]
     {:image/size [400 400]
      :image/background [:color/rgb 245 243 238]
      :image/nodes
@@ -741,7 +757,8 @@
                                                   [:color/rgb 180 120 160]
                                                   [:color/rgb 220 200 180]]}))
         proj (s3d/orbit (s3d/orthographic {:scale 60 :origin [200 200]})
-                        [0 0 0] 5 0.5 -0.3)]
+                        [0 0 0]
+                        {:radius 5 :yaw 0.5 :pitch -0.3})]
     {:image/size [400 400]
      :image/background [:color/rgb 25 22 30]
      :image/nodes
@@ -760,7 +777,8 @@
   (let [mesh (-> (s3d/platonic-mesh :icosahedron 1.5)
                  (s3d/subdivide {:iterations 2}))
         proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
-                        [0 0 0] 5 0.4 -0.3)]
+                        [0 0 0]
+                        {:radius 5 :yaw 0.4 :pitch -0.3})]
     {:image/size [400 400]
      :image/background [:color/rgb 245 243 238]
      :image/nodes
@@ -816,7 +834,8 @@
         hard (s3d/auto-smooth-edges base {:angle (/ Math/PI 4)})
         mesh (s3d/subdivide base {:iterations 3 :hard-edges hard})
         proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
-                        [0 0 0] 5 0.6 -0.35)]
+                        [0 0 0]
+                        {:radius 5 :yaw 0.6 :pitch -0.35})]
     {:image/size [400 400]
      :image/background [:color/rgb 245 243 238]
      :image/nodes
@@ -846,7 +865,8 @@
                                                   [:color/rgb 100 110 120]
                                                   [:color/rgb 170 175 180]]}))
         proj (s3d/orbit (s3d/orthographic {:scale 55 :origin [200 200]})
-                        [0 0 0] 5 0.65 -0.35)]
+                        [0 0 0]
+                        {:radius 5 :yaw 0.65 :pitch -0.35})]
     {:image/size [400 400]
      :image/background [:color/rgb 25 25 30]
      :image/nodes
@@ -871,7 +891,8 @@
                                                   [:color/rgb 220 200 50]
                                                   [:color/rgb 200 50 30]]}))
         proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
-                        [0 0 0] 5 0.5 -0.3)]
+                        [0 0 0]
+                        {:radius 5 :yaw 0.5 :pitch -0.3})]
     {:image/size [400 400]
      :image/background [:color/rgb 30 28 35]
      :image/nodes
@@ -902,7 +923,8 @@
                  (s3d/specular-map-mesh {:specular-map/field (field/noise-field :scale 6.0 :seed 7)
                                          :specular-map/range [0.1 0.7]}))
         proj (s3d/orbit (s3d/orthographic {:scale 65 :origin [200 200]})
-                        [0 0 0] 5 0.5 -0.3)]
+                        [0 0 0]
+                        {:radius 5 :yaw 0.5 :pitch -0.3})]
     {:image/size [400 400]
      :image/background [:color/rgb 25 22 30]
      :image/nodes
@@ -954,7 +976,8 @@
   hatched-sphere []
   (let [mesh (s3d/sphere-mesh 1.5 12 8)
         proj (s3d/orbit (s3d/orthographic {:scale 60 :origin [200 200]})
-                        [0 0 0] 5 0.4 -0.3)]
+                        [0 0 0]
+                        {:radius 5 :yaw 0.4 :pitch -0.3})]
     {:image/size [400 400]
      :image/background [:color/rgb 255 250 240]
      :image/nodes

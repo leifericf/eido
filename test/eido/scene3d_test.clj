@@ -91,20 +91,20 @@
 (deftest orbit-identity-test
   (testing "orbit yaw=0 pitch=0 matches look-at from +Z"
     (let [proj (s3d/orbit (s3d/orthographic {:scale 90 :origin [200 200]})
-                          [0 0 0] 5 0.0 0.0)]
+                          [0 0 0] {:radius 5 :yaw 0.0 :pitch 0.0})]
       (is (< (abs (:projection/yaw proj)) eps))
       (is (< (abs (:projection/pitch proj)) eps)))))
 
 (deftest orbit-pitch-convention-test
   (testing "orbit pitch matches camera pitch convention"
     (let [proj (s3d/orbit (s3d/orthographic {:scale 90 :origin [200 200]})
-                          [0 0 0] 5 0.0 -0.45)]
+                          [0 0 0] {:radius 5 :yaw 0.0 :pitch -0.45})]
       (is (< (abs (- (:projection/pitch proj) -0.45)) eps)))))
 
 (deftest orbit-yaw-test
   (testing "orbit yaw=pi/2 places camera at +X"
     (let [proj (s3d/orbit (s3d/orthographic {:scale 90 :origin [200 200]})
-                          [0 0 0] 5 (/ Math/PI 2) 0.0)]
+                          [0 0 0] {:radius 5 :yaw (/ Math/PI 2) :pitch 0.0})]
       (is (< (abs (- (:projection/yaw proj) (/ Math/PI 2))) eps)))))
 
 (deftest fov->distance-test
