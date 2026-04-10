@@ -1,5 +1,11 @@
 (ns site.pages
-  "Static content for eido website pages — landing page, features, docs, architecture, workflows.")
+  "Static content for eido website pages — landing page, features, docs, architecture, workflows."
+  (:require
+    [clojure.edn :as edn]
+    [clojure.java.io :as io]))
+
+(def ^:private eido-version
+  (-> (io/resource "eido/version.edn") slurp edn/read-string))
 
 ;; --- Landing page ---
 
@@ -93,10 +99,9 @@
    [:h4 "1. Add Eido to your project"]
    [:p "Create a " [:code "deps.edn"] " file with Eido as a dependency:"]
    [:pre [:code
-          ";; deps.edn
-{:deps
- {io.github.leifericf/eido
-  {:git/tag \"v1.0.0-beta5\" :git/sha \"PLACEHOLDER\"}}}"]]
+          (str ";; deps.edn\n{:deps\n {io.github.leifericf/eido\n"
+               "  {:git/tag \"" (:tag eido-version)
+               "\" :git/sha \"" (:sha eido-version) "\"}}}")]]
    [:h4 "2. Render your first image"]
    [:p "Start a REPL via Calva (\"Jack-in\"), then evaluate:"]
    [:pre [:code
