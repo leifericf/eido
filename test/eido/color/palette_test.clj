@@ -1,8 +1,10 @@
 (ns eido.color.palette-test
   (:require
     [clojure.test :refer [deftest is testing]]
+    [eido.color :as color]
     [eido.color.palette :as palette])
   (:import
+    [java.awt Color Graphics2D]
     [java.awt.image BufferedImage]))
 
 ;; --- complementary ---
@@ -290,3 +292,38 @@
     (let [img (palette/swatch [:red :blue] {:width 200 :height 40})]
       (is (= 200 (.getWidth ^BufferedImage img)))
       (is (= 40 (.getHeight ^BufferedImage img))))))
+
+;; --- from-image ---
+
+(defn- make-test-image
+  "Creates a small test image with distinct color regions."
+  ^BufferedImage [w h colors]
+  (let [img (BufferedImage. w h BufferedImage/TYPE_INT_ARGB)
+        ^Graphics2D gfx (.createGraphics img)
+        region-w (/ w (count colors))]
+    (doseq [i (range (count colors))]
+      (let [{:keys [r g b]} (color/resolve-color (nth colors i))]
+        (.setColor gfx (Color. (int r) (int g) (int b)))
+        (.fillRect gfx (* i region-w) 0 region-w h)))
+    (.dispose gfx)
+    img))
+
+(deftest from-image-test
+  (testing "extracts k colors from image"
+    (let [img (make-test-image 30 10 [:red :green :blue])
+          pal (palette/from-image img 3 {:seed 42})]
+      (is (= 3 (count pal)))
+      (is (every? vector? pal))))
+  (testing "deterministic with same seed"
+    (let [img (make-test-image 30 10 [:red :blue])
+          p1 (palette/from-image img 2 {:seed 42})
+          p2 (palette/from-image img 2 {:seed 42})]
+      (is (= p1 p2))))
+  (testing "sorted dark to light"
+    (let [img (make-test-image 30 10 [:white :black :red])
+          pal (palette/from-image img 3 {:seed 42})
+          lightnesses (mapv (fn [c]
+                              (let [{:keys [r g b]} (color/resolve-color c)]
+                                (first (color/rgb->oklab r g b))))
+                            pal)]
+      (is (apply <= lightnesses)))))

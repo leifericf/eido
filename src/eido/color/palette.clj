@@ -4,7 +4,9 @@
     [eido.gen.prob :as prob])
   (:import
     [java.awt Color Graphics2D]
-    [java.awt.image BufferedImage]))
+    [java.awt.image BufferedImage]
+    [javax.imageio ImageIO]
+    [java.io File]))
 
 ;; --- harmony functions ---
 
@@ -273,6 +275,97 @@
          (.fillRect gfx (int (* i bar-w)) 0 (int (Math/ceil bar-w)) h)))
      (.dispose gfx)
      img)))
+
+;; --- color extraction ---
+
+(defn- sample-pixels
+  "Samples n random pixels from a BufferedImage as OKLAB [L a b] vectors."
+  [^BufferedImage img n seed]
+  (let [w (.getWidth img) h (.getHeight img)
+        rng (java.util.Random. (long seed))]
+    (mapv (fn [_]
+            (let [px (.nextInt rng w) py (.nextInt rng h)
+                  argb (.getRGB img px py)
+                  r (bit-and (bit-shift-right argb 16) 0xFF)
+                  g (bit-and (bit-shift-right argb 8) 0xFF)
+                  b (bit-and argb 0xFF)]
+              (color/rgb->oklab r g b)))
+          (range n))))
+
+(defn- oklab-dist-sq ^double [[^double L1 ^double a1 ^double b1]
+                               [^double L2 ^double a2 ^double b2]]
+  (let [dL (- L1 L2) da (- a1 a2) db (- b1 b2)]
+    (+ (* dL dL) (* da da) (* db db))))
+
+(defn- kmeans-init
+  "K-means++ initialization: pick first centroid randomly, then weight
+  subsequent picks by distance to nearest existing centroid."
+  [samples k rng]
+  (loop [centroids [(nth samples (.nextInt ^java.util.Random rng (count samples)))]
+         remaining (dec k)]
+    (if (zero? remaining)
+      centroids
+      (let [dists (mapv (fn [s] (reduce min (map #(oklab-dist-sq s %) centroids))) samples)
+            total (reduce + dists)
+            target (* (.nextDouble ^java.util.Random rng) total)
+            idx (loop [i 0 acc 0.0]
+                  (let [acc (+ acc (double (nth dists i)))]
+                    (if (or (>= acc target) (>= i (dec (count samples))))
+                      i (recur (inc i) acc))))]
+        (recur (conj centroids (nth samples idx)) (dec remaining))))))
+
+(defn- kmeans-step
+  "One k-means iteration: assign samples to nearest centroid, recompute centroids."
+  [samples centroids]
+  (let [k (count centroids)
+        assignments (mapv (fn [s]
+                            (first (apply min-key second
+                                     (map-indexed (fn [i c] [i (oklab-dist-sq s c)])
+                                                  centroids))))
+                          samples)
+        new-centroids
+        (mapv (fn [ci]
+                (let [members (keep-indexed (fn [si ai] (when (= ai ci) (nth samples si)))
+                                            assignments)]
+                  (if (empty? members)
+                    (nth centroids ci)
+                    (let [n (double (count members))]
+                      [(/ (reduce + (map first members)) n)
+                       (/ (reduce + (map second members)) n)
+                       (/ (reduce + (map #(nth % 2) members)) n)]))))
+              (range k))]
+    new-centroids))
+
+(defn from-image
+  "Extracts a palette of k dominant colors from an image using k-means
+  clustering in OKLAB perceptual color space. Returns a palette vector
+  sorted from dark to light.
+  img: BufferedImage or file path string.
+  opts: :samples (1000), :seed (0), :max-iter (20)."
+  ([img k] (from-image img k nil))
+  ([img k opts]
+   (let [^BufferedImage bimg (if (string? img)
+                               (ImageIO/read (File. ^String img))
+                               img)
+         n-samples (get opts :samples 1000)
+         seed (get opts :seed 0)
+         max-iter (get opts :max-iter 20)
+         rng (java.util.Random. (long seed))
+         samples (sample-pixels bimg n-samples (.nextLong rng))
+         initial (kmeans-init samples k rng)
+         centroids (loop [cs initial i 0]
+                     (if (>= i max-iter)
+                       cs
+                       (let [new-cs (kmeans-step samples cs)
+                             moved (reduce + (map oklab-dist-sq cs new-cs))]
+                         (if (< moved 1e-8)
+                           new-cs
+                           (recur new-cs (inc i))))))]
+     (sort-by-lightness
+       (mapv (fn [[L a b]]
+               (let [{:keys [r g b]} (color/resolve-color [:color/oklab L a b])]
+                 [:color/rgb r g b]))
+             centroids)))))
 
 (comment
   (complementary [:color/rgb 255 0 0])

@@ -302,7 +302,19 @@
 (palette/min-contrast [:red :coral :gold :navy])
 
 ;; Sort palette from dark to light (perceptual lightness)
-(palette/sort-by-lightness my-palette)"]]]}
+(palette/sort-by-lightness my-palette)"]]
+       [:h4 "Extracting palettes from images"]
+       [:p "Photograph a landscape, scan a painting, or screenshot a reference — then extract its dominant colors as a palette:"]
+       [:pre [:code
+              "(require '[eido.color.palette :as palette])
+
+;; Extract 5 dominant colors from a photograph:
+(palette/from-image \"photo.jpg\" 5 {:seed 42})
+
+;; Preview the result:
+(show (palette/swatch (palette/from-image \"sunset.jpg\" 6)))"]]
+       [:p "Uses k-means clustering in OKLAB perceptual color space — colors that "
+        [:em "look"] " similar get grouped together. Result is sorted dark to light."]]}
 
      {:id    "stroke-styling"
       :title "Strokes"

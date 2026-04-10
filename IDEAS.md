@@ -6,25 +6,6 @@ Organized by what matters to practicing generative and computational artists, gr
 
 ---
 
-## Color
-
-Color is consistently described as the hardest problem in generative art. Artists spend more time on palettes than on algorithms, and existing tools rarely go deep enough.
-
-### Color extraction from images
-
-A common workflow: photograph a landscape or a physical painting, extract the dominant colors, use them as a palette. Currently requires external tools.
-
-**What to add:**
-- `palette/from-image` — extract dominant colors from a BufferedImage using k-means clustering
-
-**Implementation notes:**
-- Sample N random pixels from the image, run k-means in OKLAB space (better perceptual clustering than RGB), return k cluster centroids as a palette vector.
-- k-means is ~40 lines of pure Clojure (iterate: assign points to nearest centroid, recompute centroids, repeat until stable).
-- Input is a BufferedImage (from `javax.imageio.ImageIO/read`), output is a standard Eido palette vector. Could also accept a file path for convenience.
-- Consider sorting the resulting palette by lightness for consistent ordering.
-
----
-
 ## Randomness and distributions
 
 Uniform randomness looks artificial. Natural phenomena follow Gaussian, power-law, and other shaped distributions. Artists spend significant time fine-tuning probability distributions to get organic-feeling results.
