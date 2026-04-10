@@ -256,6 +256,192 @@
           :group/clip clip-rect
           :group/children (vec nodes)}]))))
 
+;; --- resolution-independent coordinates ---
+
+;; Key registry: categorizes scene map keys by their spatial meaning.
+;; Only keys in these sets are scaled by with-units; everything else
+;; (opacity, angles, colors, counts) is left untouched.
+
+(def ^:private point-keys
+  "Keys whose values are [x y] points."
+  #{:image/size :rect/xy :rect/size :circle/center :ellipse/center
+    :arc/center :line/from :line/to :text/origin :symmetry/center
+    :gradient/from :gradient/to :gradient/center :lsystem/origin})
+
+(def ^:private scalar-keys
+  "Keys whose values are single spatial distances."
+  #{:circle/radius :ellipse/rx :ellipse/ry :arc/rx :arc/ry
+    :rect/corner-radius :gradient/radius :lsystem/length
+    :decorator/spacing :font/size :text/spacing :text/offset
+    :scatter/jitter})
+
+(def ^:private bounds-keys
+  "Keys whose values are [x y w h] bounds vectors."
+  #{:voronoi/bounds :delaunay/bounds :contour/bounds :flow/bounds})
+
+(def ^:private point-vector-keys
+  "Keys whose values are vectors of [x y] points."
+  #{:voronoi/points :delaunay/points :scatter/positions})
+
+(def ^:private path-keys
+  "Keys whose values are vectors of path commands."
+  #{:path/commands :text/path})
+
+(defn- scale-point
+  "Scales a [x y] point by factor."
+  [[x y] factor]
+  [(* (double x) factor) (* (double y) factor)])
+
+(defn- scale-path-commands
+  "Scales all point arguments in path commands by factor."
+  [commands factor]
+  (mapv (fn [[cmd & args]]
+          (case cmd
+            :move-to  [:move-to (scale-point (first args) factor)]
+            :line-to  [:line-to (scale-point (first args) factor)]
+            :curve-to [:curve-to (scale-point (first args) factor)
+                                 (scale-point (second args) factor)
+                                 (scale-point (nth args 2) factor)]
+            :quad-to  [:quad-to (scale-point (first args) factor)
+                                (scale-point (second args) factor)]
+            :close    [:close]))
+        commands))
+
+(defn- scale-transform
+  "Scales a single transform command. Only :transform/translate is spatial."
+  [[tag & args :as xform] factor]
+  (case tag
+    :transform/translate [:transform/translate
+                          (* (double (first args)) factor)
+                          (* (double (second args)) factor)]
+    xform))
+
+(defn- scale-stroke
+  "Scales spatial values in a stroke map (:width, :dash)."
+  [stroke factor]
+  (cond-> stroke
+    (:width stroke) (update :width #(* (double %) factor))
+    (:dash stroke)  (update :dash #(mapv (fn [d] (* (double d) factor)) %))))
+
+(defn- scale-effect-shadow
+  "Scales spatial values in an effect/shadow map."
+  [shadow factor]
+  (cond-> shadow
+    (:dx shadow)   (update :dx #(* (double %) factor))
+    (:dy shadow)   (update :dy #(* (double %) factor))
+    (:blur shadow) (update :blur #(* (double %) factor))))
+
+(defn- scale-effect-glow
+  "Scales spatial values in an effect/glow map."
+  [glow factor]
+  (cond-> glow
+    (:blur glow) (update :blur #(* (double %) factor))))
+
+(declare scale-node)
+
+(defn- scale-fill
+  "Scales spatial values inside a fill descriptor (gradients)."
+  [fill factor]
+  (if (map? fill)
+    (reduce-kv
+      (fn [m k v]
+        (assoc m k
+          (cond
+            (point-keys k)  (scale-point v factor)
+            (scalar-keys k) (* (double v) factor)
+            :else v)))
+      {} fill)
+    fill))
+
+(defn- scale-node
+  "Recursively scales all spatial values in a node map."
+  [node factor]
+  (reduce-kv
+    (fn [m k v]
+      (assoc m k
+        (cond
+          (point-keys k)        (scale-point v factor)
+          (scalar-keys k)       (* (double v) factor)
+          (bounds-keys k)       (mapv #(* (double %) factor) v)
+          (point-vector-keys k) (mapv #(scale-point % factor) v)
+          (path-keys k)         (scale-path-commands v factor)
+          (= k :style/stroke)   (scale-stroke v factor)
+          (= k :node/transform) (mapv #(scale-transform % factor) v)
+          (= k :effect/shadow)  (scale-effect-shadow v factor)
+          (= k :effect/glow)    (scale-effect-glow v factor)
+          (= k :group/children) (mapv #(scale-node % factor) v)
+          (= k :group/clip)     (scale-node v factor)
+          (= k :scatter/shape)  (scale-node v factor)
+          (= k :style/fill)     (scale-fill v factor)
+          (= k :text/font)      (reduce-kv
+                                  (fn [fm fk fv]
+                                    (assoc fm fk
+                                      (if (scalar-keys fk)
+                                        (* (double fv) factor)
+                                        fv)))
+                                  {} v)
+          :else v)))
+    {} node))
+
+(defn with-units
+  "Converts a scene described in real-world units to pixel coordinates.
+  Reads :image/units (:cm, :mm, or :in) and :image/dpi from the scene,
+  walks the scene tree scaling all spatial values by the conversion factor.
+  Strips :image/units from the result; retains :image/dpi for metadata embedding.
+  The core rendering pipeline remains pixel-based — this is a preprocessing step.
+
+  Example:
+    (-> (paper :a4)
+        (assoc :image/background :white
+               :image/nodes [...])
+        with-units)"
+  [scene]
+  (let [units (:image/units scene)
+        dpi   (double (:image/dpi scene))
+        factor (case units
+                 :cm (/ dpi 2.54)
+                 :mm (/ dpi 25.4)
+                 :in dpi)]
+    (-> scene
+        (update :image/size
+          (fn [[w h]]
+            [(Math/round (* (double w) factor))
+             (Math/round (* (double h) factor))]))
+        (update :image/nodes
+          (fn [nodes] (mapv #(scale-node % factor) nodes)))
+        (dissoc :image/units))))
+
+;; --- paper presets ---
+
+(def paper-sizes
+  "Standard paper sizes as [width height unit] triples.
+  Width and height are in the specified unit."
+  {:a5       [14.8  21.0  :cm]
+   :a4       [21.0  29.7  :cm]
+   :a3       [29.7  42.0  :cm]
+   :letter   [8.5   11.0  :in]
+   :legal    [8.5   14.0  :in]
+   :tabloid  [11.0  17.0  :in]
+   :square-8 [8.0   8.0   :in]})
+
+(defn paper
+  "Returns a base scene map for a named paper size.
+  Keyword args: :landscape (false), :dpi (300).
+  The returned map includes :image/size, :image/units, and :image/dpi —
+  pass through with-units before rendering.
+
+  Example:
+    (paper :a4)                     ;=> {:image/size [21.0 29.7] :image/units :cm :image/dpi 300}
+    (paper :letter :landscape true) ;=> {:image/size [11.0 8.5] :image/units :in :image/dpi 300}"
+  [size & {:keys [landscape dpi] :or {landscape false dpi 300}}]
+  (let [[w h unit] (get paper-sizes size)]
+    (when-not w
+      (throw (ex-info "Unknown paper size"
+                      {:size size :available (vec (sort (keys paper-sizes)))})))
+    {:image/size  (if landscape [h w] [w h])
+     :image/units unit
+     :image/dpi   dpi}))
+
 (comment
   (grid 3 2 (fn [c r]
               {:node/type :shape/circle
@@ -269,4 +455,16 @@
        :circle/radius 20}))
 
   (text "Hello" [100 200] {:font/family "SansSerif" :font/size 48})
+
+  ;; Paper preset and unit conversion
+  (paper :a4)
+  (paper :letter :landscape true :dpi 150)
+  (with-units
+    (merge (paper :a4)
+           {:image/background :white
+            :image/nodes
+            [{:node/type :shape/circle
+              :circle/center [10.5 14.85]
+              :circle/radius 5.0
+              :style/fill [:color/rgb 200 0 0]}]}))
   )

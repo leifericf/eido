@@ -303,3 +303,310 @@
           clip (:group/clip (first (:image/nodes result)))]
       (is (= [30.0 30.0] (:rect/xy clip)))
       (is (= [340.0 240.0] (:rect/size clip))))))
+
+;; --- paper ---
+
+(deftest paper-test
+  (testing "returns base scene map for A4"
+    (let [p (scene/paper :a4)]
+      (is (= [21.0 29.7] (:image/size p)))
+      (is (= :cm (:image/units p)))
+      (is (= 300 (:image/dpi p)))))
+  (testing "landscape swaps dimensions"
+    (let [p (scene/paper :a4 :landscape true)]
+      (is (= [29.7 21.0] (:image/size p)))))
+  (testing "custom DPI overrides default"
+    (let [p (scene/paper :a4 :dpi 150)]
+      (is (= 150 (:image/dpi p)))))
+  (testing "letter size returns inches"
+    (let [p (scene/paper :letter)]
+      (is (= [8.5 11.0] (:image/size p)))
+      (is (= :in (:image/units p))))))
+
+;; --- with-units ---
+
+(deftest with-units-size-test
+  (testing "converts cm size to pixels at 300 DPI"
+    (let [scene {:image/size [10.0 20.0]
+                 :image/units :cm
+                 :image/dpi 300
+                 :image/background :white
+                 :image/nodes []}
+          result (scene/with-units scene)
+          [w h]  (:image/size result)
+          factor (/ 300 2.54)]
+      (is (== (Math/round (* 10.0 factor)) w))
+      (is (== (Math/round (* 20.0 factor)) h))))
+  (testing "converts mm size to pixels"
+    (let [scene {:image/size [100.0 200.0]
+                 :image/units :mm
+                 :image/dpi 300
+                 :image/background :white
+                 :image/nodes []}
+          result (scene/with-units scene)
+          [w h]  (:image/size result)
+          factor (/ 300 25.4)]
+      (is (== (Math/round (* 100.0 factor)) w))
+      (is (== (Math/round (* 200.0 factor)) h))))
+  (testing "converts inch size to pixels"
+    (let [scene {:image/size [8.5 11.0]
+                 :image/units :in
+                 :image/dpi 300
+                 :image/background :white
+                 :image/nodes []}
+          result (scene/with-units scene)]
+      (is (= [2550 3300] (:image/size result))))))
+
+(deftest with-units-strips-units-key-test
+  (testing "removes :image/units, retains :image/dpi"
+    (let [result (scene/with-units
+                   {:image/size [10.0 10.0]
+                    :image/units :cm
+                    :image/dpi 300
+                    :image/background :white
+                    :image/nodes []})]
+      (is (nil? (:image/units result)))
+      (is (= 300 (:image/dpi result))))))
+
+(deftest with-units-point-keys-test
+  (testing "scales circle center and radius"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :shape/circle
+                   :circle/center [5.0 5.0]
+                   :circle/radius 2.0}]}
+          result (scene/with-units scene)
+          node   (first (:image/nodes result))]
+      (is (= [500.0 500.0] (:circle/center node)))
+      (is (= 200.0 (:circle/radius node))))))
+
+(deftest with-units-rect-test
+  (testing "scales rect position and size"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [1.0 2.0]
+                   :rect/size [3.0 4.0]
+                   :rect/corner-radius 0.5}]}
+          result (scene/with-units scene)
+          node   (first (:image/nodes result))]
+      (is (= [100.0 200.0] (:rect/xy node)))
+      (is (= [300.0 400.0] (:rect/size node)))
+      (is (= 50.0 (:rect/corner-radius node))))))
+
+(deftest with-units-preserves-non-spatial-test
+  (testing "opacity and colors are not scaled"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background [:color/rgb 255 128 0]
+                 :image/nodes
+                 [{:node/type :shape/circle
+                   :circle/center [5.0 5.0]
+                   :circle/radius 2.0
+                   :node/opacity 0.7
+                   :style/fill [:color/rgb 200 0 0]}]}
+          result (scene/with-units scene)
+          node   (first (:image/nodes result))]
+      (is (= 0.7 (:node/opacity node)))
+      (is (= [:color/rgb 200 0 0] (:style/fill node)))
+      (is (= [:color/rgb 255 128 0] (:image/background result))))))
+
+(deftest with-units-stroke-test
+  (testing "scales stroke width and dash"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :shape/line
+                   :line/from [1.0 1.0]
+                   :line/to [9.0 9.0]
+                   :style/stroke {:color [:color/rgb 0 0 0]
+                                  :width 0.1
+                                  :dash [0.5 0.2]}}]}
+          result (scene/with-units scene)
+          node   (first (:image/nodes result))
+          stroke (:style/stroke node)]
+      (is (= [100.0 100.0] (:line/from node)))
+      (is (= [900.0 900.0] (:line/to node)))
+      (is (= 10.0 (:width stroke)))
+      (is (= [50.0 20.0] (:dash stroke)))
+      (is (= [:color/rgb 0 0 0] (:color stroke))))))
+
+(deftest with-units-path-commands-test
+  (testing "scales path command points"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [1.0 2.0]]
+                                   [:line-to [3.0 4.0]]
+                                   [:curve-to [5.0 5.0] [6.0 6.0] [7.0 8.0]]
+                                   [:close]]}]}
+          result (scene/with-units scene)
+          cmds   (:path/commands (first (:image/nodes result)))]
+      (is (= [:move-to [100.0 200.0]] (nth cmds 0)))
+      (is (= [:line-to [300.0 400.0]] (nth cmds 1)))
+      (is (= [:curve-to [500.0 500.0] [600.0 600.0] [700.0 800.0]] (nth cmds 2)))
+      (is (= [:close] (nth cmds 3))))))
+
+(deftest with-units-transform-test
+  (testing "scales translate but not rotate or scale"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :group
+                   :node/transform [[:transform/translate 2.0 3.0]
+                                    [:transform/rotate 1.5]
+                                    [:transform/scale 2.0 2.0]]
+                   :group/children
+                   [{:node/type :shape/circle
+                     :circle/center [1.0 1.0]
+                     :circle/radius 0.5}]}]}
+          result (scene/with-units scene)
+          node   (first (:image/nodes result))
+          xforms (:node/transform node)
+          child  (first (:group/children node))]
+      (is (= [:transform/translate 200.0 300.0] (nth xforms 0)))
+      (is (= [:transform/rotate 1.5] (nth xforms 1)))
+      (is (= [:transform/scale 2.0 2.0] (nth xforms 2)))
+      (is (= [100.0 100.0] (:circle/center child)))
+      (is (= 50.0 (:circle/radius child))))))
+
+(deftest with-units-nested-groups-test
+  (testing "recurses into nested groups"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :group
+                   :group/children
+                   [{:node/type :group
+                     :group/children
+                     [{:node/type :shape/circle
+                       :circle/center [5.0 5.0]
+                       :circle/radius 1.0}]}]}]}
+          result (scene/with-units scene)
+          inner  (-> result :image/nodes first :group/children first
+                     :group/children first)]
+      (is (= [500.0 500.0] (:circle/center inner)))
+      (is (= 100.0 (:circle/radius inner))))))
+
+(deftest with-units-font-size-test
+  (testing "scales font size"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :shape/text
+                   :text/content "Hello"
+                   :text/font {:font/family "SansSerif" :font/size 0.5}
+                   :text/origin [1.0 2.0]}]}
+          result (scene/with-units scene)
+          node   (first (:image/nodes result))]
+      (is (= [100.0 200.0] (:text/origin node)))
+      (is (= 50.0 (get-in node [:text/font :font/size]))))))
+
+(deftest with-units-bounds-keys-test
+  (testing "scales bounds [x y w h]"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :flow-field
+                   :flow/bounds [0.0 0.0 10.0 10.0]}]}
+          result (scene/with-units scene)
+          node   (first (:image/nodes result))]
+      (is (= [0.0 0.0 1000.0 1000.0] (:flow/bounds node))))))
+
+(deftest with-units-effect-test
+  (testing "scales shadow dx/dy/blur but not opacity"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [1.0 1.0]
+                   :rect/size [5.0 5.0]
+                   :effect/shadow {:dx 0.1 :dy 0.1 :blur 0.2
+                                   :color [:color/rgb 0 0 0] :opacity 0.5}}]}
+          result (scene/with-units scene)
+          shadow (:effect/shadow (first (:image/nodes result)))]
+      (is (= 10.0 (:dx shadow)))
+      (is (= 10.0 (:dy shadow)))
+      (is (= 20.0 (:blur shadow)))
+      (is (= 0.5 (:opacity shadow)))
+      (is (= [:color/rgb 0 0 0] (:color shadow))))))
+
+(deftest with-units-scatter-test
+  (testing "scales scatter positions and jitter"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :scatter
+                   :scatter/shape {:node/type :shape/circle
+                                   :circle/center [0 0]
+                                   :circle/radius 0.1}
+                   :scatter/positions [[1.0 2.0] [3.0 4.0]]
+                   :scatter/jitter 0.5}]}
+          result (scene/with-units scene)
+          node   (first (:image/nodes result))]
+      (is (= [[100.0 200.0] [300.0 400.0]] (:scatter/positions node)))
+      (is (= 50.0 (:scatter/jitter node)))
+      (is (= 10.0 (:circle/radius (:scatter/shape node)))))))
+
+(deftest with-units-gradient-fill-test
+  (testing "scales gradient spatial values inside fill"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [0.0 0.0]
+                   :rect/size [10.0 10.0]
+                   :style/fill {:gradient/type :linear
+                                :gradient/from [0.0 0.0]
+                                :gradient/to [10.0 10.0]
+                                :gradient/stops [[0 [:color/rgb 0 0 0]]
+                                                 [1 [:color/rgb 255 255 255]]]}}]}
+          result (scene/with-units scene)
+          fill   (:style/fill (first (:image/nodes result)))]
+      (is (= [0.0 0.0] (:gradient/from fill)))
+      (is (= [1000.0 1000.0] (:gradient/to fill)))
+      (is (= [[0 [:color/rgb 0 0 0]] [1 [:color/rgb 255 255 255]]]
+             (:gradient/stops fill))))))
+
+(deftest with-units-group-clip-test
+  (testing "scales clip shape inside group"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :group
+                   :group/clip {:node/type :shape/rect
+                                :rect/xy [1.0 1.0]
+                                :rect/size [8.0 8.0]}
+                   :group/children []}]}
+          result (scene/with-units scene)
+          clip   (:group/clip (first (:image/nodes result)))]
+      (is (= [100.0 100.0] (:rect/xy clip)))
+      (is (= [800.0 800.0] (:rect/size clip))))))

@@ -6,23 +6,6 @@ Organized by what matters to practicing generative and computational artists, gr
 
 ---
 
-## Composition and spatial layout
-
-### Resolution-independent coordinates with real-world units
-
-Artists who produce physical output (prints, plotter work) need to think in centimeters or inches, not pixels. Currently Eido works in pixels only, with DPI metadata as an afterthought.
-
-**What to add:**
-- Consider a coordinate system option: `:image/units :cm` with `:image/dpi 300` that translates real-world dimensions to pixel coordinates automatically
-
-**Implementation notes:**
-- Conversion is simple: `pixels = cm * (dpi / 2.54)`. Could be a preprocessing step that transforms `:image/size` before compilation.
-- The harder question: should *all* coordinates in the scene (circle radii, line endpoints, stroke widths) be in the same unit? Probably yes — a scene described in centimeters should be internally consistent.
-- Approach: a `scene/with-units` helper that walks the scene map and scales all numeric coordinates by the conversion factor. Applied once at render time. Keeps the core pipeline pixel-based.
-- Standard paper sizes as presets: `scene/a4`, `scene/letter`, `scene/a3` that return `{:image/size [...] :image/dpi 300}`.
-
----
-
 ## Output and export
 
 ### Resolution-independent re-rendering
