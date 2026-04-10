@@ -36,6 +36,11 @@
 - **Batch rendering** — `render-editions` renders and exports a range of editions with metadata.
 - **Plotter SVG** — `:stroke-only`, `:group-by-stroke`, `:deduplicate`, `:optimize-travel` options for pen plotter output.
 - **Scene margin** — `scene/with-margin` wraps nodes in a clipped inset rectangle.
+- **TIFF output** — `render` supports `.tiff`/`.tif` export via `javax.imageio` with DPI metadata embedding (TIFF IFD tags 282/283/296) and configurable compression (`:lzw`, `:deflate`, `:none`). Default compression is LZW.
+- **Resolution-independent coordinates** — `scene/with-units` converts scenes described in real-world units (`:cm`, `:mm`, `:in`) to pixel coordinates using an explicit key registry. All spatial values (coordinates, radii, stroke widths, dash patterns, font sizes) are scaled; non-spatial values (opacity, angles, colors) are preserved.
+- **Paper size presets** — `scene/paper` returns base scene maps for standard paper sizes (`:a3`, `:a4`, `:a5`, `:letter`, `:legal`, `:tabloid`, `:square-8`) with configurable DPI and landscape orientation.
+- **DPI auto-propagation** — `render-to-file` reads `:image/dpi` from the scene for PNG and TIFF metadata when no explicit `:dpi` opt is passed.
+- **Polyline/EDN data export** — `render` accepts `{:format :polylines}` to extract geometry as vectors of `[x y]` points for CNC mills, laser cutters, and custom plotter software. Curves are flattened via de Casteljau subdivision. Output format: `{:polylines [[[x1 y1] ...] ...] :bounds [w h]}`.
 
 ### Bug fixes
 
