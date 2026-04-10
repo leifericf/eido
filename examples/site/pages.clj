@@ -2149,16 +2149,21 @@ CircleOp{...original-shape...}"]]
     :title "Capturing Interesting Seeds"
     :content
     [:div
-     [:p "When you find a combination you like, save the seed and parameters for later:"]
+     [:p "When you find a combination you like, use " [:code "save-seed!"] " to bookmark it:"]
      [:pre [:code
-            ";; Manual approach — keep a running EDN file
-(spit \"keepers.edn\"
-  (pr-str {:seed 4217 :params params :note \"nice organic density\"})
-  :append true)
+            "(require '[eido.gen.series :as series])
 
-;; Or just save the scene map directly
-(spit \"keeper-4217.edn\" (pr-str scene))"]]
-     [:p "The scene map is the most reliable artifact — it's a complete, self-contained description that can be re-rendered anytime. Seeds and params are useful for regeneration and tweaking."]]}])
+;; Bookmark a discovery
+(series/save-seed! \"keepers.edn\"
+  {:seed 4217 :params params :note \"nice organic density\"})
+
+;; Later, load all bookmarks
+(series/load-seeds \"keepers.edn\")
+;=> [{:seed 4217 :params {...} :note \"nice organic density\"
+;     :timestamp \"2026-04-10T...\"}]"]]
+     [:p "Each entry is timestamped automatically. The file accumulates entries — one per " [:code "save-seed!"] " call."]
+     [:p "For maximum reliability, save the scene map directly — it's a complete, self-contained description that can be re-rendered anytime:"]
+     [:pre [:code "(spit \"keeper-4217.edn\" (pr-str scene))"]]]}])
 
 (defn- workflow-editions-sections []
   [{:id "overview"
@@ -2226,6 +2231,23 @@ CircleOp{...original-shape...}"]]
       [:li [:code "editions/metadata.edn"] " — parameters and traits for every edition"]
       [:li [:code "editions/edition-0.edn"] " through " [:code "edition-49.edn"] " — per-edition manifests (with " [:code ":emit-manifest? true"] ")"]]
      [:p "Each manifest contains the full scene map, seed, parameters, and Eido version — everything needed to reproduce that exact output."]]}
+
+   {:id "complete-package"
+    :title "Complete Package"
+    :content
+    [:div
+     [:p "For a full archival package — images, manifests, and a contact sheet in one call — use " [:code "export-edition-package"] ":"]
+     [:pre [:code
+            "(series/export-edition-package
+  {:spec        spec
+   :master-seed 42
+   :start       0
+   :end         50
+   :scene-fn    make-scene
+   :output-dir  \"editions/\"
+   :contact-cols 10
+   :thumb-size  [160 160]})"]]
+     [:p "This produces everything " [:code "render-editions"] " does (with manifests enabled), plus a " [:code "contact-sheet.png"] " — a grid of thumbnails useful for proofing, exhibition planning, and social media."]]}
 
    {:id "traits"
     :title "Trait Analysis"
@@ -2311,6 +2333,21 @@ CircleOp{...original-shape...}"]]
   [[:smooth {:tension 0.3}]
    [:jitter {:amount 1.0 :seed 42}]])"]]
      [:p "These transforms work on path commands, not scene nodes — apply them before building the final scene."]]}
+
+   {:id "per-layer"
+    :title "Per-Layer Export"
+    :content
+    [:div
+     [:p "For multi-pen plotters, export one SVG file per stroke color with " [:code "export-layers"] ":"]
+     [:pre [:code
+            "(require '[eido.io.plotter :as plotter])
+
+(plotter/export-layers scene \"output/plotter/\"
+  {:optimize-travel true})
+;; => [{:pen \"pen-rgb-255-0-0-\" :file \"output/plotter/pen-rgb-255-0-0-.svg\"}
+;;     {:pen \"pen-rgb-0-0-255-\" :file \"output/plotter/pen-rgb-0-0-255-.svg\"}]
+;; Also writes output/plotter/preview.svg with all layers"]]
+     [:p "Each layer SVG is stroke-only with deduplicated, travel-optimized paths. Load each file in your plotter software and assign to a physical pen. Disable the preview with " [:code "{:preview false}"] "."]]}
 
    {:id "polylines"
     :title "Beyond Plotters: Polyline Export"
