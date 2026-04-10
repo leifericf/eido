@@ -66,42 +66,6 @@ A common workflow: photograph a landscape or a physical painting, extract the do
 
 Uniform randomness looks artificial. Natural phenomena follow Gaussian, power-law, and other shaped distributions. Artists spend significant time fine-tuning probability distributions to get organic-feeling results.
 
-### Power-law / Pareto distribution
-
-Heavy-tailed distributions are essential for natural-feeling size variation (city sizes, star brightness, element emphasis). Missing from `eido.gen.prob`.
-
-**What to add:**
-- `{:type :pareto :alpha 2.0 :min 1.0}` distribution spec
-- `prob/pareto` convenience function
-
-**Implementation notes:**
-- Inverse CDF method: `min * (1 - u)^(-1/alpha)` where `u` is uniform [0,1). One line of math per sample.
-- Add a case to `prob/sample` alongside existing `:uniform`, `:gaussian`, etc.
-- Optional `:max` for truncated Pareto (reject samples above max) — useful when you want heavy-tail but not infinite range.
-
-### Triangular distribution
-
-A simple bell-like distribution with explicit min/max/mode — easier to reason about than Gaussian for bounded parameters.
-
-**What to add:**
-- `{:type :triangular :min 0 :max 1 :mode 0.5}` distribution spec
-
-**Implementation notes:**
-- Inverse CDF method: piecewise formula based on whether `u < (mode-min)/(max-min)`. ~10 lines of math.
-- Intuitive for artists: "I want values mostly around 0.3 but never below 0 or above 1" is directly expressible as `{:type :triangular :min 0 :max 1 :mode 0.3}`.
-
-### Distribution shaping via easing functions
-
-Apply easing curves (ease-in, ease-out, quadratic, cubic) to uniform samples to shape their distribution without defining a named distribution. A common technique for sculpting randomness.
-
-**What to add:**
-- `{:type :eased :easing :ease-in-quad}` distribution spec, or an `:easing` option on uniform specs
-
-**Implementation notes:**
-- Simplest approach: add an `:easing` key to any distribution spec. `prob/sample` applies the easing function to the uniform source before transforming: `(easing-fn (.nextDouble rng))`.
-- This composes with existing types: `{:type :uniform :lo 5 :hi 50 :easing :ease-in-quad}` gives a uniform range skewed toward the low end.
-- Easing functions are the same `t -> t` curves used in animation. Reuse or share with `eido.animate` if applicable.
-
 ### Geometric random distributions
 
 Sampling uniformly on or inside circles and spheres is a common need for scatter patterns, particle emission, and spatial layouts. Currently requires manual trigonometry.

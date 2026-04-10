@@ -113,6 +113,8 @@
 (import-fn prob/pick-weighted)
 (import-fn prob/sample)
 (import-fn prob/sample-n)
+(import-fn prob/pareto)
+(import-fn prob/triangular)
 
 ;; circle packing
 (import-fn circle/circle-pack)

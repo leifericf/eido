@@ -119,6 +119,9 @@
     {:type :choice   :options [:a :b :c]}
     {:type :weighted-choice :options [:a :b] :weights [3 1]}
     {:type :boolean  :probability 0.5}
+    {:type :pareto   :alpha 2.0 :min 1.0}           ;; optional :max
+    {:type :triangular :min 0 :max 1 :mode 0.5}
+    {:type :eased    :easing fn :lo 0 :hi 1}
   Same spec format used by eido.gen.series/series-params."
   [spec seed]
   (case (:type spec)
@@ -126,7 +129,34 @@
     :gaussian       (first (gaussian 1 (:mean spec) (:sd spec) seed))
     :choice         (pick (:options spec) seed)
     :weighted-choice (pick-weighted (:options spec) (:weights spec) seed)
-    :boolean        (coin (get spec :probability 0.5) seed)))
+    :boolean        (coin (get spec :probability 0.5) seed)
+    :pareto         (let [rng (make-rng seed)
+                          alpha (double (:alpha spec))
+                          mn (double (:min spec))
+                          mx (:max spec)]
+                      (if mx
+                        (let [mx (double mx)]
+                          (loop []
+                            (let [v (* mn (Math/pow (- 1.0 (.nextDouble rng))
+                                                    (/ -1.0 alpha)))]
+                              (if (<= v mx) v (recur)))))
+                        (* mn (Math/pow (- 1.0 (.nextDouble rng))
+                                        (/ -1.0 alpha)))))
+    :triangular     (let [rng (make-rng seed)
+                          mn (double (:min spec))
+                          mx (double (:max spec))
+                          mode (double (:mode spec))
+                          u (.nextDouble rng)
+                          fc (/ (- mode mn) (- mx mn))]
+                      (if (< u fc)
+                        (+ mn (Math/sqrt (* u (- mx mn) (- mode mn))))
+                        (- mx (Math/sqrt (* (- 1.0 u) (- mx mn) (- mx mode))))))
+    :eased          (let [rng (make-rng seed)
+                          easing (:easing spec)
+                          lo (double (get spec :lo 0))
+                          hi (double (get spec :hi 1))
+                          u (double (easing (.nextDouble rng)))]
+                      (+ lo (* u (- hi lo))))))
 
 (defn sample-n
   "Samples n values from a distribution spec.
@@ -138,6 +168,20 @@
           (range n))))
 
 ;; --- convenience helpers ---
+
+(defn ^{:convenience true}
+  pareto
+  "Returns a vector of n Pareto-distributed doubles.
+  Wraps (sample-n {:type :pareto ...})."
+  [n alpha min-val seed]
+  (sample-n {:type :pareto :alpha alpha :min min-val} n seed))
+
+(defn ^{:convenience true}
+  triangular
+  "Returns a vector of n triangular-distributed doubles in [min-val, max-val].
+  Wraps (sample-n {:type :triangular ...})."
+  [n min-val max-val mode seed]
+  (sample-n {:type :triangular :min min-val :max max-val :mode mode} n seed))
 
 (defn ^{:convenience true}
   mixture
@@ -166,4 +210,9 @@
   (sample {:type :uniform :lo 0.0 :hi 1.0} 42)
   (sample {:type :gaussian :mean 50.0 :sd 5.0} 42)
   (sample {:type :choice :options [:a :b :c]} 42)
-  (sample-n {:type :uniform :lo 0.0 :hi 10.0} 5 42))
+  (sample {:type :pareto :alpha 2.0 :min 1.0} 42)
+  (sample {:type :triangular :min 0 :max 10 :mode 3} 42)
+  (sample {:type :eased :easing #(* % %) :lo 0 :hi 100} 42)
+  (sample-n {:type :uniform :lo 0.0 :hi 10.0} 5 42)
+  (pareto 10 2.0 1.0 42)
+  (triangular 10 0 10 5 42))

@@ -214,3 +214,56 @@
           src2 (prob/uniform 50 90.0 100.0 99)]
       (is (= (prob/mixture [src1 src2] [1 1] 20 42)
              (prob/mixture [src1 src2] [1 1] 20 42))))))
+
+;; --- pareto distribution ---
+
+(deftest pareto-sample-test
+  (testing "all values >= min"
+    (let [vals (prob/sample-n {:type :pareto :alpha 2.0 :min 1.0} 100 42)]
+      (is (every? #(>= % 1.0) vals))))
+  (testing "deterministic"
+    (is (= (prob/sample {:type :pareto :alpha 2.0 :min 1.0} 42)
+           (prob/sample {:type :pareto :alpha 2.0 :min 1.0} 42))))
+  (testing "truncated version respects max"
+    (let [vals (prob/sample-n {:type :pareto :alpha 1.0 :min 1.0 :max 10.0} 100 42)]
+      (is (every? #(<= % 10.0) vals)))))
+
+(deftest pareto-convenience-test
+  (testing "returns n values >= min"
+    (let [vals (prob/pareto 50 2.0 1.0 42)]
+      (is (= 50 (count vals)))
+      (is (every? #(>= % 1.0) vals)))))
+
+;; --- triangular distribution ---
+
+(deftest triangular-sample-test
+  (testing "all values in [min, max]"
+    (let [vals (prob/sample-n {:type :triangular :min 0 :max 1 :mode 0.5} 100 42)]
+      (is (every? #(and (>= % 0.0) (<= % 1.0)) vals))))
+  (testing "deterministic"
+    (is (= (prob/sample {:type :triangular :min 0 :max 10 :mode 3} 42)
+           (prob/sample {:type :triangular :min 0 :max 10 :mode 3} 42)))))
+
+(deftest triangular-convenience-test
+  (testing "returns n values in range"
+    (let [vals (prob/triangular 50 0 10 5 42)]
+      (is (= 50 (count vals)))
+      (is (every? #(and (>= % 0.0) (<= % 10.0)) vals)))))
+
+;; --- eased distribution ---
+
+(deftest eased-sample-test
+  (testing "values in [lo, hi]"
+    (let [vals (prob/sample-n {:type :eased :easing identity :lo 0 :hi 1} 100 42)]
+      (is (every? #(and (>= % 0.0) (<= % 1.0)) vals))))
+  (testing "identity easing = uniform"
+    (let [vals (prob/sample-n {:type :eased :easing identity :lo 0 :hi 1} 1000 42)
+          below-mid (count (filter #(< % 0.5) vals))]
+      ;; With identity easing, ~50% should be below 0.5 (within tolerance)
+      (is (< 350 below-mid 650))))
+  (testing "ease-in skews toward lo"
+    (let [ease-in (fn [t] (* t t))
+          vals (prob/sample-n {:type :eased :easing ease-in :lo 0 :hi 1} 1000 42)
+          below-mid (count (filter #(< % 0.5) vals))]
+      ;; With ease-in (t^2), more values should be below 0.5
+      (is (> below-mid 600)))))

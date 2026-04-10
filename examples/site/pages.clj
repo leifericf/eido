@@ -577,7 +577,22 @@
 
 ;; Shuffle a list in a repeatable way
 (prob/shuffle-seeded [1 2 3 4 5] seed)"]]
-       [:p "These tools feed naturally into palette sampling, series parameters, and per-item variation — giving you precise artistic control over what would otherwise be pure chance."]]}
+       [:p "These tools feed naturally into palette sampling, series parameters, and per-item variation — giving you precise artistic control over what would otherwise be pure chance."]
+       [:h4 "Shaped distributions"]
+       [:p "Beyond uniform and Gaussian, three more distribution shapes for sculpting randomness:"]
+       [:pre [:code
+              ";; Pareto (heavy-tailed): most values small, occasional giants
+;; Great for natural size variation (city sizes, star brightness)
+(prob/pareto 50 2.0 1.0 seed)  ;; 50 values, alpha=2, min=1
+
+;; Triangular: bounded bell curve with explicit min/max/peak
+;; \"Mostly around 0.3 but never below 0 or above 1\"
+(prob/sample {:type :triangular :min 0 :max 1 :mode 0.3} seed)
+
+;; Eased: shape any distribution with an easing curve
+;; Pass any (fn [t] -> t) to skew the output
+(require '[eido.animate :as anim])
+(prob/sample {:type :eased :easing anim/ease-in :lo 5 :hi 50} seed)"]]]}
 
      {:id    "circle-packing"
       :title "Circle Packing"
