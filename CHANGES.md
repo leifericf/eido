@@ -1,6 +1,6 @@
 # Changes
 
-## Unreleased — API Consistency
+## v1.0.0-beta5 — API Consistency
 
 ### Breaking changes
 
@@ -220,6 +220,13 @@ directly using the migration examples below.
   (would crash at runtime after bounds packing change).
 - Fix missing `require` for `eido.color.palette` in `pack->colored-nodes`
   (pre-existing: used fully-qualified symbol without namespace require).
+- Fix Catmull-Clark edge point formula in `subdivide-once` — used
+  `(midpoint + F1 + F2) / 3` instead of the correct
+  `(v0 + v1 + F1 + F2) / 4`, producing subtly wrong vertex positions
+  on asymmetric meshes.
+- Fix `geometry-bounds` for paths ignoring `:curve-to` and `:quad-to`
+  endpoints — hatch, stipple, and procedural fills on curved paths
+  (e.g. text outlines) could render at wrong size or position.
 
 ### Enhancements
 
