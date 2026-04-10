@@ -50,23 +50,18 @@
         max-gx (min (dec gw) (+ cx rc))
         min-gy (max 0 (- cy rc))
         max-gy (min (dec gh) (+ cy rc))]
-    (loop [gy min-gy]
-      (if (> gy max-gy)
-        false
-        (if (loop [gx min-gx]
-              (if (> gx max-gx)
-                false
-                (let [pts (aget cells (int (+ gx (* gy gw))))]
-                  (if (and pts
-                           (some (fn [[px py]]
-                                   (let [ddx (- x (double px))
-                                         ddy (- y (double py))]
-                                     (<= (+ (* ddx ddx) (* ddy ddy)) dist-sq)))
-                                 pts))
-                    true
-                    (recur (inc gx))))))
-          true
-          (recur (inc gy)))))))
+    (boolean
+      (some (fn [[gx gy]]
+              (let [pts (aget cells (int (+ gx (* gy gw))))]
+                (when pts
+                  (some (fn [[px py]]
+                          (let [ddx (- x (double px))
+                                ddy (- y (double py))]
+                            (<= (+ (* ddx ddx) (* ddy ddy)) dist-sq)))
+                        pts))))
+            (for [gy (range min-gy (inc max-gy))
+                  gx (range min-gx (inc max-gx))]
+              [gx gy])))))
 
 ;; --- streamline tracing ---
 
