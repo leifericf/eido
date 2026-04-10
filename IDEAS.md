@@ -25,18 +25,6 @@ Artists who produce physical output (prints, plotter work) need to think in cent
 
 ## Output and export
 
-### TIFF output
-
-Standard format for archival fine-art printing. Currently missing — Eido supports PNG, JPEG, SVG, GIF, BMP.
-
-**What to add:**
-- TIFF export option in `eido.core/render`
-
-**Implementation notes:**
-- Java's `ImageIO` supports TIFF via the `javax.imageio` plugins available since Java 9. Check `ImageIO.getWriterFormatNames()` — if "tiff" is present, it's a one-line addition to the format dispatch in `core.clj`.
-- If not available in the JVM version, the `com.twelvemonkeys.imageio` library adds TIFF support — but that would be a dependency. Prefer using the built-in JVM support.
-- TIFF should support uncompressed and LZW compression options for archival use.
-
 ### Resolution-independent re-rendering
 
 Regenerate any saved seed at a different resolution without changing the composition. The same seed at 800×800 and 8000×8000 should produce the same image, just sharper.

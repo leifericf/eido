@@ -159,6 +159,60 @@
           (is (= 800 (.getWidth img))))
         (.delete f)))))
 
+(deftest render-to-file-tiff-test
+  (testing "writes a valid TIFF file"
+    (let [path (str (File/createTempFile "eido-test" ".tiff"))]
+      (eido/render-to-file sample-scene path)
+      (let [f (File. ^String path)
+            img (ImageIO/read f)]
+        (is (.exists f))
+        (is (pos? (.length f)))
+        (is (= 800 (.getWidth img)))
+        (is (= 600 (.getHeight img)))
+        (.delete f)))))
+
+(deftest render-to-file-tif-extension-test
+  (testing "writes TIFF with .tif extension"
+    (let [path (str (File/createTempFile "eido-test" ".tif"))]
+      (eido/render-to-file sample-scene path)
+      (let [f (File. ^String path)]
+        (is (.exists f))
+        (is (pos? (.length f)))
+        (.delete f)))))
+
+(deftest render-to-file-tiff-dpi-test
+  (testing "TIFF with DPI metadata writes successfully"
+    (let [path (str (File/createTempFile "eido-dpi" ".tiff"))]
+      (eido/render-to-file sample-scene path {:dpi 300})
+      (let [f (File. ^String path)]
+        (is (.exists f))
+        (is (pos? (.length f)))
+        (let [img (ImageIO/read f)]
+          (is (= 800 (.getWidth img))))
+        (.delete f)))))
+
+(deftest render-to-file-tiff-compression-test
+  (testing "TIFF with LZW compression produces smaller file than uncompressed"
+    (let [path-lzw (str (File/createTempFile "eido-lzw" ".tiff"))
+          path-none (str (File/createTempFile "eido-none" ".tiff"))]
+      (eido/render-to-file sample-scene path-lzw {:tiff/compression :lzw})
+      (eido/render-to-file sample-scene path-none {:tiff/compression :none})
+      (let [lzw (File. ^String path-lzw)
+            none (File. ^String path-none)]
+        (is (< (.length lzw) (.length none)))
+        (.delete lzw)
+        (.delete none)))))
+
+(deftest render-to-file-tiff-format-override-test
+  (testing ":format tiff overrides extension"
+    (let [path (str (File/createTempFile "eido-test" ".png"))]
+      (eido/render-to-file sample-scene path {:format "tiff"})
+      (let [f (File. ^String path)
+            img (ImageIO/read f)]
+        (is (some? img))
+        (is (= 800 (.getWidth img)))
+        (.delete f)))))
+
 (deftest render-batch-test
   (testing "renders multiple jobs to files"
     (let [scene {:image/size [50 50]

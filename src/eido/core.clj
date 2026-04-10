@@ -11,7 +11,7 @@
     [java.awt Color Graphics2D]
     [java.awt.image BufferedImage]
     [java.io File]
-    [javax.imageio ImageIO ImageWriteParam]
+    [javax.imageio ImageIO IIOImage ImageWriteParam]
     [javax.imageio.metadata IIOMetadataNode]
     [javax.imageio.stream FileImageOutputStream]))
 
@@ -172,9 +172,67 @@
       (.dispose writer)))
   path)
 
+(defn- write-tiff
+  "Writes a BufferedImage as TIFF with optional DPI metadata and compression.
+  Compression: :lzw, :deflate, :none (default :lzw)."
+  [^BufferedImage img ^String path dpi compression]
+  (let [writer (.next (ImageIO/getImageWritersByFormatName "tiff"))
+        param  (.getDefaultWriteParam writer)
+        _      (let [comp (case (or compression :lzw)
+                           :lzw     "LZW"
+                           :deflate "Deflate"
+                           :none    nil)]
+                 (when comp
+                   (.setCompressionMode param ImageWriteParam/MODE_EXPLICIT)
+                   (.setCompressionType param comp)))
+        ts     (javax.imageio.ImageTypeSpecifier/createFromRenderedImage img)
+        meta   (.getDefaultImageMetadata writer ts param)
+        _      (when dpi
+                 (let [root (.getAsTree meta "javax_imageio_tiff_image_1.0")
+                       ifd  (.item (.getChildNodes root) 0)
+                       dpi-str (str (int dpi) "/1")]
+                   ;; XResolution (tag 282)
+                   (let [field (doto (IIOMetadataNode. "TIFFField")
+                                 (.setAttribute "number" "282")
+                                 (.setAttribute "name" "XResolution"))
+                         rats  (IIOMetadataNode. "TIFFRationals")
+                         rat   (doto (IIOMetadataNode. "TIFFRational")
+                                 (.setAttribute "value" dpi-str))]
+                     (.appendChild rats rat)
+                     (.appendChild field rats)
+                     (.appendChild ifd field))
+                   ;; YResolution (tag 283)
+                   (let [field (doto (IIOMetadataNode. "TIFFField")
+                                 (.setAttribute "number" "283")
+                                 (.setAttribute "name" "YResolution"))
+                         rats  (IIOMetadataNode. "TIFFRationals")
+                         rat   (doto (IIOMetadataNode. "TIFFRational")
+                                 (.setAttribute "value" dpi-str))]
+                     (.appendChild rats rat)
+                     (.appendChild field rats)
+                     (.appendChild ifd field))
+                   ;; ResolutionUnit (tag 296) = 2 (inch)
+                   (let [field (doto (IIOMetadataNode. "TIFFField")
+                                 (.setAttribute "number" "296")
+                                 (.setAttribute "name" "ResolutionUnit"))
+                         shorts (IIOMetadataNode. "TIFFShorts")
+                         short  (doto (IIOMetadataNode. "TIFFShort")
+                                  (.setAttribute "value" "2"))]
+                     (.appendChild shorts short)
+                     (.appendChild field shorts)
+                     (.appendChild ifd field))
+                   (.mergeTree meta "javax_imageio_tiff_image_1.0" root)))]
+    (with-open [out (FileImageOutputStream. (File. path))]
+      (.setOutput writer out)
+      (.write writer nil (IIOImage. img nil meta) param)
+      (.dispose writer)))
+  path)
+
 (defn render-to-file
   "Renders a scene and writes to file. Format detected from extension.
-  Opts: :format, :quality (JPEG), :scale, :transparent-background, :dpi (PNG)."
+  Supported formats: PNG, JPEG, GIF, BMP, TIFF, SVG.
+  Opts: :format, :quality (JPEG), :scale, :transparent-background,
+        :dpi (PNG/TIFF), :tiff/compression (:lzw :deflate :none)."
   ([scene path]
    (render-to-file scene path {}))
   ([scene path opts]
@@ -190,7 +248,10 @@
            "png"  (if (:dpi opts)
                     (write-png-with-dpi img path (:dpi opts))
                     (ImageIO/write img "png" (File. ^String path)))
-           "gif"  (ImageIO/write img "gif" (File. ^String path))
+           "gif"   (ImageIO/write img "gif" (File. ^String path))
+           ("tiff"
+            "tif")  (write-tiff img path
+                      (:dpi opts) (:tiff/compression opts))
 
            (throw (ex-info "Unsupported export format"
                            {:path path :format format})))))
@@ -284,7 +345,8 @@
     (render frames {:output \"dir/\" :fps 30})    → PNG sequence
     (render frames {:format :svg :fps 30})        → animated SVG string
 
-  Common opts: :scale, :transparent-background, :quality (JPEG), :dpi (PNG),
+  Common opts: :scale, :transparent-background, :quality (JPEG), :dpi (PNG/TIFF),
+               :tiff/compression (:lzw :deflate :none),
                :loop (GIF, default true), :prefix (frame sequence).
 
   Validation: scenes are validated before compilation by default. Bind
@@ -352,4 +414,14 @@
                              [:close]]
              :style/fill {:color [:color/rgb 255 200 50]}
              :style/stroke {:color [:color/rgb 200 150 0] :width 2}}]})
+
+  ;; TIFF output for archival print
+  (render {:image/size [400 300]
+           :image/background [:color/rgb 255 255 255]
+           :image/nodes
+           [{:node/type :shape/circle
+             :circle/center [200 150]
+             :circle/radius 80
+             :style/fill {:color [:color/rgb 200 0 0]}}]}
+    {:output "/tmp/eido-test.tiff" :dpi 300 :tiff/compression :lzw})
   )
