@@ -26,13 +26,13 @@
 
 (defn decorate-path
   "Places copies of shape at intervals along path-cmds.
-  spacing: distance between placements.
-  rotate?: if true, rotates shapes to follow path tangent.
+  opts: :spacing (required), :rotate? (default false).
   Returns a vector of group nodes with transforms."
-  [path-cmds shape spacing rotate?]
+  [path-cmds shape opts]
   (let [path-cmds (coerce-doubles path-cmds)
         total    (text/path-length path-cmds)
-        spacing  (double spacing)
+        spacing  (double (:spacing opts))
+        rotate?  (get opts :rotate? false)
         n        (int (Math/floor (/ total spacing)))]
     (into []
           (keep (fn [i]
@@ -53,5 +53,5 @@
     [[:move-to [0.0 0.0]] [:line-to [200.0 0.0]]]
     {:node/type :shape/circle :circle/center [0.0 0.0] :circle/radius 5.0
      :style/fill [:color/rgb 255 0 0]}
-    30 true)
+    {:spacing 30 :rotate? true})
   )

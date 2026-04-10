@@ -10,7 +10,7 @@
                  :circle/center [0.0 0.0]
                  :circle/radius 3.0
                  :style/fill [:color/rgb 255 0 0]}
-          result (decorator/decorate-path path-cmds shape 20 true)]
+          result (decorator/decorate-path path-cmds shape {:spacing 20 :rotate? true})]
       (is (vector? result))
       (is (pos? (count result)))
       ;; Each result should be a group with transforms
@@ -22,7 +22,7 @@
                  :circle/center [0.0 0.0]
                  :circle/radius 3.0
                  :style/fill [:color/rgb 255 0 0]}
-          result (decorator/decorate-path path-cmds shape 20 true)]
+          result (decorator/decorate-path path-cmds shape {:spacing 20 :rotate? true})]
       ;; Some nodes should have rotation
       (is (some (fn [n]
                   (some (fn [[t & _]] (= t :transform/rotate))
@@ -36,6 +36,6 @@
                  :circle/center [0.0 0.0]
                  :circle/radius 2.0
                  :style/fill [:color/rgb 0 0 0]}
-          few  (decorator/decorate-path path-cmds shape 50 false)
-          many (decorator/decorate-path path-cmds shape 10 false)]
+          few  (decorator/decorate-path path-cmds shape {:spacing 50})
+          many (decorator/decorate-path path-cmds shape {:spacing 10})]
       (is (> (count many) (count few))))))

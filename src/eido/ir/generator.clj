@@ -189,8 +189,8 @@
       (let [nodes (decorator/decorate-path
                     (:generator/path-commands gen-desc)
                     (:generator/shape gen-desc)
-                    (:generator/spacing gen-desc)
-                    (:generator/rotate? gen-desc))
+                    {:spacing  (:generator/spacing gen-desc)
+                     :rotate?  (:generator/rotate? gen-desc)})
             with-overrides (apply-overrides nodes (:generator/overrides gen-desc))]
         (lower/lower-scene-nodes
               with-overrides))

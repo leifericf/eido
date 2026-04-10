@@ -233,8 +233,8 @@
   (let [children (-> (decorator/decorate-path
                        (:path/commands node)
                        (:decorator/shape node)
-                       (get node :decorator/spacing 20)
-                       (get node :decorator/rotate? true))
+                       {:spacing  (get node :decorator/spacing 20)
+                        :rotate?  (get node :decorator/rotate? true)})
                      (vary/apply-overrides
                        (:decorator/overrides node)))]
     (wrap-group children node)))
