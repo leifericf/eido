@@ -6,24 +6,6 @@ Organized by what matters to practicing generative and computational artists, gr
 
 ---
 
-## Randomness and distributions
-
-Uniform randomness looks artificial. Natural phenomena follow Gaussian, power-law, and other shaped distributions. Artists spend significant time fine-tuning probability distributions to get organic-feeling results.
-
-### Controlled disorder (calibrated randomness)
-
-A recurring theme in generative art: not total chaos, but precisely calibrated deviation from order. Introduce a small percentage of randomness into an otherwise systematic composition.
-
-**What to add:**
-- Consider a `jitter` or `disorder` parameter pattern that can be applied uniformly across systematic layouts (grids, radial patterns, etc.)
-
-**Implementation notes:**
-- Could be a function `(scatter/jitter points amount seed)` that displaces each point by a Gaussian offset scaled by `amount`. Works on any `[[x y] ...]` collection.
-- Or a `:jitter` option on `scatter/grid` and `scene/distribute` that adds displacement during generation.
-- The key insight: 0% jitter = perfect grid, 1% = barely perceptible wobble, 50% = structured chaos. The amount parameter is the artistic control.
-
----
-
 ## Noise
 
 ### 4D noise
@@ -99,19 +81,6 @@ Many compositions need explicit control over whether elements can touch the edge
 
 ## Texture and material
 
-### Low-opacity layered rendering
-
-A core technique for simulating watercolor, ink wash, and other translucent media: render 30–100 layers of slightly deformed, low-opacity shapes. The result has organic depth that single-layer rendering cannot achieve.
-
-**What to add:**
-- Consider helpers or a recipe pattern for iterative transparent layering with per-layer deformation
-
-**Implementation notes:**
-- Not a single function — more of a compositional pattern. The building blocks exist: shapes with opacity, transforms, noise-based deformation via `path/distort`.
-- A recipe showing the pattern: generate a base polygon, deform it N times (each with independent noise seed), render each at low opacity (0.03–0.05), layer them into a group.
-- Could add a `texture/layered` helper that takes a shape, deformation function, layer count, and opacity, and returns a group node. ~20 lines.
-- Key challenge: rendering many low-opacity overlapping polygons can be slow with Java2D. May need to document performance characteristics and recommended layer counts.
-
 ### Paper grain / texture masking
 
 Simulating the texture of physical media (watercolor paper, canvas, printmaking stock) by masking or modulating output with a noise-based or image-based texture.
@@ -123,18 +92,6 @@ Simulating the texture of physical media (watercolor paper, canvas, printmaking 
 - Eido already has compositing modes (`group/composite`) and noise. A paper grain effect could be: generate a full-canvas noise field, render it as a semi-transparent overlay using a "multiply" or "overlay" blend mode.
 - Could be a recipe rather than a feature: show how to create a texture node from noise and composite it over the artwork.
 - If making it first-class: a `:texture/grain` effect that takes noise parameters and blend mode, applied at the render stage. Would live in `eido.ir.effect` alongside existing blur/glow.
-
-### Analog media emulation
-
-Ink, pencil, gouache, watercolor, woodcut — each has distinct stroke characteristics. Artists working at the boundary of digital and physical want their algorithmic output to carry the feel of a specific medium.
-
-**What to add:**
-- Path aesthetic presets tuned for specific physical media characteristics (stroke width variation, opacity falloff, edge roughness)
-
-**Implementation notes:**
-- `eido.path.aesthetic/stylize` already accepts a data-driven pipeline of transforms. Media presets would be curated parameter maps fed to `stylize`.
-- Example: `aesthetic/ink-preset` = `{:smooth {:tension 0.3} :jitter {:amount 0.8 :seed s} :dash {:length 3 :gap 0.5}}`. Each preset is just data — no new machinery.
-- Caution: presets can become "easy, not simple" if they hide too much. Keep them as named parameter maps that users can inspect, modify, and combine. Not opaque black boxes.
 
 ---
 

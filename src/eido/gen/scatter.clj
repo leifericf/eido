@@ -60,10 +60,25 @@
                :group/children [shape]}))
           positions)))
 
+(defn jitter
+  "Displaces each point by a Gaussian offset scaled by amount.
+  Returns [[x' y'] ...]. Amount controls displacement magnitude:
+  0 = no change, higher = more disorder. Uses Gaussian for natural feel."
+  [points amount seed]
+  (let [rng (java.util.Random. (long seed))
+        amt (double amount)]
+    (if (zero? amt)
+      (vec points)
+      (mapv (fn [[x y]]
+              [(+ (double x) (* amt (.nextGaussian rng)))
+               (+ (double y) (* amt (.nextGaussian rng)))])
+            points))))
+
 (comment
   (grid 0 0 100 100 5 5)
   (poisson-disk 0 0 100 100 10 42)
   (noise-field 0 0 100 100 50 42)
+  (jitter (grid 0 0 100 100 5 5) 3.0 42)
   (scatter->nodes
     {:node/type :shape/circle :circle/center [0.0 0.0] :circle/radius 3.0
      :style/fill [:color/rgb 255 0 0]}

@@ -50,4 +50,24 @@
       (is (= 1 (count nodes-jitter)))
       ;; Jittered position should differ
       (is (not= (:node/transform (first nodes-no-jitter))
-                (:node/transform (first nodes-jitter)))))))
+                (:node/transform (first nodes-jitter))))))
+
+;; --- jitter ---
+
+(deftest jitter-test
+  (testing "same count as input"
+    (let [pts [[0 0] [10 10] [20 20]]
+          result (scatter/jitter pts 5.0 42)]
+      (is (= 3 (count result)))))
+  (testing "amount=0 produces identity"
+    (let [pts [[10.0 20.0] [30.0 40.0]]
+          result (scatter/jitter pts 0.0 42)]
+      (is (= pts result))))
+  (testing "amount>0 displaces points"
+    (let [pts [[50.0 50.0]]
+          result (scatter/jitter pts 10.0 42)]
+      (is (not= pts result))))
+  (testing "deterministic"
+    (let [pts [[0 0] [50 50] [100 100]]]
+      (is (= (scatter/jitter pts 5.0 42)
+             (scatter/jitter pts 5.0 42)))))))

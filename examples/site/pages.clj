@@ -793,6 +793,22 @@
           paths))"]]
        [:p "Try different " [:code ":dash"] " ratios, " [:code ":density"]
         " values, and " [:code ":seed"] "s to find the feel you want."]
+       [:h4 "Media presets"]
+       [:p "Named preset pipelines for common physical media aesthetics — inspect, modify, or combine them:"]
+       [:pre [:code
+              ";; Ink strokes: moderate smoothing + organic jitter
+(aesthetic/stylize path-cmds (aesthetic/ink-preset seed))
+
+;; Pencil lines: light smoothing + fine jitter + sketch dashes
+(aesthetic/stylize path-cmds (aesthetic/pencil-preset seed))
+
+;; Watercolor edges: heavy smoothing + pronounced bleeding
+(aesthetic/stylize path-cmds (aesthetic/watercolor-preset seed))
+
+;; Presets are just data — inspect and modify:
+(aesthetic/ink-preset 42)
+;; => [{:op :chaikin, :iterations 2}
+;;     {:op :jitter, :amount 1.2, :density 1.5, :seed 42}]"]]
        [:h4 "Chaikin smoothing"]
        [:p "Chaikin corner-cutting produces rounder, more uniform curves than Catmull-Rom — a different aesthetic feel:"]
        [:pre [:code
@@ -1334,6 +1350,26 @@
    :output-dir \"editions/\"
    :traits {:density [[15 \"sparse\"] [25 \"medium\"] [100 \"dense\"]]}})"]]
        [:p "Each edition gets a deterministic, uncorrelated seed. The same master-seed + edition-number always produces the same output. The metadata.edn file records parameters and derived traits for every edition."]]}
+
+     {:id    "recipe-watercolor"
+      :title "Watercolor / Ink Wash"
+      :content
+      [:div
+       [:p "Simulate translucent media by layering many low-opacity, slightly deformed copies of a shape. The overlapping layers create organic depth."]
+       [:pre [:code
+              "(require '[eido.texture :as texture])
+
+;; Quick watercolor effect on a shape:
+(texture/watercolor my-polygon
+  {:layers 30 :opacity 0.04 :amount 3.0 :seed 42})
+
+;; Full control with custom deformation:
+(texture/layered my-polygon 40 0.03
+  (fn [node layer-index seed]
+    (update node :path/commands
+      distort/distort-commands {:type :jitter :amount 4 :seed seed}))
+  42)"]]
+       [:p "Each layer is independently deformed, creating the characteristic uneven edge of physical watercolor. 30-50 layers works well for interactive use; up to 100 for final renders."]]}
 
      {:id    "recipe-subdivide-pack"
       :title "Subdivide → Pack → Stylize"

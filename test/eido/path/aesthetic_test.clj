@@ -122,3 +122,27 @@
           result (aes/stylize input [{:op :chaikin :iterations 2}])]
       (is (vector? result))
       (is (> (count result) (count input))))))
+
+;; --- media presets ---
+
+(deftest ink-preset-test
+  (testing "returns valid step vector"
+    (let [steps (aes/ink-preset 42)]
+      (is (vector? steps))
+      (is (every? :op steps))))
+  (testing "roundtrip through stylize"
+    (let [result (aes/stylize line-cmds (aes/ink-preset 42))]
+      (is (vector? result))
+      (is (= :move-to (ffirst result))))))
+
+(deftest pencil-preset-test
+  (testing "returns valid step vector"
+    (let [steps (aes/pencil-preset 42)]
+      (is (vector? steps))
+      (is (every? :op steps)))))
+
+(deftest watercolor-preset-test
+  (testing "returns valid step vector"
+    (let [steps (aes/watercolor-preset 42)]
+      (is (vector? steps))
+      (is (every? :op steps)))))

@@ -69,6 +69,7 @@
 (import-fn scatter/poisson-disk)
 (import-fn scatter/noise-field)
 (import-fn scatter/scatter->nodes)
+(import-fn scatter/jitter)
 
 ;; voronoi
 (import-fn voronoi/voronoi-cells)

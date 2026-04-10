@@ -135,6 +135,9 @@
 (import-fn aesthetic/dash-commands)
 (import-fn aesthetic/chaikin-commands)
 (import-fn aesthetic/stylize)
+(import-fn aesthetic/ink-preset)
+(import-fn aesthetic/pencil-preset)
+(import-fn aesthetic/watercolor-preset)
 
 ;; --- simplification (Douglas-Peucker) ---
 

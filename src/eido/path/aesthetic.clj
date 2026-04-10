@@ -178,6 +178,32 @@
                 :chaikin (chaikin-commands cmds opts))))
           commands steps))
 
+;; --- media presets ---
+;; Each preset returns a stylize step vector. They are data, not opaque
+;; functions — users can inspect, modify, and compose them.
+
+(defn ink-preset
+  "Returns stylize steps for ink-stroke aesthetics.
+  Moderate Chaikin smoothing with organic jitter."
+  [seed]
+  [{:op :chaikin :iterations 2}
+   {:op :jitter :amount 1.2 :density 1.5 :seed seed}])
+
+(defn pencil-preset
+  "Returns stylize steps for pencil-line aesthetics.
+  Light smoothing, fine jitter, short dashes for sketch feel."
+  [seed]
+  [{:op :smooth :samples 24}
+   {:op :jitter :amount 0.6 :density 0.8 :seed seed}
+   {:op :dash :dash [8.0 1.5]}])
+
+(defn watercolor-preset
+  "Returns stylize steps for watercolor-edge aesthetics.
+  Heavy Chaikin smoothing with pronounced jitter for bleeding edges."
+  [seed]
+  [{:op :chaikin :iterations 3}
+   {:op :jitter :amount 3.0 :density 2.0 :seed seed}])
+
 (comment
   (smooth-commands
     [[:move-to [0.0 0.0]] [:line-to [50.0 20.0]]
@@ -188,4 +214,6 @@
     {:amount 5.0 :seed 42})
   (dash-commands
     [[:move-to [0.0 0.0]] [:line-to [100.0 0.0]]]
-    {:dash [15.0 5.0]}))
+    {:dash [15.0 5.0]})
+  (stylize [[:move-to [0.0 0.0]] [:line-to [50.0 0.0]] [:line-to [100.0 50.0]]]
+    (ink-preset 42)))
