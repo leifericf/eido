@@ -111,6 +111,8 @@
 (import-fn prob/coin)
 (import-fn prob/pick)
 (import-fn prob/pick-weighted)
+(import-fn prob/sample)
+(import-fn prob/sample-n)
 
 ;; circle packing
 (import-fn circle/circle-pack)

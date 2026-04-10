@@ -143,6 +143,64 @@
     (let [items [:a :b :c]]
       (is (some #{(prob/pick-weighted items [1 2 3] 42)} items)))))
 
+;; --- distribution spec sampling ---
+
+(deftest sample-uniform-test
+  (testing "samples a single value from uniform spec"
+    (let [v (prob/sample {:type :uniform :lo 0.0 :hi 10.0} 42)]
+      (is (number? v))
+      (is (>= v 0.0))
+      (is (< v 10.0))))
+  (testing "deterministic"
+    (is (= (prob/sample {:type :uniform :lo 0.0 :hi 1.0} 42)
+           (prob/sample {:type :uniform :lo 0.0 :hi 1.0} 42)))))
+
+(deftest sample-gaussian-test
+  (testing "samples a single value from gaussian spec"
+    (let [v (prob/sample {:type :gaussian :mean 50.0 :sd 5.0} 42)]
+      (is (number? v))))
+  (testing "deterministic"
+    (is (= (prob/sample {:type :gaussian :mean 0.0 :sd 1.0} 42)
+           (prob/sample {:type :gaussian :mean 0.0 :sd 1.0} 42)))))
+
+(deftest sample-choice-test
+  (testing "samples from options"
+    (let [v (prob/sample {:type :choice :options [:a :b :c]} 42)]
+      (is (some #{v} [:a :b :c]))))
+  (testing "deterministic"
+    (is (= (prob/sample {:type :choice :options [:x :y]} 42)
+           (prob/sample {:type :choice :options [:x :y]} 42)))))
+
+(deftest sample-weighted-choice-test
+  (testing "samples from weighted options"
+    (let [v (prob/sample {:type :weighted-choice
+                          :options [:rare :common :epic]
+                          :weights [1 5 2]} 42)]
+      (is (some #{v} [:rare :common :epic])))))
+
+(deftest sample-boolean-test
+  (testing "samples a boolean"
+    (is (boolean? (prob/sample {:type :boolean :probability 0.5} 42))))
+  (testing "probability 1.0 always true"
+    (is (every? true? (map #(prob/sample {:type :boolean :probability 1.0} %)
+                           (range 100)))))
+  (testing "default probability 0.5"
+    (is (boolean? (prob/sample {:type :boolean} 42)))))
+
+(deftest sample-n-test
+  (testing "returns n values"
+    (is (= 10 (count (prob/sample-n {:type :uniform :lo 0.0 :hi 1.0} 10 42)))))
+  (testing "all values within bounds"
+    (let [vals (prob/sample-n {:type :uniform :lo -5.0 :hi 5.0} 100 42)]
+      (is (every? #(and (>= % -5.0) (< % 5.0)) vals))))
+  (testing "deterministic"
+    (is (= (prob/sample-n {:type :gaussian :mean 0.0 :sd 1.0} 5 42)
+           (prob/sample-n {:type :gaussian :mean 0.0 :sd 1.0} 5 42))))
+  (testing "works with choice specs"
+    (let [vals (prob/sample-n {:type :choice :options [:a :b :c]} 20 42)]
+      (is (= 20 (count vals)))
+      (is (every? #{:a :b :c} vals)))))
+
 ;; --- convenience helper tests ---
 
 (deftest mixture-test

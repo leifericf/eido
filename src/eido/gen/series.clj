@@ -26,25 +26,6 @@
 
 ;; --- parameter sampling ---
 
-(defn- sample-param
-  "Samples a single parameter from its spec using the given seed."
-  [param-spec seed]
-  (case (:type param-spec)
-    :uniform
-    (first (prob/uniform 1 (:lo param-spec) (:hi param-spec) seed))
-
-    :gaussian
-    (first (prob/gaussian 1 (:mean param-spec) (:sd param-spec) seed))
-
-    :choice
-    (prob/pick (:options param-spec) seed)
-
-    :weighted-choice
-    (prob/pick-weighted (:options param-spec) (:weights param-spec) seed)
-
-    :boolean
-    (prob/coin (get param-spec :probability 0.5) seed)))
-
 (defn series-params
   "Generates a parameter map for one edition in a series.
   spec: map of {:param-name {:type :uniform/:gaussian/:choice/:weighted-choice/:boolean, ...}}
@@ -55,7 +36,7 @@
     (into {}
           (map (fn [[k param-spec]]
                  (let [param-seed (mix64 (unchecked-add base-seed (long (hash k))))]
-                   [k (sample-param param-spec param-seed)])))
+                   [k (prob/sample param-spec param-seed)])))
           spec)))
 
 (defn series-range

@@ -109,6 +109,34 @@
   (let [idx (weighted-choice weights seed)]
     (nth items idx)))
 
+;; --- distribution spec sampling ---
+
+(defn sample
+  "Samples a single value from a distribution spec.
+  Spec is a plain map with :type and type-specific keys:
+    {:type :uniform  :lo 0.0 :hi 1.0}
+    {:type :gaussian :mean 0.0 :sd 1.0}
+    {:type :choice   :options [:a :b :c]}
+    {:type :weighted-choice :options [:a :b] :weights [3 1]}
+    {:type :boolean  :probability 0.5}
+  Same spec format used by eido.gen.series/series-params."
+  [spec seed]
+  (case (:type spec)
+    :uniform        (first (uniform 1 (:lo spec) (:hi spec) seed))
+    :gaussian       (first (gaussian 1 (:mean spec) (:sd spec) seed))
+    :choice         (pick (:options spec) seed)
+    :weighted-choice (pick-weighted (:options spec) (:weights spec) seed)
+    :boolean        (coin (get spec :probability 0.5) seed)))
+
+(defn sample-n
+  "Samples n values from a distribution spec.
+  Each value gets a deterministic sub-seed derived from the base seed
+  and its index, ensuring independent samples."
+  [spec n seed]
+  (let [rng (make-rng seed)]
+    (mapv (fn [_] (sample spec (.nextLong rng)))
+          (range n))))
+
 ;; --- convenience helpers ---
 
 (defn ^{:convenience true}
@@ -134,4 +162,8 @@
   (shuffle-seeded [1 2 3 4 5] 42)
   (coin 0.5 42)
   (pick [:a :b :c] 42)
-  (pick-weighted [:rare :common :epic] [1 5 2] 42))
+  (pick-weighted [:rare :common :epic] [1 5 2] 42)
+  (sample {:type :uniform :lo 0.0 :hi 1.0} 42)
+  (sample {:type :gaussian :mean 50.0 :sd 5.0} 42)
+  (sample {:type :choice :options [:a :b :c]} 42)
+  (sample-n {:type :uniform :lo 0.0 :hi 10.0} 5 42))
