@@ -161,20 +161,16 @@
       (vec points)
       (let [first-pt (first points)
             last-pt (last points)
-            ;; Find point with max distance from line first->last
-            max-d (volatile! 0.0)
-            max-i (volatile! 0)]
-        (doseq [i (range 1 (dec n))]
-          (let [d (point-to-line-distance (nth points i) first-pt last-pt)]
-            (when (> d @max-d)
-              (vreset! max-d d)
-              (vreset! max-i i))))
-        (if (> @max-d epsilon)
-          ;; Recurse on both halves
-          (let [left  (simplify (subvec (vec points) 0 (inc @max-i)) epsilon)
-                right (simplify (subvec (vec points) @max-i) epsilon)]
+            [max-d max-i]
+            (reduce (fn [[best-d best-i] i]
+                      (let [d (point-to-line-distance (nth points i) first-pt last-pt)]
+                        (if (> d best-d) [d i] [best-d best-i])))
+                    [0.0 0]
+                    (range 1 (dec n)))]
+        (if (> max-d epsilon)
+          (let [left  (simplify (subvec (vec points) 0 (inc max-i)) epsilon)
+                right (simplify (subvec (vec points) max-i) epsilon)]
             (vec (concat (butlast left) right)))
-          ;; Discard intermediate points
           [first-pt last-pt])))))
 
 (defn simplify-commands
