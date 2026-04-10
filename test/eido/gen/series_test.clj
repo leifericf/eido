@@ -235,3 +235,40 @@
                                        {:density [[20 "sparse"] [100 "dense"]]})]
       (is (= 200 (:hue traits)))
       (is (= "sparse" (:density traits))))))
+
+;; --- trait-summary ---
+
+(deftest trait-summary-test
+  (testing "all trait keys present and counts sum to n"
+    (let [spec {:density {:type :uniform :lo 0 :hi 100}
+                :speed   {:type :uniform :lo 0 :hi 10}}
+          buckets {:density [[30 "low"] [70 "mid"] [100 "high"]]
+                   :speed   [[5 "slow"] [10 "fast"]]}
+          summary (series/trait-summary spec 42 100 buckets)]
+      (is (contains? summary :density))
+      (is (contains? summary :speed))
+      (is (= 100 (reduce + (vals (:density summary)))))
+      (is (= 100 (reduce + (vals (:speed summary)))))))
+  (testing "deterministic"
+    (let [spec {:x {:type :uniform :lo 0 :hi 1}}
+          buckets {:x [[0.5 "lo"] [1.0 "hi"]]}]
+      (is (= (series/trait-summary spec 42 50 buckets)
+             (series/trait-summary spec 42 50 buckets))))))
+
+;; --- seed-grid :seeds ---
+
+(deftest seed-grid-seeds-test
+  (testing ":seeds option renders specific editions"
+    (let [scene-fn (fn [_params _ed]
+                     {:image/size [10 10]
+                      :image/background :white
+                      :image/nodes []})
+          img (series/seed-grid
+                {:spec {} :master-seed 42
+                 :seeds [0 5 10]
+                 :scene-fn scene-fn
+                 :cols 3 :thumb-size [10 10]})]
+      (is (instance? java.awt.image.BufferedImage img))
+      ;; 3 seeds, 3 cols = 1 row of 30x10
+      (is (= 30 (.getWidth ^java.awt.image.BufferedImage img)))
+      (is (= 10 (.getHeight ^java.awt.image.BufferedImage img))))))

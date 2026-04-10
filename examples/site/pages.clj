@@ -831,7 +831,26 @@
        [:p "Available parameter types: " [:code ":uniform"] " (even spread), "
         [:code ":gaussian"] " (clustered), " [:code ":choice"] " (pick from a list), "
         [:code ":weighted-choice"] " (pick with weights), and "
-        [:code ":boolean"] " (coin flip with probability)."]]}
+        [:code ":boolean"] " (coin flip with probability)."]
+       [:h4 "Trait distribution analysis"]
+       [:p "Before releasing a series, verify that your trait distribution is what you intended:"]
+       [:pre [:code
+              "(series/trait-summary spec 42 1000
+  {:density [[30 \"sparse\"] [70 \"medium\"] [100 \"dense\"]]
+   :speed   [[5 \"slow\"] [10 \"fast\"]]})
+;; => {:density {\"sparse\" 312, \"medium\" 398, \"dense\" 290}
+;;     :speed   {\"slow\" 487, \"fast\" 513}}"]]
+       [:h4 "Focused exploration"]
+       [:p "After a broad sweep, compare favorites side by side:"]
+       [:pre [:code
+              ";; Render specific editions you liked:
+(show (series/seed-grid
+  {:spec spec :master-seed 42
+   :seeds [12 47 103 256 891]
+   :scene-fn make-scene :cols 5}))"]]
+       [:p "Start wide with " [:code ":start/:end"] ", find interesting editions, "
+        "then use " [:code ":seeds"] " to narrow down."
+       ]]}
 
      {:id    "cellular-automata"
       :title "Cellular Automata & Reaction-Diffusion"

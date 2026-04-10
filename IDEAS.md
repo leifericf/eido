@@ -194,28 +194,6 @@ For CNC mills, laser cutters, and custom plotter software, raw polyline coordina
 
 ## Exploration and iteration
 
-### Focused sub-exploration
-
-After a broad seed sweep, narrow in: "I liked seeds 42–48, now show me 420–480 at higher resolution." Telescoping from overview to detail.
-
-**What to add:**
-- Consider `seed-grid` accepting a `:zoom` or `:around` parameter that generates variations near a specific seed region
-
-**Implementation notes:**
-- Simplest approach: `:around seed :radius 100` generates editions with seed values `(range (- seed radius) (+ seed radius))`. Since `edition-seed` uses murmur3 mixing, nearby edition numbers still produce uncorrelated outputs — but the artist gets a semantic "neighborhood" to browse.
-- Alternative: `:seeds [42 47 103 256 ...]` to render a specific list of hand-picked seeds. Useful after initial exploration to compare favorites side by side.
-
-### Parameter narrowing
-
-Start with a wide parameter sweep, then narrow: "density between 15 and 25 looked best, now sweep that range at finer resolution."
-
-**What to add:**
-- Natural with existing `param-grid` — document the pattern of progressive narrowing
-
-**Implementation notes:**
-- No new code needed — the existing `param-grid` supports this directly. First call: `:values [0 50 100 150 200]`. Second call: `:values [50 60 70 80 90 100]`. Third call: `:values [72 74 76 78 80]`.
-- Document this as a recipe in the Guide: "Start wide, find the interesting zone, zoom in."
-
 ### Keyboard-driven seed browsing
 
 At the REPL or in a preview window: press a key to advance to the next seed, another to save/bookmark the current one. A minimal interactive exploration interface.
@@ -228,35 +206,6 @@ At the REPL or in a preview window: press a key to advance to the next seed, ano
 - The `show` function already creates a reusable Swing JFrame. Adding a KeyListener that calls a callback `(fn [action seed] ...)` is ~20 lines.
 - State: an atom holding the current seed. Arrow keys `swap!` it, the window re-renders on change.
 - Bookmarked seeds could be appended to a simple vector atom or printed to REPL for manual recording.
-
----
-
-## Long-form editions and series
-
-### Complete parameter space testing
-
-Before releasing a series, artists need to verify that the full output space is coherent — no broken outputs, acceptable trait distribution, consistent quality. This means rendering hundreds or thousands of test editions.
-
-**What to add:**
-- `seed-grid` already helps. Consider adding trait distribution summary (histogram of trait values across N editions)
-
-**Implementation notes:**
-- Generate N editions' worth of params via `series-range`, apply `derive-traits`, then `frequencies` on each trait key.
-- Output: a map `{:trait-name {"label" count ...} ...}`. Pure data — artists can inspect it at the REPL, or build a visual histogram from it.
-- ~15 lines wrapping existing `series-range` and `derive-traits`.
-
-### Trait distribution analysis
-
-After generating many editions, see the statistical distribution of derived traits. "Are 'rare' traits actually rare? Is the density distribution skewed how I intended?"
-
-**What to add:**
-- `series/trait-summary` — given a spec and seed range, compute frequencies of each trait bucket
-
-**Implementation notes:**
-- Signature: `(trait-summary spec master-seed n-editions trait-buckets)`. Returns `{:trait {"label" count} ...}`.
-- Internally: `(series-range spec master-seed 0 n-editions)` → `(mapv #(derive-traits % trait-buckets) %)` → per-key `frequencies`.
-- Could also return percentages alongside counts for quick readability checks ("is :rare actually 5%?").
-- ~15 lines. Pure function, no rendering needed.
 
 ---
 

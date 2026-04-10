@@ -63,6 +63,18 @@
                  [k v])))
         params))
 
+(defn trait-summary
+  "Computes trait frequencies across n editions of a series.
+  Returns {:trait-name {\"label\" count ...} ...} — pure data for REPL inspection.
+  Useful for verifying that rare traits are actually rare before releasing."
+  [spec master-seed n-editions trait-buckets]
+  (let [params-seq (series-range spec master-seed 0 n-editions)
+        traits-seq (mapv #(derive-traits % trait-buckets) params-seq)]
+    (into {}
+      (map (fn [k]
+             [k (frequencies (mapv k traits-seq))]))
+      (keys trait-buckets))))
+
 ;; --- visual exploration grids ---
 
 (defn- compose-grid
@@ -92,12 +104,13 @@
     :master-seed — master seed for the series
     :start       — first edition number (inclusive, default 0)
     :end         — last edition number (exclusive)
+    :seeds       — explicit list of edition numbers (overrides start/end)
     :scene-fn    — (fn [params edition-number] scene-map)
     :cols        — number of columns (default 5)
     :thumb-size  — [width height] per thumbnail (default [160 160])"
-  [{:keys [spec master-seed start end scene-fn cols thumb-size]}]
+  [{:keys [spec master-seed start end seeds scene-fn cols thumb-size]}]
   (let [render-fn  (requiring-resolve 'eido.core/render)
-        start      (or start 0)
+        editions   (or seeds (range (or start 0) end))
         cols       (or cols 5)
         [tw th]    (or thumb-size [160 160])
         images     (mapv
@@ -106,7 +119,7 @@
                              scene  (scene-fn params edition)
                              scene  (assoc scene :image/size [tw th])]
                          (render-fn scene)))
-                     (range start end))]
+                     editions)]
     (compose-grid images cols [tw th])))
 
 (defn param-grid

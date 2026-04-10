@@ -163,3 +163,4 @@
 (import-fn circle/pack->colored-nodes)
 (import-fn subdivide/subdivide->palette-nodes)
 (import-fn series/derive-traits)
+(import-fn series/trait-summary)
