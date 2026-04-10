@@ -28,14 +28,14 @@
       (is (every? :face/normal m)))))
 
 (deftest cylinder-mesh-test
-  (let [m (mesh/cylinder-mesh 1.0 2.0 8)]
+  (let [m (mesh/cylinder-mesh 1.0 2.0 {:segments 8})]
     (testing "8-sided cylinder has 2 caps + 8 sides = 10 faces"
       (is (= 10 (count m))))
     (testing "all faces have normals"
       (is (every? :face/normal m)))))
 
 (deftest sphere-mesh-test
-  (let [m (mesh/sphere-mesh 1.0 8 4)]
+  (let [m (mesh/sphere-mesh 1.0 {:segments 8 :rings 4})]
     (testing "sphere produces faces"
       (is (pos? (count m))))
     (testing "all faces are triangles or quads"
@@ -48,7 +48,7 @@
               (str "vertex " [x y z] " not on unit sphere")))))))
 
 (deftest torus-mesh-test
-  (let [m (mesh/torus-mesh 3.0 1.0 8 6)]
+  (let [m (mesh/torus-mesh 3.0 1.0 {:ring-segments 8 :tube-segments 6})]
     (testing "torus face count = ring-segments * tube-segments"
       (is (= 48 (count m))))
     (testing "all faces are quads"

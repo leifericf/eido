@@ -407,32 +407,28 @@
 (defn cylinder
   "Creates a 3D cylinder projected into 2D."
   [projection position radius height opts]
-  (let [m (-> (mesh/cylinder-mesh radius height (get opts :segments 16))
+  (let [m (-> (mesh/cylinder-mesh radius height (select-keys opts [:segments]))
               (xform/translate-mesh position))]
     (render-mesh projection m opts)))
 
 (defn sphere
   "Creates a 3D sphere projected into 2D."
   [projection position radius opts]
-  (let [seg  (get opts :segments 16)
-        rng  (get opts :rings 8)
-        m    (-> (mesh/sphere-mesh radius seg rng)
-                 (xform/translate-mesh position))]
+  (let [m (-> (mesh/sphere-mesh radius (select-keys opts [:segments :rings]))
+              (xform/translate-mesh position))]
     (render-mesh projection m opts)))
 
 (defn torus
   "Creates a 3D torus projected into 2D."
   [projection position R r opts]
-  (let [rseg (get opts :ring-segments 24)
-        tseg (get opts :tube-segments 12)
-        m    (-> (mesh/torus-mesh R r rseg tseg)
-                 (xform/translate-mesh position))]
+  (let [m (-> (mesh/torus-mesh R r (select-keys opts [:ring-segments :tube-segments]))
+              (xform/translate-mesh position))]
     (render-mesh projection m opts)))
 
 (defn cone
   "Creates a 3D cone projected into 2D."
   [projection position radius height opts]
-  (let [m (-> (mesh/cone-mesh radius height (get opts :segments 16))
+  (let [m (-> (mesh/cone-mesh radius height (select-keys opts [:segments]))
               (xform/translate-mesh position))]
     (render-mesh projection m opts)))
 

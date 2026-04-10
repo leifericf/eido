@@ -90,7 +90,7 @@
                 gems (mapv (fn [{:keys [x z h r fill]}]
                              (let [sway (* 0.15 (Math/sin (+ (* t 3 Math/PI) (* x 0.5))))
                                    [cr cg cb] fill
-                                   mesh (-> (s3d/cone-mesh r h 6)
+                                   mesh (-> (s3d/cone-mesh r h {:segments 6})
                                             (s3d/rotate-mesh :z sway)
                                             (s3d/translate-mesh [x 0 z]))]
                                (s3d/render-mesh proj mesh
@@ -143,7 +143,7 @@
                 light {:light/direction [1.0 0.8 0.5]
                        :light/ambient 0.12 :light/intensity 0.88}
                 ;; 3D rotating planet
-                planet (let [mesh (-> (s3d/sphere-mesh 1.2 24 12)
+                planet (let [mesh (-> (s3d/sphere-mesh 1.2 {:segments 24 :rings 12})
                                       (s3d/rotate-mesh :y angle))]
                          (s3d/render-mesh proj mesh
                            {:style {:style/fill   [:color/rgb 30 90 190]

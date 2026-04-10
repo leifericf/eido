@@ -17,7 +17,7 @@
         (is (<= 0.0 v 1.0))))))
 
 (deftest uv-project-spherical-test
-  (let [sphere (mesh/sphere-mesh 1.0 8 4)
+  (let [sphere (mesh/sphere-mesh 1.0 {:segments 8 :rings 4})
         m (surface/uv-project sphere {:uv/type :spherical})]
     (testing "every face gets texture coordinates"
       (is (every? :face/texture-coords m)))

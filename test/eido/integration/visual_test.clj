@@ -19,7 +19,7 @@
    [(s3d/render-mesh
       (s3d/perspective {:scale 80 :origin [100 100]
                         :yaw 0.5 :pitch -0.3 :distance 8})
-      (s3d/torus-mesh 1.0 0.4 16 12)
+      (s3d/torus-mesh 1.0 0.4 {:ring-segments 16 :tube-segments 12})
       {:style {:style/fill [:color/rgb 100 140 180]
                :style/stroke {:color [:color/rgb 60 100 140] :width 0.3}}
        :light {:light/direction [1 2 1]
@@ -46,7 +46,7 @@
    [(s3d/render-mesh
       (s3d/orthographic {:scale 60 :origin [100 100]
                          :yaw 0.8 :pitch -0.4})
-      (s3d/sphere-mesh 1.5 16 12)
+      (s3d/sphere-mesh 1.5 {:segments 16 :rings 12})
       {:style {:style/fill [:color/rgb 120 180 120]
                :style/stroke {:color [:color/rgb 80 140 80] :width 0.2}}
        :light {:light/direction [0 1 1]

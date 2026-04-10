@@ -73,7 +73,7 @@
   {:frames (anim/frames 60
              (fn [t]
                (let [proj (s3d/isometric {:scale 55 :origin [200 200]})
-                     mesh (-> (s3d/torus-mesh 1.8 0.7 24 12)
+                     mesh (-> (s3d/torus-mesh 1.8 0.7 {:ring-segments 24 :tube-segments 12})
                               (s3d/rotate-mesh :x 0.4)
                               (s3d/rotate-mesh :y (* t 2.0 Math/PI)))]
                  {:image/size [400 400]
@@ -178,7 +178,7 @@
                   :tags   ["3d"]}}
   torus []
   (let [proj (s3d/isometric {:scale 55 :origin [200 200]})
-        mesh (-> (s3d/torus-mesh 1.8 0.7 32 16)
+        mesh (-> (s3d/torus-mesh 1.8 0.7 {:ring-segments 32 :tube-segments 16})
                  (s3d/rotate-mesh :x 0.6))]
     {:image/size [400 400]
      :image/background [:color/rgb 245 243 238]
@@ -203,7 +203,7 @@
    [(s3d/render-mesh
       (s3d/look-at (s3d/orthographic {:scale 55 :origin [200 200]})
                    [3 2.5 4] [0 0 0])
-      (s3d/torus-mesh 1.5 0.6 20 10)
+      (s3d/torus-mesh 1.5 0.6 {:ring-segments 20 :tube-segments 10})
       {:wireframe true
        :style {:style/stroke {:color [:color/rgb 60 80 120] :width 0.5}}})]})
 
@@ -232,11 +232,11 @@
     [(s3d/cube-mesh [-1.2 0 -1.2] 1.5)
      {:style/fill [:color/rgb 70 130 200]
       :style/stroke {:color [:color/rgb 40 80 140] :width 0.5}}]
-    [(-> (s3d/cylinder-mesh 0.6 2.0 48)
+    [(-> (s3d/cylinder-mesh 0.6 2.0 {:segments 48})
          (s3d/translate-mesh [2.0 0.0 -0.5]))
      {:style/fill [:color/rgb 200 90 70]
       :style/stroke {:color [:color/rgb 200 90 70] :width 0.5}}]
-    [(-> (s3d/sphere-mesh 0.7 16 8)
+    [(-> (s3d/sphere-mesh 0.7 {:segments 16 :rings 8})
          (s3d/translate-mesh [0.0 0.7 2.0]))
      {:style/fill [:color/rgb 80 180 100]
       :style/stroke {:color [:color/rgb 40 110 50] :width 0.3}}]))
@@ -314,12 +314,12 @@
      :image/nodes
      [(s3d/render-mesh proj
         (s3d/merge-meshes
-          [(s3d/cone-mesh 0.8 2.0 48)
+          [(s3d/cone-mesh 0.8 2.0 {:segments 48})
            {:style/fill [:color/rgb 220 160 60]}]
-          [(-> (s3d/torus-mesh 1.2 0.3 48 24)
+          [(-> (s3d/torus-mesh 1.2 0.3 {:ring-segments 48 :tube-segments 24})
                (s3d/translate-mesh [0 0.3 0]))
            {:style/fill [:color/rgb 70 130 200]}]
-          [(-> (s3d/sphere-mesh 0.5 32 16)
+          [(-> (s3d/sphere-mesh 0.5 {:segments 32 :rings 16})
                (s3d/translate-mesh [-2.0 0.5 0.5]))
            {:style/fill [:color/rgb 200 80 80]}])
         {:light light})]}))
@@ -338,7 +338,7 @@
                                      {:radius 5
                                       :yaw (* t 2.0 Math/PI)
                                       :pitch -0.3})
-                     mesh (s3d/torus-mesh 1.5 0.6 20 10)]
+                     mesh (s3d/torus-mesh 1.5 0.6 {:ring-segments 20 :tube-segments 10})]
                  {:image/size [400 400]
                   :image/background [:color/rgb 20 20 30]
                   :image/nodes
@@ -370,7 +370,7 @@
         light {:light/direction [1 2 1]
                :light/ambient 0.12
                :light/intensity 0.88}
-        mesh  (s3d/sphere-mesh 1.2 20 12)]
+        mesh  (s3d/sphere-mesh 1.2 {:segments 20 :rings 12})]
     {:image/size [600 400]
      :image/background [:color/rgb 18 20 28]
      :image/nodes
@@ -409,7 +409,7 @@
                                      {:radius 5
                                       :yaw (* t 2.0 Math/PI)
                                       :pitch -0.35})
-                     mesh (-> (s3d/torus-mesh 1.5 0.6 24 12)
+                     mesh (-> (s3d/torus-mesh 1.5 0.6 {:ring-segments 24 :tube-segments 12})
                               (s3d/rotate-mesh :x 0.3))]
                  {:image/size [400 400]
                   :image/background [:color/rgb 15 15 22]
@@ -447,18 +447,18 @@
                  :material (material/phong :specular 0.0 :shininess 1.0)}
          :light light})
       (s3d/render-mesh proj
-        (s3d/sphere-mesh 1.4 16 10)
+        (s3d/sphere-mesh 1.4 {:segments 16 :rings 10})
         {:style {:style/fill [:color/rgb 60 160 120]
                  :material (material/phong :specular 0.3 :shininess 16.0)}
          :light light})
       (s3d/render-mesh proj
-        (-> (s3d/cylinder-mesh 1.0 2.5 16)
+        (-> (s3d/cylinder-mesh 1.0 2.5 {:segments 16})
             (s3d/translate-mesh [4 0 -1]))
         {:style {:style/fill [:color/rgb 80 120 200]
                  :material (material/phong :specular 0.6 :shininess 64.0)}
          :light light})
       (s3d/render-mesh proj
-        (-> (s3d/torus-mesh 1.2 0.5 20 10)
+        (-> (s3d/torus-mesh 1.2 0.5 {:ring-segments 20 :tube-segments 10})
             (s3d/translate-mesh [0 0 4])
             (s3d/rotate-mesh :x 0.5))
         {:style {:style/fill [:color/rgb 200 180 60]
@@ -472,7 +472,7 @@
                   :desc   "A sphere lit by warm and cool omni lights with hemisphere ambient."
                   :tags   ["3d" "color"]}}
   colored-point-lights []
-  (let [mesh (s3d/sphere-mesh 1.5 24 16)
+  (let [mesh (s3d/sphere-mesh 1.5 {:segments 24 :rings 16})
         proj (s3d/perspective {:scale 120 :origin [200 200]
                                :yaw 0.3 :pitch -0.25 :distance 6})]
     {:image/size [400 400]
@@ -502,7 +502,7 @@
                   :desc   "A spot light with visible hotspot and falloff on a sphere and floor."
                   :tags   ["3d" "color"]}}
   spotlight-scene []
-  (let [sphere (s3d/sphere-mesh 1.0 20 12)
+  (let [sphere (s3d/sphere-mesh 1.0 {:segments 20 :rings 12})
         floor  (s3d/cube-mesh [-3 -1.5 -3] 6)
         proj   (s3d/perspective {:scale 80 :origin [200 220]
                                  :yaw 0.4 :pitch -0.35 :distance 8})]
@@ -604,7 +604,7 @@
                   :desc   "A sphere with noise-selected faces extruded outward, creating organic coral-like forms."
                   :tags   ["3d" "noise" "gradients"]}}
   coral-growth []
-  (let [mesh (-> (s3d/sphere-mesh 1.2 12 8)
+  (let [mesh (-> (s3d/sphere-mesh 1.2 {:segments 12 :rings 8})
                  (s3d/extrude-faces {:select/type :field
                                      :select/field (field/noise-field :scale 1.5 :seed 33)
                                      :select/threshold 0.1
@@ -948,9 +948,9 @@
   scatter-forest []
   (let [;; Simple tree: cone on cylinder
         tree (s3d/merge-meshes
-               [(s3d/cylinder-mesh 0.08 0.4 6)
+               [(s3d/cylinder-mesh 0.08 0.4 {:segments 6})
                 {:style/fill [:color/rgb 120 80 40]}]
-               [(-> (s3d/cone-mesh 0.25 0.5 8)
+               [(-> (s3d/cone-mesh 0.25 0.5 {:segments 8})
                     (s3d/translate-mesh [0 0.4 0]))
                 {:style/fill [:color/rgb 50 120 40]}])
         points (mapv (fn [[x y]] [(* 0.8 x) 0 (* 0.8 y)])
@@ -974,7 +974,7 @@
                   :desc   "Non-photorealistic rendering — 3D sphere with cross-hatch fill whose density varies by lighting."
                   :tags   ["3d" "hatching"]}}
   hatched-sphere []
-  (let [mesh (s3d/sphere-mesh 1.5 12 8)
+  (let [mesh (s3d/sphere-mesh 1.5 {:segments 12 :rings 8})
         proj (s3d/orbit (s3d/orthographic {:scale 60 :origin [200 200]})
                         [0 0 0]
                         {:radius 5 :yaw 0.4 :pitch -0.3})]

@@ -100,8 +100,8 @@
         style {:style/fill [:color/rgb 100 140 180]
                :style/stroke {:color [:color/rgb 60 100 140] :width 0.3}}
         opts  {:style style :light light}
-        torus (s3d/torus-mesh 1.0 0.4 24 12)
-        sphere (s3d/sphere-mesh 1.5 16 12)]
+        torus (s3d/torus-mesh 1.0 0.4 {:ring-segments 24 :tube-segments 12})
+        sphere (s3d/sphere-mesh 1.5 {:segments 16 :rings 12})]
     (println (str "Torus: " (count torus) " faces"))
     (println (str "Sphere: " (count sphere) " faces"))
     (println)

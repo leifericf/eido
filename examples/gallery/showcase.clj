@@ -74,7 +74,7 @@
   crystal-geode []
   (let [proj (s3d/perspective {:scale 120 :origin [250 280]
                                :yaw 0.6 :pitch -0.35 :distance 5})
-        mesh (s3d/sphere-mesh 1.2 20 14)
+        mesh (s3d/sphere-mesh 1.2 {:segments 20 :rings 14})
         light {:light/direction [-1 -1 -1] :light/ambient 0.3 :light/intensity 0.8}
         style {:style/fill [:color/rgb 160 120 200]
                :style/stroke {:color [:color/rgb 100 70 150] :width 0.3}}

@@ -144,7 +144,7 @@
 
 (deftest render-mesh-multi-light-test
   (testing "render-mesh works with multiple lights"
-    (let [mesh (s3d/sphere-mesh 1.0 12 8)
+    (let [mesh (s3d/sphere-mesh 1.0 {:segments 12 :rings 8})
           proj (s3d/isometric {:scale 80 :origin [200 200]})
           result (s3d/render-mesh proj mesh
                    {:style {:style/fill [:color/rgb 150 150 150]

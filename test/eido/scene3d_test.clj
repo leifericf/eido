@@ -147,12 +147,12 @@
       (is (= 5 (count mesh))))))
 
 (deftest cylinder-mesh-test
-  (let [mesh (s3d/cylinder-mesh 1 2 8)]
+  (let [mesh (s3d/cylinder-mesh 1 2 {:segments 8})]
     (testing "8 sides + 2 caps = 10 faces"
       (is (= 10 (count mesh))))))
 
 (deftest sphere-mesh-test
-  (let [mesh (s3d/sphere-mesh 1 8 4)]
+  (let [mesh (s3d/sphere-mesh 1 {:segments 8 :rings 4})]
     (testing "produces faces"
       (is (pos? (count mesh))))
     (testing "all vertices are approximately radius 1 from origin"
@@ -166,7 +166,7 @@
       (is (= 6 (count mesh))))))
 
 (deftest torus-mesh-test
-  (let [mesh (s3d/torus-mesh 1.8 0.7 24 12)]
+  (let [mesh (s3d/torus-mesh 1.8 0.7 {:ring-segments 24 :tube-segments 12})]
     (testing "24 ring * 12 tube = 288 quads"
       (is (= 288 (count mesh))))
     (testing "each face has 4 vertices"
@@ -177,11 +177,11 @@
         (is (> (m/magnitude (:face/normal face)) 0))))))
 
 (deftest torus-mesh-small-test
-  (let [mesh (s3d/torus-mesh 2.0 0.5 6 4)]
+  (let [mesh (s3d/torus-mesh 2.0 0.5 {:ring-segments 6 :tube-segments 4})]
     (is (= 24 (count mesh)))))
 
 (deftest cone-mesh-test
-  (let [mesh (s3d/cone-mesh 1.0 2.0 16)]
+  (let [mesh (s3d/cone-mesh 1.0 2.0 {:segments 16})]
     (testing "1 base + 16 side triangles = 17 faces"
       (is (= 17 (count mesh))))
     (testing "side faces are triangles"
@@ -192,7 +192,7 @@
         (is (some #(approx= [0.0 2.0 0.0] %) apex-verts))))))
 
 (deftest cone-mesh-normals-test
-  (let [mesh (s3d/cone-mesh 1.0 2.0 8)]
+  (let [mesh (s3d/cone-mesh 1.0 2.0 {:segments 8})]
     (testing "all normals are non-zero"
       (doseq [face mesh]
         (is (> (m/magnitude (:face/normal face)) 0))))))
@@ -356,7 +356,7 @@
       (is (= 12 (count hard))))))
 
 (deftest auto-smooth-edges-sphere-test
-  (let [mesh (s3d/sphere-mesh 1.0 8 4)
+  (let [mesh (s3d/sphere-mesh 1.0 {:segments 8 :rings 4})
         hard (s3d/auto-smooth-edges mesh {:angle (/ Math/PI 4)})]
     (testing "sphere has few hard edges (smooth surface)"
       (is (< (count hard) 10)))))
@@ -466,7 +466,7 @@
 ;; --- per-face color ---
 
 (deftest color-mesh-field-test
-  (let [mesh (s3d/sphere-mesh 1.5 8 4)
+  (let [mesh (s3d/sphere-mesh 1.5 {:segments 8 :rings 4})
         colored (s3d/color-mesh mesh
                   {:color/type :field
                    :color/field (field/noise-field :scale 1.0 :variant :fbm :seed 42)
@@ -537,7 +537,7 @@
 ;; --- vertex color (paint-mesh) ---
 
 (deftest paint-mesh-field-test
-  (let [mesh (s3d/sphere-mesh 1.0 8 4)
+  (let [mesh (s3d/sphere-mesh 1.0 {:segments 8 :rings 4})
         painted (s3d/paint-mesh mesh
                   {:color/type :field
                    :color/field (field/noise-field :scale 1.0 :variant :fbm :seed 42)
@@ -604,7 +604,7 @@
       (is (> (count (:group/children result)) 3)))))
 
 (deftest paint-mesh-uv-source-test
-  (let [mesh (-> (s3d/sphere-mesh 1.0 8 4)
+  (let [mesh (-> (s3d/sphere-mesh 1.0 {:segments 8 :rings 4})
                  (s3d/uv-project {:uv/type :spherical}))
         painted (s3d/paint-mesh mesh
                   {:color/source :uv
@@ -619,7 +619,7 @@
         (is (> (count (distinct all-colors)) 1))))))
 
 (deftest paint-mesh-uv-vs-position-different-test
-  (let [mesh (-> (s3d/sphere-mesh 1.0 8 4)
+  (let [mesh (-> (s3d/sphere-mesh 1.0 {:segments 8 :rings 4})
                  (s3d/uv-project {:uv/type :spherical}))
         by-pos (s3d/paint-mesh mesh {:color/type :field
                                      :color/field (field/noise-field :scale 1.0 :seed 1)
@@ -647,7 +647,7 @@
 ;; --- normal/bump maps ---
 
 (deftest normal-map-mesh-test
-  (let [mesh (-> (s3d/sphere-mesh 1.0 8 4)
+  (let [mesh (-> (s3d/sphere-mesh 1.0 {:segments 8 :rings 4})
                  (s3d/uv-project {:uv/type :spherical}))
         mapped (s3d/normal-map-mesh mesh
                  {:normal-map/field (field/noise-field :scale 5.0 :seed 42)
@@ -676,7 +676,7 @@
 
 (deftest render-mesh-vertex-normals-test
   (let [proj (s3d/isometric {:scale 50 :origin [200 200]})
-        mesh (-> (s3d/sphere-mesh 1.0 8 4)
+        mesh (-> (s3d/sphere-mesh 1.0 {:segments 8 :rings 4})
                  (s3d/uv-project {:uv/type :spherical})
                  (s3d/paint-mesh {:color/source :uv
                                   :color/type :field
@@ -696,7 +696,7 @@
 ;; --- specular maps ---
 
 (deftest specular-map-mesh-test
-  (let [mesh (-> (s3d/sphere-mesh 1.0 8 4)
+  (let [mesh (-> (s3d/sphere-mesh 1.0 {:segments 8 :rings 4})
                  (s3d/uv-project {:uv/type :spherical}))
         mapped (s3d/specular-map-mesh mesh
                  {:specular-map/field (field/noise-field :scale 3.0 :seed 42)
@@ -975,7 +975,7 @@
         (is (<= 0.0 v 1.0))))))
 
 (deftest uv-project-spherical-test
-  (let [mesh (s3d/sphere-mesh 1.0 8 4)
+  (let [mesh (s3d/sphere-mesh 1.0 {:segments 8 :rings 4})
         uv-mesh (s3d/uv-project mesh {:uv/type :spherical})]
     (testing "every face has texture coords"
       (doseq [face uv-mesh]
@@ -987,7 +987,7 @@
         (is (<= 0.0 v 1.0))))))
 
 (deftest uv-project-cylindrical-test
-  (let [mesh (s3d/cylinder-mesh 1.0 2.0 8)
+  (let [mesh (s3d/cylinder-mesh 1.0 2.0 {:segments 8})
         uv-mesh (s3d/uv-project mesh {:uv/type :cylindrical})]
     (testing "every face has texture coords"
       (doseq [face uv-mesh]
@@ -1095,7 +1095,7 @@
                 (mapv :face/vertices bent))))))
 
 (deftest deform-mesh-inflate-test
-  (let [mesh (s3d/sphere-mesh 1.0 8 4)
+  (let [mesh (s3d/sphere-mesh 1.0 {:segments 8 :rings 4})
         inflated (s3d/deform-mesh mesh {:deform/type :inflate
                                         :deform/amount 0.5})]
     (testing "vertices move outward"
@@ -1117,7 +1117,7 @@
       (is (not= (mapv :face/vertices mesh) (mapv :face/vertices c1))))))
 
 (deftest deform-mesh-displace-test
-  (let [mesh (s3d/sphere-mesh 1.0 8 4)
+  (let [mesh (s3d/sphere-mesh 1.0 {:segments 8 :rings 4})
         displaced (s3d/deform-mesh mesh
                     {:deform/type :displace
                      :deform/field {:field/type :field/constant
@@ -1142,7 +1142,7 @@
 ;; --- mesh utilities ---
 
 (deftest merge-meshes-bare-test
-  (let [m (s3d/merge-meshes (s3d/cube-mesh) (s3d/cone-mesh 1 2 8))]
+  (let [m (s3d/merge-meshes (s3d/cube-mesh) (s3d/cone-mesh 1 2 {:segments 8}))]
     (is (= (+ 6 9) (count m)))))
 
 (deftest merge-meshes-styled-test
@@ -1150,7 +1150,7 @@
         style-b {:style/fill [:color/rgb 0 255 0]}
         m (s3d/merge-meshes
             [(s3d/cube-mesh) style-a]
-            [(s3d/cone-mesh 1 2 8) style-b])]
+            [(s3d/cone-mesh 1 2 {:segments 8}) style-b])]
     (testing "correct total face count"
       (is (= 15 (count m))))
     (testing "first mesh faces have style-a"
@@ -1162,7 +1162,7 @@
   (testing "bare and styled meshes can be mixed"
     (let [m (s3d/merge-meshes
               (s3d/cube-mesh)
-              [(s3d/cone-mesh 1 2 8) {:style/fill [:color/rgb 0 0 255]}])]
+              [(s3d/cone-mesh 1 2 {:segments 8}) {:style/fill [:color/rgb 0 0 255]}])]
       (is (= 15 (count m)))
       (is (nil? (:face/style (first m))))
       (is (some? (:face/style (nth m 6)))))))

@@ -57,49 +57,48 @@
 
 (defn cylinder-mesh
   "Returns a mesh approximating a cylinder centered at the origin.
-  segments: number of sides for the circular cross-section."
-  [radius height segments]
-  (let [r   (double radius)
-        h   (double height)
-        seg (int segments)
-        step (/ (* 2.0 Math/PI) seg)
-        ;; Generate circle points
-        circle-pts (mapv (fn [i]
-                           (let [a (* i step)]
-                             [(* r (Math/cos a)) (* r (Math/sin a))]))
-                         (range seg))]
-    (prism-mesh circle-pts h)))
+  Opts: :segments (default 16) — number of sides for the circular cross-section."
+  ([radius height] (cylinder-mesh radius height {}))
+  ([radius height opts]
+   (let [r   (double radius)
+         h   (double height)
+         seg (int (get opts :segments 16))
+         step (/ (* 2.0 Math/PI) seg)
+         ;; Generate circle points
+         circle-pts (mapv (fn [i]
+                            (let [a (* i step)]
+                              [(* r (Math/cos a)) (* r (Math/sin a))]))
+                          (range seg))]
+     (prism-mesh circle-pts h))))
 
 (defn sphere-mesh
   "Returns a mesh approximating a sphere at the origin.
-  segments: longitude slices, rings: latitude bands."
-  [radius segments rings]
-  (let [r    (double radius)
-        seg  (int segments)
-        rng  (int rings)
-        ;; Generate vertices as a grid of lat/lon
-        vert (fn [lat lon]
-               (let [phi   (* Math/PI (/ (double lat) rng))
-                     theta (* 2.0 Math/PI (/ (double lon) seg))
-                     sp    (Math/sin phi)]
-                 [(* r sp (Math/cos theta))
-                  (* r (Math/cos phi))
-                  (* r sp (Math/sin theta))]))]
-    (into []
-      (for [lat (range rng)
-            lon (range seg)
-            :let [v0 (vert lat lon)
-                  v1 (vert lat (inc lon))
-                  v2 (vert (inc lat) (inc lon))
-                  v3 (vert (inc lat) lon)]]
-        (if (zero? lat)
-          ;; Top cap: triangle (winding for outward normal)
-          (u/make-face [v0 v2 v3])
-          (if (= lat (dec rng))
-            ;; Bottom cap: triangle
-            (u/make-face [v0 v1 v2])
-            ;; Regular quad
-            (u/make-face [v0 v1 v2 v3])))))))
+  Opts: :segments (default 16) — longitude slices,
+        :rings (default 12) — latitude bands."
+  ([radius] (sphere-mesh radius {}))
+  ([radius opts]
+   (let [r    (double radius)
+         seg  (int (get opts :segments 16))
+         rng  (int (get opts :rings 12))
+         vert (fn [lat lon]
+                (let [phi   (* Math/PI (/ (double lat) rng))
+                      theta (* 2.0 Math/PI (/ (double lon) seg))
+                      sp    (Math/sin phi)]
+                  [(* r sp (Math/cos theta))
+                   (* r (Math/cos phi))
+                   (* r sp (Math/sin theta))]))]
+     (into []
+       (for [lat (range rng)
+             lon (range seg)
+             :let [v0 (vert lat lon)
+                   v1 (vert lat (inc lon))
+                   v2 (vert (inc lat) (inc lon))
+                   v3 (vert (inc lat) lon)]]
+         (if (zero? lat)
+           (u/make-face [v0 v2 v3])
+           (if (= lat (dec rng))
+             (u/make-face [v0 v1 v2])
+             (u/make-face [v0 v1 v2 v3]))))))))
 
 (defn extrude-mesh
   "Extrudes a 2D polygon along a 3D vector.
@@ -127,48 +126,49 @@
   "Returns a mesh approximating a torus at the origin.
   R: major radius (center of tube to center of torus).
   r: minor radius (tube cross-section).
-  ring-segments: divisions around the ring. tube-segments: divisions around the tube."
-  [R r ring-segments tube-segments]
-  (let [R    (double R)
-        r    (double r)
-        rseg (int ring-segments)
-        tseg (int tube-segments)
-        rstep (/ (* 2.0 Math/PI) rseg)
-        tstep (/ (* 2.0 Math/PI) tseg)
-        pt (fn [theta phi]
-             (let [ct (Math/cos theta) st (Math/sin theta)
-                   cp (Math/cos phi)   sp (Math/sin phi)]
-               [(* (+ R (* r cp)) ct)
-                (* r sp)
-                (* (+ R (* r cp)) st)]))]
-    (into []
-      (for [i (range rseg) j (range tseg)]
-        (u/make-face [(pt (* i rstep) (* (inc j) tstep))
-                    (pt (* (inc i) rstep) (* (inc j) tstep))
-                    (pt (* (inc i) rstep) (* j tstep))
-                    (pt (* i rstep) (* j tstep))])))))
+  Opts: :ring-segments (default 24) — divisions around the ring,
+        :tube-segments (default 12) — divisions around the tube."
+  ([R r] (torus-mesh R r {}))
+  ([R r opts]
+   (let [R    (double R)
+         r    (double r)
+         rseg (int (get opts :ring-segments 24))
+         tseg (int (get opts :tube-segments 12))
+         rstep (/ (* 2.0 Math/PI) rseg)
+         tstep (/ (* 2.0 Math/PI) tseg)
+         pt (fn [theta phi]
+              (let [ct (Math/cos theta) st (Math/sin theta)
+                    cp (Math/cos phi)   sp (Math/sin phi)]
+                [(* (+ R (* r cp)) ct)
+                 (* r sp)
+                 (* (+ R (* r cp)) st)]))]
+     (into []
+       (for [i (range rseg) j (range tseg)]
+         (u/make-face [(pt (* i rstep) (* (inc j) tstep))
+                       (pt (* (inc i) rstep) (* (inc j) tstep))
+                       (pt (* (inc i) rstep) (* j tstep))
+                       (pt (* i rstep) (* j tstep))]))))))
 
 (defn cone-mesh
   "Returns a mesh approximating a cone at the origin.
   Base circle in the XZ plane at y=0, apex at [0 height 0].
-  radius: base radius. height: cone height. segments: number of sides."
-  [radius height segments]
-  (let [r    (double radius)
-        h    (double height)
-        seg  (int segments)
-        step (/ (* 2.0 Math/PI) seg)
-        apex [0.0 h 0.0]
-        base-pts (mapv (fn [i]
-                         (let [a (* i step)]
-                           [(* r (Math/cos a)) 0.0 (* r (Math/sin a))]))
-                       (range seg))
-        ;; Base cap (CCW from above → normal points down)
-        base-face (u/make-face base-pts)
-        ;; Side triangles (winding for outward-pointing normals)
-        sides (for [i (range seg)
-                    :let [j (mod (inc i) seg)]]
-                (u/make-face [(nth base-pts j) (nth base-pts i) apex]))]
-    (into [base-face] sides)))
+  Opts: :segments (default 16) — number of sides."
+  ([radius height] (cone-mesh radius height {}))
+  ([radius height opts]
+   (let [r    (double radius)
+         h    (double height)
+         seg  (int (get opts :segments 16))
+         step (/ (* 2.0 Math/PI) seg)
+         apex [0.0 h 0.0]
+         base-pts (mapv (fn [i]
+                          (let [a (* i step)]
+                            [(* r (Math/cos a)) 0.0 (* r (Math/sin a))]))
+                        (range seg))
+         base-face (u/make-face base-pts)
+         sides (for [i (range seg)
+                     :let [j (mod (inc i) seg)]]
+                 (u/make-face [(nth base-pts j) (nth base-pts i) apex]))]
+     (into [base-face] sides))))
 
 ;; --- platonic solids ---
 
