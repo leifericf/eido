@@ -6,24 +6,6 @@ Organized by what matters to practicing generative and computational artists, gr
 
 ---
 
-## Curves and paths
-
-### Curve splitting and interpolation
-
-Split a curve at regular arc-length intervals, interpolate between two curves, trim a curve to bounds. These are fundamental operations for flow field streamlines, morphing animations, and bounded compositions.
-
-**What to add:**
-- `path/split-at-length` — divide curve into equal-length segments
-- `path/interpolate` — blend between two paths
-- `path/trim-to-bounds` — clip path to a bounding rectangle
-
-**Implementation notes:**
-- `split-at-length`: walk the path accumulating arc length, emit a new point each time accumulated length crosses the step threshold. Bezier segments need subdivision (de Casteljau) for accurate arc-length measurement. ~50 lines.
-- `path/interpolate`: given two paths with the same number of commands, lerp corresponding control points by parameter `t`. Simpler than full morphing — just requires matching structure. ~20 lines.
-- `path/trim-to-bounds`: Cohen-Sutherland or Liang-Barsky line clipping extended to path segments. More complex for curves — may need to flatten to line segments first, then clip. ~40 lines for the line-segment case.
-
----
-
 ## Composition and spatial layout
 
 ### Resolution-independent coordinates with real-world units

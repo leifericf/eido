@@ -854,7 +854,25 @@
               ";; Shrink a square by 10 pixels on all sides:
 (path/inset [[0 0] [100 0] [100 100] [0 100]] 10.0)
 ;; => [[10 10] [90 10] [90 90] [10 90]]"]]
-       [:p "Works correctly for convex polygons. Concave polygons may produce self-intersecting results."]]}
+       [:p "Works correctly for convex polygons. Concave polygons may produce self-intersecting results."]
+       [:h4 "Curve splitting"]
+       [:p "Divide a path into equal-length segments — essential for plotter optimization and dashed effects:"]
+       [:pre [:code
+              ";; Split a path into segments of ~25px arc-length:
+(path/split-at-length path-cmds 25.0)
+;; => [[[:move-to [0 0]] [:line-to [25 0]]]
+;;     [[:move-to [25 0]] [:line-to [50 0]]] ...]"]]
+       [:h4 "Path interpolation"]
+       [:p "Blend between two matching paths at parameter t:"]
+       [:pre [:code
+              ";; Morph between two shapes (must have same command count):
+(path/interpolate path-a path-b 0.5)  ;; midpoint between A and B"]]
+       [:h4 "Clipping to bounds"]
+       [:p "Clip a path to a bounding rectangle — useful for constraining generated paths:"]
+       [:pre [:code
+              ";; Clip to a 100x100 rectangle:
+(path/trim-to-bounds path-cmds 0 0 100 100)
+;; => vector of clipped path-command vectors"]]]}
 
      {:id    "series"
       :title "Long-Form Series"

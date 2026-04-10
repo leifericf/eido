@@ -12,7 +12,8 @@
     [eido.path.distort :as distort]
     [eido.path.morph :as morph]
     [eido.path.stroke :as stroke]
-    [eido.path.warp :as warp])
+    [eido.path.warp :as warp]
+    [eido.text :as text])
   (:import
     [java.awt.geom Area GeneralPath PathIterator]))
 
@@ -264,3 +265,151 @@
                   (:point e1) (:dir e1)
                   (:point e2) (:dir e2))))
             (range n))))))
+
+;; --- curve splitting ---
+
+(defn- path-points
+  "Flattens path commands to line segments and extracts points."
+  [commands]
+  (let [flat (text/flatten-commands commands 0.5)]
+    (into []
+      (keep (fn [[cmd & args]]
+              (when (#{:move-to :line-to} cmd) (first args))))
+      flat)))
+
+(defn- cumulative-dists [points]
+  (loop [i 1 dists [0.0]]
+    (if (>= i (count points))
+      dists
+      (let [[x0 y0] (nth points (dec i))
+            [x1 y1] (nth points i)
+            d (Math/sqrt (+ (* (- (double x1) (double x0)) (- (double x1) (double x0)))
+                            (* (- (double y1) (double y0)) (- (double y1) (double y0)))))]
+        (recur (inc i) (conj dists (+ (peek dists) d)))))))
+
+(defn- lerp-pt [[x1 y1] [x2 y2] t]
+  (let [t (double t) inv (- 1.0 t)]
+    [(+ (* inv (double x1)) (* t (double x2)))
+     (+ (* inv (double y1)) (* t (double y2)))]))
+
+(defn- point-at-dist
+  "Finds the point at a given distance along the path."
+  [points dists target]
+  (let [target (double target)]
+    (loop [j 1]
+      (if (or (>= j (count points))
+              (>= (double (nth dists j)) target))
+        (let [j (min j (dec (count points)))
+              d0 (double (nth dists (dec j)))
+              d1 (double (nth dists j))
+              seg-t (if (== d0 d1) 0.0 (/ (- target d0) (- d1 d0)))]
+          (lerp-pt (nth points (dec j)) (nth points j) seg-t))
+        (recur (inc j))))))
+
+(defn split-at-length
+  "Splits path commands into segments of approximately equal arc-length.
+  Returns a vector of path-command vectors, one per segment."
+  [commands segment-length]
+  (let [points (path-points commands)
+        dists (cumulative-dists points)
+        total (double (peek dists))
+        seg-len (double segment-length)
+        n-segs (max 1 (int (Math/ceil (/ total seg-len))))]
+    (if (<= n-segs 1)
+      [(into [[:move-to (first points)]]
+             (mapv (fn [p] [:line-to p]) (rest points)))]
+      (let [actual-len (/ total n-segs)]
+        (mapv (fn [seg-i]
+                (let [start-d (* seg-i actual-len)
+                      end-d (* (inc seg-i) actual-len)
+                      start-pt (point-at-dist points dists start-d)
+                      ;; Collect intermediate points within this segment
+                      inner-pts (filterv (fn [j]
+                                           (let [d (double (nth dists j))]
+                                             (and (> d start-d) (< d end-d))))
+                                         (range (count points)))
+                      end-pt (point-at-dist points dists (min end-d total))]
+                  (into [[:move-to start-pt]]
+                        (concat
+                          (mapv (fn [j] [:line-to (nth points j)]) inner-pts)
+                          [[:line-to end-pt]]))))
+              (range n-segs))))))
+
+;; --- path interpolation ---
+
+(defn interpolate
+  "Blends between two paths at parameter t (0-1).
+  Both paths must have the same number and type of commands.
+  Returns blended path commands."
+  [commands-a commands-b t]
+  (let [t (double t) inv (- 1.0 t)]
+    (mapv (fn [[cmd-a & args-a] [cmd-b & args-b]]
+            (case cmd-a
+              :move-to (let [[xa ya] (first args-a)
+                             [xb yb] (first args-b)]
+                         [:move-to [(+ (* inv (double xa)) (* t (double xb)))
+                                    (+ (* inv (double ya)) (* t (double yb)))]])
+              :line-to (let [[xa ya] (first args-a)
+                             [xb yb] (first args-b)]
+                         [:line-to [(+ (* inv (double xa)) (* t (double xb)))
+                                    (+ (* inv (double ya)) (* t (double yb)))]])
+              :close [:close]
+              ;; Default: return command-a unchanged
+              (vec (cons cmd-a args-a))))
+          commands-a commands-b)))
+
+;; --- path clipping ---
+
+(defn- clip-segment
+  "Cohen-Sutherland clipping of line segment to rectangle [bx, bx+bw] x [by, by+bh].
+  Returns [clipped-p1 clipped-p2] or nil if fully outside."
+  [p1 p2 bx by bw bh]
+  (let [bx (double bx) by (double by) bw (double bw) bh (double bh)
+        [x1-init y1-init] p1
+        [x2-init y2-init] p2
+        xmax (+ bx bw) ymax (+ by bh)
+        outcode (fn [^double x ^double y]
+                  (bit-or (if (< x bx) 1 0) (if (> x xmax) 2 0)
+                          (if (< y by) 4 0) (if (> y ymax) 8 0)))]
+    (loop [x1 (double x1-init) y1 (double y1-init)
+           x2 (double x2-init) y2 (double y2-init) iter 0]
+      (let [c1 (outcode x1 y1) c2 (outcode x2 y2)]
+        (cond
+          (and (zero? c1) (zero? c2)) [[x1 y1] [x2 y2]]
+          (pos? (bit-and c1 c2)) nil
+          (> iter 8) nil
+          :else
+          (let [c (if (pos? c1) c1 c2)
+                [nx ny] (cond
+                          (pos? (bit-and c 8)) [(+ x1 (* (- x2 x1) (/ (- ymax y1) (- y2 y1)))) ymax]
+                          (pos? (bit-and c 4)) [(+ x1 (* (- x2 x1) (/ (- by y1) (- y2 y1)))) by]
+                          (pos? (bit-and c 2)) [xmax (+ y1 (* (- y2 y1) (/ (- xmax x1) (- x2 x1))))]
+                          :else                [bx (+ y1 (* (- y2 y1) (/ (- bx x1) (- x2 x1))))])]
+            (if (= c c1)
+              (recur nx ny x2 y2 (inc iter))
+              (recur x1 y1 nx ny (inc iter)))))))))
+
+(defn trim-to-bounds
+  "Clips path commands to a bounding rectangle.
+  Returns a vector of path-command vectors (one per visible segment).
+  Flattens curves to line segments before clipping."
+  [commands bx by bw bh]
+  (let [points (path-points commands)
+        bx (double bx) by (double by) bw (double bw) bh (double bh)]
+    (loop [i 1 segments [] current nil]
+      (if (>= i (count points))
+        (if current (conj segments current) segments)
+        (let [p1 (nth points (dec i))
+              p2 (nth points i)
+              clipped (clip-segment p1 p2 bx by bw bh)]
+          (if clipped
+            (let [[cp1 cp2] clipped
+                  ;; Continue current segment or start new one
+                  seg (if current
+                        (conj current [:line-to cp2])
+                        [[:move-to cp1] [:line-to cp2]])]
+              (recur (inc i) segments seg))
+            ;; Outside — flush current segment if any
+            (recur (inc i)
+                   (if current (conj segments current) segments)
+                   nil)))))))

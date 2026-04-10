@@ -120,3 +120,58 @@
       (is (= 3 (count result)))
       ;; Smaller triangle: all points should be inside the original
       (is (every? (fn [pt] (path/contains-point? polygon pt)) result)))))
+
+;; --- split-at-length ---
+
+(deftest split-at-length-test
+  (testing "straight line splits into correct number of segments"
+    (let [cmds [[:move-to [0 0]] [:line-to [25 0]] [:line-to [50 0]]
+                [:line-to [75 0]] [:line-to [100 0]]]
+          segments (path/split-at-length cmds 25.0)]
+      (is (= 4 (count segments)))
+      (is (every? vector? segments))))
+  (testing "each segment starts with :move-to"
+    (let [cmds [[:move-to [0 0]] [:line-to [50 0]] [:line-to [100 0]]]
+          segments (path/split-at-length cmds 30.0)]
+      (is (every? #(= :move-to (ffirst %)) segments))))
+  (testing "single segment when length > total"
+    (let [cmds [[:move-to [0 0]] [:line-to [10 0]]]
+          segments (path/split-at-length cmds 100.0)]
+      (is (= 1 (count segments))))))
+
+;; --- interpolate ---
+
+(deftest interpolate-test
+  (testing "t=0 returns path A"
+    (let [a [[:move-to [0.0 0.0]] [:line-to [100.0 0.0]]]
+          b [[:move-to [0.0 100.0]] [:line-to [100.0 100.0]]]
+          result (path/interpolate a b 0.0)]
+      (is (= a result))))
+  (testing "t=1 returns path B"
+    (let [a [[:move-to [0.0 0.0]] [:line-to [100.0 0.0]]]
+          b [[:move-to [0.0 100.0]] [:line-to [100.0 100.0]]]
+          result (path/interpolate a b 1.0)]
+      (is (= b result))))
+  (testing "t=0.5 gives midpoints"
+    (let [a [[:move-to [0.0 0.0]] [:line-to [100.0 0.0]]]
+          b [[:move-to [0.0 100.0]] [:line-to [100.0 100.0]]]
+          result (path/interpolate a b 0.5)]
+      (is (approx= (second (first result)) [0 50] 0.5))
+      (is (approx= (second (second result)) [100 50] 0.5)))))
+
+;; --- trim-to-bounds ---
+
+(deftest trim-to-bounds-test
+  (testing "fully inside path unchanged"
+    (let [cmds [[:move-to [20 20]] [:line-to [80 80]]]
+          result (path/trim-to-bounds cmds 0 0 100 100)]
+      (is (= 1 (count result)))
+      (is (= 2 (count (first result))))))
+  (testing "fully outside path produces empty"
+    (let [cmds [[:move-to [200 200]] [:line-to [300 300]]]
+          result (path/trim-to-bounds cmds 0 0 100 100)]
+      (is (empty? result))))
+  (testing "crossing path gets clipped"
+    (let [cmds [[:move-to [-50 50]] [:line-to [150 50]]]
+          result (path/trim-to-bounds cmds 0 0 100 100)]
+      (is (pos? (count result))))))
