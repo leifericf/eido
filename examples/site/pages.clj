@@ -662,8 +662,21 @@
 ;; 50 points uniformly inside a disc (no center clustering)
 (prob/scatter-in-circle 50 100.0 [200 200] seed)
 
-;; Point on a sphere surface (3D)
-(prob/on-sphere 10.0 seed)  ;; => [x y z]"]]]}
+;; Point on a sphere surface (3D — uniform, no polar clustering)
+(prob/on-sphere 10.0 seed)  ;; => [x y z]
+
+;; Point uniformly inside a sphere volume
+(prob/in-sphere 10.0 [0 0 0] seed)  ;; => [x y z]
+
+;; n points on a circle (e.g. for radial layouts)
+(prob/scatter-on-circle 12 100.0 [200 200] seed)"]]
+       [:h4 "Jittering point positions"]
+       [:p "Displace any set of points by a Gaussian offset — turns a regular grid into something organic:"]
+       [:pre [:code
+              "(require '[eido.gen.scatter :as scatter])
+
+;; Break the regularity of a grid
+(scatter/jitter (scatter/grid 0 0 400 400 10 10) 3.0 seed)"]]]}
 
      {:id    "circle-packing"
       :title "Circle Packing"
@@ -921,8 +934,19 @@
    :seeds [12 47 103 256 891]
    :scene-fn make-scene :cols 5}))"]]
        [:p "Start wide with " [:code ":start/:end"] ", find interesting editions, "
-        "then use " [:code ":seeds"] " to narrow down."
-       ]]}
+        "then use " [:code ":seeds"] " to narrow down."]
+       [:h4 "Parameter sweeps"]
+       [:p "Isolate a single parameter to see its effect across a range of values:"]
+       [:pre [:code
+              ";; Sweep density across rows, color-count across columns
+(show (series/param-grid
+  {:base-params {:density 0.5 :color-count 3 :seed 42}
+   :row-param   {:key :density :values [0.2 0.5 0.8]}
+   :col-param   {:key :color-count :values [2 3 5]}
+   :scene-fn    (fn [params] (make-scene params))
+   :thumb-size  [160 160]}))"]]
+       [:p [:code "param-grid"] " is the complement to " [:code "seed-grid"]
+        ": where seed-grid varies randomness, param-grid varies design decisions."]]}
 
      {:id    "cellular-automata"
       :title "Cellular Automata & Reaction-Diffusion"
@@ -1587,10 +1611,20 @@
 ;; Group by stroke color: one <g> per pen/color
 (eido/render scene {:output \"plotter.svg\"
                     :stroke-only true
-                    :group-by-stroke true})"]]
+                    :group-by-stroke true})
+
+;; Full plotter pipeline: deduplicate, optimize pen travel
+(eido/render scene {:output \"plotter.svg\"
+                    :stroke-only      true
+                    :group-by-stroke  true
+                    :deduplicate      true
+                    :optimize-travel  true})"]]
        [:p "With " [:code ":group-by-stroke"] ", each stroke color gets its own "
         [:code "<g>"] " element with an id like " [:code "pen-rgb-0-0-0"]
-        ". Load the SVG in your plotter software and assign each group to a pen."]]}
+        ". Load the SVG in your plotter software and assign each group to a pen."]
+       [:p [:code ":deduplicate"] " removes identical paths (common with overlapping geometry). "
+        [:code ":optimize-travel"] " reorders drawing operations to minimize pen-up travel distance "
+        "using greedy nearest-neighbor — can significantly reduce total plot time."]]}
 
      {:id    "batch-editions"
       :title "Batch Edition Rendering"
