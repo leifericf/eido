@@ -207,12 +207,13 @@
 
 (defn ^{:convenience true} line-node
   "Creates a line node. Shorthand for the {:node/type :shape/line ...} map.
-  Example: (line-node [0 0] [100 100] [:color/name \"black\"] 2)"
+  stroke is a map with :color and :width keys.
+  Example: (line-node [0 0] [100 100] {:color [:color/name \"black\"] :width 2})"
   ([from to]
    {:node/type :shape/line :line/from from :line/to to})
-  ([from to color width]
+  ([from to stroke]
    {:node/type :shape/line :line/from from :line/to to
-    :style/stroke {:color color :width width}}))
+    :style/stroke stroke}))
 
 (defn ^{:convenience true :convenience-for 'eido.scene/radial}
   polar->xy

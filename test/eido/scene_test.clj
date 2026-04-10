@@ -252,7 +252,7 @@
 
 (deftest line-node-test
   (testing "creates line node with stroke"
-    (let [n (scene/line-node [0 0] [100 100] [:color/name "black"] 2)]
+    (let [n (scene/line-node [0 0] [100 100] {:color [:color/name "black"] :width 2})]
       (is (= :shape/line (:node/type n)))
       (is (= {:color [:color/name "black"] :width 2} (:style/stroke n))))))
 
