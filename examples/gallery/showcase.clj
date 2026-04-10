@@ -1,15 +1,23 @@
 (ns gallery.showcase
-  "Creative showcase — pushing Eido's features in novel combinations."
+  "Feature showcase — demonstrating new capabilities: OKLAB color,
+  simplex noise, watercolor texture, flow collision, Chaikin curves,
+  media presets, palette extraction, geometric distributions, and more."
   {:category "Showcase"}
   (:require
     [eido.animate :as anim]
+    [eido.color :as color]
+    [eido.color.palette :as palette]
+    [eido.gen.contour :as contour]
     [eido.gen.flow :as flow]
     [eido.gen.noise :as noise]
-    [eido.color.palette :as palette]
+    [eido.gen.prob :as prob]
     [eido.gen.scatter :as scatter]
+    [eido.path :as path]
+    [eido.path.aesthetic :as aesthetic]
     [eido.scene :as scene]
     [eido.scene3d :as s3d]
-    [eido.gen.voronoi :as voronoi]))
+    [eido.gen.voronoi :as voronoi]
+    [eido.texture :as texture]))
 
 ;; --- 1. Aurora Borealis ---
 
@@ -49,907 +57,693 @@
                        blink (+ 0.3 (* 0.7 (Math/abs (Math/sin (+ (* i 2.1) (* t 8))))))]
                    {:node/type     :shape/circle
                     :circle/center [sx sy]
-                    :circle/radius (if (zero? (mod i 7)) 1.5 0.6)
+                    :circle/radius 1.0
                     :node/opacity  blink
                     :style/fill    [:color/rgb 255 255 240]})))]
-         {:image/size [w h]
+         {:image/size       [w h]
           :image/background [:color/rgb 5 5 20]
-          :image/nodes (into stars curtains)})))
-   :fps 24})
+          :image/nodes      (into stars curtains)})))
+   :animation/fps 20})
 
-;; --- 2. Moiré Interference ---
+;; --- 2. Crystal Geode ---
 
-(defn ^{:example {:output "showcase-moire.gif"
-                  :title  "Moire Interference"
-                  :desc   "Two rotating line grids creating mesmerizing interference patterns."
-                  :tags   ["animation" "math" "opacity"]}}
-  moire []
-  {:frames
-   (anim/frames 90
-     (fn [t]
-       (let [size 400
-             cx 200 cy 200
-             angle1 (* t Math/PI 0.5)
-             angle2 (- (* t Math/PI 0.5))
-             make-grid
-             (fn [angle alpha]
-               (vec
-                 (for [i (range -30 31)]
-                   (let [offset (* i 8)
-                         cos-a (Math/cos angle) sin-a (Math/sin angle)
-                         x1 (+ cx (* offset cos-a) (* -300 sin-a))
-                         y1 (+ cy (* offset sin-a) (* 300 cos-a))
-                         x2 (+ cx (* offset cos-a) (* 300 sin-a))
-                         y2 (+ cy (* offset sin-a) (* -300 cos-a))]
-                     {:node/type    :shape/line
-                      :line/from    [x1 y1]
-                      :line/to      [x2 y2]
-                      :node/opacity alpha
-                      :style/stroke {:color [:color/rgb 255 255 255]
-                                     :width 1.5}}))))]
-         {:image/size [size size]
-          :image/background [:color/rgb 0 0 0]
-          :image/nodes (into (make-grid angle1 0.5)
-                             (make-grid angle2 0.5))})))
-   :fps 30})
-
-;; --- 3. Bioluminescent Jellyfish ---
-
-(defn ^{:example {:output "showcase-jellyfish.gif"
-                  :title  "Bioluminescent Jellyfish"
-                  :desc   "Pulsing jellyfish with flowing tentacles and soft glow."
-                  :tags   ["animation" "brush-strokes" "opacity" "color"]}}
-  jellyfish []
-  {:frames
-   (anim/frames 60
-     (fn [t]
-       (let [cx 250 cy 160
-             pulse (+ 0.85 (* 0.15 (Math/sin (* t 2 Math/PI))))
-             bell-r (* 70 pulse)
-             ;; Bell dome — layered translucent arcs
-             bell (vec
-                    (for [i (range 8)]
-                      (let [r (- bell-r (* i 4))
-                            hue (+ 260 (* i 8))
-                            alpha (- 0.25 (* i 0.025))]
-                        {:node/type     :shape/arc
-                         :arc/center    [cx cy]
-                         :arc/rx        r
-                         :arc/ry        (* r 0.65)
-                         :arc/start     180 :arc/extent 180
-                         :arc/mode      :chord
-                         :node/opacity  alpha
-                         :style/fill    [:color/hsl hue 0.7 0.6]})))
-             ;; Tentacles — sine-driven flowing curves
-             tentacles
-             (vec
-               (for [arm (range 7)]
-                 (let [base-x (+ cx (* (- arm 3) 18))
-                       pts (for [seg (range 20)]
-                             (let [seg-t (/ seg 19.0)
-                                   sway (* 25 seg-t
-                                            (Math/sin (+ (* seg-t 4)
-                                                         (* t 2 Math/PI)
-                                                         (* arm 0.9))))
-                                   x (+ base-x sway)
-                                   y (+ (+ cy (* bell-r 0.4)) (* seg-t 180))]
-                               [x y]))
-                       hue (+ 250 (* arm 15))]
-                   {:node/type     :shape/path
-                    :path/commands (into [[:move-to (first pts)]]
-                                         (mapv #(vector :line-to %) (rest pts)))
-                    :stroke/profile :pointed
-                    :node/opacity  (- 0.6 (* arm 0.05))
-                    :style/stroke  {:color [:color/hsl hue 0.6 0.55]
-                                    :width (- 5 (* arm 0.5))}})))
-             ;; Bioluminescent specks
-             specks (vec
-                      (for [i (range 20)]
-                        (let [angle (+ (* i 0.314) (* t 1.5))
-                              r (+ 30 (* 60 (Math/abs (Math/sin (+ (* i 0.7) t)))))
-                              sx (+ cx (* r (Math/cos angle)))
-                              sy (+ cy (* r 0.5 (Math/sin angle)) 40)
-                              alpha (* 0.7 (Math/abs (Math/sin (+ (* i 1.3) (* t 5)))))]
-                          {:node/type     :shape/circle
-                           :circle/center [sx sy]
-                           :circle/radius 2
-                           :node/opacity  alpha
-                           :style/fill    [:color/hsl 180 0.9 0.7]})))]
-         {:image/size [500 450]
-          :image/background [:color/rgb 3 5 20]
-          :image/nodes (into [] (concat tentacles bell specks))})))
-   :fps 24})
-
-;; --- 4. Bauhaus Composition ---
-
-(defn ^{:example {:output "showcase-bauhaus.png"
-                  :title  "Bauhaus Composition"
-                  :desc   "Bold geometric abstraction in primary colors with overlapping forms."
-                  :tags   ["color" "math"]}}
-  bauhaus []
-  (let [rng (java.util.Random. 42)]
-    {:image/size [500 500]
-     :image/background [:color/rgb 245 240 230]
-     :image/nodes
-     [;; Large red circle
-      {:node/type     :shape/circle
-       :circle/center [170 200]
-       :circle/radius 120
-       :style/fill    [:color/rgb 210 35 35]}
-      ;; Blue rectangle
-      {:node/type     :shape/rect
-       :rect/xy       [250 100]
-       :rect/size     [180 280]
-       :style/fill    [:color/rgb 30 60 160]}
-      ;; Yellow triangle
-      (assoc (scene/triangle [350 80] [480 350] [220 350])
-             :style/fill [:color/rgb 240 200 30])
-      ;; Black lines — constructivist grid
-      {:node/type :shape/line :line/from [0 350] :line/to [500 350]
-       :style/stroke {:color [:color/rgb 20 20 20] :width 4}}
-      {:node/type :shape/line :line/from [250 0] :line/to [250 500]
-       :style/stroke {:color [:color/rgb 20 20 20] :width 4}}
-      {:node/type :shape/line :line/from [0 180] :line/to [500 180]
-       :style/stroke {:color [:color/rgb 20 20 20] :width 2}}
-      ;; Small accent circles
-      {:node/type     :shape/circle
-       :circle/center [400 150]
-       :circle/radius 30
-       :style/fill    [:color/rgb 20 20 20]}
-      {:node/type     :shape/circle
-       :circle/center [120 400]
-       :circle/radius 45
-       :style/fill    [:color/rgb 240 200 30]
-       :style/stroke  {:color [:color/rgb 20 20 20] :width 3}}
-      ;; White overlay circle for depth
-      {:node/type     :shape/circle
-       :circle/center [300 300]
-       :circle/radius 65
-       :style/fill    [:color/rgb 245 240 230]
-       :style/stroke  {:color [:color/rgb 20 20 20] :width 3}}
-      ;; Thin diagonal
-      {:node/type :shape/line :line/from [0 0] :line/to [500 500]
-       :style/stroke {:color [:color/rgb 20 20 20] :width 1}}]}))
-
-;; --- 5. Crystal Geode ---
-
-(defn ^{:example {:output "showcase-geode.png"
+(defn ^{:example {:output "showcase-crystal-geode.png"
                   :title  "Crystal Geode"
-                  :desc   "Voronoi tessellation with gem-like gradient fills and dark edges."
-                  :tags   ["voronoi" "scatter" "gradients" "color"]}}
-  geode []
-  (let [pts (scatter/poisson-disk 30 30 470 470 28 77)
-        cells (voronoi/voronoi-cells pts 0 0 500 500)
-        rng (java.util.Random. 77)
-        gem-stops [[0.0 [:color/rgb 20 0 40]]
-                   [0.2 [:color/rgb 80 20 120]]
-                   [0.4 [:color/rgb 40 100 180]]
-                   [0.6 [:color/rgb 60 200 180]]
-                   [0.8 [:color/rgb 180 80 200]]
-                   [1.0 [:color/rgb 255 200 255]]]]
-    {:image/size [500 500]
-     :image/background [:color/rgb 10 5 15]
-     :image/nodes
-     (vec
-       (for [[i cell] (map-indexed vector cells)]
-         (let [[px py] (nth pts i)
-               ;; Distance from center determines color
-               dx (- px 250) dy (- py 250)
-               dist (/ (Math/sqrt (+ (* dx dx) (* dy dy))) 350.0)
-               t (min 1.0 dist)
-               color (palette/gradient-map gem-stops t)]
-           (-> cell
-               (assoc :style/fill color)
-               (assoc :style/stroke {:color [:color/rgb 8 3 12] :width 2.5})
-               (assoc :node/opacity (+ 0.7 (* 0.3 (- 1.0 t))))))))}))
+                  :desc   "3D spherical mesh with faceted crystal surface."
+                  :tags   ["3d" "mesh" "deformation"]}}
+  crystal-geode []
+  (let [mesh (-> (s3d/sphere 16)
+                 (s3d/deform-mesh :noise {:seed 42 :scale 0.3 :amount 0.15}))]
+    {:scene3d/camera {:position [2.5 2.0 2.5] :target [0 0 0]
+                      :fov 50}
+     :scene3d/lights [{:type :directional :direction [-1 -1 -1]
+                       :color [:color/rgb 200 180 255] :intensity 0.8}
+                      {:type :ambient :color [:color/rgb 30 20 40] :intensity 0.4}]
+     :scene3d/meshes [{:mesh mesh
+                       :material {:color [:color/rgb 160 120 200]
+                                  :specular 0.6 :roughness 0.3}}]
+     :image/size [500 500]
+     :image/background [:color/rgb 15 10 25]}))
 
-;; --- 6. Rotating Gem ---
+;; --- 3. Neon Orbit ---
 
-(defn ^{:example {:output "showcase-gem-3d.gif"
-                  :title  "Rotating Gem"
-                  :desc   "Faceted 3D icosahedron-like gem with colorful face shading."
-                  :tags   ["3d" "animation" "color"]}}
-  rotating-gem []
+(defn ^{:example {:output "showcase-neon-orbit.gif"
+                  :title  "Neon Orbit"
+                  :desc   "Glowing particles orbiting a central mass."
+                  :tags   ["animation" "glow" "particles"]}}
+  neon-orbit []
   {:frames
    (anim/frames 60
      (fn [t]
-       (let [angle (* t 2 Math/PI)
-             proj (s3d/perspective
-                    {:scale 110 :origin [200 200]
-                     :yaw angle :pitch -0.35 :distance 5})
-             light {:light/direction [0.8 1.0 0.5]
-                    :light/ambient   0.15
-                    :light/intensity 0.85}
-             ;; Torus knot — visually interesting rotating shape
-             torus (-> (s3d/torus-mesh 1.0 0.4 24 12)
-                       (s3d/rotate-mesh :x (* 0.3 (Math/sin (* t Math/PI)))))]
-         {:image/size [400 400]
-          :image/background [:color/rgb 8 8 18]
-          :image/nodes
-          [(s3d/render-mesh proj torus
-             {:style {:style/fill   [:color/rgb 80 180 220]
-                      :style/stroke {:color [:color/rgb 140 230 255]
-                                     :width 0.3}}
-              :light light})]})))
-   :fps 30})
-
-;; --- 7. Sound Wave Visualizer ---
-
-(defn ^{:example {:output "showcase-soundwave.gif"
-                  :title  "Sound Wave"
-                  :desc   "Layered frequency bands pulsing like an audio spectrum."
-                  :tags   ["animation" "color" "math"]}}
-  sound-wave []
-  {:frames
-   (anim/frames 60
-     (fn [t]
-       (let [w 600 h 300
-             n-bars 48
-             bands
+       (let [w 400 h 400
+             cx 200 cy 200
+             particles
              (vec
-               (for [i (range n-bars)]
-                 (let [x-norm (/ (double i) n-bars)
-                       ;; Simulate multiple frequency components
-                       f1 (Math/sin (+ (* x-norm 3 Math/PI) (* t 2 Math/PI)))
-                       f2 (* 0.6 (Math/sin (+ (* x-norm 7 Math/PI) (* t 2 Math/PI 1.6))))
-                       f3 (* 0.3 (Math/sin (+ (* x-norm 13 Math/PI) (* t 2 Math/PI 2.3))))
-                       amplitude (Math/abs (+ f1 f2 f3))
-                       bar-h (max 1 (* 100 amplitude))
-                       bar-w (/ (double w) n-bars)
-                       x (* i bar-w)
-                       hue (mod (+ (* x-norm 200) (* t 120)) 360)]
-                   {:node/type :shape/rect
-                    :rect/xy   [x (- (/ h 2.0) (/ bar-h 2.0))]
-                    :rect/size [bar-w bar-h]
-                    :rect/corner-radius 2
-                    :style/fill [:color/hsl hue 0.85 (+ 0.35 (* 0.25 amplitude))]})))
-             ;; Reflection below
-             reflection
-             (vec
-               (for [i (range n-bars)]
-                 (let [x-norm (/ (double i) n-bars)
-                       f1 (Math/sin (+ (* x-norm 3 Math/PI) (* t 2 Math/PI)))
-                       f2 (* 0.6 (Math/sin (+ (* x-norm 7 Math/PI) (* t 2 Math/PI 1.6))))
-                       f3 (* 0.3 (Math/sin (+ (* x-norm 13 Math/PI) (* t 2 Math/PI 2.3))))
-                       amplitude (Math/abs (+ f1 f2 f3))
-                       bar-h (max 1 (* 30 amplitude))
-                       bar-w (/ (double w) n-bars)
-                       x (* i bar-w)
-                       hue (mod (+ (* x-norm 200) (* t 120)) 360)]
-                   {:node/type    :shape/rect
-                    :rect/xy      [x (+ (/ h 2.0) 5)]
-                    :rect/size    [bar-w bar-h]
-                    :rect/corner-radius 2
-                    :node/opacity 0.15
-                    :style/fill   [:color/hsl hue 0.85 0.5]})))]
-         {:image/size [w h]
-          :image/background [:color/rgb 10 10 18]
-          :image/nodes (into bands reflection)})))
-   :fps 24})
-
-;; --- 8. Generative Textile ---
-
-(defn ^{:example {:output "showcase-textile.png"
-                  :title  "Generative Textile"
-                  :desc   "Woven pattern with noise-driven color and hatched texture."
-                  :tags   ["hatching" "noise" "palette"]}}
-  textile []
-  (let [cols 20 rows 20
-        cell-w 25 cell-h 25
-        pal (:earth palette/palettes)]
-    {:image/size [500 500]
-     :image/background [:color/rgb 240 235 225]
-     :image/nodes
-     (vec
-       (for [row (range rows)
-             col (range cols)]
-         (let [x (* col cell-w)
-               y (* row cell-h)
-               v (noise/perlin2d (* col 0.15) (* row 0.15) {:seed 42})
-               color-idx (mod (int (* (+ 0.5 (* 0.5 v)) 4.9)) 5)
-               ;; Alternate hatch direction per checkerboard
-               angle (if (even? (+ row col)) 45 -45)]
-           {:node/type    :shape/rect
-            :rect/xy      [x y]
-            :rect/size    [cell-w cell-h]
-            :style/fill   {:fill/type        :hatch
-                           :hatch/angle      angle
-                           :hatch/spacing    3
-                           :hatch/stroke-width 0.6
-                           :hatch/color      (nth pal color-idx)
-                           :hatch/background [:color/rgb 240 235 225]}
-            :style/stroke {:color [:color/rgba 0 0 0 0.1] :width 0.5}})))}))
-
-;; --- 9. Rainstorm ---
-
-(defn ^{:example {:output "showcase-rainstorm.gif"
-                  :title  "Rainstorm"
-                  :desc   "Falling rain with expanding ripple circles on a dark surface."
-                  :tags   ["animation" "opacity" "math"]}}
-  rainstorm []
-  {:frames
-   (anim/frames 60
-     (fn [t]
-       (let [w 500 h 400
-             ;; Rain drops — falling lines
-             drops
-             (vec
-               (for [i (range 80)]
-                 (let [x (mod (+ (* i 137.508) (* t 50)) w)
-                       phase (mod (+ (* i 0.618) (* t 3)) 1.0)
-                       y1 (* phase h)
-                       y2 (+ y1 15)
-                       alpha (* 0.4 (- 1.0 (* phase 0.3)))]
-                   {:node/type    :shape/line
-                    :line/from    [x y1]
-                    :line/to      [(- x 2) y2]
-                    :node/opacity alpha
-                    :style/stroke {:color [:color/rgb 150 170 200]
-                                   :width 1}})))
-             ;; Ripples — expanding circles at ground level
-             ground-y 320
-             ripples
-             (vec
-               (for [i (range 12)]
-                 (let [rx (mod (* i 137.508 1.3) w)
-                       phase (mod (+ (* i 0.37) t) 1.0)
-                       r (max 0.5 (* 30 phase))
-                       alpha (* 0.4 (- 1.0 phase))]
-                   {:node/type     :shape/ellipse
-                    :ellipse/center [rx (+ ground-y (* 5 (Math/sin (* i 1.7))))]
-                    :ellipse/rx    r
-                    :ellipse/ry    (* r 0.3)
-                    :node/opacity  alpha
-                    :style/stroke  {:color [:color/rgb 100 130 170]
-                                    :width 1}})))
-             ;; Ground — subtle gradient-like lines
-             ground
-             (vec
-               (for [i (range 6)]
-                 (let [y (+ ground-y (* i 4))
-                       alpha (- 0.2 (* i 0.03))]
-                   {:node/type    :shape/line
-                    :line/from    [0 y] :line/to [w y]
-                    :node/opacity (max 0.02 alpha)
-                    :style/stroke {:color [:color/rgb 60 70 90]
-                                   :width 1.5}})))]
-         {:image/size [w h]
-          :image/background [:color/rgb 15 18 28]
-          :image/nodes (into [] (concat ground ripples drops))})))
-   :fps 24})
-
-;; --- 10. Cosmic Eye ---
-
-(defn ^{:example {:output "showcase-cosmic-eye.gif"
-                  :title  "Cosmic Eye"
-                  :desc   "A radial iris pattern with orbiting rings and shifting nebula colors."
-                  :tags   ["noise" "animation" "glow" "color"]}}
-  cosmic-eye []
-  {:frames
-   (anim/frames 60
-     (fn [t]
-       (let [cx 250 cy 250
-             ;; Iris — dense radial lines with noise-driven color
-             iris
-             (vec
-               (for [i (range 180)]
-                 (let [angle (+ (* i (/ (* 2 Math/PI) 180)) (* t 0.3))
-                       r1 35
-                       r2 (+ 80 (* 25 (noise/perlin2d
-                                         (* 2 (Math/cos angle))
-                                         (* 2 (Math/sin angle))
-                                         {:seed 42})))
-                       x1 (+ cx (* r1 (Math/cos angle)))
-                       y1 (+ cy (* r1 (Math/sin angle)))
-                       x2 (+ cx (* r2 (Math/cos angle)))
-                       y2 (+ cy (* r2 (Math/sin angle)))
-                       hue (+ 30 (* 20 (Math/sin (+ (* i 0.1) (* t 3)))))]
-                   {:node/type    :shape/line
-                    :line/from    [x1 y1]
-                    :line/to      [x2 y2]
-                    :node/opacity 0.7
-                    :style/stroke {:color [:color/hsl hue 0.9 0.45]
-                                   :width 1.2}})))
-             ;; Pupil
-             pupil {:node/type     :shape/circle
-                    :circle/center [cx cy]
-                    :circle/radius 33
-                    :style/fill    [:color/rgb 5 5 10]
-                    :effect/glow   {:blur 10 :color [:color/rgb 0 0 0] :opacity 0.5}}
-             ;; Pupil highlight
-             highlight {:node/type     :shape/circle
-                        :circle/center [(- cx 8) (- cy 10)]
-                        :circle/radius 8
-                        :node/opacity  0.6
-                        :style/fill    [:color/rgb 255 255 255]}
-             ;; Outer rings
-             rings
-             (vec
-               (for [i (range 5)]
-                 (let [r (+ 90 (* i 25))
-                       phase (+ (* t 2 Math/PI) (* i 0.8))
-                       alpha (- 0.3 (* i 0.04))
-                       hue (+ 200 (* i 30) (* 30 (Math/sin phase)))]
+               (for [i (range 30)]
+                 (let [phase  (* i 0.2094)
+                       radius (+ 60 (* i 4.5))
+                       speed  (+ 0.5 (/ 1.0 (+ 1 i)))
+                       angle  (+ phase (* t 2.0 Math/PI speed))
+                       x      (+ cx (* radius (Math/cos angle)))
+                       y      (+ cy (* radius (Math/sin angle)))
+                       hue    (mod (+ (* i 12) (* t 360)) 360)
+                       r      (+ 2 (/ 10.0 (+ 1 (* i 0.5))))]
                    {:node/type     :shape/circle
-                    :circle/center [cx cy]
+                    :circle/center [x y]
                     :circle/radius r
-                    :node/opacity  alpha
-                    :style/stroke  {:color [:color/hsl hue 0.5 0.5]
-                                    :width (- 2.5 (* i 0.3))}})))
-             ;; Nebula glow behind
-             nebula
-             (vec
-               (for [i (range 6)]
-                 (let [angle (+ (* i (/ Math/PI 3)) (* t 0.5))
-                       r (+ 100 (* 40 (Math/sin (+ (* i 1.2) (* t 2)))))
-                       nx (+ cx (* r (Math/cos angle)))
-                       ny (+ cy (* r (Math/sin angle)))
-                       hue (+ 220 (* i 25))]
-                   {:node/type     :shape/circle
-                    :circle/center [nx ny]
-                    :circle/radius 80
-                    :node/opacity  0.06
-                    :style/fill    [:color/hsl hue 0.7 0.5]})))]
-         {:image/size [500 500]
-          :image/background [:color/rgb 5 5 12]
-          :image/nodes (into [] (concat nebula rings iris [pupil highlight]))})))
-   :fps 24})
-
-;; --- 11. Topographic Rings ---
-
-(defn ^{:example {:output "showcase-topo-rings.png"
-                  :title  "Topographic Rings"
-                  :desc   "Concentric elevation contours with warm-to-cool color mapping."
-                  :tags   ["noise" "contour" "gradients"]}}
-  topo-rings []
-  (let [cx 250 cy 250
-        rings (vec
-                (for [i (range 40)]
-                  (let [r (+ 10 (* i 6))
-                        wobble-pts (for [a (range 0 360 5)]
-                                    (let [rad (* a (/ Math/PI 180))
-                                          noise-val (noise/perlin2d
-                                                      (* 0.03 r (Math/cos rad))
-                                                      (* 0.03 r (Math/sin rad))
-                                                      {:seed 42})
-                                          rr (+ r (* 8 noise-val))
-                                          x (+ cx (* rr (Math/cos rad)))
-                                          y (+ cy (* rr (Math/sin rad)))]
-                                      [x y]))
-                        t (/ (double i) 40)
-                        color (palette/gradient-map
-                                [[0.0 [:color/rgb 30 60 120]]
-                                 [0.3 [:color/rgb 40 150 130]]
-                                 [0.6 [:color/rgb 180 170 80]]
-                                 [1.0 [:color/rgb 200 80 40]]]
-                                t)]
-                    {:node/type :shape/path
-                     :path/commands (into [[:move-to (first wobble-pts)]]
-                                          (conj (mapv #(vector :line-to %) (rest wobble-pts))
-                                                [:close]))
-                     :style/stroke {:color color :width (if (zero? (mod i 5)) 1.5 0.6)}})))]
-    {:image/size [500 500]
-     :image/background [:color/rgb 245 240 230]
-     :image/nodes rings}))
-
-;; --- 12. Neon Grid ---
-
-(defn ^{:example {:output "showcase-neon-grid.gif"
-                  :title  "Neon Grid"
-                  :desc   "Retro wireframe grid receding into the horizon with pulsing neon."
-                  :tags   ["animation" "glow" "color"]}}
-  neon-grid []
-  {:frames
-   (anim/frames 40
-     (fn [t]
-       (let [w 500 h 350
-             horizon-y 120
-             ;; Horizontal lines receding
-             h-lines (vec
-                       (for [i (range 15)]
-                         (let [progress (/ (double i) 14)
-                               y (+ horizon-y (* (- h horizon-y)
-                                                  (* progress progress)))
-                               alpha (+ 0.2 (* 0.6 progress))
-                               hue (+ 280 (* 40 (Math/sin (+ (* i 0.5) (* t 4)))))]
-                           {:node/type    :shape/line
-                            :line/from    [0 y]
-                            :line/to      [w y]
-                            :node/opacity alpha
-                            :style/stroke {:color [:color/hsl hue 0.9 0.6]
-                                           :width (+ 0.5 (* 1.5 progress))}})))
-             ;; Vertical lines converging to vanishing point
-             v-lines (vec
-                       (for [i (range 20)]
-                         (let [x-bottom (+ -50 (* i (/ 600.0 19)))
-                               vanish-x 250
-                               alpha 0.35
-                               hue (+ 300 (* 20 (Math/sin (+ (* i 0.3) (* t 3)))))]
-                           {:node/type    :shape/line
-                            :line/from    [x-bottom h]
-                            :line/to      [vanish-x horizon-y]
-                            :node/opacity alpha
-                            :style/stroke {:color [:color/hsl hue 0.8 0.5]
-                                           :width 0.8}})))
-             ;; Sun circle at horizon
-             sun-pulse (+ 0.8 (* 0.2 (Math/sin (* t 2 Math/PI))))
-             sun {:node/type     :shape/circle
-                  :circle/center [250 horizon-y]
-                  :circle/radius (* 50 sun-pulse)
-                  :node/opacity  0.3
-                  :style/fill    [:color/hsl 320 0.8 0.6]}]
+                    :style/fill    [:color/hsl hue 1.0 0.6]
+                    :effect/glow   {:blur 8
+                                    :color [:color/hsl hue 1.0 0.5]
+                                    :opacity 0.5}})))]
          {:image/size [w h]
-          :image/background [:color/rgb 8 5 18]
-          :image/nodes (into [sun] (concat v-lines h-lines))})))
-   :fps 20})
+          :image/background [:color/rgb 5 5 15]
+          :image/nodes particles})))
+   :animation/fps 20})
 
-;; --- 13. Zen Garden ---
+;; --- 4. OKLAB Gradient Sunset ---
 
-(defn ^{:example {:output "showcase-zen-garden.png"
-                  :title  "Zen Garden"
-                  :desc   "Raked sand patterns with placed stones — stippled and hatched."
-                  :tags   ["stipple" "hatching" "math"]}}
-  zen-garden []
-  (let [w 500 h 400
-        ;; Raked sand — curved parallel lines
-        rake-lines
-        (vec
-          (for [i (range 30)]
-            (let [y-base (+ 20 (* i 12))
-                  pts (for [x (range 0 (inc w) 8)]
-                        (let [;; Bend around stone positions
-                              d1 (Math/sqrt (+ (Math/pow (- x 150) 2) (Math/pow (- y-base 180) 2)))
-                              d2 (Math/sqrt (+ (Math/pow (- x 350) 2) (Math/pow (- y-base 250) 2)))
-                              bend1 (if (< d1 80) (* 12 (/ (- 80 d1) 80.0)) 0)
-                              bend2 (if (< d2 60) (* 10 (/ (- 60 d2) 60.0)) 0)]
-                          [x (+ y-base bend1 bend2)]))]
-              {:node/type :shape/path
-               :path/commands (into [[:move-to (first pts)]]
-                                    (mapv #(vector :line-to %) (rest pts)))
-               :style/stroke {:color [:color/rgb 190 180 160] :width 0.7}})))
-        ;; Stones — stippled circles
-        stones
-        [{:node/type :shape/circle
-          :circle/center [150 180] :circle/radius 30
-          :style/fill {:fill/type :stipple
-                       :stipple/density 0.5 :stipple/radius 0.8 :stipple/seed 42
-                       :stipple/color [:color/rgb 80 75 65]
-                       :stipple/background [:color/rgb 210 200 180]}
-          :style/stroke {:color [:color/rgb 100 90 75] :width 1}}
-         {:node/type :shape/circle
-          :circle/center [350 250] :circle/radius 22
-          :style/fill {:fill/type :stipple
-                       :stipple/density 0.6 :stipple/radius 0.7 :stipple/seed 99
-                       :stipple/color [:color/rgb 70 65 55]
-                       :stipple/background [:color/rgb 210 200 180]}
-          :style/stroke {:color [:color/rgb 90 80 65] :width 1}}
-         {:node/type :shape/circle
-          :circle/center [360 230] :circle/radius 12
-          :style/fill {:fill/type :stipple
-                       :stipple/density 0.4 :stipple/radius 0.6 :stipple/seed 77
-                       :stipple/color [:color/rgb 85 80 70]
-                       :stipple/background [:color/rgb 210 200 180]}
-          :style/stroke {:color [:color/rgb 100 90 75] :width 0.8}}]]
+(defn ^{:example {:output "show-oklab-sunset.png"
+                  :title  "OKLAB Sunset"
+                  :desc   "Perceptually uniform gradient bands using OKLAB interpolation."
+                  :tags   ["oklab" "gradient" "color"]}}
+  oklab-sunset []
+  (let [bands 50
+        w 600 h 400
+        band-h (/ (double h) bands)]
     {:image/size [w h]
-     :image/background [:color/rgb 210 200 180]
-     :image/nodes (into rake-lines stones)}))
-
-;; --- 14. Orbiting Spheres ---
-
-(defn ^{:example {:output "showcase-orbits.gif"
-                  :title  "Orbiting Spheres"
-                  :desc   "Colored spheres in circular orbits around a central point."
-                  :tags   ["3d" "animation" "color"]}}
-  orbiting-spheres []
-  {:frames
-   (anim/frames 60
-     (fn [t]
-       (let [proj (s3d/perspective
-                    {:scale 90 :origin [250 250]
-                     :yaw 0.3 :pitch -0.45 :distance 6})
-             light {:light/direction [0.7 1.0 0.4]
-                    :light/ambient 0.25 :light/intensity 0.75}
-             angle (* t 2 Math/PI)
-             ;; Orbit trails — fading dots behind each sphere
-             trails
-             (vec
-               (for [i (range 5)
-                     trail (range 8)]
-                 (let [orbit-r (+ 1.8 (* i 0.7))
-                       speed (/ 1.0 (+ 1.0 (* i 0.3)))
-                       a (- (+ (* angle speed) (* i (/ (* 2 Math/PI) 5)))
-                            (* trail 0.08))
-                       x (* orbit-r (Math/cos a))
-                       z (* orbit-r (Math/sin a))
-                       ;; Project to 2D for trail dots
-                       hue (* i 72)
-                       fade (/ 1.0 (+ 1.0 trail))]
-                   {:node/type     :shape/circle
-                    :circle/center [(+ 250 (* 90 x 0.15)) (+ 250 (* 90 z 0.08))]
-                    :circle/radius (* 3 fade)
-                    :node/opacity  (* 0.3 fade)
-                    :style/fill    [:color/hsl hue 0.8 0.6]})))
-             spheres
-             (for [i (range 5)]
-               (let [orbit-r (+ 1.8 (* i 0.7))
-                     speed (/ 1.0 (+ 1.0 (* i 0.3)))
-                     a (+ (* angle speed) (* i (/ (* 2 Math/PI) 5)))
-                     x (* orbit-r (Math/cos a))
-                     z (* orbit-r (Math/sin a))
-                     hue (* i 72)
-                     mesh (s3d/sphere-mesh 0.4 12 8)]
-                 (s3d/render-mesh proj
-                   (s3d/translate-mesh mesh [x 0 z])
-                   {:style {:style/fill [:color/hsl hue 0.8 0.55]}
-                    :light light})))
-             center (s3d/render-mesh proj
-                      (s3d/sphere-mesh 0.6 16 10)
-                      {:style {:style/fill [:color/rgb 255 240 200]}
-                       :light light})]
-         {:image/size [500 500]
-          :image/background [:color/rgb 5 5 12]
-          :image/nodes (into (into trails [center]) spheres)})))
-   :fps 24})
-
-;; --- 15. Pixel Dissolve ---
-
-(defn ^{:example {:output "showcase-dissolve.gif"
-                  :title  "Pixel Dissolve"
-                  :desc   "A grid of squares that scatter and reassemble with color shifts."
-                  :tags   ["animation" "color" "math"]}}
-  pixel-dissolve []
-  {:frames
-   (anim/frames 50
-     (fn [t]
-       (let [cols 20 rows 20
-             cell 18
-             t-ping (anim/ping-pong t)
-             eased (anim/ease-in-out-cubic t-ping)]
-         {:image/size [400 400]
-          :image/background [:color/rgb 15 15 20]
-          :image/nodes
-          (vec
-            (for [row (range rows)
-                  col (range cols)]
-              (let [home-x (+ 20 (* col cell))
-                    home-y (+ 20 (* row cell))
-                    ;; Each cell scatters to a unique direction
-                    rng (java.util.Random. (long (+ (* row 100) col)))
-                    scatter-x (* (.nextGaussian rng) 80 eased)
-                    scatter-y (* (.nextGaussian rng) 80 eased)
-                    x (+ home-x scatter-x)
-                    y (+ home-y scatter-y)
-                    hue (mod (+ (* col 12) (* row 12) (* t 180)) 360)
-                    size (* cell (- 1.0 (* 0.3 eased)))]
-                {:node/type :shape/rect
-                 :rect/xy [x y]
-                 :rect/size [size size]
-                 :rect/corner-radius (* 4 eased)
-                 :style/fill [:color/hsl hue 0.8 (+ 0.4 (* 0.2 eased))]})))})))
-   :fps 20})
-
-;; --- 16. Stained Glass Rose ---
-
-(defn ^{:example {:output "showcase-rose.png"
-                  :title  "Stained Glass Rose"
-                  :desc   "Rose curve voronoi tessellation with jewel-toned fills."
-                  :tags   ["voronoi" "scatter" "math" "color"]}}
-  stained-glass-rose []
-  (let [;; Generate points along a rose curve + scattered background
-        rose-pts (for [a (range 0 360 4)]
-                   (let [rad (* a (/ Math/PI 180))
-                         r (* 150 (Math/cos (* 4 rad)))
-                         x (+ 250 (* r (Math/cos rad)))
-                         y (+ 250 (* r (Math/sin rad)))]
-                     [x y]))
-        bg-pts (scatter/poisson-disk 10 10 490 490 40 42)
-        all-pts (vec (concat rose-pts bg-pts))
-        cells (voronoi/voronoi-cells all-pts 0 0 500 500)
-        n-rose (count (seq rose-pts))
-        jewels [[:color/rgb 180 30 50] [:color/rgb 30 60 160] [:color/rgb 160 40 140]
-                [:color/rgb 40 140 80] [:color/rgb 200 140 30] [:color/rgb 50 120 180]
-                [:color/rgb 180 80 30]]]
-    {:image/size [500 500]
-     :image/background [:color/rgb 20 15 10]
      :image/nodes
-     (vec
-       (map-indexed
-         (fn [i cell]
-           (let [on-rose? (< i n-rose)
-                 color (if on-rose?
-                         (nth jewels (mod i (count jewels)))
-                         [:color/rgb 25 20 15])
-                 alpha (if on-rose? 0.85 0.3)]
-             (-> cell
-                 (assoc :style/fill color)
-                 (assoc :node/opacity alpha)
-                 (assoc :style/stroke {:color [:color/rgb 15 10 5] :width 2}))))
-         cells))}))
+     (mapv (fn [i]
+             (let [t (/ (double i) bands)
+                   c (if (< t 0.5)
+                       (color/lerp-oklab :midnightblue :orangered (* t 2.0))
+                       (color/lerp-oklab :orangered :gold (* (- t 0.5) 2.0)))]
+               {:node/type :shape/rect
+                :rect/xy [0 (* i band-h)]
+                :rect/size [w (+ band-h 1)]
+                :style/fill c}))
+           (range bands))}))
 
-;; --- 17. Heartbeat ---
+;; --- 5. Simplex Flow ---
 
-(defn ^{:example {:output "showcase-heartbeat.gif"
-                  :title  "Heartbeat"
-                  :desc   "An ECG-style trace that pulses across the screen."
-                  :tags   ["animation" "math"]}}
-  heartbeat []
-  {:frames
-   (anim/frames 60
-     (fn [t]
-       (let [w 500 h 200
-             ;; ECG waveform function
-             ecg (fn [x]
-                   (let [phase (mod x 1.0)]
-                     (cond
-                       (< phase 0.1) 0
-                       (< phase 0.15) (* -15 (/ (- phase 0.1) 0.05))
-                       (< phase 0.2) (* 60 (/ (- phase 0.15) 0.05))
-                       (< phase 0.25) (* -20 (/ (- phase 0.2) 0.05))
-                       (< phase 0.35) (* 5 (Math/sin (* (/ (- phase 0.25) 0.1) Math/PI)))
-                       :else 0)))
-             ;; Scroll exactly 1 full ECG cycle per loop
-             pts (for [i (range 300)]
-                   (let [x-norm (/ (double i) 300)
-                         x (* x-norm w)
-                         wave-x (+ (* x-norm 3.0) (* t 3.0))
-                         y (+ (/ h 2.0) (ecg wave-x))]
-                     [x y]))
-             ;; Trail — fading line
-             trail {:node/type :shape/path
-                    :path/commands (into [[:move-to (first pts)]]
-                                         (mapv #(vector :line-to %) (rest pts)))
-                    :style/stroke {:color [:color/rgb 0 220 100] :width 2}}
-             ;; Glow dot at the leading edge
-             [lead-x lead-y] (last pts)
-             dot {:node/type     :shape/circle
-                  :circle/center [lead-x lead-y]
-                  :circle/radius 4
-                  :style/fill    [:color/rgb 0 255 120]}
-             ;; Grid lines
-             grid (vec
-                    (concat
-                      (for [i (range 0 (inc w) 25)]
-                        {:node/type :shape/line
-                         :line/from [i 0] :line/to [i h]
-                         :node/opacity 0.08
-                         :style/stroke {:color [:color/rgb 0 200 100] :width 0.5}})
-                      (for [i (range 0 (inc h) 25)]
-                        {:node/type :shape/line
-                         :line/from [0 i] :line/to [w i]
-                         :node/opacity 0.08
-                         :style/stroke {:color [:color/rgb 0 200 100] :width 0.5}})))]
-         {:image/size [w h]
-          :image/background [:color/rgb 5 10 5]
-          :image/nodes (into grid [trail dot])})))
-   :fps 24})
+(defn ^{:example {:output "show-simplex-flow.png"
+                  :title  "Simplex Flow"
+                  :desc   "Flow field using OpenSimplex2 noise with collision detection."
+                  :tags   ["simplex" "flow-field" "collision"]}}
+  simplex-flow []
+  (let [w 600 h 400
+        lines (flow/flow-field 0 0 w h
+                {:density 12 :steps 80 :step-length 2.5
+                 :noise-scale 0.006 :seed 77
+                 :collision-distance 6.0})]
+    {:image/size [w h]
+     :image/background :ivory
+     :image/nodes
+     (mapv (fn [node]
+             (let [cmds (:path/commands node)
+                   styled (aesthetic/stylize cmds (aesthetic/ink-preset 42))]
+               (assoc node
+                 :path/commands styled
+                 :style/stroke {:color [:color/rgba 30 40 80 0.7] :width 1.0}
+                 :style/fill nil)))
+           lines)}))
 
-;; --- 18. Prism ---
+;; --- 6. Watercolor Bloom ---
 
-(defn ^{:example {:output "showcase-prism.png"
-                  :title  "Prism"
-                  :desc   "Light beam splitting through a prism into a spectrum."
-                  :tags   ["color" "opacity" "math"]}}
-  prism []
-  (let [;; Prism triangle
-        prism-shape (assoc (scene/triangle [250 120] [180 300] [320 300])
-                           :style/fill [:color/rgba 180 200 220 0.3]
-                           :style/stroke {:color [:color/rgb 200 210 220] :width 2})
-        ;; Incoming white beam
-        beam {:node/type :shape/path
-              :path/commands [[:move-to [0 210]]
-                              [:line-to [250 210]]]
-              :style/stroke {:color [:color/rgb 255 255 255] :width 3}}
-        ;; Spectrum rays fanning out
-        spectrum-colors [[:color/rgb 255 0 0] [:color/rgb 255 127 0]
-                         [:color/rgb 255 255 0] [:color/rgb 0 255 0]
-                         [:color/rgb 0 0 255] [:color/rgb 75 0 130]
-                         [:color/rgb 148 0 211]]
-        rays (vec
-               (for [i (range 7)]
-                 (let [angle (+ 0.15 (* i 0.06))
-                       end-x (+ 250 (* 300 (Math/cos angle)))
-                       end-y (+ 210 (* 300 (Math/sin angle)))]
-                   {:node/type :shape/path
-                    :path/commands [[:move-to [250 210]]
-                                    [:line-to [end-x end-y]]]
-                    :node/opacity 0.8
-                    :style/stroke {:color (nth spectrum-colors i)
-                                   :width 2.5}})))]
+(defn ^{:example {:output "show-watercolor-bloom.png"
+                  :title  "Watercolor Bloom"
+                  :desc   "Translucent layered copies with jitter deformation."
+                  :tags   ["watercolor" "texture" "layering"]}}
+  watercolor-bloom []
+  (let [petals
+        (for [i (range 7)]
+          (let [angle (* i (/ (* 2 Math/PI) 7))
+                cx (+ 300 (* 80 (Math/cos angle)))
+                cy (+ 200 (* 80 (Math/sin angle)))
+                r 65
+                pts (mapv (fn [j]
+                            (let [a (* j (/ (* 2 Math/PI) 30))
+                                  wobble (+ r (* 8 (Math/sin (* 3 a))))]
+                              [(+ cx (* wobble (Math/cos a)))
+                               (+ cy (* wobble (Math/sin a)))]))
+                          (range 30))
+                cmds (conj (scene/points->path pts true) [:close])
+                hue (+ 340 (* i 8))]
+            (texture/watercolor
+              {:node/type :shape/path
+               :path/commands cmds
+               :style/fill [:color/hsla hue 0.6 0.55 1.0]}
+              {:layers 25 :opacity 0.04 :amount 4.0
+               :seed (+ 100 i)})))
+        center (texture/watercolor
+                 {:node/type :shape/path
+                  :path/commands (conj (scene/points->path
+                                         (mapv (fn [j]
+                                                 (let [a (* j (/ (* 2 Math/PI) 20))]
+                                                   [(+ 300 (* 25 (Math/cos a)))
+                                                    (+ 200 (* 25 (Math/sin a)))]))
+                                               (range 20))
+                                         true)
+                                       [:close])
+                  :style/fill [:color/hsla 50 0.7 0.5 1.0]}
+                 {:layers 20 :opacity 0.05 :amount 3.0 :seed 999})]
     {:image/size [600 400]
+     :image/background :linen
+     :image/nodes (conj (vec petals) center)}))
+
+;; --- 7. Chaikin Spirograph ---
+
+(defn ^{:example {:output "show-chaikin-spiral.png"
+                  :title  "Chaikin Spirograph"
+                  :desc   "Sharp polygonal spirograph smoothed by Chaikin corner-cutting."
+                  :tags   ["chaikin" "smoothing" "geometry"]}}
+  chaikin-spiral []
+  (let [w 500 h 500
+        n 200
+        pts (mapv (fn [i]
+                    (let [t (/ (double i) n)
+                          r1 180 r2 75 k 7
+                          a (* t 2 Math/PI k)
+                          x (+ 250 (* (+ r1 (* r2 (Math/cos a)))
+                                      (Math/cos (* t 2 Math/PI)) 0.6))
+                          y (+ 250 (* (+ r1 (* r2 (Math/cos a)))
+                                      (Math/sin (* t 2 Math/PI)) 0.6))]
+                      [x y]))
+                  (range n))
+        raw-cmds (scene/points->path pts false)
+        smooth (aesthetic/chaikin-commands raw-cmds {:iterations 4})]
+    {:image/size [w h]
+     :image/background [:color/rgb 15 12 25]
+     :image/nodes
+     [{:node/type :shape/path
+       :path/commands smooth
+       :style/stroke {:color [:color/rgba 100 200 255 0.6] :width 0.8}
+       :style/fill nil}]}))
+
+;; --- 8. Palette Wheel ---
+
+(defn ^{:example {:output "show-palette-wheel.png"
+                  :title  "Palette Wheel"
+                  :desc   "Warm, cool, vivid, and muted variations of a single palette."
+                  :tags   ["palette" "manipulation" "oklab"]}}
+  palette-wheel []
+  (let [base (:sunset palette/palettes)
+        variations [["Original" base]
+                    ["Warmer" (palette/warmer base 20)]
+                    ["Cooler" (palette/cooler base 20)]
+                    ["Muted" (palette/muted base 0.4)]
+                    ["Vivid" (palette/vivid base 0.3)]
+                    ["Darker" (palette/darker base 0.3)]
+                    ["Lighter" (palette/lighter base 0.3)]]
+        bar-h 40
+        w 500 h (* bar-h (count variations))
+        n (count base)]
+    {:image/size [w h]
+     :image/background :white
+     :image/nodes
+     (vec (mapcat
+       (fn [row-i [_label pal]]
+         (let [bar-w (/ (double w) n)]
+           (mapv (fn [ci]
+                   {:node/type :shape/rect
+                    :rect/xy [(* ci bar-w) (* row-i bar-h)]
+                    :rect/size [bar-w bar-h]
+                    :style/fill (nth pal ci)})
+                 (range n))))
+       (range) variations))}))
+
+;; --- 9. Stippled Orbits ---
+
+(defn ^{:example {:output "show-stippled-orbits.png"
+                  :title  "Stippled Orbits"
+                  :desc   "Points scattered on concentric circles with jitter."
+                  :tags   ["geometric" "scatter" "circle"]}}
+  stippled-orbits []
+  (let [w 500 h 500
+        cx 250.0 cy 250.0
+        all-pts (into []
+                  (mapcat
+                    (fn [ri]
+                      (let [r (* ri 28)
+                            n-pts (+ 10 (* ri 8))
+                            pts (prob/scatter-on-circle n-pts r [cx cy] (+ 42 ri))]
+                        (scatter/jitter pts 2.5 (+ 100 ri))))
+                    (range 1 9)))]
+    {:image/size [w h]
+     :image/background [:color/rgb 20 18 30]
+     :image/nodes
+     (mapv (fn [[x y]]
+             {:node/type :shape/circle
+              :circle/center [x y]
+              :circle/radius 1.5
+              :style/fill [:color/rgba 200 180 255 0.7]})
+           all-pts)}))
+
+;; --- 10. Simplex Contour Terrain ---
+
+(defn ^{:example {:output "show-contour-terrain.png"
+                  :title  "Simplex Contour Terrain"
+                  :desc   "Topographic contour lines from simplex noise."
+                  :tags   ["contour" "simplex" "terrain"]}}
+  contour-terrain []
+  (let [w 600 h 400
+        levels (mapv (fn [i] (- -0.5 (* i -0.12))) (range 10))
+        pal (palette/sort-by-lightness
+              [[:color/rgb 30 60 30] [:color/rgb 60 120 50]
+               [:color/rgb 140 170 60] [:color/rgb 200 190 100]
+               [:color/rgb 180 140 80] [:color/rgb 140 100 60]
+               [:color/rgb 100 80 60] [:color/rgb 220 210 190]
+               [:color/rgb 240 240 245] [:color/rgb 255 255 255]])]
+    {:image/size [w h]
+     :image/background [:color/rgb 20 30 20]
+     :image/nodes
+     (vec (mapcat
+       (fn [li level]
+         (let [contours (contour/contour-lines 0 0 w h
+                          {:threshold level :resolution 4
+                           :noise-fn noise/simplex2d
+                           :noise-scale 0.008 :seed 42})
+               c (nth pal (min li (dec (count pal))))]
+           (mapv (fn [path-node]
+                   (assoc path-node
+                     :style/stroke {:color c :width 1.2}
+                     :style/fill nil))
+                 contours)))
+       (range) levels))}))
+
+;; --- 11. Pencil Sketch ---
+
+(defn ^{:example {:output "show-pencil-sketch.png"
+                  :title  "Pencil Sketch"
+                  :desc   "Geometric forms rendered with pencil media preset."
+                  :tags   ["pencil" "preset" "aesthetic"]}}
+  pencil-sketch []
+  (let [w 500 h 500
+        shapes (for [i (range 5)]
+                 (let [cx (+ 100 (* i 75))
+                       cy (+ 250 (* 40 (Math/sin (* i 0.8))))
+                       r (+ 30 (* 15 (Math/sin (* i 1.3))))
+                       pts (mapv (fn [j]
+                                   (let [a (* j (/ (* 2 Math/PI) 6))]
+                                     [(+ cx (* r (Math/cos a)))
+                                      (+ cy (* r (Math/sin a)))]))
+                                 (range 6))
+                       cmds (conj (scene/points->path pts true) [:close])
+                       styled (aesthetic/stylize cmds
+                                (aesthetic/pencil-preset (+ 42 i)))]
+                   {:node/type :shape/path
+                    :path/commands styled
+                    :style/stroke {:color [:color/rgba 50 40 30 0.8]
+                                   :width 1.0}
+                    :style/fill nil}))]
+    {:image/size [w h]
+     :image/background [:color/rgb 250 245 235]
+     :image/nodes (vec shapes)}))
+
+;; --- 12. Inset Frames ---
+
+(defn ^{:example {:output "show-inset-frames.png"
+                  :title  "Inset Frames"
+                  :desc   "Nested polygon insets creating concentric frames."
+                  :tags   ["inset" "polygon" "nesting"]}}
+  inset-frames []
+  (let [w 500 h 500
+        outer [[50 50] [450 50] [450 450] [50 450]]
+        layers 12
+        pal (palette/sort-by-lightness (:earth palette/palettes))]
+    {:image/size [w h]
+     :image/background :ivory
+     :image/nodes
+     (vec (keep
+       (fn [i]
+         (let [poly (path/inset outer (* i 15))]
+           (when (>= (count poly) 3)
+             {:node/type :shape/path
+              :path/commands (conj (scene/points->path poly true) [:close])
+              :style/fill (nth pal (mod i (count pal)))
+              :style/stroke {:color [:color/rgba 40 30 20 0.6]
+                             :width 1}})))
+       (range layers)))}))
+
+;; --- 13. Disc Scatter ---
+
+(defn ^{:example {:output "show-disc-scatter.png"
+                  :title  "Disc Scatter"
+                  :desc   "Points uniformly inside a disc — colored by distance."
+                  :tags   ["geometric" "distribution" "circle"]}}
+  disc-scatter []
+  (let [w 500 h 500
+        pts (prob/scatter-in-circle 800 200.0 [250.0 250.0] 42)]
+    {:image/size [w h]
      :image/background [:color/rgb 10 10 15]
-     :image/nodes (into [beam prism-shape] rays)}))
+     :image/nodes
+     (mapv (fn [[x y]]
+             (let [dx (- x 250) dy (- y 250)
+                   dist (Math/sqrt (+ (* dx dx) (* dy dy)))
+                   t (/ dist 200.0)
+                   c (color/lerp-oklab :deepskyblue :hotpink t)]
+               {:node/type :shape/circle
+                :circle/center [x y]
+                :circle/radius (+ 1.0 (* 2.0 (- 1.0 t)))
+                :style/fill c}))
+           pts)}))
 
-;; --- 19. Breathing Mandala ---
+;; --- 14. Pareto Cityscape ---
 
-(defn ^{:example {:output "showcase-breathing-mandala.gif"
-                  :title  "Breathing Mandala"
-                  :desc   "Layered radial symmetry that expands and contracts with color cycling."
-                  :tags   ["symmetry" "animation" "color"]}}
-  breathing-mandala []
-  {:frames
-   (anim/frames 50
-     (fn [t]
-       (let [cx 250 cy 250
-             breath (anim/ping-pong t)
-             eased (anim/ease-in-out-cubic breath)
-             layers
-             (vec
-               (for [layer (range 4)]
-                 (let [n-petals (+ 6 (* layer 2))
-                       base-r (+ 30 (* layer 45))
-                       r (* base-r (+ 0.7 (* 0.3 eased)))
-                       petal-w (* r 0.15)
-                       hue (mod (+ (* layer 60) (* t 120)) 360)
-                       rotation (+ (* layer 0.2) (* t Math/PI 0.5))]
-                   {:node/type :symmetry
-                    :symmetry/type :radial
-                    :symmetry/n n-petals
-                    :symmetry/center [cx cy]
-                    :group/children
-                    [{:node/type :shape/ellipse
-                      :ellipse/center [cx (- cy (* r 0.6))]
-                      :ellipse/rx petal-w
-                      :ellipse/ry (* r 0.45)
-                      :node/opacity (- 0.6 (* layer 0.1))
-                      :style/fill [:color/hsl hue 0.7 0.5]
-                      :style/stroke {:color [:color/hsl hue 0.5 0.35] :width 0.5}}]
-                    :node/transform [[:transform/rotate rotation]]})))
-             ;; Center dot
-             center {:node/type :shape/circle
-                     :circle/center [cx cy]
-                     :circle/radius (* 15 (+ 0.8 (* 0.2 eased)))
-                     :style/fill [:color/rgb 255 240 200]}]
-         {:image/size [500 500]
-          :image/background [:color/rgb 12 10 18]
-          :image/nodes (conj layers center)})))
-   :fps 20})
+(defn ^{:example {:output "show-pareto-city.png"
+                  :title  "Pareto Cityscape"
+                  :desc   "Building heights follow a Pareto distribution."
+                  :tags   ["pareto" "distribution" "architecture"]}}
+  pareto-city []
+  (let [w 600 h 400
+        n 40
+        heights (prob/pareto n 1.5 20.0 42)
+        bar-w (/ (double w) n)
+        max-h 350.0]
+    {:image/size [w h]
+     :image/background [:color/rgb 15 20 40]
+     :image/nodes
+     (mapv (fn [i]
+             (let [raw-h (min max-h (double (nth heights i)))
+                   x (* i bar-w)
+                   y (- h raw-h)
+                   t (/ raw-h max-h)
+                   c (color/lerp-oklab [:color/rgb 40 60 100]
+                                       [:color/rgb 255 200 80] t)]
+               {:node/type :shape/rect
+                :rect/xy [x y]
+                :rect/size [(- bar-w 2) raw-h]
+                :style/fill c}))
+           (range n))}))
 
-;; --- 20. Pixel Rain (Matrix) ---
+;; --- 15. OKLCH Hue Ring ---
 
-(defn ^{:example {:output "showcase-matrix.gif"
-                  :title  "Digital Rain"
-                  :desc   "Cascading columns of characters fading into the dark."
-                  :tags   ["animation" "opacity" "color"]}}
-  digital-rain []
-  {:frames
-   (anim/frames 40
-     (fn [t]
-       (let [w 400 h 500
-             cols 30
-             col-w (/ (double w) cols)
-             drops
-             (vec
-               (for [col (range cols)
-                     row (range 25)]
-                 (let [rng (java.util.Random. (long col))
-                       ;; Speed is integer multiple so it loops at t=1
-                       speed (+ 1 (.nextInt rng 3))
-                       offset (* (.nextDouble rng) h)
-                       head-y (mod (+ (* t speed h) offset) h)
-                       y (- head-y (* row 16))
-                       x (+ 2 (* col col-w))
-                       fade (max 0 (- 1.0 (* row 0.05)))
-                       brightness (if (zero? row) 1.0 (* 0.7 fade))]
-                   (when (and (> y -10) (< y (+ h 10)) (> fade 0.05))
-                     {:node/type     :shape/rect
-                      :rect/xy       [x y]
-                      :rect/size     [(- col-w 2) 12]
-                      :rect/corner-radius 1
-                      :node/opacity  (* fade 0.8)
-                      :style/fill    [:color/rgb
-                                      (int (* 30 brightness))
-                                      (int (* 255 brightness))
-                                      (int (* 60 brightness))]}))))]
-         {:image/size [w h]
-          :image/background [:color/rgb 0 5 0]
-          :image/nodes (vec (remove nil? drops))})))
-   :fps 15})
+(defn ^{:example {:output "show-oklch-ring.png"
+                  :title  "OKLCH Hue Ring"
+                  :desc   "Full hue rotation in perceptually uniform OKLCH space."
+                  :tags   ["oklch" "color-space" "hue"]}}
+  oklch-ring []
+  (let [w 500 h 500
+        n 72
+        cx 250 cy 250
+        outer-r 200 inner-r 130]
+    {:image/size [w h]
+     :image/background [:color/rgb 30 30 30]
+     :image/nodes
+     (mapv (fn [i]
+             (let [hue (* (/ (double i) n) 360.0)
+                   a1 (* (/ (double i) n) 2 Math/PI)
+                   a2 (* (/ (double (inc i)) n) 2 Math/PI)
+                   pts [[(+ cx (* outer-r (Math/cos a1)))
+                         (+ cy (* outer-r (Math/sin a1)))]
+                        [(+ cx (* outer-r (Math/cos a2)))
+                         (+ cy (* outer-r (Math/sin a2)))]
+                        [(+ cx (* inner-r (Math/cos a2)))
+                         (+ cy (* inner-r (Math/sin a2)))]
+                        [(+ cx (* inner-r (Math/cos a1)))
+                         (+ cy (* inner-r (Math/sin a1)))]]]
+               {:node/type :shape/path
+                :path/commands (conj (scene/points->path pts true) [:close])
+                :style/fill (color/oklch 0.7 0.15 hue)}))
+           (range n))}))
+
+;; --- 16. Margin Composition ---
+
+(defn ^{:example {:output "show-margin-composition.png"
+                  :title  "Margin Composition"
+                  :desc   "Dense flow field cropped with scene margin control."
+                  :tags   ["margin" "composition" "flow-field"]}}
+  margin-composition []
+  (let [w 500 h 500
+        margin 40
+        lines (flow/flow-field 0 0 w h
+                {:density 8 :steps 100 :step-length 2
+                 :noise-scale 0.008 :seed 33})
+        pal (:ocean palette/palettes)]
+    (scene/with-margin
+      {:image/size [w h]
+       :image/background :white
+       :image/nodes
+       (vec (map-indexed
+         (fn [i node]
+           (assoc node
+             :style/stroke {:color (nth pal (mod i (count pal)))
+                            :width 1.2}
+             :style/fill nil))
+         lines))}
+      margin)))
+
+;; --- 17. Simplified Curves ---
+
+(defn ^{:example {:output "show-simplified-paths.png"
+                  :title  "Simplified Curves"
+                  :desc   "Douglas-Peucker simplification at varying epsilon."
+                  :tags   ["simplify" "douglas-peucker" "optimization"]}}
+  simplified-paths []
+  (let [w 600 h 400
+        n 80
+        raw-pts (mapv (fn [i]
+                        (let [x (* (/ (double i) n) w)
+                              y (+ 200 (* 60 (Math/sin (* i 0.15)))
+                                       (* 30 (noise/simplex2d (* i 0.1) 0.5)))]
+                          [x y]))
+                      (range n))
+        epsilons [0 2 8 25]
+        offsets [50 150 250 350]]
+    {:image/size [w h]
+     :image/background :white
+     :image/nodes
+     (vec (mapcat
+       (fn [eps y-off]
+         (let [pts (if (zero? eps)
+                     raw-pts
+                     (path/simplify raw-pts (double eps)))
+               offset-pts (mapv (fn [[x y]]
+                                  [x (+ (- y 200) y-off)])
+                                pts)
+               cmds (scene/points->path offset-pts false)]
+           [{:node/type :shape/path
+             :path/commands cmds
+             :style/stroke {:color :steelblue :width 1.5}
+             :style/fill nil}]))
+       epsilons offsets))}))
+
+;; --- 18. Split & Color ---
+
+(defn ^{:example {:output "show-split-paths.png"
+                  :title  "Split & Color"
+                  :desc   "A single curve split into segments, each a different hue."
+                  :tags   ["split" "curve" "color"]}}
+  split-paths []
+  (let [w 600 h 400
+        pts (mapv (fn [i]
+                    (let [x (* (/ (double i) 60) w)
+                          y (+ 200 (* 120 (Math/sin (* i 0.12)))
+                                   (* 40 (Math/cos (* i 0.3))))]
+                      [x y]))
+                  (range 60))
+        cmds (scene/points->path pts false)
+        segments (path/split-at-length cmds 80)
+        n-seg (count segments)
+        pal (mapv #(color/oklch 0.65 0.2 %)
+                  (range 0 360 (/ 360.0 (max 1 n-seg))))]
+    {:image/size [w h]
+     :image/background [:color/rgb 245 245 250]
+     :image/nodes
+     (vec (map-indexed
+       (fn [i seg]
+         {:node/type :shape/path
+          :path/commands seg
+          :style/stroke {:color (nth pal (mod i (count pal))) :width 3}
+          :style/fill nil})
+       segments))}))
+
+;; --- 19. Ink Botanical ---
+
+(defn ^{:example {:output "show-ink-botanical.png"
+                  :title  "Ink Botanical"
+                  :desc   "Organic leaf shapes with ink media preset."
+                  :tags   ["ink" "preset" "botanical"]}}
+  ink-botanical []
+  (let [w 500 h 500
+        leaf (fn [cx cy size angle seed]
+               (let [pts (mapv
+                           (fn [i]
+                             (let [t (/ (double i) 20)
+                                   a (* t 2 Math/PI)
+                                   r (* size (+ 0.5 (* 0.5
+                                         (Math/cos (* 2 a)))))]
+                               [(+ cx (* r (Math/cos (+ a angle))))
+                                (+ cy (* r (Math/sin (+ a angle))))]))
+                           (range 20))
+                     cmds (conj (scene/points->path pts true) [:close])
+                     styled (aesthetic/stylize cmds
+                              (aesthetic/ink-preset seed))]
+                 {:node/type :shape/path
+                  :path/commands styled
+                  :style/stroke {:color [:color/rgba 20 60 20 0.8]
+                                 :width 1.2}
+                  :style/fill [:color/rgba 60 120 40 0.15]}))
+        leaves (for [i (range 8)]
+                 (let [a (* i (/ (* 2 Math/PI) 8))
+                       r (+ 80 (* 30 (Math/sin (* i 2.1))))]
+                   (leaf (+ 250 (* r (Math/cos a)))
+                         (+ 250 (* r (Math/sin a)))
+                         (+ 40 (* 20 (Math/sin (* i 1.7))))
+                         a (+ 42 i))))]
+    {:image/size [w h]
+     :image/background [:color/rgb 250 248 240]
+     :image/nodes (vec leaves)}))
+
+;; --- 20. Eased Gradients ---
+
+(defn ^{:example {:output "show-eased-gradient.png"
+                  :title  "Eased Gradients"
+                  :desc   "Non-linear gradient interpolation with different easing."
+                  :tags   ["gradient" "easing" "color"]}}
+  eased-gradients []
+  (let [w 600 h 400
+        stops [[0.0 :navy] [0.5 :crimson] [1.0 :gold]]
+        easings [nil
+                 (fn [t] (* t t))
+                 (fn [t] (* t t t))
+                 (fn [t] (Math/sqrt t))]
+        strip-h (/ (double h) (count easings))
+        cols 200]
+    {:image/size [w h]
+     :image/background :white
+     :image/nodes
+     (vec (mapcat
+       (fn [ei easing]
+         (let [y0 (* ei strip-h)
+               col-w (/ (double w) cols)]
+           (mapv (fn [ci]
+                   (let [t (/ (double ci) cols)
+                         c (palette/gradient-map stops t
+                             (when easing {:easing easing}))]
+                     {:node/type :shape/rect
+                      :rect/xy [(* ci col-w) y0]
+                      :rect/size [(+ col-w 1) strip-h]
+                      :style/fill c}))
+                 (range cols))))
+       (range) easings))}))
+
+;; --- 21. Clipped Flow ---
+
+(defn ^{:example {:output "show-clipped-flow.png"
+                  :title  "Clipped Flow"
+                  :desc   "Flow field paths trimmed to a circular boundary."
+                  :tags   ["clipping" "flow-field" "bounds"]}}
+  clipped-flow []
+  (let [w 500 h 500
+        cx 250.0 cy 250.0 r 180.0
+        lines (flow/flow-field 0 0 w h
+                {:density 10 :steps 60 :step-length 2
+                 :noise-scale 0.007 :seed 55})]
+    {:image/size [w h]
+     :image/background [:color/rgb 250 248 240]
+     :image/nodes
+     (into
+       [{:node/type :shape/circle
+         :circle/center [cx cy]
+         :circle/radius r
+         :style/stroke {:color [:color/rgba 60 60 60 0.3] :width 1}
+         :style/fill nil}]
+       (mapcat
+         (fn [node]
+           (let [cmds (:path/commands node)
+                 trimmed (path/trim-to-bounds cmds
+                           (- cx r) (- cy r) (* 2 r) (* 2 r))]
+             (mapv (fn [seg]
+                     {:node/type :shape/path
+                      :path/commands seg
+                      :style/stroke {:color [:color/rgba 40 80 140 0.5]
+                                     :width 1}
+                      :style/fill nil})
+                   trimmed)))
+         lines))}))
+
+;; --- 22. Triangular Peaks ---
+
+(defn ^{:example {:output "show-triangular-mtns.png"
+                  :title  "Triangular Peaks"
+                  :desc   "Mountain silhouettes with triangular-distributed heights."
+                  :tags   ["triangular" "distribution" "landscape"]}}
+  triangular-mountains []
+  (let [w 600 h 400
+        ranges
+        (for [row (range 4)]
+          (let [base-y (+ 200 (* row 50))
+                peaks (sort (prob/triangular 12 0.0 (double w) (* w 0.4) (+ 42 row)))
+                peak-h (prob/triangular 12 30.0 (- 200.0 (* row 30)) 80.0 (+ 99 row))
+                alpha (- 1.0 (* row 0.2))
+                blue (+ 30 (* row 40))
+                pts (vec (concat
+                      [[0 base-y]]
+                      (mapcat (fn [x ph]
+                                [[x base-y] [x (- base-y (double ph))]])
+                              peaks peak-h)
+                      [[(double w) base-y]]))]
+            {:node/type :shape/path
+             :path/commands (conj (scene/points->path pts false) [:close])
+             :style/fill [:color/rgba blue (+ 40 (* row 20))
+                          (+ 80 (* row 20)) alpha]}))]
+    {:image/size [w h]
+     :image/background [:color/rgb 200 210 230]
+     :image/nodes (vec ranges)}))
+
+;; --- 23. Contrast Grid ---
+
+(defn ^{:example {:output "show-contrast-grid.png"
+                  :title  "Contrast Grid"
+                  :desc   "Color pairs showing WCAG contrast ratios."
+                  :tags   ["contrast" "accessibility" "color"]}}
+  contrast-grid []
+  (let [w 600 h 280
+        colors [:navy :red :forestgreen :purple :darkorange :teal]
+        bg-colors [:white :lightyellow :lavender]
+        cell-w 95 cell-h 55]
+    {:image/size [w h]
+     :image/background :whitesmoke
+     :image/nodes
+     (vec (mapcat
+       (fn [bi bg]
+         (mapcat
+           (fn [ci fg]
+             (let [x (+ 15 (* ci cell-w))
+                   y (+ 15 (* bi (+ cell-h 20)))]
+               [{:node/type :shape/rect
+                 :rect/xy [x y]
+                 :rect/size [cell-w cell-h]
+                 :style/fill bg
+                 :style/stroke {:color :gray :width 0.5}}
+                {:node/type :shape/rect
+                 :rect/xy [(+ x 10) (+ y 10)]
+                 :rect/size [30 30]
+                 :style/fill fg}]))
+           (range) colors))
+       (range) bg-colors))}))
 
 (comment
-  (require '[eido.core :as eido])
-  (eido/render (bauhaus) {:output "showcase-bauhaus.png"})
-  (eido/render (geode) {:output "showcase-geode.png"})
-  (eido/render (textile) {:output "showcase-textile.png"})
-  (eido/render (prism) {:output "showcase-prism.png"})
-  (let [{:keys [frames fps]} (aurora)]
-    (eido/render frames {:output "showcase-aurora.gif" :fps fps})))
+  (aurora)
+  (crystal-geode)
+  (neon-orbit)
+  (oklab-sunset)
+  (simplex-flow)
+  (watercolor-bloom)
+  (chaikin-spiral)
+  (palette-wheel)
+  (stippled-orbits)
+  (contour-terrain)
+  (pencil-sketch)
+  (inset-frames)
+  (disc-scatter)
+  (pareto-city)
+  (oklch-ring)
+  (margin-composition)
+  (simplified-paths)
+  (split-paths)
+  (ink-botanical)
+  (eased-gradients)
+  (clipped-flow)
+  (triangular-mountains)
+  (contrast-grid))
