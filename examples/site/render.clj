@@ -1006,6 +1006,9 @@
              [:li [:a {:href (str prefix "/architecture/")
                        :style (when (= active-page :architecture) "color: #e0ddd5")}
                    "How It Works"]]
+             [:li [:a {:href (str prefix "/limitations/")
+                       :style (when (= active-page :limitations) "color: #e0ddd5")}
+                   "Scope"]]
              [:li [:a {:href "https://github.com/leifericf/eido"} "GitHub"]]]]
            [:main body]
            [:footer.footer
@@ -1390,6 +1393,25 @@ document.querySelectorAll('.arch-content pre code').forEach(function(el) {
 });
 "))])))
 
+;; --- Scope & Limitations page ---
+
+(defn generate-limitations-html
+  "Generates the 'Scope & Limitations' page."
+  []
+  (let [sections (pages/limitations-sections)]
+    (html-page {:title "Scope & Limitations" :active-page :limitations :depth 1}
+      [:h1.page-title "Scope & Limitations"]
+      [:p.page-subtitle "What Eido does, what it doesn't, and why"]
+      [:div.arch-layout
+       [:nav.arch-sidebar
+        (for [{:keys [id title]} sections]
+          [:div [:a {:href (str "#" id)} title]])]
+       [:div.arch-content
+        (for [{:keys [id title content]} sections]
+          [:section.arch-section {:id id}
+           [:h2 title]
+           content])]])))
+
 ;; --- Workflow pages ---
 
 (defn generate-workflows-index-html
@@ -1469,6 +1491,10 @@ document.querySelectorAll('.arch-content pre code').forEach(function(el) {
     (println "Generating architecture page...")
     (write-page! out-dir "architecture/index.html"
       (generate-architecture-html))
+
+    (println "Generating limitations page...")
+    (write-page! out-dir "limitations/index.html"
+      (generate-limitations-html))
 
     (println "Generating workflows...")
     (write-page! out-dir "workflows/index.html"

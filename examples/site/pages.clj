@@ -2071,6 +2071,58 @@ CircleOp{...original-shape...}"]]
        [:tr [:td [:code "eido.color"]] [:td "Color parsing, conversion, and manipulation"] [:td (arch-src-link "src/eido/color.clj" "color.clj")]]
        [:tr [:td [:code "eido.scene"]] [:td "Layout helpers and node constructors"] [:td (arch-src-link "src/eido/scene.clj" "scene.clj")]]]]]}])
 
+;; --- Scope & Limitations page ---
+
+(defn limitations-sections
+  "Content for the 'Scope & Limitations' page."
+  []
+  [{:id "what-eido-is"
+    :title "What Eido Is"
+    :content
+    [:div
+     [:p "Eido is a " [:strong "declarative, data-first Clojure library"] " for computational and generative art. You describe images as plain data — maps, vectors, keywords — and Eido renders them."]
+     [:ul
+      [:li [:strong "A library, not a framework."] " Every function takes data and returns data. You bring your own workflow, editor, and REPL."]
+      [:li [:strong "Zero production dependencies."] " Just Clojure and the standard library. Nothing to install, nothing to break."]
+      [:li [:strong "REPL-driven."] " The primary development loop is edit → evaluate → inspect → adjust. No compile step, no build tool."]
+      [:li [:strong "Designed for"] " screen output, print production, plotter art, long-form edition series, and exploratory generative work."]]]}
+
+   {:id "practical-limits"
+    :title "Practical Limits"
+    :content
+    [:div
+     [:ul
+      [:li [:strong "Software rendering only."] " Eido uses Java2D — no GPU acceleration. This is deliberate: it keeps the library portable and zero-dep, but it means rendering is CPU-bound."]
+      [:li [:strong "Memory scales with scene complexity."] " Every node in a scene is an in-memory data structure. Scenes with 100k+ nodes will use significant heap space. Large batch renders benefit from the " [:code ":perf"] " alias JVM flags."]
+      [:li [:strong "Sequential animation rendering."] " Each frame is rendered independently. A 300-frame animation at high resolution takes 300× the single-frame time. There is no incremental or delta-based rendering."]
+      [:li [:strong "Single-threaded rendering."] " The render pipeline processes one scene at a time. Parallelism is available at the batch level (e.g., rendering editions with " [:code "pmap"] "), but a single render call is single-threaded."]
+      [:li [:strong "No streaming or progressive output."] " The full scene must fit in memory. There is no tiled or chunked rendering for very large canvases."]]]}
+
+   {:id "non-goals"
+    :title "Non-Goals"
+    :content
+    [:div
+     [:p "These are things Eido intentionally does not do. They represent different tools with different constraints — not missing features."]
+     [:ul
+      [:li [:strong "No GUI editor."] " Eido is a library for programmers. Use your preferred editor and REPL. A visual seed browser is a separate project idea (see IDEAS.md)."]
+      [:li [:strong "No CAD/CAM precision modeling."] " Eido's geometry is for visual output, not engineering tolerance. For precision modeling, use OpenSCAD or similar."]
+      [:li [:strong "No audio or livecoding."] " Eido is a visual system. For audio-visual work, pair it with Overtone or Sonic Pi."]
+      [:li [:strong "No web IDE or browser runtime."] " Eido runs on the JVM. ClojureScript is not a target."]
+      [:li [:strong "No photorealistic 3D."] " The scene3d pipeline produces flat-shaded and NPR (non-photorealistic) output. There is no ray tracing, PBR, or global illumination. For photorealism, use Blender or Mitsuba."]
+      [:li [:strong "No image compositing."] " Eido generates images from data. It does not import or layer external images (beyond palette extraction from reference photos)."]]]}
+
+   {:id "alternatives"
+    :title "When to Use Something Else"
+    :content
+    [:div
+     [:p "Eido complements rather than replaces these tools:"]
+     [:ul
+      [:li [:strong "Interactive graphics"] " — Processing, p5.js, nannou. When you need real-time interaction, mouse input, or immediate visual feedback beyond the REPL preview."]
+      [:li [:strong "Photorealistic rendering"] " — Blender, Mitsuba, POV-Ray. When you need physically accurate light transport."]
+      [:li [:strong "Precision CAD"] " — OpenSCAD, FreeCAD. When you need engineering tolerances and manufacturing output beyond polyline export."]
+      [:li [:strong "Data visualization"] " — Vega-Lite, Observable Plot, Oz. When your primary goal is communicating data rather than making art."]
+      [:li [:strong "GPU shaders"] " — Shadertoy, ISF, Processing. When you need real-time fragment shader performance."]]]}])
+
 ;; --- Workflow pages ---
 
 (defn- workflow-sketching-sections []
