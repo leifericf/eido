@@ -20,19 +20,6 @@ Regenerate any saved seed at a different resolution without changing the composi
 - Any generator that uses absolute pixel values internally (e.g., hardcoded step sizes in flow fields) would need to scale those relative to canvas size. Audit each generator.
 - Document the pattern: "express all coordinates as fractions of canvas size or relative to `:image/size`."
 
-### Polyline / JSON data export
-
-For CNC mills, laser cutters, and custom plotter software, raw polyline coordinate data (as JSON or EDN) is more useful than SVG.
-
-**What to add:**
-- `render` option to export path data as EDN or JSON (vector of polylines, each a vector of `[x y]` points)
-
-**Implementation notes:**
-- The IR already has path commands as data (`[[:move-to x y] [:line-to x y] ...]`). Extracting polylines means flattening curves to line segments and collecting point coordinates.
-- Add a `:format :polylines` or `:format :edn-paths` option to `render` that, instead of rendering pixels, walks the compiled ops and extracts path data.
-- For curves (`:curve-to`, `:quad-to`), flatten to line segments using de Casteljau subdivision at a configurable resolution.
-- Output format: `{:polylines [[[x1 y1] [x2 y2] ...] ...] :bounds [w h]}`. Write as EDN (native) or JSON (via `clojure.data.json` if available, or manual formatting).
-
 ---
 
 ## Exploration and iteration

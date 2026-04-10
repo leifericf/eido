@@ -1,0 +1,135 @@
+(ns eido.io.polyline-test
+  (:require
+    [clojure.edn :as edn]
+    [clojure.test :refer [deftest is testing]]
+    [eido.engine.compile :as compile]
+    [eido.io.polyline :as polyline]))
+
+(defn- compile-scene [scene]
+  (compile/compile scene))
+
+(def base-scene
+  {:image/size [400 400]
+   :image/background [:color/rgb 255 255 255]
+   :image/nodes []})
+
+;; --- rect ---
+
+(deftest rect-polyline-test
+  (testing "rect produces closed 4-corner polyline"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [50 60]
+                    :rect/size [100 80]}])
+          result (polyline/extract-polylines (compile-scene scene) {})
+          polys  (:polylines result)]
+      (is (= 1 (count polys)))
+      (is (= 5 (count (first polys))) "closed rect has 5 points (start repeated)")
+      (is (= (first (first polys)) (last (first polys))) "first = last for closed")
+      (is (= [50 60] (mapv int (first (first polys))))))))
+
+;; --- circle ---
+
+(deftest circle-polyline-test
+  (testing "circle produces closed polygon"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/circle
+                    :circle/center [200 200]
+                    :circle/radius 50}])
+          result (polyline/extract-polylines (compile-scene scene) {:segments 32})
+          polys  (:polylines result)]
+      (is (= 1 (count polys)))
+      (is (= 33 (count (first polys))) "32 segments + closing point")
+      (is (= (first (first polys)) (last (first polys)))))))
+
+;; --- line ---
+
+(deftest line-polyline-test
+  (testing "line produces 2-point polyline"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/line
+                    :line/from [10 20]
+                    :line/to [300 400]
+                    :style/stroke {:color [:color/rgb 0 0 0] :width 1}}])
+          result (polyline/extract-polylines (compile-scene scene) {})
+          polys  (:polylines result)]
+      (is (= 1 (count polys)))
+      (is (= 2 (count (first polys))))
+      (is (= [10 20] (first (first polys))))
+      (is (= [300 400] (second (first polys)))))))
+
+;; --- path with curves ---
+
+(deftest path-polyline-test
+  (testing "path with curves is flattened to line segments"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/path
+                    :path/commands [[:move-to [0 0]]
+                                    [:curve-to [50 100] [150 100] [200 0]]
+                                    [:close]]}])
+          result (polyline/extract-polylines (compile-scene scene) {:flatness 1.0})
+          polys  (:polylines result)]
+      (is (= 1 (count polys)))
+      (is (> (count (first polys)) 3) "curve should produce many points"))))
+
+;; --- multiple shapes ---
+
+(deftest multiple-shapes-test
+  (testing "multiple shapes produce multiple polylines"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [10 10]
+                    :rect/size [50 50]}
+                   {:node/type :shape/circle
+                    :circle/center [200 200]
+                    :circle/radius 30}
+                   {:node/type :shape/line
+                    :line/from [0 0]
+                    :line/to [400 400]
+                    :style/stroke {:color [:color/rgb 0 0 0] :width 1}}])
+          result (polyline/extract-polylines (compile-scene scene) {})
+          polys  (:polylines result)]
+      (is (= 3 (count polys))))))
+
+;; --- bounds ---
+
+(deftest bounds-test
+  (testing "bounds matches scene size"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [0 0]
+                    :rect/size [10 10]}])
+          result (polyline/extract-polylines (compile-scene scene) {})]
+      (is (= [400 400] (:bounds result))))))
+
+;; --- EDN serialization ---
+
+(deftest edn-roundtrip-test
+  (testing "polylines serialize and deserialize via EDN"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [10 20]
+                    :rect/size [100 200]}])
+          result  (polyline/extract-polylines (compile-scene scene) {})
+          edn-str (polyline/polylines->edn result)
+          parsed  (edn/read-string edn-str)]
+      (is (string? edn-str))
+      (is (= (:bounds result) (:bounds parsed)))
+      (is (= (count (:polylines result)) (count (:polylines parsed)))))))
+
+;; --- group/buffer ---
+
+(deftest group-polyline-test
+  (testing "groups produce polylines from child ops"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :group
+                    :group/children
+                    [{:node/type :shape/rect
+                      :rect/xy [0 0]
+                      :rect/size [50 50]}
+                     {:node/type :shape/circle
+                      :circle/center [100 100]
+                      :circle/radius 20}]}])
+          result (polyline/extract-polylines (compile-scene scene) {})
+          polys  (:polylines result)]
+      (is (= 2 (count polys))))))

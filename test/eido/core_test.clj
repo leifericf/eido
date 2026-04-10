@@ -221,6 +221,25 @@
         (.delete lzw)
         (.delete none)))))
 
+(deftest render-polylines-test
+  (testing "format :polylines returns polyline data"
+    (let [result (eido/render sample-scene {:format :polylines})]
+      (is (map? result))
+      (is (vector? (:polylines result)))
+      (is (= [800 600] (:bounds result)))
+      (is (pos? (count (:polylines result))))))
+  (testing "format :polylines with output writes EDN file"
+    (let [path (str (File/createTempFile "eido-polys" ".edn"))
+          result (eido/render sample-scene {:format :polylines :output path})
+          f (File. ^String path)]
+      (is (= path result))
+      (is (.exists f))
+      (is (pos? (.length f)))
+      (let [data (clojure.edn/read-string (slurp f))]
+        (is (vector? (:polylines data)))
+        (is (= [800 600] (:bounds data))))
+      (.delete f))))
+
 (deftest render-to-file-tiff-format-override-test
   (testing ":format tiff overrides extension"
     (let [path (str (File/createTempFile "eido-test" ".png"))]

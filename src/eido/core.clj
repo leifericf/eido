@@ -6,6 +6,7 @@
     [eido.engine.gif :as gif]
     [eido.engine.render :as render]
     [eido.engine.svg :as svg]
+    [eido.io.polyline :as polyline]
     [eido.validate :as validate])
   (:import
     [java.awt Color Graphics2D]
@@ -338,6 +339,7 @@
     (render scene)                         → BufferedImage
     (render scene {:output \"out.png\"})   → writes file, returns path
     (render scene {:format :svg})          → SVG string
+    (render scene {:format :polylines})    → {:polylines [...] :bounds [w h]}
 
   Animation (sequence of scenes):
     (render frames {:output \"a.gif\" :fps 30})   → animated GIF
@@ -371,6 +373,14 @@
              (render-to-animated-svg-str input fps render-opts)
              (mapv #(render-image % render-opts) input))))
        (cond
+         (= :polylines format)
+         (let [ir   (validated-compile input)
+               data (polyline/extract-polylines ir
+                      (select-keys opts [:flatness :segments]))]
+           (if output
+             (do (spit output (polyline/polylines->edn data)) output)
+             data))
+
          output         (render-to-file input output
                           (merge render-opts (when format {:format (name format)})))
          (= :svg format) (render-to-svg input render-opts)
