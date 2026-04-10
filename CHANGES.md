@@ -95,6 +95,19 @@ directly using the migration examples below.
   (layered shape {:layers 30 :opacity 0.04 :deform-fn my-deform-fn :seed 42})
   ```
 
+- **`line-node` accepts stroke map** — The 3-arity form now takes a
+  stroke map `{:color c :width w}` instead of separate `color` and
+  `width` positional args. Matches how `circle-node` and `rect-node`
+  accept a single style value.
+
+  ```clj
+  ;; Before
+  (line-node [0 0] [100 100] [:color/name "black"] 2)
+
+  ;; After
+  (line-node [0 0] [100 100] {:color [:color/name "black"] :width 2})
+  ```
+
 - **`rd-grid` init keywords match `ca-grid`** — `rd-grid` used
   `:center-seed` and `:random-seeds` while `ca-grid` used `:center` and
   `:random`. Both now use bare keywords.
