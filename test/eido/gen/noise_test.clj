@@ -1,7 +1,9 @@
 (ns eido.gen.noise-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.gen.noise :as noise]))
+    [eido.gen.noise :as noise])
+  (:import
+    [java.awt.image BufferedImage]))
 
 ;; --- perlin2d ---
 
@@ -97,3 +99,23 @@
   (testing "ridge noise produces values"
     (let [v (noise/ridge noise/perlin2d 1.5 2.3 {:octaves 4})]
       (is (number? v)))))
+
+;; --- preview ---
+
+(deftest preview-test
+  (testing "returns a BufferedImage"
+    (let [img (noise/preview noise/perlin2d)]
+      (is (instance? BufferedImage img))))
+  (testing "default dimensions are 256x256"
+    (let [img (noise/preview noise/perlin2d)]
+      (is (= 256 (.getWidth ^BufferedImage img)))
+      (is (= 256 (.getHeight ^BufferedImage img)))))
+  (testing "custom dimensions"
+    (let [img (noise/preview noise/perlin2d {:width 100 :height 80})]
+      (is (= 100 (.getWidth ^BufferedImage img)))
+      (is (= 80 (.getHeight ^BufferedImage img)))))
+  (testing "deterministic output"
+    (let [img1 (noise/preview noise/perlin2d {:width 32 :height 32 :scale 0.1})
+          img2 (noise/preview noise/perlin2d {:width 32 :height 32 :scale 0.1})]
+      (is (= (.getRGB ^BufferedImage img1 0 0)
+             (.getRGB ^BufferedImage img2 0 0))))))

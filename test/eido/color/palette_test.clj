@@ -1,7 +1,9 @@
 (ns eido.color.palette-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.color.palette :as palette]))
+    [eido.color.palette :as palette])
+  (:import
+    [java.awt.image BufferedImage]))
 
 ;; --- complementary ---
 
@@ -188,3 +190,19 @@
           roles (palette/with-roles [:bg :primary :accent] pal)]
       (is (= [:color/rgb 255 0 0] (:bg roles)))
       (is (= [:color/rgb 0 0 255] (:accent roles))))))
+
+;; --- swatch ---
+
+(deftest swatch-test
+  (testing "returns a BufferedImage"
+    (let [pal [:red :green :blue :yellow :white]
+          img (palette/swatch pal)]
+      (is (instance? BufferedImage img))))
+  (testing "dimensions match defaults"
+    (let [img (palette/swatch [:red :blue])]
+      (is (= 400 (.getWidth ^BufferedImage img)))
+      (is (= 60 (.getHeight ^BufferedImage img)))))
+  (testing "custom dimensions"
+    (let [img (palette/swatch [:red :blue] {:width 200 :height 40})]
+      (is (= 200 (.getWidth ^BufferedImage img)))
+      (is (= 40 (.getHeight ^BufferedImage img))))))

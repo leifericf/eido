@@ -1,4 +1,6 @@
-(ns eido.gen.noise)
+(ns eido.gen.noise
+  (:import
+    [java.awt.image BufferedImage]))
 
 ;; --- permutation table ---
 
@@ -243,6 +245,29 @@
                   (+ total (* amplitude v))
                   (+ max-amp amplitude))))))))
 
+;; --- visual preview ---
+
+(defn preview
+  "Renders a noise function as a grayscale BufferedImage.
+  noise-fn: (fn [x y] -> double), expected range [-1, 1].
+  Useful with `show` at the REPL for tuning noise parameters.
+  opts: :width (256), :height (256), :scale (0.02)."
+  ([noise-fn] (preview noise-fn nil))
+  ([noise-fn opts]
+   (let [w     (int (get opts :width 256))
+         h     (int (get opts :height 256))
+         scale (double (get opts :scale 0.02))
+         img   (BufferedImage. w h BufferedImage/TYPE_INT_ARGB)]
+     (dotimes [py h]
+       (dotimes [px w]
+         (let [v (double (noise-fn (* px scale) (* py scale)))
+               gray (int (max 0 (min 255 (Math/round (* (+ v 1.0) 127.5)))))]
+           (.setRGB img px py (unchecked-int (bit-or 0xFF000000
+                                               (bit-shift-left gray 16)
+                                               (bit-shift-left gray 8)
+                                               gray))))))
+     img)))
+
 (comment
   (perlin2d 1.5 2.3)
   (perlin2d 1.5 2.3 {:seed 42})
@@ -250,4 +275,6 @@
   (fbm perlin2d 1.5 2.3 {:octaves 6})
   (turbulence perlin2d 1.5 2.3 {:octaves 4})
   (ridge perlin2d 1.5 2.3 {:octaves 4})
+  (preview perlin2d)
+  (preview (fn [x y] (fbm perlin2d x y {:octaves 6})))
   )

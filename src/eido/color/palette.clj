@@ -1,7 +1,10 @@
 (ns eido.color.palette
   (:require
     [eido.color :as color]
-    [eido.gen.prob :as prob]))
+    [eido.gen.prob :as prob])
+  (:import
+    [java.awt Color Graphics2D]
+    [java.awt.image BufferedImage]))
 
 ;; --- harmony functions ---
 
@@ -175,6 +178,27 @@
   [roles palette]
   (zipmap roles palette))
 
+;; --- visual preview ---
+
+(defn swatch
+  "Returns a BufferedImage showing color bars for a palette.
+  Useful with `show` at the REPL for quick visual feedback.
+  opts: :width (400), :height (60)."
+  ([palette] (swatch palette nil))
+  ([palette opts]
+   (let [w (int (get opts :width 400))
+         h (int (get opts :height 60))
+         n (count palette)
+         bar-w (/ (double w) (max 1 n))
+         img (BufferedImage. w h BufferedImage/TYPE_INT_ARGB)
+         ^Graphics2D gfx (.createGraphics img)]
+     (doseq [i (range n)]
+       (let [{:keys [r g b a]} (color/resolve-color (nth palette i))]
+         (.setColor gfx (Color. (int r) (int g) (int b) (int (* 255 (double a)))))
+         (.fillRect gfx (int (* i bar-w)) 0 (int (Math/ceil bar-w)) h)))
+     (.dispose gfx)
+     img)))
+
 (comment
   (complementary [:color/rgb 255 0 0])
   (analogous [:color/rgb 255 0 0] 5)
@@ -184,4 +208,5 @@
   (:sunset palettes)
   (weighted-pick (:sunset palettes) [1 1 1 1 5] 42)
   (weighted-gradient (:sunset palettes) [3 1 1 1 1])
+  (swatch (:sunset palettes))
   )

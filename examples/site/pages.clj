@@ -506,7 +506,17 @@
 ;; Fractal noise: layer multiple scales for richer detail
 (noise/fbm noise/perlin2d x y
   {:octaves 4 :seed 42})"]]
-       [:p "The " [:code ":seed"] " controls which particular landscape you get. Same seed, same landscape. The " [:code ":octaves"] " parameter in " [:code "fbm"] " adds layers of detail — like zooming into a coastline where you see detail at every scale."]]}
+       [:p "The " [:code ":seed"] " controls which particular landscape you get. Same seed, same landscape. The " [:code ":octaves"] " parameter in " [:code "fbm"] " adds layers of detail — like zooming into a coastline where you see detail at every scale."]
+       [:h4 "Noise preview"]
+       [:p "Tweak noise parameters and see the result instantly at the REPL:"]
+       [:pre [:code
+              ";; Preview any noise function as a grayscale image:
+(show (noise/preview noise/perlin2d))
+
+;; Preview FBM with custom parameters:
+(show (noise/preview
+  (fn [x y] (noise/fbm noise/perlin2d x y {:octaves 6 :seed 42}))
+  {:width 512 :height 512 :scale 0.01}))"]]]}
 
      {:id    "particles"
       :title "Particles"
@@ -642,7 +652,15 @@
   100 seed)"]]
        [:p "The bar chart above shows the sampled colors in order — notice how the neutral cream dominates, while the gold accent appears sparingly. Change the weights to shift the balance."]
        [:p [:code "weighted-gradient"] " creates gradient stops where each color occupies proportional space — feed into " [:code "gradient-map"] " for smooth interpolation. "
-        [:code "shuffle-palette"] " randomizes color order with a seed — great for giving each edition a different arrangement from the same palette."]]}
+        [:code "shuffle-palette"] " randomizes color order with a seed — great for giving each edition a different arrangement from the same palette."]
+       [:h4 "Palette preview"]
+       [:p "See a palette instantly at the REPL without building a scene:"]
+       [:pre [:code
+              ";; Preview any palette as a color swatch:
+(show (palette/swatch [:red :coral :gold :teal :navy]))
+
+;; Custom dimensions:
+(show (palette/swatch my-palette {:width 600 :height 80}))"]]]}
 
      {:id    "path-aesthetics"
       :title "Path Aesthetics"

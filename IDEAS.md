@@ -10,17 +10,6 @@ Organized by what matters to practicing generative and computational artists, gr
 
 Color is consistently described as the hardest problem in generative art. Artists spend more time on palettes than on algorithms, and existing tools rarely go deep enough.
 
-### Palette preview at the REPL
-
-No way to quickly *see* a palette without building a scene. A swatch renderer would close the feedback loop.
-
-**What to add:**
-- `palette/swatch` — returns a BufferedImage showing color bars for a palette, usable with `show`
-
-**Implementation notes:**
-- Same pattern as `seed-grid`/`param-grid`: create a BufferedImage via Java2D, draw filled rectangles for each color, return the image. ~20 lines.
-- Consider optional role labels if a role map is provided (`palette/swatch pal {:roles {:bg 0 :primary 1 :accent 2}}`).
-
 ### Palette-level manipulation
 
 Adjusting an entire palette (warmer, cooler, more muted, darker) currently requires manually mapping over each color. Palette-level operations would make this a single call.
@@ -168,18 +157,6 @@ Essential for seamlessly looping animated noise (use the 4th dimension as a time
 - 4D Perlin extends the existing 3D implementation with one more dimension in the gradient table and interpolation. Conceptually straightforward but the code is bulkier (~100 lines for the 4D case alone).
 - 4D simplex is more efficient than 4D Perlin (fewer interpolation steps). If implementing simplex noise, do 4D at the same time.
 - Looping trick: `noise(x, y, cos(t*2π)*r, sin(t*2π)*r)` gives seamless temporal loops. Document this pattern.
-
-### Noise preview at the REPL
-
-Artists tweak noise parameters (octaves, scale, lacunarity) constantly but can't see the result without building a scene.
-
-**What to add:**
-- `noise/preview` — renders a noise function as a grayscale BufferedImage, usable with `show`
-
-**Implementation notes:**
-- Takes a `(fn [x y] -> double)` and renders it as pixel values in a BufferedImage. Map noise output [-1,1] or [0,1] to grayscale [0,255].
-- ~15 lines: create BufferedImage, iterate pixels, call noise fn with scaled coordinates, set pixel.
-- Optional `:colormap` parameter to render with a palette instead of grayscale (useful for visualizing field magnitude).
 
 ---
 
