@@ -1227,6 +1227,13 @@ function filterGallery(tag) {
     (html-page {:title "Guide" :active-page :docs :depth 1}
       [:h1.page-title "Guide"]
       [:p.page-subtitle "A hands-on tour of Eido — from first shapes to generative art."]
+      [:div.intent-grid
+       (for [{:keys [intent links]} (pages/intent-cards)]
+         [:div.intent-card
+          [:div.intent-label intent]
+          [:div.intent-links
+           (for [{:keys [label href]} links]
+             [:a {:href href} label])]])]
       [:div.docs-layout
        [:nav.docs-sidebar
         (for [{:keys [category id sections]} categories]

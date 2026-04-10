@@ -603,6 +603,24 @@
                           :color       (:text-muted colors)
                           :line-height "1.6"}]])
 
+(def intent-card-styles
+  [[:.intent-grid {:display               "grid"
+                   :grid-template-columns "repeat(auto-fill, minmax(240px, 1fr))"
+                   :gap                   "1rem"
+                   :margin-bottom         "3rem"}]
+   [:.intent-card {:background    (:bg-card colors)
+                   :border        (str "1px solid " (:border colors))
+                   :border-radius "8px"
+                   :padding       "1.2rem"}]
+   [:.intent-label {:font-weight   "600"
+                    :font-size     "0.95rem"
+                    :color         (:text colors)
+                    :margin-bottom "0.5rem"}]
+   [:.intent-links {:font-size "0.85rem"}]
+   [:.intent-links>a {:display "block"
+                      :color   (:link colors)
+                      :padding "0.15rem 0"}]])
+
 (defn site-css []
   (garden/css
     (concat base-styles
@@ -614,4 +632,5 @@
             api-styles
             architecture-styles
             workflow-index-styles
+            intent-card-styles
             page-title-styles)))
