@@ -8,56 +8,6 @@ Organized by what matters to practicing generative and computational artists, gr
 
 ---
 
-## Reproducibility and archival
-
-### Render manifest
-
-A machine-readable sidecar file emitted alongside render output that captures everything needed to reproduce it exactly — even years later. The clearest gap for professional edition-based practice.
-
-**The reproduction problem:** "same seed + same params = same output" only holds if the code hasn't changed. Two years from now, a noise function might have been tweaked or a rendering path refined. To guarantee reproduction, the manifest must capture enough to reconstruct the render without depending on the artist's scene-fn still existing or Eido being unchanged.
-
-**What the manifest must include:**
-- `:scene` — the complete scene map (the output of scene-fn, not the fn itself). This is plain EDN — if you have the scene map and the right Eido version, you can always re-render. This is the single most important field.
-- `:seed` and `:params` — the inputs that produced the scene, for provenance and re-generation (useful if the artist wants to tweak, not just reproduce)
-- `:eido/version` — both git tag and SHA (e.g., `{:tag "v1.0.0" :sha "abc1234"}`). Tag alone is ambiguous (tags can move, artist might be between tags); SHA alone is unfriendly. Both together.
-- `:project/sha` — the artist's own project git SHA, pinning their scene-fn and any custom code
-- `:timestamp` — when the render was produced
-- `:output-paths` — list of files written
-- `:render-opts` — the opts map passed to `render` (format, DPI, scale, plotter options, etc.)
-
-**Optional enrichment (add when relevant):**
-- `:traits` (from `trait-summary`), `:palette`, `:edition`, `:master-seed`
-
-**Implementation notes:**
-- Plain EDN sidecar file — no database, no dependency, just `spit` and `pr-str`. The scene archive idea (below, under Infrastructure) is a separate concern for queryable history over time; the manifest is simpler and stands alone.
-- Wrap `render-to-file` and `render-editions` so they can optionally emit manifests via an `:emit-manifest? true` opt.
-- The loader reads a manifest, extracts the scene map, and re-renders with the same opts — no need to re-run user code.
-- Manifest format should be documented in the Guide and API docs.
-- One canonical example: generate a small edition batch → manifests → re-render from manifest.
-
-**Sketch:**
-```clojure
-;; Render with manifest
-(render scene {:output "edition-042.png" :emit-manifest? true})
-;; => writes edition-042.png + edition-042.edn
-
-;; The manifest contains the full scene map:
-;; {:scene     {:image/size [800 800] :image/nodes [...] ...}
-;;  :seed      4217
-;;  :params    {:hue 142.3 :density 22.1 :palette :ocean}
-;;  :eido/version {:tag "v1.0.0" :sha "abc1234"}
-;;  :project/sha  "def5678"
-;;  :timestamp    "2026-04-10T14:32:00Z"
-;;  :output-paths ["edition-042.png"]
-;;  :render-opts  {:dpi 300}}
-
-;; Re-render from manifest — uses stored scene + opts
-(render-from-manifest "edition-042.edn")
-;; => identical output
-```
-
----
-
 ## Exploration and iteration
 
 ### Visual seed browser (separate project)
@@ -153,30 +103,6 @@ Artists think "I want to make plotter-friendly line work" not "I need the `eido.
 - Intents to cover: plotter line work, painterly fields, geometric grids, animated patterns, long-form editions, organic textures, color exploration.
 - Could also serve as the landing page's "Start here" section for new users.
 
-### Workflow guides
-
-End-to-end guides organized by artistic goal, published as a new top-level section on the docs site alongside Guide, Gallery, API Reference, and How It Works. Each workflow walks through a complete process — longer and more narrative than existing Recipes, pulling together multiple Guide sections into a single coherent path.
-
-**Structure:**
-- New "Workflows" nav entry on the docs site, linking to separate pages
-- The existing Recipes category in the Guide stays as-is — those are short technique patterns, not end-to-end workflows
-- The existing Guide stays feature-by-feature; workflows are goal-by-goal
-
-**Workflows to write (7 pages):**
-
-1. **Sketching & iteration** — the REPL-driven making loop. `show`, `watch-scene`, `seed-grid`, `param-grid`, capturing interesting seeds. Every other workflow builds on this, so it's the natural first one.
-2. **Long-form editions** — `series-params` → `edition-seed` → scene function → `render-editions` → `trait-summary` → manifest. The Art Blocks / numbered-edition pipeline.
-3. **Plotter art** — scene design → stroke-only SVG → `group-by-stroke` → `optimize-travel` → per-layer export. Multi-pen plotting. Includes a "beyond plotters" section on polyline/fabrication export for CNC and laser cutters.
-4. **Print production** — `paper` preset → `with-units` → `with-margin` → high-DPI TIFF/PNG with DPI metadata. Gallery-ready physical prints.
-5. **Animation & screen** — frame sequences → looping noise / `pulse` / `fade-*` → GIF / animated SVG / PNG sequence for ffmpeg. Motion work, social media, projection.
-6. **3D generative art** — mesh construction → transforms → UV texturing → NPR rendering → 2D↔3D bridge. Its own domain with real depth.
-7. **Color & palette development** — OKLAB/OKLCH manipulation → palette generation → analysis (`min-contrast`, `sort-by-lightness`) → extraction (`from-image`) → application (`by-palette`, `by-noise-palette`). Developing a color system for a project.
-
-**Implementation notes:**
-- Most building blocks already exist and are documented individually in the Guide. Workflows are connective tissue — showing how they compose for a real artistic goal.
-- Each page should include: a "what you'll need" list of namespaces, complete working code, rendered output, and tips for common variations.
-- Pages are built in `examples/site/pages.clj` as new top-level content (like the Architecture page), not as entries in `docs-categories`.
-
 ### Machine discoverability
 
 A structured summary file at the project root that helps automated systems understand Eido's capabilities and find relevant documentation.
@@ -188,18 +114,6 @@ A structured summary file at the project root that helps automated systems under
 - Plain text file at project root, ~60 lines. Structured sections: project description, key concepts, namespace index with one-line descriptions, links to docs/examples/API.
 - Also deployable to site root (`eido.leifericf.com/llm.txt`) for web-based discovery.
 - Low effort, do alongside any release.
-
-### Stability & compatibility policy
-
-A short, clear statement of what's stable and what's provisional — so artists know what they can depend on.
-
-**What to add:**
-- A "Stability" section (in the Guide or README) that identifies: stable APIs (core scene structure, `render`, `eido.gen` facade, `eido.scene`, `eido.gen.series`), provisional APIs (newer modules like `eido.gen.ca`, `eido.gen.boids`), and what "stable" means (additions OK, deprecations with warning, core signatures won't change)
-- `:stability` metadata on public vars (`:stable` or `:provisional`), rendered as badges in the API Reference — same pattern as the existing `:convenience` metadata badges
-
-**Implementation notes:**
-- This is ~20 lines of prose, not a formal SemVer policy document. Keep it honest and short. Can live in a "Stability" section of the Guide or as a short paragraph in the README.
-- Default unlabeled functions to `:stable` so only provisional ones need explicit tagging. Two values only — no need for `:experimental`, `:deprecated`, etc. until there's a real need.
 
 ### Known limitations and scope boundary
 

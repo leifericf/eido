@@ -167,35 +167,38 @@
 
 (defn- insert-doc-previews
   "Walks Hiccup content, inserting preview images after code blocks
-  that have a :data-img attribute on their :pre element."
-  [content]
-  (cond
-    (not (vector? content)) content
-    (not (keyword? (first content))) (mapv insert-doc-previews content)
+  that have a :data-img attribute on their :pre element.
+  img-prefix controls the relative path to the images directory
+  (default \"../images/\" for depth-1 pages)."
+  ([content] (insert-doc-previews content "../images/"))
+  ([content img-prefix]
+   (cond
+     (not (vector? content)) content
+     (not (keyword? (first content))) (mapv #(insert-doc-previews % img-prefix) content)
 
-    ;; [:pre {:data-img "file.png"} [:code "..."]]
-    (and (= :pre (first content))
-         (map? (second content))
-         (:data-img (second content)))
-    (let [img-file (:data-img (second content))
-          clean-attrs (dissoc (second content) :data-img)
-          clean-pre (if (seq clean-attrs)
-                      (into [:pre clean-attrs] (drop 2 content))
-                      (into [:pre] (drop 2 content)))]
-      [:div.docs-code-example
-       clean-pre
-       [:img.docs-preview {:src (str "../images/" img-file)
-                           :alt "Rendered output"
-                           :loading "lazy"}]])
+     ;; [:pre {:data-img "file.png"} [:code "..."]]
+     (and (= :pre (first content))
+          (map? (second content))
+          (:data-img (second content)))
+     (let [img-file (:data-img (second content))
+           clean-attrs (dissoc (second content) :data-img)
+           clean-pre (if (seq clean-attrs)
+                       (into [:pre clean-attrs] (drop 2 content))
+                       (into [:pre] (drop 2 content)))]
+       [:div.docs-code-example
+        clean-pre
+        [:img.docs-preview {:src (str img-prefix img-file)
+                            :alt "Rendered output"
+                            :loading "lazy"}]])
 
-    ;; Recurse into children of Hiccup elements
-    :else
-    (let [has-attrs? (and (> (count content) 1) (map? (second content)))
-          tag (first content)
-          attrs (when has-attrs? (second content))
-          children (if has-attrs? (drop 2 content) (rest content))]
-      (into (if attrs [tag attrs] [tag])
-            (map insert-doc-previews children)))))
+     ;; Recurse into children of Hiccup elements
+     :else
+     (let [has-attrs? (and (> (count content) 1) (map? (second content)))
+           tag (first content)
+           attrs (when has-attrs? (second content))
+           children (if has-attrs? (drop 2 content) (rest content))]
+       (into (if attrs [tag attrs] [tag])
+             (map #(insert-doc-previews % img-prefix) children))))))
 
 (defn docs-scenes
   "Returns a map of {filename -> scene} for docs code example previews.
@@ -442,7 +445,7 @@
                shapes))})
 
      "docs-circle-pack.png"
-     (let [circles (circle/circle-pack 20 20 360 360
+     (let [circles (circle/circle-pack [20 20 360 360]
                      {:min-radius 3 :max-radius 35 :padding 2
                       :max-circles 200 :seed 42})
            pal (:sunset palette/palettes)
@@ -469,7 +472,7 @@
               circles (range))})
 
      "docs-subdivide.png"
-     (let [rects (subdivide/subdivide 15 15 370 370
+     (let [rects (subdivide/subdivide [15 15 370 370]
                    {:depth 4 :min-size 35 :padding 5 :seed 77})
            colors [[:color/rgb 245 245 240] [:color/rgb 245 245 240]
                    [:color/rgb 245 245 240] [:color/rgb 220 30 30]
@@ -865,6 +868,89 @@
                      :subdivisions 4
                      :smooth true})]
        {:image/size [400 400] :image/background bg
+        :image/nodes (if (sequential? result) (vec result) [result])})
+
+     ;; --- Workflow previews ---
+
+     "docs-wf-sketch-circle.png"
+     {:image/size [400 400]
+      :image/background [:color/name "linen"]
+      :image/nodes
+      [{:node/type     :shape/circle
+        :circle/center [200 200]
+        :circle/radius 120
+        :style/fill    [:color/name "crimson"]}]}
+
+     "docs-wf-plotter-strokes.png"
+     (let [flow-paths (flow/flow-field [0 0 400 300]
+                        {:resolution 15 :step-size 3 :num-steps 40
+                         :noise-fn (fn [x y] (noise/fbm x y {:octaves 3 :scale 0.005 :seed 7}))
+                         :seed 7})]
+       {:image/size [400 300]
+        :image/background [:color/rgb 245 243 238]
+        :image/nodes
+        (mapv (fn [cmds]
+                {:node/type     :shape/path
+                 :path/commands cmds
+                 :style/stroke  {:color [:color/rgb 30 30 30] :width 0.8}})
+              (:paths flow-paths))})
+
+     "docs-wf-print-paper.png"
+     (let [paper (scene/paper :a4)]
+       (-> paper
+           (assoc :image/background :white
+                  :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [1.0 1.0]
+                    :rect/size [19.0 27.7]
+                    :style/stroke {:color [:color/rgb 200 200 200] :width 0.02}}
+                   {:node/type     :shape/circle
+                    :circle/center [10.5 14.85]
+                    :circle/radius 5.0
+                    :style/fill    [:color/rgb 200 50 50]
+                    :style/stroke  {:color [:color/rgb 30 30 30] :width 0.05}}
+                   {:node/type     :shape/circle
+                    :circle/center [10.5 14.85]
+                    :circle/radius 3.0
+                    :style/fill    [:color/rgb 50 100 200]
+                    :style/stroke  {:color [:color/rgb 30 30 30] :width 0.05}}])
+           scene/with-units))
+
+     "docs-wf-color-swatch.png"
+     {:image/size [400 80]
+      :image/background [:color/rgb 245 243 238]
+      :image/nodes
+      (vec (map-indexed
+             (fn [i color]
+               {:node/type :shape/rect
+                :rect/xy [(+ 10 (* i 78)) 10]
+                :rect/size [68 60]
+                :rect/corner-radius 6
+                :style/fill color})
+             [[:color/rgb 42 38 35]
+              [:color/rgb 180 140 90]
+              [:color/rgb 220 200 170]
+              [:color/rgb 80 100 60]
+              [:color/rgb 150 50 40]]))}
+
+     "docs-wf-3d-sphere.png"
+     (let [proj (s3d/perspective {:fov 60 :near 0.1 :far 100
+                                  :width 400 :height 400})
+           cam  (s3d/orbit proj [0 0 0]
+                  {:radius 4 :yaw 0.6 :pitch -0.3})
+           light {:light/direction [1 1 0.5]
+                  :light/ambient 0.2
+                  :light/intensity 0.8}
+           result (s3d/sphere cam [0 0 0]
+                    {:radius 1.5
+                     :style {:style/fill [:color/rgb 100 150 255]
+                             :style/stroke {:color [:color/rgb 40 60 120]
+                                            :width 0.5}}
+                     :light light
+                     :subdivisions 3
+                     :smooth true})]
+       {:image/size [400 400]
+        :image/background [:color/rgb 30 30 40]
         :image/nodes (if (sequential? result) (vec result) [result])})
 
      }))
@@ -1332,7 +1418,7 @@ document.querySelectorAll('.arch-content pre code').forEach(function(el) {
         (for [{:keys [id title content]} sections]
           [:section.arch-section {:id id}
            [:h2 title]
-           (insert-doc-previews content)])]]
+           (insert-doc-previews content "../../images/")])]]
       [:script (h/raw (str highlight-clj-js "
 document.querySelectorAll('.arch-content pre code').forEach(function(el) {
   el.innerHTML = highlightClj(el.textContent);

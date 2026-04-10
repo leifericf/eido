@@ -2079,7 +2079,7 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:p "Eido's primary workflow is REPL-driven: edit a scene, evaluate it, see the result, adjust. No compile step, no build tool, no save-and-refresh cycle."]
-     [:pre [:code
+     [:pre {:data-img "docs-wf-sketch-circle.png"} [:code
             "(require '[eido.core :as eido])
 
 ;; Define a scene
@@ -2281,7 +2281,7 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:p "Minimize pen-up travel distance with " [:code ":optimize-travel"] ":"]
-     [:pre [:code
+     [:pre {:data-img "docs-wf-plotter-strokes.png"} [:code
             "(eido/render scene {:output \"plotter.svg\"
                         :stroke-only     true
                         :group-by-stroke true
@@ -2353,7 +2353,7 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:p "Describe geometry in centimeters, millimeters, or inches. " [:code "with-units"] " converts to pixels before rendering:"]
-     [:pre [:code
+     [:pre {:data-img "docs-wf-print-paper.png"} [:code
             "(-> (scene/paper :a4)
     (assoc :image/background :white
            :image/nodes
@@ -2560,7 +2560,7 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:p "3D meshes render into regular 2D scene nodes:"]
-     [:pre [:code
+     [:pre {:data-img "docs-wf-3d-sphere.png"} [:code
             ";; Render a mesh into 2D nodes
 (def nodes (s3d/render-mesh mesh cam
              {:style {:fill :white
@@ -2678,7 +2678,7 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:p "Pull a palette from an existing image using k-means clustering in OKLAB space:"]
-     [:pre [:code
+     [:pre {:data-img "docs-wf-color-swatch.png"} [:code
             "(palette/from-image \"reference.jpg\" 5)
 ;=> [[:color/rgb 42 38 35]
 ;    [:color/rgb 180 140 90]
