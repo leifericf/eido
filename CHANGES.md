@@ -1,5 +1,106 @@
 # Changes
 
+## Unreleased — API Consistency
+
+### Breaking changes
+
+All changes below improve API consistency for artists. Since Eido is in
+beta, no backwards-compatible shims are provided — update call sites
+directly using the migration examples below.
+
+- **Animation functions use opts map for `:fps`** — `render-to-gif`,
+  `render-to-animated-svg`, and `render-to-animated-svg-str` now take
+  `:fps` as a key in the opts map instead of as a positional argument.
+  The unified `render` function is unchanged.
+
+  ```clj
+  ;; Before
+  (render-to-gif scenes path 30)
+  (render-to-gif scenes path 30 {:scale 2})
+  (render-to-animated-svg scenes path 10)
+  (render-to-animated-svg-str scenes 10 {:scale 2})
+
+  ;; After
+  (render-to-gif scenes path {:fps 30})
+  (render-to-gif scenes path {:fps 30 :scale 2})
+  (render-to-animated-svg scenes path {:fps 10})
+  (render-to-animated-svg-str scenes {:fps 10 :scale 2})
+  ```
+
+- **`text-outline` and `text-clip` parameter order** — Origin and
+  font-spec were swapped relative to `text`, `text-glyphs`, and
+  `text-stack`. All text functions now consistently use
+  `[content origin font-spec ...]`.
+
+  ```clj
+  ;; Before
+  (text-outline "Hello" font-spec [100 200])
+  (text-clip "Hello" font-spec [100 200] children)
+
+  ;; After
+  (text-outline "Hello" [100 200] font-spec)
+  (text-clip "Hello" [100 200] font-spec children)
+  ```
+
+- **`radial` center is now a vector** — Takes `[cx cy]` as a single
+  vector argument instead of two separate `cx cy` args, matching `ring`
+  and other geometry functions.
+
+  ```clj
+  ;; Before
+  (radial 12 200 200 120 f)
+
+  ;; After
+  (radial 12 [200 200] 120 f)
+  ```
+
+- **`orbit` camera uses opts map** — Takes
+  `[base-projection target opts]` where opts contains `:radius`, `:yaw`,
+  and `:pitch`, instead of five positional arguments.
+
+  ```clj
+  ;; Before
+  (orbit proj [0 0 0] 5 0.3 -0.5)
+
+  ;; After
+  (orbit proj [0 0 0] {:radius 5 :yaw 0.3 :pitch -0.5})
+  ```
+
+- **Mesh factories use opts maps for tessellation** — `sphere-mesh`,
+  `cylinder-mesh`, `cone-mesh`, and `torus-mesh` now accept tessellation
+  parameters as an optional opts map with sensible defaults. Primary
+  geometry args (radius, height) remain positional.
+
+  ```clj
+  ;; Before (required all args)
+  (sphere-mesh 1.0 16 12)
+  (torus-mesh 1.8 0.7 24 12)
+
+  ;; After (defaults or explicit)
+  (sphere-mesh 1.0)
+  (sphere-mesh 1.0 {:segments 32 :rings 20})
+  (torus-mesh 1.8 0.7)
+  (torus-mesh 1.8 0.7 {:ring-segments 24 :tube-segments 12})
+  ```
+
+- **`texture/layered` uses opts map** — Takes `[shape-node opts]` where
+  opts contains `:layers`, `:opacity`, `:deform-fn`, and `:seed`, instead
+  of five positional arguments. Matches `watercolor`'s convention.
+
+  ```clj
+  ;; Before
+  (layered shape 30 0.04 my-deform-fn 42)
+
+  ;; After
+  (layered shape {:layers 30 :opacity 0.04 :deform-fn my-deform-fn :seed 42})
+  ```
+
+### Enhancements
+
+- **Namespace docstrings** — 22 artist-facing namespaces now have concise
+  docstrings. These appear in the auto-generated API Reference, making it
+  easier to understand what each namespace provides.
+
 ## v1.0.0-beta4 — Composition, Units & Export
 
 ### New modules
