@@ -115,6 +115,12 @@
 (import-fn prob/sample-n)
 (import-fn prob/pareto)
 (import-fn prob/triangular)
+(import-fn prob/on-circle)
+(import-fn prob/in-circle)
+(import-fn prob/on-sphere)
+(import-fn prob/in-sphere)
+(import-fn prob/scatter-on-circle)
+(import-fn prob/scatter-in-circle)
 
 ;; circle packing
 (import-fn circle/circle-pack)

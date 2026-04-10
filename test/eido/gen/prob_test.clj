@@ -267,3 +267,55 @@
           below-mid (count (filter #(< % 0.5) vals))]
       ;; With ease-in (t^2), more values should be below 0.5
       (is (> below-mid 600)))))
+
+;; --- geometric distributions ---
+
+(deftest on-circle-test
+  (testing "point is at correct distance from origin"
+    (let [[x y] (prob/on-circle 10.0 42)
+          dist (Math/sqrt (+ (* x x) (* y y)))]
+      (is (< (Math/abs (- dist 10.0)) 0.001))))
+  (testing "with center offset"
+    (let [[x y] (prob/on-circle 5.0 [100 200] 42)
+          dx (- x 100) dy (- y 200)
+          dist (Math/sqrt (+ (* dx dx) (* dy dy)))]
+      (is (< (Math/abs (- dist 5.0)) 0.001))))
+  (testing "deterministic"
+    (is (= (prob/on-circle 10.0 42) (prob/on-circle 10.0 42)))))
+
+(deftest in-circle-test
+  (testing "all points within radius"
+    (let [pts (mapv #(prob/in-circle 10.0 %) (range 100))]
+      (is (every? (fn [[x y]] (<= (Math/sqrt (+ (* x x) (* y y))) 10.001)) pts))))
+  (testing "not all clustered at center (spread check)"
+    (let [pts (mapv #(prob/in-circle 10.0 %) (range 200))
+          dists (mapv (fn [[x y]] (Math/sqrt (+ (* x x) (* y y)))) pts)
+          far (count (filter #(> % 5.0) dists))]
+      ;; With uniform area distribution, ~75% should be beyond r/2
+      (is (> far 100)))))
+
+(deftest on-sphere-test
+  (testing "point is at correct distance from origin"
+    (let [[x y z] (prob/on-sphere 10.0 42)
+          dist (Math/sqrt (+ (* x x) (* y y) (* z z)))]
+      (is (< (Math/abs (- dist 10.0)) 0.001)))))
+
+(deftest in-sphere-test
+  (testing "all points within radius"
+    (let [pts (mapv #(prob/in-sphere 10.0 %) (range 100))]
+      (is (every? (fn [[x y z]] (<= (Math/sqrt (+ (* x x) (* y y) (* z z))) 10.001)) pts)))))
+
+(deftest scatter-on-circle-test
+  (testing "returns n points"
+    (is (= 20 (count (prob/scatter-on-circle 20 10.0 [0 0] 42)))))
+  (testing "all at correct radius"
+    (let [pts (prob/scatter-on-circle 50 5.0 [0 0] 42)]
+      (is (every? (fn [[x y]]
+                    (< (Math/abs (- (Math/sqrt (+ (* x x) (* y y))) 5.0)) 0.001))
+                  pts)))))
+
+(deftest scatter-in-circle-test
+  (testing "returns n points within radius"
+    (let [pts (prob/scatter-in-circle 50 10.0 [0 0] 42)]
+      (is (= 50 (count pts)))
+      (is (every? (fn [[x y]] (<= (Math/sqrt (+ (* x x) (* y y))) 10.001)) pts)))))

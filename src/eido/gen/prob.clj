@@ -183,6 +183,78 @@
   [n min-val max-val mode seed]
   (sample-n {:type :triangular :min min-val :max max-val :mode mode} n seed))
 
+;; --- geometric distributions ---
+
+(defn on-circle
+  "Returns a point [x y] on the circumference of a circle.
+  Uniformly distributed angle."
+  ([radius seed]
+   (let [rng (make-rng seed)
+         theta (* (.nextDouble rng) 2.0 Math/PI)]
+     [(* (double radius) (Math/cos theta))
+      (* (double radius) (Math/sin theta))]))
+  ([radius [cx cy] seed]
+   (let [[x y] (on-circle radius seed)]
+     [(+ (double cx) x) (+ (double cy) y)])))
+
+(defn in-circle
+  "Returns a point [x y] uniformly distributed inside a disc.
+  Uses the sqrt trick for uniform area distribution."
+  ([radius seed]
+   (let [rng (make-rng seed)
+         r (* (double radius) (Math/sqrt (.nextDouble rng)))
+         theta (* (.nextDouble rng) 2.0 Math/PI)]
+     [(* r (Math/cos theta)) (* r (Math/sin theta))]))
+  ([radius [cx cy] seed]
+   (let [[x y] (in-circle radius seed)]
+     [(+ (double cx) x) (+ (double cy) y)])))
+
+(defn on-sphere
+  "Returns a point [x y z] uniformly distributed on a sphere surface.
+  Uses the Gaussian method to avoid polar clustering."
+  ([radius seed]
+   (let [rng (make-rng seed)
+         gx (.nextGaussian rng) gy (.nextGaussian rng) gz (.nextGaussian rng)
+         len (Math/sqrt (+ (* gx gx) (* gy gy) (* gz gz)))
+         r (double radius)]
+     (if (zero? len)
+       [r 0.0 0.0]
+       [(* r (/ gx len)) (* r (/ gy len)) (* r (/ gz len))])))
+  ([radius [cx cy cz] seed]
+   (let [[x y z] (on-sphere radius seed)]
+     [(+ (double cx) x) (+ (double cy) y) (+ (double cz) z)])))
+
+(defn in-sphere
+  "Returns a point [x y z] uniformly distributed inside a sphere volume.
+  Uses the Gaussian method + cbrt trick for uniform volume distribution."
+  ([radius seed]
+   (let [rng (make-rng seed)
+         gx (.nextGaussian rng) gy (.nextGaussian rng) gz (.nextGaussian rng)
+         len (Math/sqrt (+ (* gx gx) (* gy gy) (* gz gz)))
+         r (* (double radius) (Math/cbrt (.nextDouble rng)))]
+     (if (zero? len)
+       [r 0.0 0.0]
+       [(* r (/ gx len)) (* r (/ gy len)) (* r (/ gz len))])))
+  ([radius [cx cy cz] seed]
+   (let [[x y z] (in-sphere radius seed)]
+     [(+ (double cx) x) (+ (double cy) y) (+ (double cz) z)])))
+
+(defn ^{:convenience true :convenience-for 'eido.gen.prob/on-circle}
+  scatter-on-circle
+  "Returns a vector of n points on a circle.
+  Wraps repeated on-circle calls with independent sub-seeds."
+  [n radius center seed]
+  (let [rng (make-rng seed)]
+    (mapv (fn [_] (on-circle radius center (.nextLong rng))) (range n))))
+
+(defn ^{:convenience true :convenience-for 'eido.gen.prob/in-circle}
+  scatter-in-circle
+  "Returns a vector of n points uniformly distributed inside a disc.
+  Wraps repeated in-circle calls with independent sub-seeds."
+  [n radius center seed]
+  (let [rng (make-rng seed)]
+    (mapv (fn [_] (in-circle radius center (.nextLong rng))) (range n))))
+
 (defn ^{:convenience true}
   mixture
   "Samples n values from a mix of source vectors, weighted by mix-weights.
@@ -215,4 +287,9 @@
   (sample {:type :eased :easing #(* % %) :lo 0 :hi 100} 42)
   (sample-n {:type :uniform :lo 0.0 :hi 10.0} 5 42)
   (pareto 10 2.0 1.0 42)
-  (triangular 10 0 10 5 42))
+  (triangular 10 0 10 5 42)
+  (on-circle 10.0 42)
+  (in-circle 10.0 [100 200] 42)
+  (on-sphere 10.0 42)
+  (scatter-on-circle 20 10.0 [0 0] 42)
+  (scatter-in-circle 50 10.0 [0 0] 42))

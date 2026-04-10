@@ -592,7 +592,18 @@
 ;; Eased: shape any distribution with an easing curve
 ;; Pass any (fn [t] -> t) to skew the output
 (require '[eido.animate :as anim])
-(prob/sample {:type :eased :easing anim/ease-in :lo 5 :hi 50} seed)"]]]}
+(prob/sample {:type :eased :easing anim/ease-in :lo 5 :hi 50} seed)"]]
+       [:h4 "Geometric sampling"]
+       [:p "Sample points on or inside circles and spheres — useful for scatter patterns, particle emission, and radial layouts:"]
+       [:pre [:code
+              ";; Single point on a circle's circumference
+(prob/on-circle 100.0 seed)  ;; => [x y]
+
+;; 50 points uniformly inside a disc (no center clustering)
+(prob/scatter-in-circle 50 100.0 [200 200] seed)
+
+;; Point on a sphere surface (3D)
+(prob/on-sphere 10.0 seed)  ;; => [x y z]"]]]}
 
      {:id    "circle-packing"
       :title "Circle Packing"

@@ -66,21 +66,6 @@ A common workflow: photograph a landscape or a physical painting, extract the do
 
 Uniform randomness looks artificial. Natural phenomena follow Gaussian, power-law, and other shaped distributions. Artists spend significant time fine-tuning probability distributions to get organic-feeling results.
 
-### Geometric random distributions
-
-Sampling uniformly on or inside circles and spheres is a common need for scatter patterns, particle emission, and spatial layouts. Currently requires manual trigonometry.
-
-**What to add:**
-- `prob/on-circle`, `prob/in-circle` — point on circumference / inside disc
-- `prob/on-sphere`, `prob/in-sphere` — point on surface / inside volume
-
-**Implementation notes:**
-- `on-circle`: `[r*cos(θ) r*sin(θ)]` with `θ` uniform in [0, 2π). 2 lines.
-- `in-circle`: rejection sampling (sample in square, reject outside circle) or `sqrt(u)*r` trick for uniform area distribution. The sqrt trick is ~3 lines.
-- `on-sphere`: use Gaussian method — sample 3 independent Gaussians, normalize to unit vector, scale by radius. Avoids polar clustering artifacts.
-- `in-sphere`: same as on-sphere but multiply by `cbrt(u)` for uniform volume distribution.
-- All take `(radius seed)` or `(radius center seed)`, return `[x y]` or `[x y z]`.
-
 ### Controlled disorder (calibrated randomness)
 
 A recurring theme in generative art: not total chaos, but precisely calibrated deviation from order. Introduce a small percentage of randomness into an otherwise systematic composition.
