@@ -77,7 +77,7 @@
                              (if (= 2 (count face-indices))
                                (let [fp0 (:point (nth face-data (first face-indices)))
                                      fp1 (:point (nth face-data (second face-indices)))]
-                                 (assoc acc ek (m/v* (reduce m/v+ [mid fp0 fp1]) (/ 1.0 3.0))))
+                                 (assoc acc ek (m/v* (reduce m/v+ [a b fp0 fp1]) (/ 1.0 4.0))))
                                (assoc acc ek mid)))))
                        {} edge-faces)
 

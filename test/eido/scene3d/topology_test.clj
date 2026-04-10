@@ -43,6 +43,21 @@
   (testing "zero iterations returns input unchanged"
     (is (= cube (topo/subdivide cube {:iterations 0})))))
 
+(deftest subdivide-edge-point-test
+  (testing "Catmull-Clark edge point uses (v0+v1+F1+F2)/4"
+    ;; On a unit cube [0,0,0]-[1,1,1], the edge from [1,0,0] to [1,1,0]
+    ;; is shared by front face (centroid [0.5,0.5,0]) and right face
+    ;; (centroid [1,0.5,0.5]). The correct edge point is:
+    ;; ([1,0,0] + [1,1,0] + [0.5,0.5,0] + [1,0.5,0.5]) / 4 = [0.875, 0.5, 0.125]
+    (let [m         (topo/subdivide cube {:iterations 1})
+          all-verts (into #{} (mapcat :face/vertices) m)
+          target    [0.875 0.5 0.125]
+          found     (some (fn [v]
+                            (< (reduce + (map #(Math/abs (- %1 %2)) v target))
+                               1e-9))
+                          all-verts)]
+      (is found "edge point [0.875 0.5 0.125] must appear in subdivided mesh"))))
+
 (deftest auto-smooth-edges-test
   (let [hard (topo/auto-smooth-edges cube {:angle (/ Math/PI 4)})]
     (testing "cube edges are all 90 degrees, sharper than 45"
