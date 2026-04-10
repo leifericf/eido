@@ -30,24 +30,19 @@
   "Returns all circles in cells within radius-cells of [gx, gy]."
   [{:keys [^objects cells gw gh]} gx gy radius-cells]
   (let [gw (int gw) gh (int gh)
+        gx (int gx) gy (int gy)
         rc (int (Math/ceil (double radius-cells)))]
-    (loop [dx (- rc) result (transient [])]
-      (if (> dx rc)
-        (persistent! result)
-        (let [result (loop [dy (- rc) result result]
-                       (if (> dy rc)
-                         result
-                         (let [nx (+ (int gx) dx)
-                               ny (+ (int gy) dy)]
-                           (if (and (>= nx 0) (< nx gw)
-                                    (>= ny 0) (< ny gh))
-                             (let [v (aget cells (+ (* ny gw) nx))]
-                               (recur (inc dy)
-                                      (if v
-                                        (reduce conj! result v)
-                                        result)))
-                             (recur (inc dy) result)))))]
-          (recur (inc dx) result))))))
+    (into []
+          cat
+          (for [dx (range (- rc) (inc rc))
+                dy (range (- rc) (inc rc))
+                :let [nx (+ gx dx)
+                      ny (+ gy dy)]
+                :when (and (>= nx 0) (< nx gw)
+                           (>= ny 0) (< ny gh))
+                :let [v (aget cells (+ (* ny gw) nx))]
+                :when v]
+            v))))
 
 ;; --- circle packing ---
 
