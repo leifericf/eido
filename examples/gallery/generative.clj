@@ -58,7 +58,7 @@
                   :tags   ["subdivision" "color" "recipe-subdivide"]}}
   mondrian []
   (let [w 600 h 600
-        rects (subdivide/subdivide 10 10 580 580
+        rects (subdivide/subdivide [10 10 580 580]
                 {:depth 4 :min-size 40 :padding 6 :seed 77})
         colors [[:color/rgb 245 245 240]
                 [:color/rgb 245 245 240]
@@ -224,7 +224,7 @@
                   :tags   ["subdivision" "circle-packing" "palette" "recipe-subdivide-pack"]}}
   subdiv-pack []
   (let [w 600 h 600
-        rects (subdivide/subdivide 10 10 580 580
+        rects (subdivide/subdivide [10 10 580 580]
                 {:depth 3 :min-size 80 :padding 6 :seed 55})
         pals [(:ocean palette/palettes) (:sunset palette/palettes)
               (:fire palette/palettes) (:forest palette/palettes)]]
@@ -545,7 +545,7 @@
                   :tags   ["subdivision" "hatching" "palette"]}}
   hatch-subdiv []
   (let [w 600 h 600
-        rects (subdivide/subdivide 15 15 570 570
+        rects (subdivide/subdivide [15 15 570 570]
                 {:depth 3 :min-size 50 :padding 5 :seed 33})
         pal (:earth palette/palettes)]
     {:image/size [w h]
@@ -651,7 +651,7 @@
                   :tags   ["subdivision" "gradients"]}}
   depth-gradient []
   (let [w 600 h 600
-        rects (subdivide/subdivide 10 10 580 580
+        rects (subdivide/subdivide [10 10 580 580]
                 {:depth 6 :min-size 15 :split-range [0.25 0.75]
                  :padding 2 :seed 42})
         max-d (apply max (map :depth rects))]

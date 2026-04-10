@@ -692,7 +692,7 @@
               "(require '[eido.gen.circle :as circle])
 
 ;; Pack circles into a region, color them with a weighted palette
-(let [circles (circle/circle-pack 0 0 400 400
+(let [circles (circle/circle-pack [0 0 400 400]
                 {:min-radius  3       ;; smallest circle
                  :max-radius  35      ;; largest circle
                  :padding     2       ;; gap between circles
@@ -724,7 +724,7 @@
        [:pre {:data-img "docs-subdivide.png"} [:code
               "(require '[eido.gen.subdivide :as sub])
 
-(sub/subdivide 0 0 400 400
+(sub/subdivide [0 0 400 400]
   {:depth       4          ;; how many times to split
    :min-size    35         ;; don't make cells smaller than this
    :split-range [0.3 0.7]  ;; how uneven splits can be
