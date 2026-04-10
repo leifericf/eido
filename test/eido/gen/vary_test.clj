@@ -20,7 +20,7 @@
 (deftest by-noise-test
   (testing "generates overrides from noise at positions"
     (let [pts [[10 20] [30 40] [50 60]]
-          result (vary/by-noise pts 0.01 42 (fn [v] {:node/opacity (+ 0.5 (* 0.5 v))}))]
+          result (vary/by-noise pts (fn [v] {:node/opacity (+ 0.5 (* 0.5 v))}) {:noise-scale 0.01 :seed 42})]
       (is (= 3 (count result)))
       (is (every? #(number? (:node/opacity %)) result)))))
 

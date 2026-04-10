@@ -21,13 +21,15 @@
 
 (defn by-noise
   "Generates overrides from Perlin noise sampled at each position.
-  Calls (f noise-value) where noise-value is in [-1, 1]."
-  [positions noise-scale seed f]
-  (let [opts (when seed {:seed seed})]
+  Calls (f noise-value) where noise-value is in [-1, 1].
+  opts: :noise-scale (required), :seed (default 0)."
+  [positions f opts]
+  (let [noise-scale (double (:noise-scale opts))
+        noise-opts  (when-let [s (:seed opts)] {:seed s})]
     (mapv (fn [[x y]]
-            (f (noise/perlin2d (* (double x) (double noise-scale))
-                               (* (double y) (double noise-scale))
-                               opts)))
+            (f (noise/perlin2d (* (double x) noise-scale)
+                               (* (double y) noise-scale)
+                               noise-opts)))
           positions)))
 
 (defn by-gradient
@@ -72,26 +74,32 @@
 (defn ^{:convenience true :convenience-for 'eido.gen.vary/by-index}
   by-palette
   "Generates n fill overrides from a palette with optional weights.
+  opts: :seed (default 0), :weights (optional weight vector).
   Wraps (by-index n (fn [i] {:style/fill ...}))."
-  ([n palette seed]
-   (mapv (fn [i] {:style/fill (nth palette (mod i (count palette)))})
-         (range n)))
-  ([n palette weights seed]
-   (let [colors (palette/weighted-sample palette weights n seed)]
-     (mapv (fn [c] {:style/fill c}) colors))))
+  ([n palette] (by-palette n palette {}))
+  ([n palette opts]
+   (let [weights (:weights opts)
+         seed    (get opts :seed 0)]
+     (if weights
+       (let [colors (palette/weighted-sample palette weights n seed)]
+         (mapv (fn [c] {:style/fill c}) colors))
+       (mapv (fn [i] {:style/fill (nth palette (mod i (count palette)))})
+             (range n))))))
 
 (defn ^{:convenience true :convenience-for 'eido.gen.vary/by-noise}
   by-noise-palette
   "Generates fill overrides by mapping noise to palette colors.
-  Wraps (by-noise positions scale seed (fn [v] {:style/fill (gradient-map ...)}))."
-  [positions noise-scale seed palette]
+  opts: :noise-scale (required), :seed (default 0).
+  Wraps (by-noise positions f opts)."
+  [positions palette opts]
   (let [stops (mapv (fn [i c] [(/ (double i) (max 1 (dec (count palette)))) c])
                     (range) palette)]
-    (by-noise positions noise-scale seed
-      (fn [v] {:style/fill (palette/gradient-map stops (+ 0.5 (* 0.5 v)))}))))
+    (by-noise positions
+      (fn [v] {:style/fill (palette/gradient-map stops (+ 0.5 (* 0.5 v)))})
+      opts)))
 
 (comment
   (by-index 5 (fn [i] {:node/opacity (/ (double i) 4.0)}))
   (by-gradient 5 [[0.0 [:color/rgb 255 0 0]] [1.0 [:color/rgb 0 0 255]]])
-  (by-palette 5 [[:color/rgb 255 0 0] [:color/rgb 0 255 0]] 42)
+  (by-palette 5 [[:color/rgb 255 0 0] [:color/rgb 0 255 0]] {:seed 42})
   )

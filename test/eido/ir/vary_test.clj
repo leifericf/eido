@@ -24,8 +24,9 @@
     (is (some? (:style/fill (first overrides))))))
 
 (deftest by-noise-test
-  (let [desc (vary/by-noise [[10 10] [50 50] [90 90]] 0.01 42
-               (fn [v] {:node/opacity (/ (+ v 1.0) 2.0)}))
+  (let [desc (vary/by-noise [[10 10] [50 50] [90 90]]
+               (fn [v] {:node/opacity (/ (+ v 1.0) 2.0)})
+               {:noise-scale 0.01 :seed 42})
         overrides (vary/resolve-overrides desc)]
     (is (= 3 (count overrides)))
     (is (number? (:node/opacity (first overrides))))))

@@ -85,19 +85,21 @@
 (defn ^{:convenience true :convenience-for 'eido.gen.subdivide/subdivide->nodes}
   subdivide->palette-nodes
   "Subdivision rects to styled nodes with palette colors.
+  opts: :seed (default 0), :style (optional base style map).
   Wraps (subdivide->nodes rects (fn [...] (prob/pick palette seed)))."
-  ([rects palette seed]
-   (subdivide->palette-nodes rects palette seed {}))
-  ([rects palette seed style]
-   (mapv (fn [{[x y w h] :rect :as cell}]
-           (merge {:node/type :shape/rect :rect/xy [x y] :rect/size [w h]
-                   :style/fill (prob/pick palette (+ (hash cell) (long seed)))}
-                  style))
-         rects)))
+  ([rects palette] (subdivide->palette-nodes rects palette {}))
+  ([rects palette opts]
+   (let [seed  (get opts :seed 0)
+         style (:style opts)]
+     (mapv (fn [{[x y w h] :rect :as cell}]
+             (merge {:node/type :shape/rect :rect/xy [x y] :rect/size [w h]
+                     :style/fill (prob/pick palette (+ (hash cell) (long seed)))}
+                    style))
+           rects))))
 
 (comment
-  (subdivide 0 0 400 400 {:seed 42})
-  (subdivide 0 0 400 400 {:depth 3 :padding 4 :seed 42})
+  (subdivide [0 0 400 400] {:seed 42})
+  (subdivide [0 0 400 400] {:depth 3 :padding 4 :seed 42})
   (subdivide->nodes
-    (subdivide 0 0 400 400 {:seed 42})
+    (subdivide [0 0 400 400] {:seed 42})
     (fn [{d :depth}] [:color/hsl (* d 60) 0.7 0.5])))

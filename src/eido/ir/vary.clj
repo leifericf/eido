@@ -29,12 +29,13 @@
    :vary/fn        f})
 
 (defn by-noise
-  "Creates a vary descriptor that generates overrides from noise."
-  [positions noise-scale seed f]
+  "Creates a vary descriptor that generates overrides from noise.
+  opts: :noise-scale (required), :seed (default 0)."
+  [positions f opts]
   {:vary/type      :vary/by-noise
    :vary/positions positions
-   :vary/scale     noise-scale
-   :vary/seed      seed
+   :vary/scale     (:noise-scale opts)
+   :vary/seed      (get opts :seed 0)
    :vary/fn        f})
 
 (defn by-gradient
@@ -56,9 +57,9 @@
       :vary/by-index    (vary/by-index (:vary/n vary-desc) (:vary/fn vary-desc))
       :vary/by-position (vary/by-position (:vary/positions vary-desc) (:vary/fn vary-desc))
       :vary/by-noise    (vary/by-noise (:vary/positions vary-desc)
-                                       (:vary/scale vary-desc)
-                                       (:vary/seed vary-desc)
-                                       (:vary/fn vary-desc))
+                                       (:vary/fn vary-desc)
+                                       {:noise-scale (:vary/scale vary-desc)
+                                        :seed        (:vary/seed vary-desc)})
       :vary/by-gradient (vary/by-gradient (:vary/n vary-desc) (:vary/stops vary-desc))
       (throw (ex-info (str "Unknown vary type: " (:vary/type vary-desc))
                       {:vary vary-desc})))))

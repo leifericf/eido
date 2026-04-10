@@ -560,11 +560,12 @@
                [0.3 [:color/rgb 180 0 100]]
                [0.6 [:color/rgb 255 120 0]]
                [1.0 [:color/rgb 255 230 80]]]
-        overrides (vary/by-noise pts 0.012 42
+        overrides (vary/by-noise pts
                     (fn [v]
                       (let [t (+ 0.5 (* 0.5 v))]
                         {:style/fill (palette/gradient-map stops t)
-                         :node/opacity (+ 0.5 (* 0.5 t))})))]
+                         :node/opacity (+ 0.5 (* 0.5 t))}))
+                    {:noise-scale 0.012 :seed 42})]
     (eido/render
       {:image/size [600 400]
        :image/background [:color/rgb 10 8 20]

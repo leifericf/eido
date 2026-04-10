@@ -179,16 +179,17 @@
 (defn ^{:convenience true :convenience-for 'eido.gen.circle/pack->nodes}
   pack->colored-nodes
   "Circle pack to styled nodes with palette colors.
+  opts: :seed (default 0), :weights (optional), :style (optional base style map).
   Wraps (pack->nodes circles) + (palette/weighted-sample palette)."
-  ([circles palette seed]
-   (pack->colored-nodes circles palette nil seed {}))
-  ([circles palette weights seed]
-   (pack->colored-nodes circles palette weights seed {}))
-  ([circles palette weights seed style]
-   (let [n (count circles)
-         colors (if weights
-                  (palette/weighted-sample palette weights n seed)
-                  (mapv #(nth palette (mod % (count palette))) (range n)))]
+  ([circles palette] (pack->colored-nodes circles palette {}))
+  ([circles palette opts]
+   (let [n       (count circles)
+         weights (:weights opts)
+         seed    (get opts :seed 0)
+         style   (:style opts)
+         colors  (if weights
+                   (palette/weighted-sample palette weights n seed)
+                   (mapv #(nth palette (mod % (count palette))) (range n)))]
      (mapv (fn [{[x y] :center r :radius} color]
              (merge {:node/type :shape/circle :circle/center [x y]
                      :circle/radius r :style/fill color} style))

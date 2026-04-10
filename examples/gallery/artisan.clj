@@ -656,10 +656,11 @@
                    [0.4 [:color/rgb 120 160 220]]
                    [0.6 [:color/rgb 220 180 100]]
                    [1.0 [:color/rgb 60 130 50]]]
-        overrides (vary/by-noise pts 0.008 42
+        overrides (vary/by-noise pts
                     (fn [v]
                       (let [[_x y] nil]
-                        {:node/opacity (+ 0.6 (* 0.4 (Math/abs v)))})))
+                        {:node/opacity (+ 0.6 (* 0.4 (Math/abs v)))}))
+                    {:noise-scale 0.008 :seed 42})
         ;; Color by y-position via manual override
         colored-overrides
         (vec (map-indexed
