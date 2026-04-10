@@ -1436,11 +1436,11 @@
   {:layers 30 :opacity 0.04 :amount 3.0 :seed 42})
 
 ;; Full control with custom deformation:
-(texture/layered my-polygon 40 0.03
-  (fn [node layer-index seed]
-    (update node :path/commands
-      distort/distort-commands {:type :jitter :amount 4 :seed seed}))
-  42)"]]
+(texture/layered my-polygon
+  {:layers 40 :opacity 0.03 :seed 42
+   :deform-fn (fn [node _layer-index seed]
+                (update node :path/commands
+                  distort/distort-commands {:type :jitter :amount 4 :seed seed}))})"]]
        [:p "Each layer is independently deformed, creating the characteristic uneven edge of physical watercolor. 30-50 layers works well for interactive use; up to 100 for final renders."]]}
 
      {:id    "recipe-paper-grain"
