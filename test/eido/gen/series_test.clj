@@ -1,5 +1,6 @@
 (ns eido.gen.series-test
   (:require
+    [clojure.string :as str]
     [clojure.test :refer [deftest is testing]]
     [eido.gen.series :as series]))
 
@@ -87,6 +88,56 @@
   (testing "weighted-choice selects from options"
     (let [params (series/series-params spec-with-weights 42 0)]
       (is (some #{(:tier params)} [:common :rare :epic])))))
+
+;; --- convenience helper tests ---
+
+;; --- batch edition rendering ---
+
+(deftest render-editions-test
+  (testing "renders editions to output directory"
+    (let [dir (str "/tmp/eido-test-editions-" (System/currentTimeMillis))
+          spec {:hue {:type :uniform :lo 0.0 :hi 360.0}}
+          scene-fn (fn [params edition]
+                     {:image/size [100 100]
+                      :image/background [:color/hsl (:hue params) 0.5 0.5]
+                      :image/nodes []})
+          results (series/render-editions
+                    {:spec spec
+                     :master-seed 42
+                     :start 0
+                     :end 3
+                     :scene-fn scene-fn
+                     :output-dir dir})]
+      (is (= 3 (count results)))
+      (is (every? :edition results))
+      (is (every? :params results))
+      (is (every? :file results))
+      ;; Files exist
+      (is (every? #(.exists (java.io.File. ^String (:file %))) results))
+      ;; Metadata file exists
+      (is (.exists (java.io.File. (str dir "/metadata.edn"))))
+      ;; Clean up
+      (doseq [f (.listFiles (java.io.File. dir))]
+        (.delete f))
+      (.delete (java.io.File. dir))))
+  (testing "supports SVG format"
+    (let [dir (str "/tmp/eido-test-svg-" (System/currentTimeMillis))
+          results (series/render-editions
+                    {:spec {:r {:type :uniform :lo 10.0 :hi 50.0}}
+                     :master-seed 42
+                     :start 0
+                     :end 2
+                     :scene-fn (fn [params _ed]
+                                 {:image/size [50 50]
+                                  :image/background [:color/rgb 255 255 255]
+                                  :image/nodes []})
+                     :output-dir dir
+                     :format :svg})]
+      (is (every? #(clojure.string/ends-with? (:file %) ".svg") results))
+      ;; Clean up
+      (doseq [f (.listFiles (java.io.File. dir))]
+        (.delete f))
+      (.delete (java.io.File. dir)))))
 
 ;; --- convenience helper tests ---
 

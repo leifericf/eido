@@ -63,6 +63,47 @@
                  [k v])))
         params))
 
+;; --- batch edition rendering ---
+
+(defn render-editions
+  "Renders a batch of editions from a series spec.
+  opts:
+    :spec        — parameter spec map (as for series-params)
+    :master-seed — master seed for the series
+    :start       — first edition number (inclusive)
+    :end         — last edition number (exclusive)
+    :scene-fn    — (fn [params edition-number] scene-map)
+    :output-dir  — directory to write files into
+    :format      — :png (default) or :svg
+    :render-opts — optional map passed to eido.core/render (e.g. {:scale 2})
+    :traits      — optional trait buckets for derive-traits
+  Returns a vector of {:edition n :params params :traits traits :file path}."
+  [{:keys [spec master-seed start end scene-fn output-dir
+           format render-opts traits]}]
+  (let [render-fn (requiring-resolve 'eido.core/render)
+        fmt       (or format :png)
+        dir       (java.io.File. ^String output-dir)]
+    (.mkdirs dir)
+    (let [results
+          (mapv
+            (fn [edition]
+              (let [params   (series-params spec master-seed edition)
+                    scene    (scene-fn params edition)
+                    ext      (name fmt)
+                    filename (str "edition-" edition "." ext)
+                    filepath (str output-dir "/" filename)
+                    opts     (merge render-opts {:output filepath})]
+                (render-fn scene opts)
+                (cond-> {:edition edition
+                         :params  params
+                         :file    filepath}
+                  traits (assoc :traits (derive-traits params traits)))))
+            (range start end))]
+      ;; Write metadata
+      (spit (str output-dir "/metadata.edn")
+            (pr-str (mapv #(dissoc % :file) results)))
+      results)))
+
 (comment
   (edition-seed 42 0)
   (edition-seed 42 1)

@@ -222,31 +222,86 @@
     {:defs    (when (seq defs) defs)
      :element element}))
 
+(defn- strip-fills
+  "Sets fill to nil on all ops for stroke-only output."
+  [ops]
+  (mapv #(assoc % :fill nil) ops))
+
+(defn- group-ops-by-stroke
+  "Groups ops by stroke color CSS string. Returns a seq of
+  {:pen css-string :ops [ops...]} in order of first appearance."
+  [ops]
+  (let [order   (atom [])
+        groups  (atom {})]
+    (doseq [op ops]
+      (let [k (if-let [sc (:stroke-color op)]
+                (color->css sc)
+                "none")]
+        (when-not (contains? @groups k)
+          (swap! order conj k))
+        (swap! groups update k (fnil conj []) op)))
+    (mapv (fn [k] {:pen k :ops (get @groups k)}) @order)))
+
 (defn render
-  "Renders IR to an SVG XML string."
+  "Renders IR to an SVG XML string.
+  opts:
+    :scale              — resolution multiplier (default 1)
+    :transparent-background — omit background rect
+    :stroke-only        — remove all fills, suppress background (plotter mode)
+    :group-by-stroke    — group elements by stroke color into <g> layers"
   ([ir] (render ir {}))
   ([ir opts]
-   (let [[w h]  (:ir/size ir)
-         scale  (get opts :scale 1)
-         sw     (int (* w scale))
-         sh     (int (* h scale))
-         bg     (:ir/background ir)
-         ops-with-clips (map-indexed (fn [i op] (op-svg-with-clip op i))
-                                     (:ir/ops ir))
-         defs   (keep :defs ops-with-clips)
-         lines  (cond-> [(str "<svg xmlns=\"http://www.w3.org/2000/svg\""
-                              " width=\"" sw "\" height=\"" sh "\""
-                              " viewBox=\"0 0 " w " " h "\">")]
-                  (seq defs)
-                  (conj (str "  <defs>" (str/join "" defs) "</defs>"))
-                  (and bg (not (:transparent-background opts)))
-                  (conj (str "  <rect x=\"0\" y=\"0\" width=\"" w
-                             "\" height=\"" h "\" fill=\"" (color->css bg) "\"/>"))
-                  true
-                  (into (map #(str "  " (:element %)) ops-with-clips))
-                  true
-                  (conj "</svg>"))]
-     (str/join "\n" lines))))
+   (let [[w h]        (:ir/size ir)
+         scale        (get opts :scale 1)
+         sw           (int (* w scale))
+         sh           (int (* h scale))
+         bg           (:ir/background ir)
+         stroke-only? (:stroke-only opts)
+         group-by?    (:group-by-stroke opts)
+         raw-ops      (:ir/ops ir)
+         ops          (if stroke-only? (strip-fills raw-ops) raw-ops)
+         header       (str "<svg xmlns=\"http://www.w3.org/2000/svg\""
+                           " width=\"" sw "\" height=\"" sh "\""
+                           " viewBox=\"0 0 " w " " h "\">")]
+     (if group-by?
+       ;; Grouped output: ops sorted by stroke color in <g> layers
+       (let [groups (group-ops-by-stroke ops)
+             all-indexed (mapcat :ops groups)
+             idx-map     (into {} (map-indexed (fn [i op] [op i]) all-indexed))
+             lines (cond-> [header]
+                     true
+                     (into (mapcat
+                             (fn [{:keys [pen ops]}]
+                               (let [pen-id (str "pen-" (str/replace pen #"[^a-zA-Z0-9]" "-"))
+                                     op-svgs (map (fn [op]
+                                                    (let [i (get idx-map op 0)]
+                                                      (op-svg-with-clip op i)))
+                                                  ops)
+                                     defs (keep :defs op-svgs)]
+                                 (concat
+                                   (when (seq defs)
+                                     [(str "  <defs>" (str/join "" defs) "</defs>")])
+                                   [(str "  <g id=\"" pen-id "\">")]
+                                   (map #(str "    " (:element %)) op-svgs)
+                                   ["  </g>"])))
+                             groups))
+                     true
+                     (conj "</svg>"))]
+         (str/join "\n" lines))
+       ;; Standard output
+       (let [ops-with-clips (map-indexed (fn [i op] (op-svg-with-clip op i)) ops)
+             defs   (keep :defs ops-with-clips)
+             lines  (cond-> [header]
+                      (seq defs)
+                      (conj (str "  <defs>" (str/join "" defs) "</defs>"))
+                      (and bg (not stroke-only?) (not (:transparent-background opts)))
+                      (conj (str "  <rect x=\"0\" y=\"0\" width=\"" w
+                                 "\" height=\"" h "\" fill=\"" (color->css bg) "\"/>"))
+                      true
+                      (into (map #(str "  " (:element %)) ops-with-clips))
+                      true
+                      (conj "</svg>"))]
+         (str/join "\n" lines))))))
 
 (defn- frame-key-times
   "Builds SMIL keyTimes and values for frame i of n.

@@ -417,6 +417,53 @@
       ;; Frame 1: hidden then visible at 0.5 (1/2)
       (is (re-find #"values=\"hidden;visible\".*keyTimes=\"0;0\.5\"" out)))))
 
+;; --- plotter-safe SVG ---
+
+(deftest svg-stroke-only-test
+  (testing "stroke-only removes fills from all ops"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :rect :x 10 :y 10 :w 80 :h 80
+                        :fill {:r 255 :g 0 :b 0 :a 1.0}
+                        :stroke-color {:r 0 :g 0 :b 0 :a 1.0}
+                        :stroke-width 2
+                        :opacity 1.0 :transforms []}
+                       {:op :circle :cx 50 :cy 50 :r 20
+                        :fill {:r 0 :g 255 :b 0 :a 1.0}
+                        :stroke-color {:r 0 :g 0 :b 0 :a 1.0}
+                        :stroke-width 1
+                        :opacity 1.0 :transforms []}]}
+          out (svg/render ir {:stroke-only true})]
+      (is (every? #(re-find #"fill=\"none\"" %) (re-seq #"<(?:rect|circle)[^>]+" out)))
+      (is (re-find #"stroke=\"rgb\(0,0,0\)\"" out))))
+  (testing "stroke-only also suppresses background rect"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops []}
+          out (svg/render ir {:stroke-only true})]
+      (is (not (re-find #"<rect x=\"0\" y=\"0\"" out))))))
+
+(deftest svg-group-by-stroke-test
+  (testing "groups ops by stroke color into <g> elements"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 10 :h 10
+                        :fill nil
+                        :stroke-color {:r 255 :g 0 :b 0 :a 1.0}
+                        :stroke-width 1 :opacity 1.0 :transforms []}
+                       {:op :circle :cx 50 :cy 50 :r 20
+                        :fill nil
+                        :stroke-color {:r 0 :g 0 :b 255 :a 1.0}
+                        :stroke-width 1 :opacity 1.0 :transforms []}
+                       {:op :rect :x 20 :y 20 :w 10 :h 10
+                        :fill nil
+                        :stroke-color {:r 255 :g 0 :b 0 :a 1.0}
+                        :stroke-width 1 :opacity 1.0 :transforms []}]}
+          out (svg/render ir {:group-by-stroke true})]
+      (is (= 2 (count (re-seq #"<g " out)))
+          "two stroke colors → two groups")
+      (is (re-find #"id=\"pen-" out)))))
+
 ;; --- gradient fill ---
 
 (deftest svg-linear-gradient-test
