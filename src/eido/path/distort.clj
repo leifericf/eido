@@ -1,4 +1,6 @@
 (ns eido.path.distort
+  "Point-level path distortion using noise, waves, roughening, and jitter.
+  Each distortion displaces individual points without changing path topology."
   (:require
     [eido.gen.noise :as noise]))
 

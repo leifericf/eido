@@ -1,4 +1,6 @@
 (ns eido.path.warp
+  "Geometric coordinate warps: twist, fisheye, bulge, bend, and wave.
+  Each warp remaps point positions through a spatial transformation."
   (:require
     [eido.text :as text]))
 

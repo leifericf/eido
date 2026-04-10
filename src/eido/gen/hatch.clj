@@ -1,4 +1,6 @@
-(ns eido.gen.hatch)
+(ns eido.gen.hatch
+  "Cross-hatch line patterns for pen-plotter-style fills.
+  Generates parallel lines at arbitrary angles with multi-layer support.")
 
 ;; --- line generation ---
 

@@ -1,4 +1,6 @@
 (ns eido.gen.contour
+  "Marching squares contour extraction from scalar fields.
+  Produces connected iso-lines at specified thresholds for topographic effects."
   (:require
     [eido.gen.noise :as noise]))
 

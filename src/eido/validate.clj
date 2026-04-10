@@ -1,4 +1,6 @@
 (ns eido.validate
+  "Scene validation against the Eido spec. Returns human-readable error
+  messages describing what failed and where."
   (:require
     [clojure.spec.alpha :as s]
     [clojure.string :as str]

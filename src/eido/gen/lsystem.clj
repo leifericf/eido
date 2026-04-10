@@ -1,4 +1,6 @@
-(ns eido.gen.lsystem)
+(ns eido.gen.lsystem
+  "Lindenmayer systems: string rewriting and turtle-graphics interpretation.
+  Generates branching, fractal, and botanical structures from simple rules.")
 
 ;; --- string rewriting ---
 

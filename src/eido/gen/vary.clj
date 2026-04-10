@@ -1,4 +1,6 @@
 (ns eido.gen.vary
+  "Per-item style variation: color, opacity, and transform overrides
+  driven by index, position, noise, or gradient interpolation."
   (:require
     [eido.color.palette :as palette]
     [eido.gen.noise :as noise]))

@@ -1,4 +1,6 @@
-(ns eido.gen.voronoi)
+(ns eido.gen.voronoi
+  "Voronoi diagram and Delaunay triangulation from seed points.
+  Produces cell polygons and dual-graph edges for territorial partitions.")
 
 ;; --- half-plane clipping ---
 

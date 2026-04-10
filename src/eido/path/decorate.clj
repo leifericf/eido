@@ -1,4 +1,6 @@
 (ns eido.path.decorate
+  "Place copies of a shape at regular intervals along a path, optionally
+  rotating each copy to follow the path tangent."
   (:require
     [eido.text :as text]))
 

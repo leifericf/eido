@@ -1,4 +1,6 @@
 (ns eido.color.palette
+  "Color harmony algorithms and palette generation. Provides complementary,
+  analogous, triadic, and other schemes plus palette manipulation utilities."
   (:require
     [eido.color :as color]
     [eido.gen.prob :as prob])

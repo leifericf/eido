@@ -1,4 +1,6 @@
 (ns eido.gen.noise
+  "Noise generators: Perlin, simplex, value noise, FBM, turbulence, and ridge.
+  Building blocks for organic textures, flow fields, and terrain-like forms."
   (:import
     [java.awt.image BufferedImage]))
 

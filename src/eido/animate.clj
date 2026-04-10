@@ -1,4 +1,9 @@
-(ns eido.animate)
+(ns eido.animate
+  "Easing, interpolation, and timing functions for animation.
+
+  Easing functions take a normalized t in [0,1] and return a shaped t.
+  Compose with `lerp` for value interpolation, or use `frames`, `stagger`,
+  and `cycle-n` for sequencing multi-frame animations.")
 
 (defn progress
   "Returns normalized progress [0.0, 1.0] for frame within total frames.

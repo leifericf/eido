@@ -1,4 +1,6 @@
 (ns eido.path.stroke
+  "Stroke profiles and variable-width path expansion. Apply named or
+  custom width profiles to convert open paths into filled outlines."
   (:require
     [eido.text :as text]))
 

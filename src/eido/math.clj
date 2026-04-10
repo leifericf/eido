@@ -1,4 +1,6 @@
-(ns eido.math)
+(ns eido.math
+  "Shared math utilities: 3D vector operations, interpolation, smoothstep,
+  rotations, and other numeric helpers used across Eido.")
 
 ;; --- vector operations ---
 

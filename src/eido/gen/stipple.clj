@@ -1,4 +1,6 @@
-(ns eido.gen.stipple)
+(ns eido.gen.stipple
+  "Poisson disk sampling and stipple fills.
+  Generates well-distributed dot patterns for shading and texture.")
 
 ;; --- Poisson disk sampling ---
 

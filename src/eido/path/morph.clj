@@ -1,4 +1,6 @@
 (ns eido.path.morph
+  "Path interpolation and shape morphing. Blends between two paths by
+  resampling them to equal point counts and interpolating positions."
   (:require
     [eido.text :as text]))
 

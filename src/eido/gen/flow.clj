@@ -1,4 +1,6 @@
 (ns eido.gen.flow
+  "Flow field path generation from noise-based vector fields.
+  Traces streamlines with optional collision avoidance for even spacing."
   (:require
     [eido.gen.noise :as noise]))
 

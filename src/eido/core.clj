@@ -1,4 +1,9 @@
 (ns eido.core
+  "Rendering and export — the main entry point for Eido.
+
+  Use `render` for one-stop rendering of scenes and animations to images,
+  SVG, GIF, or polyline data. Specialized functions (`render-to-file`,
+  `render-to-svg`, etc.) are also available for direct use."
   (:require
     [clojure.edn :as edn]
     [clojure.string :as str]

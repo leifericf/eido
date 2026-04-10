@@ -1,4 +1,9 @@
 (ns eido.scene
+  "Declarative scene construction helpers.
+
+  Functions for building scene nodes: text, shapes, grids, radial layouts,
+  and paper presets. Returns plain maps that compose with the scene data
+  format — no special types or wrappers."
   (:require
     [eido.text :as text]))
 

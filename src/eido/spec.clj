@@ -1,4 +1,6 @@
 (ns eido.spec
+  "Clojure spec definitions for the Eido scene format. Specifies valid
+  shapes, colors, transforms, layers, and scene structure."
   (:require
     [clojure.spec.alpha :as s]))
 

@@ -1,4 +1,6 @@
 (ns eido.gen.scatter
+  "Point distribution algorithms: regular grids, Poisson disk sampling,
+  and noise-biased placement. Includes jitter and node expansion."
   (:require
     [eido.gen.noise :as noise]
     [eido.gen.stipple :as stipple]))

@@ -1,4 +1,6 @@
 (ns eido.gen.particle
+  "Particle systems with emitters, forces, and over-lifetime curves.
+  Supports 2D and 3D simulation with built-in presets for fire, snow, and more."
   (:require
     [eido.animate :as anim]
     [eido.color :as color]
