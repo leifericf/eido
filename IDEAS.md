@@ -6,20 +6,6 @@ Organized by what matters to practicing generative and computational artists, gr
 
 ---
 
-## Output and export
-
-### Resolution-independent re-rendering
-
-Regenerate any saved seed at a different resolution without changing the composition. The same seed at 800×800 and 8000×8000 should produce the same image, just sharper.
-
-**What to add:**
-- Document and verify that all generators produce resolution-independent output when coordinates are expressed relative to canvas size
-
-**Implementation notes:**
-- This is primarily a documentation and testing task. Write a test that renders the same scene at 400×400 and 4000×4000 (with `:scale 10`) and verifies visual equivalence (downscale the large render and compare).
-- Any generator that uses absolute pixel values internally (e.g., hardcoded step sizes in flow fields) would need to scale those relative to canvas size. Audit each generator.
-- Document the pattern: "express all coordinates as fractions of canvas size or relative to `:image/size`."
-
 ---
 
 ## Exploration and iteration
