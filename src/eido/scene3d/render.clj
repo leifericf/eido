@@ -5,7 +5,6 @@
     [eido.gen.hatch :as hatch]
     [eido.math :as m]
     [eido.scene :as scene]
-    [eido.scene3d.camera :as camera]
     [eido.scene3d.mesh :as mesh]
     [eido.scene3d.topology :as topology]
     [eido.scene3d.transform :as xform]
