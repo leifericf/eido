@@ -125,11 +125,14 @@
 
 (defn render-to-svg
   "Renders a scene to an SVG XML string.
-  Opts: :scale, :transparent-background."
+  Opts: :scale, :transparent-background, :stroke-only, :group-by-stroke,
+        :deduplicate, :optimize-travel."
   ([scene] (render-to-svg scene {}))
   ([scene opts]
    (svg/render (validated-compile scene)
-               (select-keys opts [:scale :transparent-background]))))
+               (select-keys opts [:scale :transparent-background
+                                  :stroke-only :group-by-stroke
+                                  :deduplicate :optimize-travel]))))
 
 (defn render-to-animated-svg-str
   "Renders a sequence of scenes to an animated SVG string using SMIL.
@@ -249,7 +252,7 @@
          dpi         (or (:dpi opts) (:image/dpi scene))
          render-opts (select-keys opts [:scale :transparent-background])]
      (if (= format "svg")
-       (spit path (render-to-svg scene (select-keys opts [:scale :transparent-background])))
+       (spit path (render-to-svg scene opts))
        (let [img (render-image scene render-opts)]
          (case format
            "jpeg" (write-jpeg (ensure-rgb img) path
