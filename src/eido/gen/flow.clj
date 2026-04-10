@@ -72,9 +72,10 @@
 
 (defn- trace-streamline
   "Traces a single streamline from a starting point.
-  Returns a vector of [x y] points, or nil if too short.
-  When grid and collision-dist are provided, halts on proximity."
-  [x0 y0 bx by bw bh grid collision-dist
+  bounds: [bx by bw bh] region.
+  collision: {:grid g :dist d} or nil for no collision avoidance.
+  Returns a vector of [x y] points, or nil if too short."
+  [x0 y0 [bx by bw bh] collision
    {:keys [step-length steps noise-scale seed min-length]
     :or   {step-length 2.0 steps 50 noise-scale 0.005
            seed 0 min-length 3}}]
@@ -85,7 +86,8 @@
         sl  (double step-length)
         ns  (double noise-scale)
         opts (when seed {:seed seed})
-        cd  (when collision-dist (double collision-dist))]
+        grid (:grid collision)
+        cd   (when-let [d (:dist collision)] (double d))]
     (loop [x   (double x0)
            y   (double y0)
            i   0
@@ -123,13 +125,14 @@
         rows       (long (Math/ceil (/ bh density)))
         half-d     (/ (double density) 2.0)
         grid       (when col-dist (make-point-grid (double col-dist) bx by bw bh))
+        bounds     [bx by bw bh]
+        collision  (when grid {:grid grid :dist col-dist})
         origins    (for [row (range rows) col (range cols)]
                      [(+ bx (* col (double density)) half-d)
                       (+ by (* row (double density)) half-d)])]
     (into []
           (keep (fn [[ox oy]]
-                  (let [pts (trace-streamline ox oy bx by bw bh
-                              grid col-dist opts)]
+                  (let [pts (trace-streamline ox oy bounds collision opts)]
                     (when pts
                       (when grid
                         (doseq [[px py] pts]
