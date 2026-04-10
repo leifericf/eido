@@ -195,7 +195,7 @@
         stroke-ops (when stroke
                      (let [stroke-node (geometry->scene-node geom nil stroke nil)]
                        [(scene-node->op stroke-node)]))]
-    (into [] (concat bg-ops hatch-ops stroke-ops))))
+    (vec (concat bg-ops hatch-ops stroke-ops))))
 
 (defn lower-stipple
   "Lowers a draw item with a stipple fill to concrete ops.
@@ -219,7 +219,7 @@
         stroke-ops (when stroke
                      (let [stroke-node (geometry->scene-node geom nil stroke nil)]
                        [(scene-node->op stroke-node)]))]
-    (into [] (concat bg-ops dot-ops stroke-ops))))
+    (vec (concat bg-ops dot-ops stroke-ops))))
 
 ;; --- procedural fill rendering ---
 
