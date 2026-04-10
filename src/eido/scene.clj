@@ -53,11 +53,11 @@
   (let [pts (vec points)]
     {:node/type :shape/path
      :path/commands
-     (if (empty? pts)
-       []
+     (if (seq pts)
        (into [[:move-to (first pts)]]
              (conj (mapv (fn [p] [:line-to p]) (rest pts))
-                   [:close])))}))
+                   [:close]))
+       [])}))
 
 (defn triangle
   "Creates a triangle path node from three [x y] points."

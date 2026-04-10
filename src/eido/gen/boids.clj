@@ -96,7 +96,7 @@
 (defn separation
   "Computes steering force away from nearby boids."
   [boid neighbors radius strength]
-  (if (empty? neighbors)
+  (if-not (seq neighbors)
     [0.0 0.0]
     (let [r-sq (* (double radius) (double radius))
           sum (reduce (fn [acc n]
@@ -112,7 +112,7 @@
 (defn alignment
   "Computes steering force toward average heading of neighbors."
   [boid neighbors radius strength]
-  (if (empty? neighbors)
+  (if-not (seq neighbors)
     [0.0 0.0]
     (let [r-sq (* (double radius) (double radius))
           [sx sy cnt]
@@ -131,7 +131,7 @@
 (defn cohesion
   "Computes steering force toward centroid of neighbors."
   [boid neighbors radius strength]
-  (if (empty? neighbors)
+  (if-not (seq neighbors)
     [0.0 0.0]
     (let [r-sq (* (double radius) (double radius))
           [sx sy cnt]

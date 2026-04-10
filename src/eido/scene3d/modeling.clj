@@ -150,7 +150,7 @@
            branches  []
            current   [pos]
            depth     0]
-      (if (empty? chars)
+      (if-not (seq chars)
         (if (> (count current) 1)
           (conj branches current)
           branches)

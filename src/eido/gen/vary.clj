@@ -44,8 +44,7 @@
   Each override map is merged onto the first child of the group at index i.
   Wraps via mod when overrides is shorter than children."
   [children overrides]
-  (if (or (nil? overrides) (empty? overrides))
-    children
+  (if (seq overrides)
     (let [n (count overrides)]
       (mapv (fn [i child]
               (let [ovr (nth overrides (mod i n))]
@@ -64,7 +63,8 @@
                                          (fnil into []) (:node/transform ovr)))))
                   (merge child ovr))))
             (range (count children))
-            children))))
+            children))
+    children))
 
 ;; --- convenience helpers ---
 

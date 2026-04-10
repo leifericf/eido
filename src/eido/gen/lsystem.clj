@@ -31,7 +31,7 @@
            stack []
            cmds  [[:move-to [x y]]]
            drawing? false]
-      (if (empty? chars)
+      (if-not (seq chars)
         cmds
         (let [c (first chars)
               rest-chars (rest chars)]

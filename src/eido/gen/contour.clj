@@ -116,7 +116,7 @@
   "Connects line segments into polylines by matching endpoints.
   Uses spatial hashing for O(n) total instead of O(n²)."
   [segments]
-  (if (empty? segments)
+  (if-not (seq segments)
     []
     (let [seg-vec  (vec segments)
           n        (count seg-vec)

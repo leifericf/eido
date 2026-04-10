@@ -178,7 +178,7 @@
   (loop [cmds commands
          pos  nil
          segs (transient [])]
-    (if (empty? cmds)
+    (if-not (seq cmds)
       (persistent! segs)
       (let [[cmd & args] (first cmds)]
         (case cmd
@@ -224,7 +224,7 @@
   (let [segs (parse-path-segments commands)]
     (loop [remaining distance
            ss segs]
-      (if (empty? ss)
+      (if-not (seq ss)
         (when-let [last-seg (last segs)]
           (point-on-segment last-seg (:length last-seg)))
         (let [seg (first ss)]
@@ -280,7 +280,7 @@
   (loop [cmds commands
          current []
          result []]
-    (if (empty? cmds)
+    (if-not (seq cmds)
       (if (seq current)
         (conj result current)
         result)
@@ -380,7 +380,7 @@
         (loop [glyphs glyph-data
                dist   (double offset)
                result (transient [])]
-          (if (empty? glyphs)
+          (if-not (seq glyphs)
             (persistent! result)
             (let [{:keys [commands position]} (first glyphs)
                   [gx _] position
