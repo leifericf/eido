@@ -362,6 +362,9 @@
    (let [output (:output opts)
          format (:format opts)
          render-opts (dissoc opts :output :fps :loop :format :prefix)]
+     (when (and (animation? input) (= :polylines format))
+       (throw (ex-info "Polyline export does not support animations"
+                       {:format format})))
      (if (animation? input)
        (let [fps (or (:fps opts)
                      (throw (ex-info "Animation requires :fps" {})))]

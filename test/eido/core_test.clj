@@ -240,6 +240,27 @@
         (is (= [800 600] (:bounds data))))
       (.delete f))))
 
+(deftest render-polylines-empty-scene-test
+  (testing "polylines format with no nodes returns empty polylines"
+    (let [result (eido/render {:image/size [100 100]
+                               :image/background [:color/rgb 255 255 255]
+                               :image/nodes []}
+                              {:format :polylines})]
+      (is (= [] (:polylines result)))
+      (is (= [100 100] (:bounds result))))))
+
+(deftest render-polylines-animation-throws-test
+  (testing "polylines format rejects animation input"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not support animations"
+          (eido/render
+            [{:image/size [100 100]
+              :image/background [:color/rgb 0 0 0]
+              :image/nodes []}
+             {:image/size [100 100]
+              :image/background [:color/rgb 0 0 0]
+              :image/nodes []}]
+            {:format :polylines :fps 30})))))
+
 (deftest render-to-file-tiff-format-override-test
   (testing ":format tiff overrides extension"
     (let [path (str (File/createTempFile "eido-test" ".png"))]

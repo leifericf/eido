@@ -637,6 +637,40 @@
               ["hsl" [:color/hsl 16 1.0 0.66]]
               ["hex" [:color/hex "#FF7F50"]]]))}
 
+     "docs-oklab-lerp.png"
+     (let [steps 10
+           sw    (/ 380.0 steps)]
+       {:image/size [400 120] :image/background bg
+        :image/nodes
+        (vec
+          (concat
+            ;; RGB row (top)
+            [{:node/type :shape/text
+              :text/content "RGB"
+              :text/origin [200 15]
+              :text/font {:font/family "SansSerif" :font/size 9}
+              :text/align :center
+              :style/fill [:color/rgb 100 100 100]}]
+            (for [i (range steps)]
+              (let [t (/ (double i) (dec steps))]
+                {:node/type :shape/rect
+                 :rect/xy [(+ 10 (* i sw)) 20] :rect/size [sw 35]
+                 :style/fill (color/lerp [:color/name "red"]
+                                         [:color/name "cyan"] t)}))
+            ;; OKLAB row (bottom)
+            [{:node/type :shape/text
+              :text/content "OKLAB"
+              :text/origin [200 75]
+              :text/font {:font/family "SansSerif" :font/size 9}
+              :text/align :center
+              :style/fill [:color/rgb 100 100 100]}]
+            (for [i (range steps)]
+              (let [t (/ (double i) (dec steps))]
+                {:node/type :shape/rect
+                 :rect/xy [(+ 10 (* i sw)) 80] :rect/size [sw 35]
+                 :style/fill (color/lerp-oklab [:color/name "red"]
+                                               [:color/name "cyan"] t)}))))})
+
      "docs-color-manip.png"
      (let [base [:color/name "red"]]
        {:image/size [400 80] :image/background bg

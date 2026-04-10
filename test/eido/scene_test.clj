@@ -658,3 +658,94 @@
              (first (:node/transform glyph))))
       (is (= 5.0 (:width (:style/stroke glyph))))
       (is (= 0 (:glyph/index glyph))))))
+
+;; --- with-units error paths ---
+
+(deftest with-units-missing-dpi-test
+  (testing "throws ex-info when :image/dpi is missing"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires :image/dpi"
+          (scene/with-units {:image/size [10.0 10.0]
+                             :image/units :cm
+                             :image/background :white
+                             :image/nodes []})))))
+
+(deftest with-units-missing-units-test
+  (testing "throws ex-info when :image/units is missing"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires :image/units"
+          (scene/with-units {:image/size [10.0 10.0]
+                             :image/dpi 300
+                             :image/background :white
+                             :image/nodes []})))))
+
+(deftest with-units-invalid-units-test
+  (testing "throws ex-info when :image/units is unknown"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires :image/units"
+          (scene/with-units {:image/size [10.0 10.0]
+                             :image/units :furlongs
+                             :image/dpi 300
+                             :image/background :white
+                             :image/nodes []})))))
+
+(deftest paper-unknown-size-test
+  (testing "throws ex-info for unknown paper size"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown paper size"
+          (scene/paper :unknown)))))
+
+;; --- with-units: hatch/stipple/decorator fills ---
+
+(deftest with-units-hatch-fill-test
+  (testing "scales hatch spatial keys inside fill"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [0.0 0.0]
+                   :rect/size [10.0 10.0]
+                   :style/fill {:fill/type :hatch
+                                :hatch/spacing 0.5
+                                :hatch/stroke-width 0.02
+                                :hatch/angle 45}}]}
+          result (scene/with-units scene)
+          fill   (:style/fill (first (:image/nodes result)))]
+      (is (= 50.0 (:hatch/spacing fill)))
+      (is (= 2.0 (:hatch/stroke-width fill)))
+      (is (= 45 (:hatch/angle fill)) "angle should not be scaled"))))
+
+(deftest with-units-stipple-fill-test
+  (testing "scales stipple radius but not density"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :shape/rect
+                   :rect/xy [0.0 0.0]
+                   :rect/size [10.0 10.0]
+                   :style/fill {:fill/type :stipple
+                                :stipple/radius 0.1
+                                :stipple/density 0.5}}]}
+          result (scene/with-units scene)
+          fill   (:style/fill (first (:image/nodes result)))]
+      (is (= 10.0 (:stipple/radius fill)))
+      (is (= 0.5 (:stipple/density fill)) "density is 0-1, not spatial"))))
+
+(deftest with-units-decorator-shape-test
+  (testing "scales decorator shape recursively"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :path/decorated
+                   :path/commands [[:move-to [0.0 0.0]]
+                                   [:line-to [10.0 0.0]]]
+                   :decorator/shape {:node/type :shape/circle
+                                     :circle/center [0 0]
+                                     :circle/radius 0.2}
+                   :decorator/spacing 1.0}]}
+          result (scene/with-units scene)
+          node   (first (:image/nodes result))]
+      (is (= 100.0 (:decorator/spacing node)))
+      (is (= 20.0 (:circle/radius (:decorator/shape node)))))))

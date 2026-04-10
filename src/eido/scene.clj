@@ -267,14 +267,15 @@
   #{:image/size :rect/xy :rect/size :circle/center :ellipse/center
     :arc/center :line/from :line/to :text/origin :symmetry/center
     :symmetry/spacing :gradient/from :gradient/to :gradient/center
-    :lsystem/origin})
+    :lsystem/origin :pattern/size})
 
 (def ^:private scalar-keys
   "Keys whose values are single spatial distances."
   #{:circle/radius :ellipse/rx :ellipse/ry :arc/rx :arc/ry
     :rect/corner-radius :gradient/radius :lsystem/length
     :decorator/spacing :font/size :text/spacing :text/offset
-    :scatter/jitter})
+    :scatter/jitter
+    :hatch/spacing :hatch/stroke-width :stipple/radius})
 
 (def ^:private bounds-keys
   "Keys whose values are [x y w h] bounds vectors."
@@ -341,15 +342,18 @@
 (declare scale-node)
 
 (defn- scale-fill
-  "Scales spatial values inside a fill descriptor (gradients)."
+  "Scales spatial values inside a fill descriptor.
+  Handles gradients (point/radius), hatch (spacing/stroke-width),
+  stipple (radius), and pattern (size/nodes)."
   [fill factor]
   (if (map? fill)
     (reduce-kv
       (fn [m k v]
         (assoc m k
           (cond
-            (point-keys k)  (scale-point v factor)
-            (scalar-keys k) (* (double v) factor)
+            (point-keys k)        (scale-point v factor)
+            (scalar-keys k)       (* (double v) factor)
+            (= k :pattern/nodes)  (mapv #(scale-node % factor) v)
             :else v)))
       {} fill)
     fill))
@@ -372,7 +376,8 @@
           (= k :effect/glow)    (scale-effect-glow v factor)
           (= k :group/children) (mapv #(scale-node % factor) v)
           (= k :group/clip)     (scale-node v factor)
-          (= k :scatter/shape)  (scale-node v factor)
+          (= k :scatter/shape)   (scale-node v factor)
+          (= k :decorator/shape) (scale-node v factor)
           (= k :style/fill)     (scale-fill v factor)
           (= k :text/font)      (reduce-kv
                                   (fn [fm fk fv]
@@ -411,10 +416,13 @@
                :image/nodes [...])
         with-units)"
   [scene]
-  (let [units (:image/units scene)
-        dpi   (double (or (:image/dpi scene)
-                          (throw (ex-info "with-units requires :image/dpi"
-                                         {:scene-keys (keys scene)}))))
+  (let [units  (:image/units scene)
+        _      (when-not (#{:cm :mm :in} units)
+                 (throw (ex-info "with-units requires :image/units (:cm, :mm, or :in)"
+                                 {:units units})))
+        dpi    (double (or (:image/dpi scene)
+                           (throw (ex-info "with-units requires :image/dpi"
+                                          {:scene-keys (keys scene)}))))
         factor (case units
                  :cm (/ dpi 2.54)
                  :mm (/ dpi 25.4)

@@ -91,6 +91,39 @@
           polys  (:polylines result)]
       (is (= 3 (count polys))))))
 
+;; --- ellipse ---
+
+(deftest ellipse-polyline-test
+  (testing "ellipse produces closed polygon"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/ellipse
+                    :ellipse/center [200 200]
+                    :ellipse/rx 80
+                    :ellipse/ry 40}])
+          result (polyline/extract-polylines (compile-scene scene) {:segments 32})
+          polys  (:polylines result)]
+      (is (= 1 (count polys)))
+      (is (= 33 (count (first polys))) "32 segments + closing point")
+      (let [poly (first polys)]
+        (is (< (Math/abs (- (ffirst poly) (first (last poly)))) 0.01)
+            "first and last x should match")))))
+
+;; --- arc ---
+
+(deftest arc-polyline-test
+  (testing "arc produces polyline"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/arc
+                    :arc/center [200 200]
+                    :arc/rx 80
+                    :arc/ry 80
+                    :arc/start 0
+                    :arc/extent 180}])
+          result (polyline/extract-polylines (compile-scene scene) {:segments 32})
+          polys  (:polylines result)]
+      (is (= 1 (count polys)))
+      (is (= 33 (count (first polys))) "32 segments + endpoint"))))
+
 ;; --- bounds ---
 
 (deftest bounds-test
