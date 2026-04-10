@@ -266,8 +266,8 @@
   "Extracts the start point [x y] of an op for travel optimization."
   [op]
   (case (:op op)
-    :path    (let [[cmd pt] (first (:commands op))]
-               (when (= cmd :move-to) pt))
+    :path    (let [[cmd & args] (first (:commands op))]
+               (when (= cmd :move-to) [(first args) (second args)]))
     :line    [(:x1 op) (:y1 op)]
     :rect    [(:x op) (:y op)]
     :circle  [(:cx op) (:cy op)]
