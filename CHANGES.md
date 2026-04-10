@@ -1,11 +1,24 @@
 # Changes
 
-## Unreleased
+## v1.0.0-beta4 — Composition, Units & Export
+
+### New modules
+
+- **`eido.io.polyline`** — Polyline data extraction from compiled IR for CNC, plotter, and laser cutter export. Converts all geometry (paths, rects, circles, ellipses, arcs, lines) to vectors of `[x y]` points.
+
+### New features
+
+- **TIFF output** — `render` supports `.tiff`/`.tif` export via `javax.imageio` with DPI metadata embedding (TIFF IFD tags 282/283/296) and configurable compression (`:lzw`, `:deflate`, `:none`). Default compression is LZW.
+- **Resolution-independent coordinates** — `scene/with-units` converts scenes described in real-world units (`:cm`, `:mm`, `:in`) to pixel coordinates using an explicit key registry. All spatial values (coordinates, radii, stroke widths, dash patterns, font sizes) are scaled; non-spatial values (opacity, angles, colors) are preserved.
+- **Paper size presets** — `scene/paper` returns base scene maps for standard paper sizes (`:a3`, `:a4`, `:a5`, `:letter`, `:legal`, `:tabloid`, `:square-8`) with configurable DPI and landscape orientation.
+- **DPI auto-propagation** — `render-to-file` reads `:image/dpi` from the scene for PNG and TIFF metadata when no explicit `:dpi` opt is passed.
+- **Polyline/EDN data export** — `render` accepts `{:format :polylines}` to extract geometry as vectors of `[x y]` points for CNC mills, laser cutters, and custom plotter software. Curves are flattened via de Casteljau subdivision. Output format: `{:polylines [[[x1 y1] ...] ...] :bounds [w h]}`.
+
+## v1.0.0-beta3 — Perceptual Color & Artist Toolkit
 
 ### New modules
 
 - **`eido.texture`** — Texture and material helpers for organic rendering. `layered` produces translucent multi-copy groups; `watercolor` wraps it with jitter deformation for watercolor wash simulation.
-- **`eido.io.polyline`** — Polyline data extraction from compiled IR for CNC, plotter, and laser cutter export. Converts all geometry (paths, rects, circles, ellipses, arcs, lines) to vectors of `[x y]` points.
 
 ### New features
 
@@ -15,7 +28,7 @@
 - **4D Perlin noise** — `perlin4d` for seamless looping animated noise via the `(cos t, sin t)` trick.
 - **Flow field collision detection** — `:collision-distance` option in `flow-field` uses spatial hashing to enforce minimum spacing between streamlines.
 - **Douglas-Peucker simplification** — `simplify` and `simplify-commands` reduce point count while preserving shape.
-- **Chaikin smoothing** — `chaikin-commands` corner-cutting produces rounder, more uniform curves than Catmull-Rom.
+- **Chaikin smoothing** — `chaikin-commands` corner-cutting produces rounder, more uniform curves than Catmull-Ron.
 - **Point-in-polygon** — `contains-point?` ray-casting test for spatial queries and clipping.
 - **Polygon inset** — `inset` shrinks closed polygons inward by a distance — useful for margins and nested compositions.
 - **Curve splitting** — `split-at-length` divides paths into equal arc-length segments.
@@ -37,11 +50,6 @@
 - **Batch rendering** — `render-editions` renders and exports a range of editions with metadata.
 - **Plotter SVG** — `:stroke-only`, `:group-by-stroke`, `:deduplicate`, `:optimize-travel` options for pen plotter output.
 - **Scene margin** — `scene/with-margin` wraps nodes in a clipped inset rectangle.
-- **TIFF output** — `render` supports `.tiff`/`.tif` export via `javax.imageio` with DPI metadata embedding (TIFF IFD tags 282/283/296) and configurable compression (`:lzw`, `:deflate`, `:none`). Default compression is LZW.
-- **Resolution-independent coordinates** — `scene/with-units` converts scenes described in real-world units (`:cm`, `:mm`, `:in`) to pixel coordinates using an explicit key registry. All spatial values (coordinates, radii, stroke widths, dash patterns, font sizes) are scaled; non-spatial values (opacity, angles, colors) are preserved.
-- **Paper size presets** — `scene/paper` returns base scene maps for standard paper sizes (`:a3`, `:a4`, `:a5`, `:letter`, `:legal`, `:tabloid`, `:square-8`) with configurable DPI and landscape orientation.
-- **DPI auto-propagation** — `render-to-file` reads `:image/dpi` from the scene for PNG and TIFF metadata when no explicit `:dpi` opt is passed.
-- **Polyline/EDN data export** — `render` accepts `{:format :polylines}` to extract geometry as vectors of `[x y]` points for CNC mills, laser cutters, and custom plotter software. Curves are flattened via de Casteljau subdivision. Output format: `{:polylines [[[x1 y1] ...] ...] :bounds [w h]}`.
 
 ### Bug fixes
 
