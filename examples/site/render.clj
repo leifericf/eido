@@ -77,6 +77,8 @@
                   eido.gen.vary eido.gen.prob eido.gen.circle
                   eido.gen.subdivide eido.gen.series eido.gen.ca
                   eido.gen.boids]}
+   {:category "Texture"
+    :namespaces '[eido.texture]}
    {:category "Animation"
     :namespaces '[eido.animate]}
    {:category "3D"
@@ -1170,7 +1172,9 @@ document.querySelectorAll('pre code').forEach(function(el) {
      :added         (:added m)
      :convenience?  (:convenience m)
      :wraps         (when-let [s (:convenience-for m)]
-                      (name s))}))
+                      (name s))
+     :stability     (or (:stability m)
+                        (:stability (meta (:ns m))))}))
 
 (defn generate-api-html
   "Generates the API reference page from eido namespace metadata."
@@ -1193,7 +1197,9 @@ document.querySelectorAll('pre code').forEach(function(el) {
         ns-by-name (into {} (map (juxt :ns-name identity) ns-data))]
     (html-page {:title "API Reference" :active-page :api :depth 1}
       [:h1.page-title "API Reference"]
-      [:p.page-subtitle "Auto-generated from source metadata."]
+      [:p.page-subtitle "Auto-generated from source metadata. Functions marked "
+       [:span.api-var-badge.api-var-badge--provisional "Provisional"]
+       " may have API changes in future releases."]
       [:div.api-search
        [:input#api-search {:type "text"
                            :placeholder "Search functions, namespaces, or keywords..."
@@ -1218,12 +1224,16 @@ document.querySelectorAll('pre code').forEach(function(el) {
            [:h2.api-ns-title ns-name]
            (when ns-doc
              [:p.api-ns-doc ns-doc])
-           (for [{:keys [name arglists doc convenience? wraps]} vars]
+           (for [{:keys [name arglists doc convenience? wraps stability]} vars]
              [:div.api-var
-              ;; Badge + wraps in top-right corner
-              (when convenience?
+              ;; Badges in top-right corner
+              (when (or convenience? (= :provisional stability))
                 [:div.api-var-meta
-                 [:span.api-var-badge "Helper"]
+                 (when convenience?
+                   [:span.api-var-badge "Helper"])
+                 (when (= :provisional stability)
+                   [:span.api-var-badge.api-var-badge--provisional
+                    "Provisional"])
                  (when wraps
                    [:div.api-var-wraps "Wraps " [:code wraps]])])
               ;; Signature block — one line per arity

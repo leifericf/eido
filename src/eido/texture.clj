@@ -1,4 +1,4 @@
-(ns eido.texture
+(ns ^{:stability :provisional} eido.texture
   "Texture and material helpers for organic rendering effects.
 
   These helpers produce scene nodes (groups with deformed, layered copies)

@@ -1770,7 +1770,22 @@
 
 ;; Or disable per-scene with a key
 (eido/render (assoc scene :eido/validate false))"]]
-       [:p [:code "*validate*"] " defaults to " [:code "true"] ". Validation adds roughly 7% overhead per render, so skipping it in tight iteration loops makes a noticeable difference."]]}]}])
+       [:p [:code "*validate*"] " defaults to " [:code "true"] ". Validation adds roughly 7% overhead per render, so skipping it in tight iteration loops makes a noticeable difference."]]}
+
+     {:id    "stability"
+      :title "Stability"
+      :content
+      [:div
+       [:p "Functions in Eido have one of two stability levels:"]
+       [:ul
+        [:li [:strong "Stable"] " (default) — the function signature and behavior are settled. Breaking changes require a major version bump and migration guidance."]
+        [:li [:strong "Provisional"] " — the function works and is tested, but the API surface may change based on real-world usage. Provisional functions are marked with a badge in the "
+         [:a {:href "../api/"} "API Reference"] "."]]
+       [:p "Most of Eido's API is stable. Provisional status is reserved for newer subsystems whose configuration surface is still being refined:"]
+       [:ul
+        [:li [:code "eido.gen.particle"] " — particle system configuration (emitters, forces, lifetime curves) may simplify as usage patterns emerge."]
+        [:li [:code "eido.texture"] " — texture and material helpers are new and may expand or restructure."]]
+       [:p "Provisional does not mean broken — it means function names, argument shapes, or option keys might change in a future release. Pin a specific Eido version in your " [:code "deps.edn"] " to avoid surprises."]]}]}])
 
 ;; --- Architecture page ---
 

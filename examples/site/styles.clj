@@ -419,7 +419,10 @@
                      :padding       "0.15rem 0.5rem"
                      :border-radius "9999px"
                      :background    "rgba(192, 160, 100, 0.15)"
-                     :color         "#c0a064"}]
+                     :color         "#c0a064"
+                     :margin-left   "0.4rem"}]
+   [:.api-var-badge--provisional {:background "rgba(100, 130, 180, 0.15)"
+                                  :color      "#7090b0"}]
    [:.api-var-wraps {:font-size   "0.78rem"
                      :color       (:text-muted colors)
                      :margin-top  "0.25rem"}]
