@@ -245,6 +245,156 @@
                   (+ total (* amplitude v))
                   (+ max-amp amplitude))))))))
 
+;; --- OpenSimplex2S (public domain, KdotJPG) ---
+;; Smooth variant of OpenSimplex2 noise. Uses distance-based falloff kernel
+;; on a skewed simplex lattice. Fewer directional artifacts than Perlin.
+
+(def ^:private ^:const SKEW_2D 0.366025403784439)
+(def ^:private ^:const UNSKEW_2D -0.21132486540518713)
+(def ^:private ^:const RSQUARED_2D (/ 2.0 3.0))
+
+(def ^:private gradients-2d
+  "Pre-computed normalized 2D gradient vectors (24 directions)."
+  (double-array
+    [0.38268343236509 0.923879532511287
+     0.923879532511287 0.38268343236509
+     0.923879532511287 -0.38268343236509
+     0.38268343236509 -0.923879532511287
+     -0.38268343236509 -0.923879532511287
+     -0.923879532511287 -0.38268343236509
+     -0.923879532511287 0.38268343236509
+     -0.38268343236509 0.923879532511287
+     0.130526192220052 0.99144486137381
+     0.608761429008721 0.793353340291235
+     0.793353340291235 0.608761429008721
+     0.99144486137381 0.130526192220052
+     0.99144486137381 -0.130526192220052
+     0.793353340291235 -0.608761429008721
+     0.608761429008721 -0.793353340291235
+     0.130526192220052 -0.99144486137381
+     -0.130526192220052 -0.99144486137381
+     -0.608761429008721 -0.793353340291235
+     -0.793353340291235 -0.608761429008721
+     -0.99144486137381 -0.130526192220052
+     -0.99144486137381 0.130526192220052
+     -0.793353340291235 0.608761429008721
+     -0.608761429008721 0.793353340291235
+     -0.130526192220052 0.99144486137381]))
+
+(def ^:private ^:const N_GRADS_2D 24)
+(def ^:private ^:const NORMALIZER_2D 0.05481866495625118)
+
+(defn- simplex-grad2 [seed xsvp ysvp dx dy]
+  (let [^doubles grads gradients-2d
+        hash (bit-and (bit-xor (long seed) (long xsvp) (long ysvp)) 0x7FFFFFFF)
+        gi (unchecked-int (unchecked-multiply-int (mod hash N_GRADS_2D) 2))
+        dx (double dx) dy (double dy)
+        a (- RSQUARED_2D (+ (* dx dx) (* dy dy)))]
+    (if (< a 0.0)
+      0.0
+      (let [a2 (* a a)]
+        (* a2 a2
+           (+ (* (aget grads gi) dx)
+              (* (aget grads (inc gi)) dy)))))))
+
+(defn simplex2d
+  "2D OpenSimplex2S noise. Returns a double in [-1, 1].
+  Fewer directional artifacts than Perlin noise.
+  Optionally accepts {:seed n}."
+  ([x y]
+   (simplex2d x y nil))
+  ([x y opts]
+   (let [seed (long (get opts :seed 0))
+         x (double x) y (double y)
+         s (* SKEW_2D (+ x y))
+         xs (+ x s) ys (+ y s)
+         xsb (long (Math/floor xs))
+         ysb (long (Math/floor ys))
+         xf (- xs xsb) yf (- ys ysb)
+         ;; For each vertex (dxs, dys) in skewed space:
+         ;;   dx = (xf - dxs) + (xf - dxs + yf - dys) * UNSKEW_2D
+         ;;   dy = (yf - dys) + (xf - dxs + yf - dys) * UNSKEW_2D
+         t0 (* (+ xf yf) UNSKEW_2D)
+         xf1 (- xf 1.0) yf1 (- yf 1.0)
+         t1 (* (+ xf1 yf) UNSKEW_2D)
+         t2 (* (+ xf yf1) UNSKEW_2D)
+         t3 (* (+ xf1 yf1) UNSKEW_2D)
+         value (+ (simplex-grad2 seed xsb ysb (+ xf t0) (+ yf t0))
+                  (simplex-grad2 seed (inc xsb) ysb (+ xf1 t1) (+ yf t1))
+                  (simplex-grad2 seed xsb (inc ysb) (+ xf t2) (+ yf1 t2))
+                  (simplex-grad2 seed (inc xsb) (inc ysb) (+ xf1 t3) (+ yf1 t3)))]
+     (* value (/ 1.0 NORMALIZER_2D)))))
+
+;; --- OpenSimplex2S 3D ---
+
+(def ^:private ^:const SKEW_3D (/ 1.0 3.0))
+(def ^:private ^:const UNSKEW_3D (/ -1.0 6.0))
+(def ^:private ^:const RSQUARED_3D (/ 3.0 4.0))
+
+(def ^:private gradients-3d
+  "Pre-computed normalized 3D gradient vectors."
+  (double-array
+    [-0.7071067811865476 -0.7071067811865476 0
+     -0.7071067811865476 0 -0.7071067811865476
+     0 -0.7071067811865476 -0.7071067811865476
+     -0.7071067811865476 0.7071067811865476 0
+     -0.7071067811865476 0 0.7071067811865476
+     0 -0.7071067811865476 0.7071067811865476
+     0.7071067811865476 -0.7071067811865476 0
+     0.7071067811865476 0 -0.7071067811865476
+     0 0.7071067811865476 -0.7071067811865476
+     0.7071067811865476 0.7071067811865476 0
+     0.7071067811865476 0 0.7071067811865476
+     0 0.7071067811865476 0.7071067811865476]))
+
+(def ^:private ^:const N_GRADS_3D 12)
+(def ^:private ^:const NORMALIZER_3D 0.2781926117527186)
+
+(defn- simplex-grad3 [seed xsvp ysvp zsvp dx dy dz]
+  (let [^doubles grads gradients-3d
+        hash (bit-and (bit-xor (long seed) (long xsvp) (long ysvp) (long zsvp)) 0x7FFFFFFF)
+        gi (unchecked-int (unchecked-multiply-int (mod hash N_GRADS_3D) 3))
+        dx (double dx) dy (double dy) dz (double dz)
+        a (- RSQUARED_3D (+ (* dx dx) (* dy dy) (* dz dz)))]
+    (if (< a 0.0)
+      0.0
+      (let [a2 (* a a)]
+        (* a2 a2
+           (+ (* (aget grads gi) dx)
+              (* (aget grads (inc gi)) dy)
+              (* (aget grads (+ gi 2)) dz)))))))
+
+(defn- simplex3d-vertex [seed xsb ysb zsb xf yf zf dxs dys dzs]
+  (let [xfd (- (double xf) (double dxs))
+        yfd (- (double yf) (double dys))
+        zfd (- (double zf) (double dzs))
+        t (* (+ xfd yfd zfd) UNSKEW_3D)
+        dx (+ xfd t) dy (+ yfd t) dz (+ zfd t)]
+    (simplex-grad3 seed (+ (long xsb) (long dxs))
+                   (+ (long ysb) (long dys))
+                   (+ (long zsb) (long dzs))
+                   dx dy dz)))
+
+(defn simplex3d
+  "3D OpenSimplex2S noise. Returns a double in [-1, 1].
+  Optionally accepts {:seed n}."
+  ([x y z]
+   (simplex3d x y z nil))
+  ([x y z opts]
+   (let [seed (long (get opts :seed 0))
+         x (double x) y (double y) z (double z)
+         s (* SKEW_3D (+ x y z))
+         xs (+ x s) ys (+ y s) zs (+ z s)
+         xsb (long (Math/floor xs))
+         ysb (long (Math/floor ys))
+         zsb (long (Math/floor zs))
+         xf (- xs xsb) yf (- ys ysb) zf (- zs zsb)
+         v (fn [dxs dys dzs]
+             (simplex3d-vertex seed xsb ysb zsb xf yf zf dxs dys dzs))
+         value (+ (v 0 0 0) (v 1 0 0) (v 0 1 0) (v 1 1 0)
+                  (v 0 0 1) (v 1 0 1) (v 0 1 1) (v 1 1 1))]
+     (* value (/ 1.0 NORMALIZER_3D)))))
+
 ;; --- visual preview ---
 
 (defn preview
@@ -275,6 +425,11 @@
   (fbm perlin2d 1.5 2.3 {:octaves 6})
   (turbulence perlin2d 1.5 2.3 {:octaves 4})
   (ridge perlin2d 1.5 2.3 {:octaves 4})
+  (simplex2d 1.5 2.3)
+  (simplex2d 1.5 2.3 {:seed 42})
+  (simplex3d 1.5 2.3 0.5)
+  (fbm simplex2d 1.5 2.3 {:octaves 6})
   (preview perlin2d)
-  (preview (fn [x y] (fbm perlin2d x y {:octaves 6})))
+  (preview simplex2d)
+  (preview (fn [x y] (fbm simplex2d x y {:octaves 6})))
   )

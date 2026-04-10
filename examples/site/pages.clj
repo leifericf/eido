@@ -522,6 +522,16 @@
 (noise/fbm noise/perlin2d x y
   {:octaves 4 :seed 42})"]]
        [:p "The " [:code ":seed"] " controls which particular landscape you get. Same seed, same landscape. The " [:code ":octaves"] " parameter in " [:code "fbm"] " adds layers of detail — like zooming into a coastline where you see detail at every scale."]
+       [:h4 "Simplex noise"]
+       [:p "OpenSimplex2 has fewer directional artifacts than Perlin — smoother, more organic patterns. Same API, drop-in replacement:"]
+       [:pre [:code
+              "(noise/simplex2d x y)                  ;; 2D simplex noise
+(noise/simplex3d x y z)                ;; 3D simplex noise
+(noise/simplex2d x y {:seed 42})       ;; seeded
+
+;; Works with all fractal variants:
+(noise/fbm noise/simplex2d x y {:octaves 6})
+(noise/turbulence noise/simplex2d x y {:octaves 4})"]]
        [:h4 "Noise preview"]
        [:p "Tweak noise parameters and see the result instantly at the REPL:"]
        [:pre [:code

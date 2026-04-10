@@ -102,6 +102,63 @@
 
 ;; --- preview ---
 
+;; --- simplex2d ---
+
+(deftest simplex2d-range-test
+  (testing "simplex2d values are in [-1, 1]"
+    (let [values (for [x (range 0 10 0.1)
+                       y (range 0 10 0.1)]
+                   (noise/simplex2d x y))]
+      (is (every? #(<= -1.0 % 1.0) values)))))
+
+(deftest simplex2d-deterministic-test
+  (testing "same input produces same output"
+    (is (= (noise/simplex2d 1.5 2.3) (noise/simplex2d 1.5 2.3)))))
+
+(deftest simplex2d-variation-test
+  (testing "different coordinates produce different values"
+    (is (not= (noise/simplex2d 1.0 2.0) (noise/simplex2d 3.0 4.0)))))
+
+(deftest simplex2d-continuity-test
+  (testing "nearby points have similar values"
+    (let [v1 (noise/simplex2d 1.0 1.0)
+          v2 (noise/simplex2d 1.001 1.001)]
+      (is (< (Math/abs (- v1 v2)) 0.01)))))
+
+(deftest simplex2d-seeded-test
+  (testing "different seeds produce different fields"
+    (is (not= (noise/simplex2d 1.5 2.3 {:seed 42})
+              (noise/simplex2d 1.5 2.3 {:seed 99}))))
+  (testing "same seed is reproducible"
+    (is (= (noise/simplex2d 1.5 2.3 {:seed 42})
+           (noise/simplex2d 1.5 2.3 {:seed 42})))))
+
+;; --- simplex3d ---
+
+(deftest simplex3d-range-test
+  (testing "simplex3d values are in [-1, 1]"
+    (let [values (for [x (range 0 5 0.3)
+                       y (range 0 5 0.3)
+                       z (range 0 5 0.3)]
+                   (noise/simplex3d x y z))]
+      (is (every? #(<= -1.0 % 1.0) values)))))
+
+(deftest simplex3d-deterministic-test
+  (testing "same input produces same output"
+    (is (= (noise/simplex3d 1.5 2.3 0.7) (noise/simplex3d 1.5 2.3 0.7)))))
+
+(deftest simplex-fbm-compatibility-test
+  (testing "simplex2d works with fbm"
+    (let [v (noise/fbm noise/simplex2d 1.5 2.3 {:octaves 4})]
+      (is (number? v))
+      (is (<= -1.0 v 1.0))))
+  (testing "simplex2d works with turbulence"
+    (let [v (noise/turbulence noise/simplex2d 1.5 2.3 {:octaves 4})]
+      (is (number? v))
+      (is (>= v 0.0)))))
+
+;; --- preview ---
+
 (deftest preview-test
   (testing "returns a BufferedImage"
     (let [img (noise/preview noise/perlin2d)]

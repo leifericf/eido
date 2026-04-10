@@ -4,7 +4,7 @@
   circle packing, subdivision, series, cellular automata, and boids.
 
   This namespace re-exports all public vars from:
-    eido.gen.noise     — Perlin noise (2D/3D, FBM, turbulence, ridge)
+    eido.gen.noise     — Perlin & simplex noise (2D/3D, FBM, turbulence, ridge)
     eido.gen.flow      — noise-based flow fields
     eido.gen.contour   — marching squares contour generation
     eido.gen.scatter   — distribution generators (grid, Poisson, noise-field)
@@ -52,6 +52,8 @@
 ;; noise
 (import-fn noise/perlin2d)
 (import-fn noise/perlin3d)
+(import-fn noise/simplex2d)
+(import-fn noise/simplex3d)
 (import-fn noise/fbm)
 (import-fn noise/turbulence)
 (import-fn noise/ridge)

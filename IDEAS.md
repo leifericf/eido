@@ -45,19 +45,6 @@ A recurring theme in generative art: not total chaos, but precisely calibrated d
 
 ## Noise
 
-### Simplex noise
-
-Eido has Perlin noise (2D, 3D, FBM, turbulence, ridge). Simplex noise has fewer directional artifacts, better scaling properties, and is the preferred choice for many artists. Both should be available.
-
-**What to add:**
-- `noise/simplex2d`, `noise/simplex3d`
-- Simplex-based FBM variant
-
-**Implementation notes:**
-- The original simplex noise patent (US 6,867,776) expired January 2022. However, prefer OpenSimplex2 — a clean public-domain algorithm specifically designed as an unencumbered alternative. Well-documented, translates directly to Clojure/Java.
-- ~150-200 lines for 2D+3D. Pure math, no dependencies. Uses a different gradient table and simplex grid instead of Perlin's hypercube grid.
-- FBM variant: same octave-layering pattern as existing `noise/fbm`, just swap the base noise function. Could generalize `fbm` to accept a noise function parameter.
-
 ### 4D noise
 
 Essential for seamlessly looping animated noise (use the 4th dimension as a time loop) and for generating tileable patterns.
