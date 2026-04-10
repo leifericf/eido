@@ -2,6 +2,7 @@
   "Circle packing: variable-radius non-overlapping circle placement.
   Uses greedy rejection sampling with spatial grid acceleration."
   (:require
+    [eido.color.palette :as palette]
     [eido.gen.prob :as prob])
   (:import
     [java.awt.geom Area GeneralPath]))
@@ -155,7 +156,7 @@
         bounds (.getBounds2D area)
         bx (.getX bounds) by (.getY bounds)
         bw (.getWidth bounds) bh (.getHeight bounds)]
-    (circle-pack bx by bw bh
+    (circle-pack [bx by bw bh]
       (assoc opts :bounds-fn (fn [x y] (.contains area (double x) (double y)))))))
 
 ;; --- conversion to scene nodes ---
@@ -186,7 +187,7 @@
   ([circles palette weights seed style]
    (let [n (count circles)
          colors (if weights
-                  (eido.color.palette/weighted-sample palette weights n seed)
+                  (palette/weighted-sample palette weights n seed)
                   (mapv #(nth palette (mod % (count palette))) (range n)))]
      (mapv (fn [{[x y] :center r :radius} color]
              (merge {:node/type :shape/circle :circle/center [x y]
@@ -194,7 +195,7 @@
            circles colors))))
 
 (comment
-  (count (circle-pack 0 0 200 200 {:seed 42}))
-  (circle-pack 0 0 100 100 {:min-radius 5 :max-radius 20 :seed 42})
-  (pack->nodes (circle-pack 0 0 100 100 {:max-circles 5 :seed 42})
+  (count (circle-pack [0 0 200 200] {:seed 42}))
+  (circle-pack [0 0 100 100] {:min-radius 5 :max-radius 20 :seed 42})
+  (pack->nodes (circle-pack [0 0 100 100] {:max-circles 5 :seed 42})
                {:style {:style/fill [:color/rgb 200 50 50]}}))
