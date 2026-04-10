@@ -154,18 +154,19 @@
 (defn render-editions
   "Renders a batch of editions from a series spec.
   opts:
-    :spec        — parameter spec map (as for series-params)
-    :master-seed — master seed for the series
-    :start       — first edition number (inclusive)
-    :end         — last edition number (exclusive)
-    :scene-fn    — (fn [params edition-number] scene-map)
-    :output-dir  — directory to write files into
-    :format      — :png (default) or :svg
-    :render-opts — optional map passed to eido.core/render (e.g. {:scale 2})
-    :traits      — optional trait buckets for derive-traits
+    :spec           — parameter spec map (as for series-params)
+    :master-seed    — master seed for the series
+    :start          — first edition number (inclusive)
+    :end            — last edition number (exclusive)
+    :scene-fn       — (fn [params edition-number] scene-map)
+    :output-dir     — directory to write files into
+    :format         — :png (default) or :svg
+    :render-opts    — optional map passed to eido.core/render (e.g. {:scale 2})
+    :traits         — optional trait buckets for derive-traits
+    :emit-manifest? — write per-edition .edn sidecar manifests (default false)
   Returns a vector of {:edition n :params params :traits traits :file path}."
   [{:keys [spec master-seed start end scene-fn output-dir
-           format render-opts traits]}]
+           format render-opts traits emit-manifest?]}]
   (let [render-fn (requiring-resolve 'eido.core/render)
         fmt       (or format :png)
         dir       (java.io.File. ^String output-dir)]
@@ -178,7 +179,11 @@
                     ext      (name fmt)
                     filename (str "edition-" edition "." ext)
                     filepath (str output-dir "/" filename)
-                    opts     (merge render-opts {:output filepath})]
+                    opts     (cond-> (merge render-opts {:output filepath})
+                               emit-manifest?
+                               (assoc :emit-manifest? true
+                                      :seed (edition-seed master-seed edition)
+                                      :params params))]
                 (render-fn scene opts)
                 (cond-> {:edition edition
                          :params  params

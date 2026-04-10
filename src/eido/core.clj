@@ -12,6 +12,7 @@
     [eido.engine.render :as render]
     [eido.engine.svg :as svg]
     [eido.io.polyline :as polyline]
+    [eido.manifest :as manifest]
     [eido.validate :as validate])
   (:import
     [java.awt Color Graphics2D]
@@ -239,7 +240,8 @@
   "Renders a scene and writes to file. Format detected from extension.
   Supported formats: PNG, JPEG, GIF, BMP, TIFF, SVG.
   Opts: :format, :quality (JPEG), :scale, :transparent-background,
-        :dpi (PNG/TIFF), :tiff/compression (:lzw :deflate :none)."
+        :dpi (PNG/TIFF), :tiff/compression (:lzw :deflate :none),
+        :emit-manifest? (write EDN sidecar for reproducibility)."
   ([scene path]
    (render-to-file scene path {}))
   ([scene path opts]
@@ -262,7 +264,22 @@
 
            (throw (ex-info "Unsupported export format"
                            {:path path :format format})))))
+     (when (:emit-manifest? opts)
+       (manifest/write-manifest!
+         {:scene       scene
+          :output-path path
+          :render-opts opts
+          :seed        (:seed opts)
+          :params      (:params opts)}))
      path)))
+
+(defn render-from-manifest
+  "Reads a manifest EDN file and re-renders the scene using stored options.
+  Override keys in opts to change output path, format, etc."
+  ([path]
+   (manifest/render-from-manifest path))
+  ([path override-opts]
+   (manifest/render-from-manifest path override-opts)))
 
 (defn- pad-index
   "Zero-pads an index to the given width."
