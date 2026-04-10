@@ -63,33 +63,27 @@
   "Returns boids within radius of pos, excluding self (by :id)."
   [{:keys [^objects grid gw gh cell-size bx by]} pos radius self-id]
   (let [[px py] pos
-        r (double radius)
+        r   (double radius)
         r-sq (* r r)
-        cs (double cell-size)
-        cx (int (/ (- (double px) bx) cs))
-        cy (int (/ (- (double py) by) cs))
-        rc (int (Math/ceil (/ r cs)))]
-    (loop [dx (- rc) result (transient [])]
-      (if (> dx rc)
-        (persistent! result)
-        (let [result (loop [dy (- rc) result result]
-                       (if (> dy rc)
-                         result
-                         (let [nx (+ cx dx) ny (+ cy dy)]
-                           (if (and (>= nx 0) (< nx (int gw))
-                                    (>= ny 0) (< ny (int gh)))
-                             (let [boids-in-cell (aget grid (+ (* ny (int gw)) nx))]
-                               (recur (inc dy)
-                                      (if boids-in-cell
-                                        (reduce (fn [acc b]
-                                                  (if (and (not= (:id b) self-id)
-                                                           (<= (v-dist-sq pos (:pos b)) r-sq))
-                                                    (conj! acc b)
-                                                    acc))
-                                                result boids-in-cell)
-                                        result)))
-                             (recur (inc dy) result)))))]
-          (recur (inc dx) result))))))
+        cs  (double cell-size)
+        cx  (int (/ (- (double px) bx) cs))
+        cy  (int (/ (- (double py) by) cs))
+        rc  (int (Math/ceil (/ r cs)))
+        gw  (int gw)
+        gh  (int gh)]
+    (into []
+          (comp cat
+                (filter (fn [b]
+                          (and (not= (:id b) self-id)
+                               (<= (v-dist-sq pos (:pos b)) r-sq)))))
+          (for [dx (range (- rc) (inc rc))
+                dy (range (- rc) (inc rc))
+                :let [nx (+ cx dx) ny (+ cy dy)]
+                :when (and (>= nx 0) (< nx gw)
+                           (>= ny 0) (< ny gh))
+                :let [cell (aget grid (+ (* ny gw) nx))]
+                :when cell]
+            cell))))
 
 ;; --- steering behaviors ---
 
