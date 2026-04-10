@@ -84,7 +84,7 @@
 
 (deftest rd-grid-dimensions-test
   (testing "RD grid has correct dimensions"
-    (let [g (ca/rd-grid 20 15 :center-seed 42)]
+    (let [g (ca/rd-grid 20 15 :center 42)]
       (is (= 20 (:w g)))
       (is (= 15 (:h g)))
       (is (= 300 (alength ^doubles (:a g))))
@@ -92,35 +92,35 @@
 
 (deftest rd-grid-initial-concentrations-test
   (testing "A starts at 1.0, B starts near 0.0 (except seed area)"
-    (let [g (ca/rd-grid 20 20 :center-seed 42)
+    (let [g (ca/rd-grid 20 20 :center 42)
           ^doubles a (:a g)]
       ;; Corner should be A=1.0
       (is (> (aget a 0) 0.9)))))
 
 (deftest rd-step-preserves-dimensions-test
   (testing "RD step preserves grid dimensions"
-    (let [g  (ca/rd-grid 20 20 :center-seed 42)
+    (let [g  (ca/rd-grid 20 20 :center 42)
           g2 (ca/rd-step g (:coral ca/rd-presets))]
       (is (= 20 (:w g2)))
       (is (= 20 (:h g2))))))
 
 (deftest rd-run-produces-patterns-test
   (testing "after many steps B concentration is nonzero somewhere"
-    (let [g  (ca/rd-grid 30 30 :center-seed 42)
+    (let [g  (ca/rd-grid 30 30 :center 42)
           g' (ca/rd-run g (:coral ca/rd-presets) 100)
           ^doubles b (:b g')]
       (is (some #(> % 0.01) (seq b))))))
 
 (deftest rd-determinism-test
   (testing "same seed and params produce same result"
-    (let [g1 (ca/rd-run (ca/rd-grid 20 20 :center-seed 42) (:coral ca/rd-presets) 50)
-          g2 (ca/rd-run (ca/rd-grid 20 20 :center-seed 42) (:coral ca/rd-presets) 50)]
+    (let [g1 (ca/rd-run (ca/rd-grid 20 20 :center 42) (:coral ca/rd-presets) 50)
+          g2 (ca/rd-run (ca/rd-grid 20 20 :center 42) (:coral ca/rd-presets) 50)]
       (is (java.util.Arrays/equals ^doubles (:a g1) ^doubles (:a g2)))
       (is (java.util.Arrays/equals ^doubles (:b g1) ^doubles (:b g2))))))
 
 (deftest rd->nodes-test
   (testing "produces rect scene nodes"
-    (let [g     (ca/rd-grid 10 10 :center-seed 42)
+    (let [g     (ca/rd-grid 10 10 :center 42)
           nodes (ca/rd->nodes g 5 (fn [_a b] (if (> b 0.1)
                                                 [:color/rgb 0 0 0]
                                                 [:color/rgb 255 255 255])))]

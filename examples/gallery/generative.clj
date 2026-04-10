@@ -88,7 +88,7 @@
   (let [gw 120 gh 120
         cell-size 5
         w (* gw cell-size) h (* gh cell-size)
-        init (ca/rd-grid gw gh :center-seed 42)
+        init (ca/rd-grid gw gh :center 42)
         params (:coral ca/rd-presets)
         ;; Pre-compute states at intervals
         states (loop [g init i 0 acc []]
@@ -278,7 +278,7 @@
                   :tags   ["reaction-diffusion" "color"]}}
   rd-spots []
   (let [gw 200 gh 200 cs 3
-        g (ca/rd-run (ca/rd-grid gw gh :center-seed 77)
+        g (ca/rd-run (ca/rd-grid gw gh :center 77)
             (:spots ca/rd-presets) 2000)]
     {:image/size [(* gw cs) (* gh cs)]
      :image/background [:color/rgb 210 180 130]
@@ -512,7 +512,7 @@
                   :tags   ["reaction-diffusion" "animation"]}}
   mitosis []
   (let [gw 150 gh 150 cs 3
-        init (ca/rd-grid gw gh :center-seed 42)
+        init (ca/rd-grid gw gh :center 42)
         params (:mitosis ca/rd-presets)
         states (loop [g init i 0 acc []]
                  (if (>= i 800)
@@ -800,7 +800,7 @@
                   :tags   ["reaction-diffusion" "color"]}}
   rd-ripple []
   (let [gw 200 gh 150 cs 3
-        g (ca/rd-run (ca/rd-grid gw gh :center-seed 42)
+        g (ca/rd-run (ca/rd-grid gw gh :center 42)
             (:ripple ca/rd-presets) 1200)]
     {:image/size [(* gw cs) (* gh cs)]
      :image/background [:color/rgb 5 10 30]

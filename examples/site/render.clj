@@ -564,7 +564,7 @@
                        {:style/fill [:color/rgb 30 30 30]})})
 
      "docs-rd-coral.png"
-     (let [g (ca/rd-run (ca/rd-grid 80 80 :center-seed 42)
+     (let [g (ca/rd-run (ca/rd-grid 80 80 :center 42)
                (:coral ca/rd-presets) 400)]
        {:image/size [400 400] :image/background [:color/rgb 10 20 40]
         :image/nodes (ca/rd->nodes g 5

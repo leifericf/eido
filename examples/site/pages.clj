@@ -968,7 +968,7 @@
        [:p "Two invisible chemicals spread across a surface and react with each other, creating organic spots, stripes, and coral-like growth. This is the math behind animal skin patterns and mineral formations. Eido includes named presets so you can jump right in:"]
        [:pre {:data-img "docs-rd-coral.png"} [:code
               ";; Grow coral-like patterns from a center seed
-(let [grid   (ca/rd-grid 80 80 :center-seed 42)
+(let [grid   (ca/rd-grid 80 80 :center 42)
       result (ca/rd-run grid (:coral ca/rd-presets) 400)]
   (ca/rd->nodes result 5
     (fn [a b]  ;; a and b are the two chemical concentrations

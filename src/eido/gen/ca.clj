@@ -97,7 +97,7 @@
 
 (defn rd-grid
   "Creates initial reaction-diffusion concentration grids.
-  init: :center-seed (circle of B in center), :random-seeds.
+  init: :center (circle of B in center), :random (scattered seeds).
   Returns {:a double-array :b double-array :w w :h h}."
   [w h init seed]
   (let [w (int w) h (int h)
@@ -105,7 +105,7 @@
         a (double-array n 1.0)
         b (double-array n 0.0)]
     (case init
-      :center-seed
+      :center
       (let [cx (quot w 2) cy (quot h 2)
             r  (max 2 (quot (min w h) 10))
             rng (prob/make-rng seed)]
@@ -121,7 +121,7 @@
                       (aset b idx (+ 0.5 (* 0.1 (.nextDouble rng))))
                       (aset a idx 0.5)))))))))
 
-      :random-seeds
+      :random
       (let [rng (prob/make-rng seed)]
         (dotimes [_ (max 1 (quot n 50))]
           (let [x (.nextInt rng w)
@@ -199,6 +199,6 @@
   (def g (ca-grid 10 10 :random 42))
   (ca-step g :life)
   (ca-run g :life 5)
-  (def rd (rd-grid 50 50 :center-seed 42))
+  (def rd (rd-grid 50 50 :center 42))
   (rd-step rd (:coral rd-presets))
   (rd-run rd (:coral rd-presets) 100))
