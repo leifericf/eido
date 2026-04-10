@@ -227,6 +227,69 @@ directly using the migration examples below.
   docstrings. These appear in the auto-generated API Reference, making it
   easier to understand what each namespace provides.
 
+### New modules
+
+- **`eido.manifest`** — Render manifest for reproducibility. Write a
+  machine-readable EDN sidecar alongside any render with
+  `{:emit-manifest? true}`. Contains the full scene map, render opts,
+  Eido version (tag + SHA), project git SHA, timestamp, and optional
+  seed/params. `render-from-manifest` re-renders from a manifest file.
+- **`eido.io.plotter`** — Per-layer SVG export for multi-pen plotters.
+  `export-layers` splits a scene by stroke color and writes one SVG per
+  pen, with travel optimization and optional combined preview.
+
+### New features
+
+- **Render manifest** — `render-to-file` and `render` accept
+  `:emit-manifest? true` to write an EDN sidecar alongside the output.
+  `render-from-manifest` re-renders from a stored manifest. Integrated
+  into `render-editions` for per-edition manifests.
+- **Batch fabrication export** — `export-edition-package` wraps
+  `render-editions` with manifests enabled and generates an optional
+  contact sheet (grid of thumbnails) for proofing.
+- **Save-interesting-seed** — `save-seed!` appends timestamped seed
+  bookmarks to an EDN log file during REPL exploration. `load-seeds`
+  reads them back.
+- **Stability metadata** — Namespaces can carry `^{:stability
+  :provisional}` metadata. The API Reference renders a "Provisional"
+  badge (blue-gray pill) on functions in provisional namespaces.
+  `eido.gen.particle` and `eido.texture` are currently provisional.
+- **Version resource** — `resources/eido/version.edn` provides Eido's
+  git tag and SHA at runtime for manifest embedding.
+
+### Bug fixes
+
+- Fix `render-to-svg` and `render-to-file` stripping plotter SVG opts
+  (`:stroke-only`, `:group-by-stroke`, `:deduplicate`, `:optimize-travel`)
+  via overly restrictive `select-keys`.
+- Fix `docs-scenes` calling `circle-pack` and `subdivide` with old
+  positional bounds format (pre-existing, from API consistency changes).
+
+### Docs
+
+- Add 7 workflow guide pages: Sketching & Iteration, Long-Form Editions,
+  Plotter Art, Print Production, Animation & Screen, 3D Generative Art,
+  Color & Palette Development. Each is a separate page with sidebar
+  navigation and rendered code previews.
+- Add "Scope & Limitations" page — honest statement of what Eido does
+  and doesn't do (no GPU, no GUI, no CAD, no audio, no photorealistic 3D).
+- Add onboarding-by-intent cards to Guide intro — 7 "I want to..."
+  cards linking artistic goals to workflows and recipes.
+- Add "Stability" section to Guide explaining stable vs provisional APIs.
+- Add `eido.texture` to API Reference namespace groups (was missing).
+- Fix `html-page` depth prefix to support pages nested more than one
+  directory deep (workflow subpages at depth 2).
+
+### Tests
+
+- Add 14 end-to-end golden workflow tests covering all 7 workflows and
+  7 I/O formats (PNG/DPI, SVG, TIFF compression, JPEG quality, polylines,
+  animated SVG, PNG sequence).
+- Add manifest roundtrip tests (write, read, render-from-manifest).
+- Add plotter export tests (multi-pen, single-pen, preview toggle).
+- Add export-edition-package test (editions + manifests + contact sheet).
+- Add save-seed roundtrip and missing-file tests.
+
 ## v1.0.0-beta4 — Composition, Units & Export
 
 ### New modules
