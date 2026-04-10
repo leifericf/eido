@@ -25,21 +25,16 @@
   "Counts live neighbors of cell (x, y) with wrapping."
   [^booleans grid w h x y]
   (let [w (int w) h (int h) x (int x) y (int y)]
-    (loop [dx -1 cnt 0]
-      (if (> dx 1)
-        cnt
-        (let [cnt (loop [dy -1 cnt cnt]
-                    (if (> dy 1)
-                      cnt
-                      (if (and (zero? dx) (zero? dy))
-                        (recur (inc dy) cnt)
-                        (let [nx (mod (+ x dx) w)
-                              ny (mod (+ y dy) h)]
-                          (recur (inc dy)
-                                 (if (aget grid (+ (* ny w) nx))
-                                   (inc cnt)
-                                   cnt))))))]
-          (recur (inc dx) cnt))))))
+    (reduce (fn [cnt [dx dy]]
+              (let [nx (mod (+ x dx) w)
+                    ny (mod (+ y dy) h)]
+                (if (aget grid (+ (* ny w) nx))
+                  (inc cnt)
+                  cnt)))
+            0
+            (for [dx [-1 0 1] dy [-1 0 1]
+                  :when (not (and (zero? dx) (zero? dy)))]
+              [dx dy]))))
 
 (defn- resolve-rule
   "Returns [birth-set survive-set] from a rule spec."
