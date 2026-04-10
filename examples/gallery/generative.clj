@@ -35,7 +35,7 @@
   (let [w 600 h 600
         pal    (:sunset palette/palettes)
         weights [3 2 2 1 5]
-        circles (circle/circle-pack 20 20 560 560
+        circles (circle/circle-pack [20 20 560 560]
                   {:min-radius 4 :max-radius 45 :padding 2
                    :max-circles 300 :seed 42})
         colors  (palette/weighted-sample pal weights (count circles) 42)]
