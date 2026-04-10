@@ -1,5 +1,54 @@
 # Changes
 
+## Unreleased
+
+### New modules
+
+- **`eido.texture`** — Texture and material helpers for organic rendering. `layered` produces translucent multi-copy groups; `watercolor` wraps it with jitter deformation for watercolor wash simulation.
+
+### New features
+
+- **OKLAB/OKLCH color space** — Perceptually uniform color manipulation. `rgb->oklab`, `rgb->oklch` for conversion; `oklab`, `oklch` constructors; `lerp-oklab` for perceptual interpolation; `contrast` (WCAG 2.0 luminance ratio); `perceptual-distance` (deltaE in OKLAB).
+- **Keyword color shorthand** — Use bare keywords (`:red`, `:cornflowerblue`) anywhere a color is accepted, as shorthand for `[:color/name "red"]`. Supported throughout the rendering pipeline.
+- **OpenSimplex2 noise** — `simplex2d`, `simplex3d`, `simplex4d` — fewer directional artifacts than Perlin, drop-in replacements. Works with `fbm`, `turbulence`, `ridge`.
+- **4D Perlin noise** — `perlin4d` for seamless looping animated noise via the `(cos t, sin t)` trick.
+- **Flow field collision detection** — `:collision-distance` option in `flow-field` uses spatial hashing to enforce minimum spacing between streamlines.
+- **Douglas-Peucker simplification** — `simplify` and `simplify-commands` reduce point count while preserving shape.
+- **Chaikin smoothing** — `chaikin-commands` corner-cutting produces rounder, more uniform curves than Catmull-Rom.
+- **Point-in-polygon** — `contains-point?` ray-casting test for spatial queries and clipping.
+- **Polygon inset** — `inset` shrinks closed polygons inward by a distance — useful for margins and nested compositions.
+- **Curve splitting** — `split-at-length` divides paths into equal arc-length segments.
+- **Path interpolation** — `interpolate` blends between two paths at parameter t.
+- **Path clipping** — `trim-to-bounds` clips paths to a bounding rectangle using Cohen-Sutherland.
+- **Distribution specs** — `sample` and `sample-n` accept data-driven distribution specs (`:uniform`, `:gaussian`, `:choice`, `:weighted-choice`, `:boolean`, `:pareto`, `:triangular`, `:eased`). Same spec format used by `series-params`.
+- **Pareto and triangular distributions** — `pareto` and `triangular` convenience functions.
+- **Geometric distributions** — `on-circle`, `in-circle`, `on-sphere`, `in-sphere` for spatial sampling; `scatter-on-circle` and `scatter-in-circle` for batch sampling.
+- **Palette manipulation** — `warmer`, `cooler`, `muted`, `vivid`, `darker`, `lighter`, and `adjust` for bulk palette transforms.
+- **Palette analysis** — `min-contrast` (minimum pairwise WCAG contrast), `sort-by-lightness` (OKLAB perceptual ordering).
+- **Palette extraction** — `from-image` extracts dominant colors via k-means clustering in OKLAB space.
+- **Visual preview** — `palette/swatch` and `noise/preview` return BufferedImages for REPL inspection.
+- **Media presets** — `ink-preset`, `pencil-preset`, `watercolor-preset` return composable stylize step vectors.
+- **Scatter jitter** — `scatter/jitter` displaces point positions by Gaussian offset.
+- **Non-linear gradients** — `gradient-map` accepts `:easing` option for non-linear interpolation.
+- **Seed grid** — `seed-grid` renders a grid of series editions as a single image for REPL exploration.
+- **Parameter grid** — `param-grid` renders a parameter sweep for isolating design decisions.
+- **Trait summary** — `trait-summary` computes trait frequencies across editions.
+- **Batch rendering** — `render-editions` renders and exports a range of editions with metadata.
+- **Plotter SVG** — `:stroke-only`, `:group-by-stroke`, `:deduplicate`, `:optimize-travel` options for pen plotter output.
+- **Scene margin** — `scene/with-margin` wraps nodes in a clipped inset rectangle.
+
+### Bug fixes
+
+- Fix `op-start-point` destructuring in SVG plotter travel optimizer — returned `[[x y] nil]` instead of `[x y]` for path ops
+
+### Internal
+
+- Replace atoms with reduce in `group-ops-by-stroke` (idiomatic Clojure)
+- Replace volatiles with reduce in Douglas-Peucker `simplify`
+- Use `seq` instead of `empty?` for collection emptiness checks (nil punning)
+- Remove commas from sequential collections in noise gradient arrays
+- Add missing `gen` facade re-exports for `noise/preview` and `series/render-editions`
+
 ## v1.0.0-beta2 — Generative Art & Artist Experience
 
 ### New modules
