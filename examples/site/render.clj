@@ -887,7 +887,7 @@
   "Wraps content in a full HTML page with nav, footer, and styles.
   :depth controls relative path prefix (0 = root, 1 = one dir deep)."
   [{:keys [title active-page depth] :or {depth 0}} & body]
-  (let [prefix (if (zero? depth) "." "..")]
+  (let [prefix (if (zero? depth) "." (str/join "/" (repeat depth "..")))]
     (str
       "<!DOCTYPE html>\n"
       (h/html
@@ -911,6 +911,9 @@
              [:li [:a {:href (str prefix "/guide/")
                        :style (when (= active-page :docs) "color: #e0ddd5")}
                    "Guide"]]
+             [:li [:a {:href (str prefix "/workflows/")
+                       :style (when (= active-page :workflows) "color: #e0ddd5")}
+                   "Workflows"]]
              [:li [:a {:href (str prefix "/api/")
                        :style (when (= active-page :api) "color: #e0ddd5")}
                    "API"]]
@@ -1301,6 +1304,41 @@ document.querySelectorAll('.arch-content pre code').forEach(function(el) {
 });
 "))])))
 
+;; --- Workflow pages ---
+
+(defn generate-workflows-index-html
+  "Generates the workflows landing page with cards for each workflow."
+  []
+  (html-page {:title "Workflows" :active-page :workflows :depth 1}
+    [:h1.page-title "Workflows"]
+    [:p.page-subtitle "End-to-end guides for common generative art workflows"]
+    [:div.workflow-grid
+     (for [{:keys [slug title desc]} pages/workflow-pages]
+       [:a.workflow-card {:href (str slug "/")}
+        [:div.workflow-card-title title]
+        [:div.workflow-card-desc desc]])]))
+
+(defn generate-workflow-page-html
+  "Generates a single workflow page with sidebar navigation."
+  [{:keys [title sections-fn]}]
+  (let [sections (sections-fn)]
+    (html-page {:title title :active-page :workflows :depth 2}
+      [:h1.page-title title]
+      [:div.arch-layout
+       [:nav.arch-sidebar
+        (for [{:keys [id title]} sections]
+          [:div [:a {:href (str "#" id)} title]])]
+       [:div.arch-content
+        (for [{:keys [id title content]} sections]
+          [:section.arch-section {:id id}
+           [:h2 title]
+           (insert-doc-previews content)])]]
+      [:script (h/raw (str highlight-clj-js "
+document.querySelectorAll('.arch-content pre code').forEach(function(el) {
+  el.innerHTML = highlightClj(el.textContent);
+});
+"))])))
+
 ;; --- Site builder ---
 
 (defn write-page! [out-dir path html]
@@ -1345,6 +1383,14 @@ document.querySelectorAll('.arch-content pre code').forEach(function(el) {
     (println "Generating architecture page...")
     (write-page! out-dir "architecture/index.html"
       (generate-architecture-html))
+
+    (println "Generating workflows...")
+    (write-page! out-dir "workflows/index.html"
+      (generate-workflows-index-html))
+    (doseq [{:keys [slug] :as page} pages/workflow-pages]
+      (println "  Generating workflow:" slug "...")
+      (write-page! out-dir (str "workflows/" slug "/index.html")
+        (generate-workflow-page-html page)))
 
     ;; CNAME file for custom domain
     (spit (io/file out-dir "CNAME") "eido.leifericf.com")

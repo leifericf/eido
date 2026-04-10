@@ -582,6 +582,27 @@
                              :border-bottom (str "1px solid " (:border colors))
                              :color         (:text-muted colors)}]])
 
+(def workflow-index-styles
+  [[:.workflow-grid {:display               "grid"
+                     :grid-template-columns "repeat(auto-fill, minmax(280px, 1fr))"
+                     :gap                   "1.5rem"
+                     :margin-top            "2rem"}]
+   [:.workflow-card {:display         "block"
+                     :background      (:bg-card colors)
+                     :border          (str "1px solid " (:border colors))
+                     :border-radius   "8px"
+                     :padding         "1.5rem"
+                     :text-decoration "none"
+                     :transition      "border-color 0.2s"}]
+   [".workflow-card:hover" {:border-color (:accent colors)}]
+   [:.workflow-card-title {:font-size     "1.1rem"
+                           :font-weight   "600"
+                           :color         (:text colors)
+                           :margin-bottom "0.5rem"}]
+   [:.workflow-card-desc {:font-size   "0.9rem"
+                          :color       (:text-muted colors)
+                          :line-height "1.6"}]])
+
 (defn site-css []
   (garden/css
     (concat base-styles
@@ -592,4 +613,5 @@
             docs-styles
             api-styles
             architecture-styles
+            workflow-index-styles
             page-title-styles)))
