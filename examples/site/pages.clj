@@ -1115,6 +1115,149 @@
 ;; Validate that all passes reference declared resources
 (resource/validate-pipeline-resources pipeline)"]]]}]}
 
+   {:category "Recipes"
+    :id       "recipes"
+    :intro    "Common creative workflows assembled from Eido's modules. Each recipe is a complete pattern you can adapt — not a single function, but a method."
+    :sections
+    [{:id    "recipe-edition"
+      :title "Long-Form Edition"
+      :content
+      [:div
+       [:p "The canonical workflow for seed-driven generative art (Art Blocks / fxhash style). One algorithm, many unique outputs."]
+       [:pre [:code
+              "(require '[eido.gen.series :as series])
+(require '[eido.gen.prob :as prob])
+(require '[eido.core :as eido])
+
+;; 1. Define what varies across editions
+(def spec
+  {:hue      {:type :uniform :lo 0.0 :hi 360.0}
+   :density  {:type :gaussian :mean 20.0 :sd 5.0}
+   :palette  {:type :choice :options [:sunset :ocean :forest]}
+   :bold?    {:type :boolean :probability 0.3}})
+
+;; 2. Build a scene from sampled parameters
+(defn make-scene [params edition]
+  {:image/size [800 800]
+   :image/background [:color/hsl (:hue params) 0.15 0.95]
+   :image/nodes
+   [{:node/type     :shape/circle
+     :circle/center [400 400]
+     :circle/radius (* 300 (/ (:density params) 40.0))
+     :style/fill    [:color/hsl (:hue params) 0.7 0.5]}]})
+
+;; 3. Render a batch with metadata
+(series/render-editions
+  {:spec spec :master-seed 42
+   :start 0 :end 50
+   :scene-fn make-scene
+   :output-dir \"editions/\"
+   :traits {:density [[15 \"sparse\"] [25 \"medium\"] [100 \"dense\"]]}})"]]
+       [:p "Each edition gets a deterministic, uncorrelated seed. The same master-seed + edition-number always produces the same output. The metadata.edn file records parameters and derived traits for every edition."]]}
+
+     {:id    "recipe-subdivide-pack"
+      :title "Subdivide → Pack → Stylize"
+      :content
+      [:div
+       [:p "A recipe for geometric abstraction: subdivide the canvas, pack circles into cells, assign colors by depth."]
+       [:pre [:code
+              "(require '[eido.gen.subdivide :as subdivide])
+(require '[eido.gen.circle :as circle])
+(require '[eido.color.palette :as palette])
+
+;; 1. Subdivide canvas into cells
+(let [cells (subdivide/subdivide
+              {:x 0 :y 0 :w 800 :h 800}
+              {:max-depth 4 :min-size 80 :seed 42})
+      pal   (:sunset palette/palettes)]
+  ;; 2. Pack circles into each cell
+  (->> cells
+       (mapcat (fn [{:keys [x y w h depth]}]
+                 (let [circles (circle/circle-pack
+                                 {:x x :y y :w w :h h}
+                                 {:min-r 3 :max-r (/ (min w h) 4)
+                                  :max-attempts 500 :seed (hash [x y])})]
+                   ;; 3. Style by subdivision depth
+                   (map (fn [c]
+                          {:node/type     :shape/circle
+                           :circle/center [(:x c) (:y c)]
+                           :circle/radius (:r c)
+                           :style/fill    (nth pal (mod depth (count pal)))
+                           :style/stroke  {:color :black :width 0.5}})
+                        circles))))
+       vec))"]]
+       [:p "This pattern composes three modules (subdivide, circle, palette) into a single visual method. Swap the subdivision for noise-driven regions, or replace circles with hatched rectangles — the structure stays the same."]]}
+
+     {:id    "recipe-flow-path"
+      :title "Flow Field → Path → Texture"
+      :content
+      [:div
+       [:p "Organic line work from noise fields: trace streamlines, smooth them, add texture."]
+       [:pre [:code
+              "(require '[eido.gen.noise :as noise])
+(require '[eido.gen.flow :as flow])
+(require '[eido.path.aesthetic :as aes])
+
+;; 1. Build a flow field from noise
+(let [field (flow/flow-field
+              {:bounds [0 0 800 800]
+               :resolution 20
+               :noise-fn (fn [x y] (noise/fbm x y {:octaves 4 :scale 0.003}))})
+      ;; 2. Trace streamlines
+      paths (:paths field)]
+  ;; 3. Smooth and jitter each path
+  (->> paths
+       (map (fn [path-cmds]
+              {:node/type     :shape/path
+               :path/commands (-> path-cmds
+                                  (aes/smooth-commands {:tension 0.4})
+                                  (aes/jittered-commands {:amount 1.5 :seed 42}))
+               :style/stroke  {:color :black :width 0.8}}))
+       vec))"]]
+       [:p "For plotter output, render with " [:code "{:stroke-only true :group-by-stroke true}"]
+        " to get clean, single-pen SVG layers."]]}
+
+     {:id    "recipe-ca-contour"
+      :title "CA / Reaction-Diffusion → Contour → Palette"
+      :content
+      [:div
+       [:p "Field-driven biological abstraction: simulate, extract contours, map to color."]
+       [:pre [:code
+              "(require '[eido.gen.ca :as ca])
+(require '[eido.gen.contour :as contour])
+(require '[eido.color.palette :as palette])
+
+;; 1. Run Gray-Scott reaction-diffusion
+(let [grid    (ca/rd-grid 200 200)
+      result  (ca/rd-run grid 3000 {:preset :coral})
+      ;; 2. Extract concentration field as a scalar function
+      field-fn (fn [x y]
+                 (let [col (int (/ (* x 200) 800))
+                       row (int (/ (* y 200) 800))]
+                   (aget ^doubles (nth (:v result) (min row 199))
+                         (min col 199))))
+      ;; 3. Contour at threshold levels
+      pal     (:ocean palette/palettes)
+      levels  [0.1 0.2 0.3 0.4 0.5]]
+  (->> levels
+       (map-indexed
+         (fn [i level]
+           (let [contours (contour/contour-lines
+                            {:bounds [0 0 800 800]
+                             :fn field-fn
+                             :level level
+                             :resolution 4})]
+             {:node/type     :group
+              :group/children
+              (mapv (fn [path-cmds]
+                      {:node/type     :shape/path
+                       :path/commands path-cmds
+                       :style/fill    (nth pal (mod i (count pal)))
+                       :style/stroke  {:color :black :width 0.3}})
+                    contours)})))
+       vec))"]]
+       [:p "The reaction-diffusion presets (:coral, :mitosis, :ripple, :spots) each produce distinctive field patterns. Contour extraction turns continuous fields into drawable regions."]]}]}
+
    {:category "Output"
     :id       "output"
     :sections
@@ -1141,6 +1284,44 @@
 :loop false               ;; GIF plays once (default: loops)"]]
        [:p "Render without an output path to get a BufferedImage back for further processing, or use "
         [:code ":format :svg"] " to get an SVG string."]]}
+
+     {:id    "plotter-svg"
+      :title "Plotter-Safe SVG"
+      :content
+      [:div
+       [:p "For pen plotters, use the plotter options to produce clean, stroke-only SVG:"]
+       [:pre [:code
+              ";; Stroke-only: removes all fills, suppresses background
+(eido/render scene {:output \"plotter.svg\" :stroke-only true})
+
+;; Group by stroke color: one <g> per pen/color
+(eido/render scene {:output \"plotter.svg\"
+                    :stroke-only true
+                    :group-by-stroke true})"]]
+       [:p "With " [:code ":group-by-stroke"] ", each stroke color gets its own "
+        [:code "<g>"] " element with an id like " [:code "pen-rgb-0-0-0"]
+        ". Load the SVG in your plotter software and assign each group to a pen."]]}
+
+     {:id    "batch-editions"
+      :title "Batch Edition Rendering"
+      :content
+      [:div
+       [:p "Render many editions at once with " [:code "series/render-editions"] ":"]
+       [:pre [:code
+              "(require '[eido.gen.series :as series])
+
+(series/render-editions
+  {:spec        {:hue {:type :uniform :lo 0 :hi 360}}
+   :master-seed 42
+   :start       0
+   :end         100
+   :scene-fn    (fn [params edition] (make-scene params))
+   :output-dir  \"editions/\"
+   :format      :png          ;; or :svg
+   :render-opts {:scale 2}    ;; passed to eido/render
+   :traits      {:hue [[120 \"cool\"] [240 \"warm\"] [360 \"hot\"]]}})"]]
+       [:p "This writes one file per edition plus a " [:code "metadata.edn"]
+        " containing the parameter values and derived traits for every edition."]]}
 
      {:id    "file-workflow"
       :title "File Workflow"

@@ -30,7 +30,7 @@
 (defn ^{:example {:output "gen-circle-pack.png"
                   :title  "Circle Pack"
                   :desc   "Packed circles with weighted sunset palette — rare accents."
-                  :tags   ["circle-packing" "palette" "color"]}}
+                  :tags   ["circle-packing" "palette" "color" "recipe-pack"]}}
   circle-pack-palette []
   (let [w 600 h 600
         pal    (:sunset palette/palettes)
@@ -55,7 +55,7 @@
 (defn ^{:example {:output "gen-mondrian.png"
                   :title  "Mondrian Grid"
                   :desc   "Recursive subdivision with primary color accents."
-                  :tags   ["subdivision" "color"]}}
+                  :tags   ["subdivision" "color" "recipe-subdivide"]}}
   mondrian []
   (let [w 600 h 600
         rects (subdivide/subdivide 10 10 580 580
@@ -83,7 +83,7 @@
 (defn ^{:example {:output "gen-coral.gif"
                   :title  "Coral Growth"
                   :desc   "Gray-Scott reaction-diffusion at the coral preset."
-                  :tags   ["reaction-diffusion" "animation" "color"]}}
+                  :tags   ["reaction-diffusion" "animation" "color" "recipe-ca"]}}
   coral []
   (let [gw 120 gh 120
         cell-size 5
@@ -148,7 +148,7 @@
 (defn ^{:example {:output "gen-dashed-flow.png"
                   :title  "Dashed Flow"
                   :desc   "Flow field streamlines with dashed + smoothed paths."
-                  :tags   ["flow-field" "dashing" "smoothing" "palette"]}}
+                  :tags   ["flow-field" "dashing" "smoothing" "palette" "recipe-flow"]}}
   dashed-flow []
   (let [w 600 h 600
         paths (flow/flow-field 20 20 560 560
@@ -176,7 +176,7 @@
 (defn ^{:example {:output "gen-series-grid.png"
                   :title  "Series Preview"
                   :desc   "9 editions of a parametric design driven by eido.gen.series."
-                  :tags   ["noise" "color" "math"]}}
+                  :tags   ["noise" "color" "math" "recipe-edition"]}}
   series-grid []
   (let [w 600 h 600
         cell 190
@@ -221,7 +221,7 @@
 (defn ^{:example {:output "gen-subdiv-pack.png"
                   :title  "Subdivided Packing"
                   :desc   "Each subdivision cell filled with a different circle pack and palette."
-                  :tags   ["subdivision" "circle-packing" "palette"]}}
+                  :tags   ["subdivision" "circle-packing" "palette" "recipe-subdivide-pack"]}}
   subdiv-pack []
   (let [w 600 h 600
         rects (subdivide/subdivide 10 10 580 580
@@ -322,7 +322,7 @@
 (defn ^{:example {:output "gen-noise-flow.png"
                   :title  "Painted Flow"
                   :desc   "Flow field streamlines colored by noise, smoothed for a painted feel."
-                  :tags   ["flow-field" "noise" "smoothing" "color"]}}
+                  :tags   ["flow-field" "noise" "smoothing" "color" "recipe-flow"]}}
   noise-flow []
   (let [w 700 h 500
         paths (flow/flow-field 20 20 660 460
