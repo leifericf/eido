@@ -260,7 +260,34 @@
 (color/darken     [:color/name \"red\"] 0.2) ;; darker
 (color/saturate   [:color/name \"red\"] 0.3) ;; more vivid
 (color/rotate-hue [:color/name \"red\"] 120) ;; shift hue
-(color/lerp color-a color-b 0.5)             ;; blend 50/50"]]]}
+(color/lerp color-a color-b 0.5)             ;; blend 50/50"]]
+       [:h4 "Perceptually uniform color (OKLAB / OKLCH)"]
+       [:p "RGB and HSL are device-oriented — equal numerical steps don't produce equal "
+        "visual steps. OKLAB and OKLCH are perceptually uniform: interpolation stays vivid "
+        "instead of passing through muddy grays."]
+       [:pre [:code
+              "[:color/oklab 0.63 0.22 0.13]  ;; L (lightness), a, b
+[:color/oklch 0.63 0.26 29]   ;; L, C (chroma), h (hue degrees)
+
+;; Convenience constructors:
+(color/oklab 0.63 0.22 0.13)
+(color/oklch 0.7 0.15 200)"]]
+       [:p "The real power is in OKLAB interpolation — blending red and cyan in RGB "
+        "produces gray, but in OKLAB the midpoint stays chromatic:"]
+       [:pre {:data-img "docs-oklab-lerp.png"} [:code
+              ";; RGB interpolation (passes through gray):
+(color/lerp :red :cyan 0.5)
+
+;; OKLAB interpolation (stays vivid):
+(color/lerp :red :cyan 0.5 {:space :oklab})
+
+;; Convenience shorthand:
+(color/lerp-oklab :red :cyan 0.5)"]]
+       [:p "Use " [:code "rgb->oklab"] " and " [:code "rgb->oklch"]
+        " to inspect any color in perceptual coordinates:"]
+       [:pre [:code
+              "(color/rgb->oklab 255 0 0)   ;; => [0.628 0.225 0.126]
+(color/rgb->oklch 255 0 0)   ;; => [0.628 0.258 29.2]"]]]}
 
      {:id    "stroke-styling"
       :title "Strokes"

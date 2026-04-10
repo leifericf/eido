@@ -156,6 +156,65 @@
    "yellow"               [255 255 0]
    "yellowgreen"          [154 205 50]})
 
+;; --- OKLAB / OKLCH conversions ---
+;; Based on Björn Ottosson's published formulas (public domain).
+;; Conversion chain: sRGB -> linear RGB -> OKLAB -> OKLCH (and reverse).
+
+(defn- srgb->linear ^double [^long c]
+  (let [c (/ (double c) 255.0)]
+    (if (<= c 0.04045)
+      (/ c 12.92)
+      (Math/pow (/ (+ c 0.055) 1.055) 2.4))))
+
+(defn- linear->srgb ^long [^double c]
+  (let [c (max 0.0 (min 1.0 c))]
+    (long (Math/round (* 255.0
+      (if (<= c 0.0031308)
+        (* 12.92 c)
+        (- (* 1.055 (Math/pow c (/ 1.0 2.4))) 0.055)))))))
+
+(defn- linear-rgb->oklab [^double r ^double g ^double b]
+  (let [l (+ (* 0.4122214708 r) (* 0.5363325363 g) (* 0.0514459929 b))
+        m (+ (* 0.2119034982 r) (* 0.6806995451 g) (* 0.1073969566 b))
+        s (+ (* 0.0883024619 r) (* 0.2817188376 g) (* 0.6299787005 b))
+        l_ (Math/cbrt l) m_ (Math/cbrt m) s_ (Math/cbrt s)]
+    [(+ (* 0.2104542553 l_) (* 0.7936177850 m_) (* -0.0040720468 s_))
+     (+ (* 1.9779984951 l_) (* -2.4285922050 m_) (* 0.4505937099 s_))
+     (+ (* 0.0259040371 l_) (* 0.7827717662 m_) (* -0.8086757660 s_))]))
+
+(defn- oklab->linear-rgb [^double L ^double a ^double b]
+  (let [l_ (+ L (* 0.3963377774 a) (* 0.2158037573 b))
+        m_ (+ L (* -0.1055613458 a) (* -0.0638541728 b))
+        s_ (+ L (* -0.0894841775 a) (* -1.2914855480 b))
+        l (* l_ l_ l_) m (* m_ m_ m_) s (* s_ s_ s_)]
+    [(+ (* 4.0767416621 l) (* -3.3077115913 m) (* 0.2309699292 s))
+     (+ (* -1.2684380046 l) (* 2.6097574011 m) (* -0.3413193965 s))
+     (+ (* -0.0041960863 l) (* -0.7034186147 m) (* 1.7076147010 s))]))
+
+(defn- oklab->oklch [^double L ^double a ^double b]
+  (let [C (Math/sqrt (+ (* a a) (* b b)))
+        h (mod (Math/toDegrees (Math/atan2 b a)) 360.0)]
+    [L C h]))
+
+(defn- oklch->oklab [^double L ^double C ^double h]
+  (let [h-rad (Math/toRadians h)]
+    [L (* C (Math/cos h-rad)) (* C (Math/sin h-rad))]))
+
+(defn rgb->oklab
+  "Converts sRGB (0-255 each) to OKLAB [L a b].
+  L: 0-1 (lightness), a: ~-0.4 to 0.4, b: ~-0.4 to 0.4."
+  [r g b]
+  (linear-rgb->oklab (srgb->linear r) (srgb->linear g) (srgb->linear b)))
+
+(defn rgb->oklch
+  "Converts sRGB (0-255 each) to OKLCH [L C h].
+  L: 0-1, C: 0-0.4+, h: 0-360 degrees."
+  [r g b]
+  (let [[L a b] (rgb->oklab r g b)]
+    (oklab->oklch L a b)))
+
+;; --- HSL conversions ---
+
 (defn- hue->rgb [p q t]
   (let [t (cond (< t 0) (+ t 1.0) (> t 1) (- t 1.0) :else t)]
     (cond
@@ -273,6 +332,24 @@
       :color/hsba (let [[_ h s b a] color
                          [r g b] (hsb->rgb h s b)]
                     {:r r :g g :b b :a a})
+      :color/oklab  (let [[_ L a b] color
+                          [rl gl bl] (oklab->linear-rgb L a b)]
+                      {:r (linear->srgb rl) :g (linear->srgb gl)
+                       :b (linear->srgb bl) :a 1.0})
+      :color/oklaba (let [[_ L a b alpha] color
+                          [rl gl bl] (oklab->linear-rgb L a b)]
+                      {:r (linear->srgb rl) :g (linear->srgb gl)
+                       :b (linear->srgb bl) :a alpha})
+      :color/oklch  (let [[_ L C h] color
+                          [L' a b] (oklch->oklab L C h)
+                          [rl gl bl] (oklab->linear-rgb L' a b)]
+                      {:r (linear->srgb rl) :g (linear->srgb gl)
+                       :b (linear->srgb bl) :a 1.0})
+      :color/oklcha (let [[_ L C h alpha] color
+                          [L' a b] (oklch->oklab L C h)
+                          [rl gl bl] (oklab->linear-rgb L' a b)]
+                      {:r (linear->srgb rl) :g (linear->srgb gl)
+                       :b (linear->srgb bl) :a alpha})
       :color/hex  (parse-hex (second color))
       :color/name (let [name-str (str/lower-case (second color))]
                     (if-let [[r g b] (get named-colors name-str)]
@@ -334,17 +411,34 @@
 
 (defn lerp
   "Linearly interpolates between two colors. t in [0, 1].
-  Accepts color vectors or maps; returns a color vector."
-  [color-a color-b t]
-  (let [a (ensure-map color-a)
-        b (ensure-map color-b)
-        t (max 0.0 (min 1.0 (double t)))
-        inv (- 1.0 t)]
-    (map->vec
-      {:r (Math/round (+ (* inv (:r a)) (* t (:r b))))
-       :g (Math/round (+ (* inv (:g a)) (* t (:g b))))
-       :b (Math/round (+ (* inv (:b a)) (* t (:b b))))
-       :a (+ (* inv (:a a)) (* t (:a b)))})))
+  Accepts color vectors or maps; returns a color vector.
+  Optional opts map: {:space :oklab} for perceptually uniform interpolation."
+  ([color-a color-b t]
+   (let [a (ensure-map color-a)
+         b (ensure-map color-b)
+         t (max 0.0 (min 1.0 (double t)))
+         inv (- 1.0 t)]
+     (map->vec
+       {:r (Math/round (+ (* inv (:r a)) (* t (:r b))))
+        :g (Math/round (+ (* inv (:g a)) (* t (:g b))))
+        :b (Math/round (+ (* inv (:b a)) (* t (:b b))))
+        :a (+ (* inv (:a a)) (* t (:a b)))})))
+  ([color-a color-b t opts]
+   (if (= :oklab (:space opts))
+     (let [a (ensure-map color-a)
+           b (ensure-map color-b)
+           t (max 0.0 (min 1.0 (double t)))
+           inv (- 1.0 t)
+           [La aa ba] (rgb->oklab (:r a) (:g a) (:b a))
+           [Lb ab bb] (rgb->oklab (:r b) (:g b) (:b b))
+           L (+ (* inv La) (* t Lb))
+           ok-a (+ (* inv aa) (* t ab))
+           ok-b (+ (* inv ba) (* t bb))
+           [rl gl bl] (oklab->linear-rgb L ok-a ok-b)
+           alpha (+ (* inv (:a a)) (* t (:a b)))]
+       (map->vec {:r (linear->srgb rl) :g (linear->srgb gl)
+                  :b (linear->srgb bl) :a alpha}))
+     (lerp color-a color-b t))))
 
 ;; --- convenience helpers ---
 
@@ -360,15 +454,42 @@
   [h s l]
   [:color/hsl (mod h 360) s l])
 
+(defn ^{:convenience true}
+  oklab
+  "Shorthand for [:color/oklab L a b]."
+  [L a b]
+  [:color/oklab L a b])
+
+(defn ^{:convenience true}
+  oklch
+  "Shorthand for [:color/oklch L C h]."
+  [L C h]
+  [:color/oklch L C h])
+
+(defn ^{:convenience true :convenience-for 'eido.color/lerp}
+  lerp-oklab
+  "Interpolates between two colors in OKLAB space. t in [0, 1].
+  Wraps (lerp color-a color-b t {:space :oklab})."
+  [color-a color-b t]
+  (lerp color-a color-b t {:space :oklab}))
+
 (comment
   (resolve-color [:color/rgb 200 0 0])
   (resolve-color [:color/hsl 0 1.0 0.5])
   (resolve-color [:color/hex "#FF0000"])
   (resolve-color :crimson)
+  (resolve-color [:color/oklab 0.63 0.22 0.13])
+  (resolve-color [:color/oklch 0.63 0.26 29])
   (lighten :red 0.2)
   (rotate-hue [:color/rgb 255 0 0] 120)
   (lerp :black :white 0.5)
+  (lerp :red :cyan 0.5 {:space :oklab})
+  (lerp-oklab :red :blue 0.5)
   (rgb 255 0 0)
   (hsl 200 0.8 0.5)
+  (oklab 0.63 0.22 0.13)
+  (oklch 0.7 0.15 200)
+  (rgb->oklab 255 0 0)
+  (rgb->oklch 255 0 0)
   )
 

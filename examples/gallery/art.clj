@@ -3,6 +3,7 @@
   {:category "Artistic Expression"}
   (:require
     [eido.animate :as anim]
+    [eido.color :as color]
     [eido.gen.flow :as flow]
     [eido.gen.lsystem :as lsystem]
     [eido.path.morph :as morph]
@@ -764,11 +765,52 @@
          :path/commands branch-cmds
          :style/stroke {:color [:color/rgb 200 100 50] :width 0.8}}]}]}))
 
+;; --- OKLAB Gradients ---
+
+(defn ^{:example {:output "art-oklab-gradients.png"
+                  :title  "OKLAB Gradients"
+                  :desc   "Vivid color gradients via perceptually uniform interpolation."
+                  :tags   ["oklab" "color" "gradient" "interpolation"]}}
+  oklab-gradients []
+  (let [w 600 h 400
+        pairs [[:red :cyan] [:blue :yellow] [:magenta :green]]
+        bar-h (/ h (* 2 (count pairs)))
+        bars (mapcat
+               (fn [i [ca cb]]
+                 (let [y-rgb  (* i 2 bar-h)
+                       y-oklab (+ y-rgb bar-h)
+                       n 60]
+                   (concat
+                     ;; RGB lerp row
+                     (for [j (range n)]
+                       (let [t (/ (double j) (dec n))
+                             x (* j (/ (double w) n))
+                             cw (/ (double w) n)]
+                         {:node/type :shape/rect
+                          :rect/xy [x y-rgb]
+                          :rect/size [cw bar-h]
+                          :style/fill (color/lerp ca cb t)}))
+                     ;; OKLAB lerp row
+                     (for [j (range n)]
+                       (let [t (/ (double j) (dec n))
+                             x (* j (/ (double w) n))
+                             cw (/ (double w) n)]
+                         {:node/type :shape/rect
+                          :rect/xy [x y-oklab]
+                          :rect/size [cw bar-h]
+                          :style/fill (color/lerp-oklab ca cb t)})))))
+               (range)
+               pairs)]
+    {:image/size [w h]
+     :image/background :white
+     :image/nodes (vec bars)}))
+
 (comment
   ;; REPL convenience — render a single example
   (require '[eido.core :as eido])
   (eido/render (ink-landscape) {:output "images/art-ink-landscape.png"})
   (eido/render (mandala) {:output "images/art-mandala.png"})
+  (eido/render (oklab-gradients) {:output "images/art-oklab-gradients.png"})
 
   ;; Render an animation
   (let [{:keys [frames fps]} (calligraphy-flow)]

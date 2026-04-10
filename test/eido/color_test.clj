@@ -275,3 +275,83 @@
     (is (= [:color/hsl 200 0.8 0.5] (color/hsl 200 0.8 0.5))))
   (testing "wraps hue with mod 360"
     (is (= [:color/hsl 10 0.5 0.5] (color/hsl 370 0.5 0.5)))))
+
+;; --- OKLAB / OKLCH tests ---
+
+(deftest rgb->oklab-test
+  (testing "black is [0 0 0]"
+    (is (= [0.0 0.0 0.0] (color/rgb->oklab 0 0 0))))
+  (testing "white is approximately [1 0 0]"
+    (let [[L a b] (color/rgb->oklab 255 255 255)]
+      (is (< (Math/abs (- L 1.0)) 0.001))
+      (is (< (Math/abs a) 0.001))
+      (is (< (Math/abs b) 0.001))))
+  (testing "red has positive a (reddish) and positive b"
+    (let [[L a b] (color/rgb->oklab 255 0 0)]
+      (is (> L 0.5))
+      (is (> a 0.1))
+      (is (> b 0.05)))))
+
+(deftest oklab-roundtrip-test
+  (testing "sRGB -> OKLAB -> sRGB round-trip within ±1 per channel"
+    (doseq [[label r g b] [["red" 255 0 0] ["green" 0 255 0] ["blue" 0 0 255]
+                            ["white" 255 255 255] ["black" 0 0 0]
+                            ["mid-gray" 128 128 128] ["teal" 100 150 200]]]
+      (let [[L ok-a ok-b] (color/rgb->oklab r g b)
+            {:keys [r g b] :as roundtripped}
+            (color/resolve-color [:color/oklab L ok-a ok-b])]
+        (is (approx-color= {:r r :g g :b b :a 1.0} roundtripped 1.5)
+            (str label " OKLAB round-trip failed"))))))
+
+(deftest oklch-roundtrip-test
+  (testing "sRGB -> OKLCH -> sRGB round-trip within ±1 per channel"
+    (doseq [[label r g b] [["red" 255 0 0] ["green" 0 255 0] ["blue" 0 0 255]
+                            ["cyan" 0 255 255] ["magenta" 255 0 255]]]
+      (let [[L C h] (color/rgb->oklch r g b)
+            {:keys [r g b] :as roundtripped}
+            (color/resolve-color [:color/oklch L C h])]
+        (is (approx-color= {:r r :g g :b b :a 1.0} roundtripped 1.5)
+            (str label " OKLCH round-trip failed"))))))
+
+(deftest resolve-color-oklab-test
+  (testing "resolves :color/oklab"
+    (let [c (color/resolve-color [:color/oklab 0.0 0.0 0.0])]
+      (is (= {:r 0 :g 0 :b 0 :a 1.0} c))))
+  (testing "resolves :color/oklaba with alpha"
+    (let [c (color/resolve-color [:color/oklaba 0.0 0.0 0.0 0.5])]
+      (is (= 0.5 (:a c))))))
+
+(deftest resolve-color-oklch-test
+  (testing "resolves :color/oklch"
+    (let [c (color/resolve-color [:color/oklch 0.0 0.0 0.0])]
+      (is (= {:r 0 :g 0 :b 0 :a 1.0} c))))
+  (testing "resolves :color/oklcha with alpha"
+    (let [c (color/resolve-color [:color/oklcha 0.0 0.0 0.0 0.5])]
+      (is (= 0.5 (:a c))))))
+
+(deftest lerp-oklab-test
+  (testing "t=0 returns color-a"
+    (is (= [:color/rgb 255 0 0]
+           (color/lerp [:color/rgb 255 0 0] [:color/rgb 0 0 255] 0 {:space :oklab}))))
+  (testing "t=1 returns color-b"
+    (is (= [:color/rgb 0 0 255]
+           (color/lerp [:color/rgb 255 0 0] [:color/rgb 0 0 255] 1 {:space :oklab}))))
+  (testing "red-cyan midpoint in OKLAB stays vivid (no brown)"
+    (let [[_ r g b] (color/lerp [:color/rgb 255 0 0] [:color/rgb 0 255 255] 0.5 {:space :oklab})]
+      ;; In RGB lerp, red-cyan midpoint is gray (128,128,128).
+      ;; In OKLAB, the midpoint should be more chromatic (not gray).
+      (is (or (> (Math/abs (- r g)) 20)
+              (> (Math/abs (- r b)) 20)
+              (> (Math/abs (- g b)) 20))
+          "OKLAB midpoint should not be gray"))))
+
+(deftest lerp-oklab-convenience-test
+  (testing "lerp-oklab produces same result as lerp with :space :oklab"
+    (is (= (color/lerp :red :blue 0.5 {:space :oklab})
+           (color/lerp-oklab :red :blue 0.5)))))
+
+(deftest oklab-convenience-test
+  (testing "oklab creates color vector"
+    (is (= [:color/oklab 0.5 0.1 -0.1] (color/oklab 0.5 0.1 -0.1))))
+  (testing "oklch creates color vector"
+    (is (= [:color/oklch 0.7 0.15 200] (color/oklch 0.7 0.15 200)))))

@@ -95,7 +95,8 @@
   "Keywords that appear as tags in s/or branches for tagged vectors.
   Used to detect and filter tag-mismatch noise."
   #{:color/rgb :color/rgba :color/hsl :color/hsla
-    :color/hsb :color/hsba :color/hex :color/name
+    :color/hsb :color/hsba :color/oklab :color/oklaba
+    :color/oklch :color/oklcha :color/hex :color/name
     :transform/translate :transform/rotate :transform/scale
     :transform/shear-x :transform/shear-y :transform/distort})
 

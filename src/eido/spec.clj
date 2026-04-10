@@ -47,6 +47,22 @@
   (s/and vector?
          (s/cat :tag #{:color/name} :name string?)))
 
+(s/def :color/oklab
+  (s/and vector?
+         (s/cat :tag #{:color/oklab} :L number? :a number? :b number?)))
+
+(s/def :color/oklaba
+  (s/and vector?
+         (s/cat :tag #{:color/oklaba} :L number? :a number? :b number? :alpha number?)))
+
+(s/def :color/oklch
+  (s/and vector?
+         (s/cat :tag #{:color/oklch} :L number? :C number? :h number?)))
+
+(s/def :color/oklcha
+  (s/and vector?
+         (s/cat :tag #{:color/oklcha} :L number? :C number? :h number? :alpha number?)))
+
 (s/def ::color-keyword
   (s/and keyword? (complement namespace)))
 
@@ -57,6 +73,10 @@
         :hsla :color/hsla
         :hsb :color/hsb
         :hsba :color/hsba
+        :oklab :color/oklab
+        :oklaba :color/oklaba
+        :oklch :color/oklch
+        :oklcha :color/oklcha
         :hex :color/hex
         :name :color/name
         :keyword ::color-keyword))

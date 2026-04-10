@@ -10,23 +10,6 @@ Organized by what matters to practicing generative and computational artists, gr
 
 Color is consistently described as the hardest problem in generative art. Artists spend more time on palettes than on algorithms, and existing tools rarely go deep enough.
 
-### Perceptually uniform color space (OKLAB / OKLCH)
-
-Eido currently supports RGB, HSL, HSB, and hex. These are device-oriented color models — they don't correspond to how humans perceive color difference. OKLAB and its cylindrical form OKLCH provide perceptual uniformity: equal numerical steps produce equal visual steps.
-
-**Why it matters:** Interpolating between colors in RGB or HSL produces muddy midpoints (the infamous brown-through-green problem). OKLAB interpolation stays vivid. Generating palettes by sampling in OKLCH with fixed lightness produces harmonious results that RGB sampling cannot.
-
-**What to add:**
-- `[:color/oklab L a b]` and `[:color/oklch L C h]` as color representations
-- OKLAB-space interpolation in `color/lerp` and `palette/gradient-palette`
-- Palette generation by sampling in OKLCH cylindrical coordinates
-
-**Implementation notes:**
-- OKLAB conversion is pure math — ~20 lines per direction (sRGB ↔ linear RGB ↔ OKLAB). No dependencies needed. The formulas are published and well-documented.
-- Add new branches to `resolve-color` and `ensure-map` (same pattern as the keyword color work).
-- OKLCH is just OKLAB in polar coordinates: `C = sqrt(a² + b²)`, `h = atan2(b, a)`. Trivial to derive.
-- For `color/lerp`, add an optional `:space` parameter (`:oklab` vs `:rgb`) rather than changing the default — backwards compatibility matters.
-
 ### Palette preview at the REPL
 
 No way to quickly *see* a palette without building a scene. A swatch renderer would close the feedback loop.
