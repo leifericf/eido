@@ -183,10 +183,10 @@
                            (first args))))
                  commands)
         simplified (simplify points epsilon)]
-    (if (empty? simplified)
-      commands
+    (if (seq simplified)
       (into [[:move-to (first simplified)]]
-            (mapv (fn [p] [:line-to p]) (rest simplified))))))
+            (mapv (fn [p] [:line-to p]) (rest simplified)))
+      commands)))
 
 ;; --- point-in-polygon (ray casting) ---
 

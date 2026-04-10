@@ -327,12 +327,12 @@
         (mapv (fn [ci]
                 (let [members (keep-indexed (fn [si ai] (when (= ai ci) (nth samples si)))
                                             assignments)]
-                  (if (empty? members)
-                    (nth centroids ci)
+                  (if (seq members)
                     (let [n (double (count members))]
                       [(/ (reduce + (map first members)) n)
                        (/ (reduce + (map second members)) n)
-                       (/ (reduce + (map #(nth % 2) members)) n)]))))
+                       (/ (reduce + (map #(nth % 2) members)) n)])
+                    (nth centroids ci))))
               (range k))]
     new-centroids))
 

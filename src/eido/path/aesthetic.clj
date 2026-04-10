@@ -154,11 +154,11 @@
         smoothed   (reduce (fn [pts _] (chaikin-step pts retain?))
                            points
                            (range iterations))]
-    (if (empty? smoothed)
-      commands
+    (if (seq smoothed)
       (let [cmds (into [[:move-to (first smoothed)]]
                        (mapv (fn [p] [:line-to p]) (rest smoothed)))]
-        (if has-close? (conj cmds [:close]) cmds)))))
+        (if has-close? (conj cmds [:close]) cmds))
+      commands)))
 
 ;; --- convenience helpers ---
 
