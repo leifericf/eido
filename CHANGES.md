@@ -155,6 +155,72 @@ directly using the migration examples below.
   (rd-grid w h :center seed)
   ```
 
+- **L-system functions use opts maps** — `lsystem->path-cmds` (7 args)
+  and `interpret` (5 args) now take `[axiom rules opts]` and
+  `[expanded opts]` with `:iterations`, `:angle`, `:length`, `:origin`,
+  `:heading` in opts.
+
+  ```clj
+  ;; Before
+  (lsystem->path-cmds axiom rules 3 22.5 4.0 [200 400] -90.0)
+
+  ;; After
+  (lsystem->path-cmds axiom rules
+    {:iterations 3 :angle 22.5 :length 4.0 :origin [200 400] :heading -90.0})
+  ```
+
+- **Seeds/config in opts for vary and convenience functions** —
+  `vary/by-noise`, `vary/by-palette`, `vary/by-noise-palette`,
+  `circle/pack->colored-nodes`, and `subdivide/subdivide->palette-nodes`
+  now take seeds, weights, and config as keys in an opts map.
+
+  ```clj
+  ;; Before
+  (by-noise positions 0.01 42 f)
+  (by-palette n palette 42)
+  (pack->colored-nodes circles palette 42)
+
+  ;; After
+  (by-noise positions f {:noise-scale 0.01 :seed 42})
+  (by-palette n palette {:seed 42})
+  (pack->colored-nodes circles palette {:seed 42})
+  ```
+
+- **`decorate-path` uses opts map** — Spacing and rotate? moved into opts.
+
+  ```clj
+  ;; Before
+  (decorate-path cmds shape 30 true)
+
+  ;; After
+  (decorate-path cmds shape {:spacing 30 :rotate? true})
+  ```
+
+- **3D render convenience functions use opts for geometry** — `sphere`,
+  `cylinder`, `cone`, `torus`, and `text-3d` now take geometry params
+  (radius, height, depth) in the opts map. All follow the uniform
+  `[projection position opts]` pattern. Torus R/r renamed to
+  `:major-radius`/`:minor-radius` for clarity.
+
+  ```clj
+  ;; Before
+  (sphere proj [0 0 0] 1.5 {:style ...})
+  (cylinder proj [0 0 0] 0.5 2.0 {:style ...})
+  (torus proj [0 0 0] 1.5 0.5 {:style ...})
+
+  ;; After
+  (sphere proj [0 0 0] {:radius 1.5 :style ...})
+  (cylinder proj [0 0 0] {:radius 0.5 :height 2.0 :style ...})
+  (torus proj [0 0 0] {:major-radius 1.5 :minor-radius 0.5 :style ...})
+  ```
+
+### Bug fixes
+
+- Fix `circle-pack-in-path` calling `circle-pack` with old 4-arg bounds
+  (would crash at runtime after bounds packing change).
+- Fix missing `require` for `eido.color.palette` in `pack->colored-nodes`
+  (pre-existing: used fully-qualified symbol without namespace require).
+
 ### Enhancements
 
 - **Namespace docstrings** — 22 artist-facing namespaces now have concise
