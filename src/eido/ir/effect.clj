@@ -78,7 +78,7 @@
   (let [resolve-fn   (requiring-resolve 'eido.ir.lower/resolve-fill)
         resolved-fill (when fill
                         (cond
-                          (vector? fill)                          (color/resolve-color fill)
+                          (or (vector? fill) (keyword? fill))     (color/resolve-color fill)
                           (:fill/type fill)                       (resolve-fn fill)
                           (:color fill)                           (color/resolve-color (:color fill))
                           (and (:r fill) (:g fill) (:b fill))     fill

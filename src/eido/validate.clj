@@ -114,10 +114,19 @@
        (tagged-or-specs val)
        (not (pred val))))
 
+(defn- keyword-branch-mismatch?
+  "True when a spec problem is the ::color-keyword branch failing on a
+  non-keyword value (e.g. a color vector). Filters noise from s/or."
+  [{:keys [via val]}]
+  (and (some #{:eido.spec/color-keyword} via)
+       (not (keyword? val))))
+
 (defn- deduplicate-tag-mismatches
   "Removes tag-mismatch noise from s/or branches in tagged vectors."
   [problems]
-  (remove tag-branch-mismatch? problems))
+  (->> problems
+       (remove tag-branch-mismatch?)
+       (remove keyword-branch-mismatch?)))
 
 (defn- deduplicate-by-path
   "When multiple s/or branches fail for the same value at the same path,

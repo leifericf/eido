@@ -107,7 +107,7 @@
   (let [stroke (:style/stroke node)
         fill   (when-let [f (:style/fill node)]
                  (cond
-                   (vector? f)                          (color/resolve-color f)
+                   (or (vector? f) (keyword? f))         (color/resolve-color f)
                    (:color f)                           (color/resolve-color (:color f))
                    (and (:r f) (:g f) (:b f))           f
                    (:fill/type f)                       f

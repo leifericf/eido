@@ -246,38 +246,46 @@
     {:r r :g g :b b :a a}))
 
 (defn resolve-color
-  "Resolves a color vector to a map with :r :g :b :a keys."
-  [color-vec]
-  (case (first color-vec)
-    :color/rgb  (let [[_ r g b] color-vec]
-                  {:r r :g g :b b :a 1.0})
-    :color/rgba (let [[_ r g b a] color-vec]
-                  {:r r :g g :b b :a a})
-    :color/hsl  (let [[_ h s l] color-vec
-                       [r g b] (hsl->rgb h s l)]
-                  {:r r :g g :b b :a 1.0})
-    :color/hsla (let [[_ h s l a] color-vec
-                       [r g b] (hsl->rgb h s l)]
-                  {:r r :g g :b b :a a})
-    :color/hsb  (let [[_ h s b] color-vec
-                       [r g b] (hsb->rgb h s b)]
-                  {:r r :g g :b b :a 1.0})
-    :color/hsba (let [[_ h s b a] color-vec
-                       [r g b] (hsb->rgb h s b)]
-                  {:r r :g g :b b :a a})
-    :color/hex  (parse-hex (second color-vec))
-    :color/name (let [name-str (str/lower-case (second color-vec))]
-                  (if-let [[r g b] (get named-colors name-str)]
-                    {:r r :g g :b b :a 1.0}
-                    (throw (ex-info "Unknown color name"
-                                    {:input (second color-vec)}))))))
+  "Resolves a color value to a map with :r :g :b :a keys.
+  Accepts tagged vectors ([:color/rgb 255 0 0], [:color/name \"red\"])
+  or bare keywords (:red, :cornflowerblue) as shorthand for named colors."
+  [color]
+  (if (keyword? color)
+    (let [name-str (name color)]
+      (if-let [[r g b] (get named-colors name-str)]
+        {:r r :g g :b b :a 1.0}
+        (throw (ex-info "Unknown color name"
+                        {:input color}))))
+    (case (first color)
+      :color/rgb  (let [[_ r g b] color]
+                    {:r r :g g :b b :a 1.0})
+      :color/rgba (let [[_ r g b a] color]
+                    {:r r :g g :b b :a a})
+      :color/hsl  (let [[_ h s l] color
+                         [r g b] (hsl->rgb h s l)]
+                    {:r r :g g :b b :a 1.0})
+      :color/hsla (let [[_ h s l a] color
+                         [r g b] (hsl->rgb h s l)]
+                    {:r r :g g :b b :a a})
+      :color/hsb  (let [[_ h s b] color
+                         [r g b] (hsb->rgb h s b)]
+                    {:r r :g g :b b :a 1.0})
+      :color/hsba (let [[_ h s b a] color
+                         [r g b] (hsb->rgb h s b)]
+                    {:r r :g g :b b :a a})
+      :color/hex  (parse-hex (second color))
+      :color/name (let [name-str (str/lower-case (second color))]
+                    (if-let [[r g b] (get named-colors name-str)]
+                      {:r r :g g :b b :a 1.0}
+                      (throw (ex-info "Unknown color name"
+                                      {:input (second color)})))))))
 
 ;; --- color manipulation ---
 
 (defn- ensure-map
-  "Coerces a color to a resolved map. Accepts both color vectors and maps."
+  "Coerces a color to a resolved map. Accepts color vectors, keywords, and maps."
   [color]
-  (if (vector? color)
+  (if (or (vector? color) (keyword? color))
     (resolve-color color)
     color))
 
@@ -356,9 +364,10 @@
   (resolve-color [:color/rgb 200 0 0])
   (resolve-color [:color/hsl 0 1.0 0.5])
   (resolve-color [:color/hex "#FF0000"])
-  (lighten [:color/rgb 200 0 0] 0.2)
+  (resolve-color :crimson)
+  (lighten :red 0.2)
   (rotate-hue [:color/rgb 255 0 0] 120)
-  (lerp [:color/rgb 0 0 0] [:color/rgb 255 255 255] 0.5)
+  (lerp :black :white 0.5)
   (rgb 255 0 0)
   (hsl 200 0.8 0.5)
   )

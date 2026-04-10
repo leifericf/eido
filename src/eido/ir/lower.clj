@@ -150,7 +150,8 @@
   [fill]
   (when fill
     (cond
-      (vector? fill)         (color/resolve-color fill)
+      (or (vector? fill)
+          (keyword? fill))   (color/resolve-color fill)
       (:gradient/type fill)  (cond-> {:gradient/type  (:gradient/type fill)
                                       :gradient/stops (mapv (fn [[pos c]]
                                                               [pos (color/resolve-color c)])

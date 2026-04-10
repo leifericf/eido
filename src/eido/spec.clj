@@ -47,6 +47,9 @@
   (s/and vector?
          (s/cat :tag #{:color/name} :name string?)))
 
+(s/def ::color-keyword
+  (s/and keyword? (complement namespace)))
+
 (s/def ::color
   (s/or :rgb :color/rgb
         :rgba :color/rgba
@@ -55,7 +58,8 @@
         :hsb :color/hsb
         :hsba :color/hsba
         :hex :color/hex
-        :name :color/name))
+        :name :color/name
+        :keyword ::color-keyword))
 
 ;; --- transforms ---
 

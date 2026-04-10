@@ -229,6 +229,41 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown color name"
           (color/resolve-color [:color/name "notacolor"])))))
 
+;; --- keyword color shorthand ---
+
+(deftest resolve-color-keyword-test
+  (testing "resolves bare keyword color names"
+    (is (= {:r 255 :g 0 :b 0 :a 1.0}
+           (color/resolve-color :red)))
+    (is (= {:r 0 :g 0 :b 0 :a 1.0}
+           (color/resolve-color :black)))
+    (is (= {:r 255 :g 255 :b 255 :a 1.0}
+           (color/resolve-color :white)))
+    (is (= {:r 255 :g 127 :b 80 :a 1.0}
+           (color/resolve-color :coral)))
+    (is (= {:r 100 :g 149 :b 237 :a 1.0}
+           (color/resolve-color :cornflowerblue)))))
+
+(deftest resolve-color-keyword-unknown-test
+  (testing "unknown keyword throws ex-info"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown color name"
+          (color/resolve-color :notacolor)))))
+
+(deftest keyword-color-manipulation-test
+  (testing "keyword colors work with lighten"
+    (let [[_ r g b] (color/lighten :red 0.2)]
+      (is (> r 0))
+      (is (> g 0))))
+  (testing "keyword colors work with darken"
+    (let [[_ r _g _b] (color/darken :white 0.3)]
+      (is (< r 255))))
+  (testing "keyword colors work with lerp"
+    (is (= [:color/rgb 128 0 128]
+           (color/lerp :red :blue 0.5))))
+  (testing "keyword colors work with rotate-hue"
+    (let [result (color/rotate-hue :red 120)]
+      (is (vector? result)))))
+
 ;; --- convenience helper tests ---
 
 (deftest rgb-test
