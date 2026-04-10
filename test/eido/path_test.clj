@@ -48,3 +48,42 @@
       (is (pos? (count result)))
       ;; Should have multiple move-to (two separate subpaths)
       (is (>= (count (filter #(= :move-to (first %)) result)) 2)))))
+
+;; --- simplify ---
+
+(deftest simplify-test
+  (testing "straight line simplifies to 2 points"
+    (let [points [[0 0] [10 0] [20 0] [30 0] [40 0]]
+          result (path/simplify points 1.0)]
+      (is (= 2 (count result)))
+      (is (= [0 0] (first result)))
+      (is (= [40 0] (last result)))))
+  (testing "epsilon=0 returns all points"
+    (let [points [[0 0] [10 5] [20 0] [30 5] [40 0]]
+          result (path/simplify points 0.0)]
+      (is (= (count points) (count result)))))
+  (testing "preserves shape for large features"
+    (let [points [[0 0] [50 0] [50 50] [0 50]]
+          result (path/simplify points 1.0)]
+      (is (= 4 (count result))))))
+
+(deftest simplify-commands-test
+  (testing "simplifies path commands"
+    (let [cmds [[:move-to [0 0]] [:line-to [10 0]] [:line-to [20 0]]
+                [:line-to [30 0]] [:line-to [40 0]]]
+          result (path/simplify-commands cmds 1.0)]
+      (is (= :move-to (ffirst result)))
+      (is (= 2 (count result))))))
+
+;; --- contains-point? ---
+
+(deftest contains-point-test
+  (testing "point inside square"
+    (is (path/contains-point? [[0 0] [100 0] [100 100] [0 100]] [50 50])))
+  (testing "point outside square"
+    (is (not (path/contains-point? [[0 0] [100 0] [100 100] [0 100]] [150 50]))))
+  (testing "point above square"
+    (is (not (path/contains-point? [[0 0] [100 0] [100 100] [0 100]] [50 -10]))))
+  (testing "works with triangle"
+    (is (path/contains-point? [[0 0] [100 0] [50 100]] [50 30]))
+    (is (not (path/contains-point? [[0 0] [100 0] [50 100]] [90 90])))))

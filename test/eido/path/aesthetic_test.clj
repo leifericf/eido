@@ -95,3 +95,30 @@
     (let [result (aes/stylize line-cmds [{:op :dash :dash [20.0 10.0]}])]
       (is (vector? result))
       (is (> (count result) 0)))))
+
+;; --- chaikin ---
+
+(deftest chaikin-commands-test
+  (testing "point count increases with iterations"
+    (let [input [[:move-to [0.0 0.0]] [:line-to [50.0 0.0]]
+                 [:line-to [100.0 50.0]] [:line-to [50.0 100.0]]]
+          result (aes/chaikin-commands input {:iterations 2})]
+      (is (> (count result) (count input)))))
+  (testing "starts with :move-to"
+    (let [result (aes/chaikin-commands square-cmds {:iterations 1})]
+      (is (= :move-to (ffirst result)))))
+  (testing "preserves :close"
+    (let [result (aes/chaikin-commands square-cmds {:iterations 2})]
+      (is (= :close (first (last result))))))
+  (testing "more iterations = more points"
+    (let [r1 (aes/chaikin-commands square-cmds {:iterations 1})
+          r3 (aes/chaikin-commands square-cmds {:iterations 3})]
+      (is (> (count r3) (count r1))))))
+
+(deftest stylize-chaikin-test
+  (testing "chaikin works via stylize dispatch"
+    (let [input [[:move-to [0.0 0.0]] [:line-to [50.0 0.0]]
+                 [:line-to [100.0 50.0]]]
+          result (aes/stylize input [{:op :chaikin :iterations 2}])]
+      (is (vector? result))
+      (is (> (count result) (count input))))))

@@ -133,4 +133,74 @@
 (import-fn aesthetic/smooth-commands)
 (import-fn aesthetic/jittered-commands)
 (import-fn aesthetic/dash-commands)
+(import-fn aesthetic/chaikin-commands)
 (import-fn aesthetic/stylize)
+
+;; --- simplification (Douglas-Peucker) ---
+
+(defn- point-to-line-distance
+  "Perpendicular distance from point [px py] to line segment [[x1 y1] [x2 y2]]."
+  ^double [[^double px ^double py] [^double x1 ^double y1] [^double x2 ^double y2]]
+  (let [dx (- x2 x1) dy (- y2 y1)
+        len-sq (+ (* dx dx) (* dy dy))]
+    (if (zero? len-sq)
+      (Math/sqrt (+ (Math/pow (- px x1) 2) (Math/pow (- py y1) 2)))
+      (/ (Math/abs (- (* dy (- px x1)) (* dx (- py y1))))
+         (Math/sqrt len-sq)))))
+
+(defn simplify
+  "Douglas-Peucker path simplification on [[x y] ...] point vectors.
+  Removes points that contribute less than epsilon to the shape."
+  [points ^double epsilon]
+  (let [n (count points)]
+    (if (<= n 2)
+      (vec points)
+      (let [first-pt (first points)
+            last-pt (last points)
+            ;; Find point with max distance from line first->last
+            max-d (volatile! 0.0)
+            max-i (volatile! 0)]
+        (doseq [i (range 1 (dec n))]
+          (let [d (point-to-line-distance (nth points i) first-pt last-pt)]
+            (when (> d @max-d)
+              (vreset! max-d d)
+              (vreset! max-i i))))
+        (if (> @max-d epsilon)
+          ;; Recurse on both halves
+          (let [left  (simplify (subvec (vec points) 0 (inc @max-i)) epsilon)
+                right (simplify (subvec (vec points) @max-i) epsilon)]
+            (vec (concat (butlast left) right)))
+          ;; Discard intermediate points
+          [first-pt last-pt])))))
+
+(defn simplify-commands
+  "Douglas-Peucker simplification on path commands.
+  Wraps simplify on the extracted points and rebuilds commands."
+  [commands epsilon]
+  (let [points (into []
+                 (keep (fn [[cmd & args]]
+                         (when (#{:move-to :line-to} cmd)
+                           (first args))))
+                 commands)
+        simplified (simplify points epsilon)]
+    (if (empty? simplified)
+      commands
+      (into [[:move-to (first simplified)]]
+            (mapv (fn [p] [:line-to p]) (rest simplified))))))
+
+;; --- point-in-polygon (ray casting) ---
+
+(defn contains-point?
+  "Tests whether a point [px py] is inside a polygon [[x y] ...].
+  Uses the ray-casting algorithm (count horizontal ray crossings)."
+  [polygon [^double px ^double py]]
+  (let [n (count polygon)]
+    (loop [i 0 j (dec n) inside? false]
+      (if (>= i n)
+        inside?
+        (let [[^double xi ^double yi] (nth polygon i)
+              [^double xj ^double yj] (nth polygon j)
+              crosses? (and (not= (> yi py) (> yj py))
+                            (< px (+ xi (/ (* (- xj xi) (- py yi))
+                                           (- yj yi)))))]
+          (recur (inc i) i (if crosses? (not inside?) inside?)))))))

@@ -762,7 +762,32 @@
                 (aesthetic/dash-commands {:dash [10.0 6.0]})))
           paths))"]]
        [:p "Try different " [:code ":dash"] " ratios, " [:code ":density"]
-        " values, and " [:code ":seed"] "s to find the feel you want."]]}
+        " values, and " [:code ":seed"] "s to find the feel you want."]
+       [:h4 "Chaikin smoothing"]
+       [:p "Chaikin corner-cutting produces rounder, more uniform curves than Catmull-Rom — a different aesthetic feel:"]
+       [:pre [:code
+              ";; Chaikin smoothing (iterative corner-cutting)
+(aesthetic/chaikin-commands path-cmds {:iterations 3})
+
+;; Via stylize pipeline:
+(aesthetic/stylize cmds [{:op :chaikin :iterations 3}
+                          {:op :dash :dash [10 5]}])"]]
+       [:h4 "Path simplification"]
+       [:p "Reduce point count while preserving shape — essential for plotter optimization and cleaning up noisy paths:"]
+       [:pre [:code
+              "(require '[eido.path :as path])
+
+;; Douglas-Peucker on raw points (epsilon controls aggressiveness):
+(path/simplify [[0 0] [10 1] [20 0] [30 1] [40 0]] 2.0)
+
+;; On path commands:
+(path/simplify-commands cmds 2.0)"]]
+       [:h4 "Point-in-polygon"]
+       [:p "Test whether a point falls inside a polygon — useful for constraining scatter, clipping, and spatial queries:"]
+       [:pre [:code
+              ";; Is the point inside this irregular shape?
+(path/contains-point? [[0 0] [100 0] [80 100] [20 80]] [50 50])
+;; => true"]]]}
 
      {:id    "series"
       :title "Long-Form Series"

@@ -74,31 +74,6 @@ Essential for seamlessly looping animated noise (use the 4th dimension as a time
 
 ## Curves and paths
 
-### Chaikin curve smoothing
-
-Eido has Catmull-Rom smoothing (`smooth-commands`). Chaikin smoothing is a different algorithm that produces a distinct aesthetic — rounder, more uniform curves. Both are standard tools.
-
-**What to add:**
-- `aesthetic/chaikin` or `aesthetic/chaikin-commands` — iterative corner-cutting smoothing
-
-**Implementation notes:**
-- Chaikin's algorithm: for each pair of adjacent points, replace with two new points at 25% and 75% along the segment. Repeat N times (typically 3-5).
-- ~15 lines of pure Clojure. Input/output are path command vectors (same format as `smooth-commands`).
-- Consider a `:retain-ends` option that keeps the first and last points fixed (common variant for open curves).
-- Produces a very different feel from Catmull-Rom — more "rounded corners" than "flowing curves."
-
-### Path simplification
-
-Reduce the number of points in a path while preserving its shape. Essential for plotter output (fewer pen movements) and for cleaning up noisy generated paths.
-
-**What to add:**
-- `path/simplify` — Douglas-Peucker or Visvalingam simplification
-
-**Implementation notes:**
-- Douglas-Peucker: recursive algorithm, ~30 lines. Find the point farthest from the line between start and end; if distance > epsilon, recurse on both halves; otherwise, discard intermediate points. Epsilon controls aggressiveness.
-- Visvalingam: area-based, removes the point that contributes the least triangle area. Better at preserving overall shape character. ~40 lines with a priority queue.
-- Douglas-Peucker is simpler and probably sufficient as a first implementation. Operates on `[[x y] ...]` point vectors; wrap to work with path commands.
-
 ### Curve splitting and interpolation
 
 Split a curve at regular arc-length intervals, interpolate between two curves, trim a curve to bounds. These are fundamental operations for flow field streamlines, morphing animations, and bounded compositions.
@@ -113,17 +88,15 @@ Split a curve at regular arc-length intervals, interpolate between two curves, t
 - `path/interpolate`: given two paths with the same number of commands, lerp corresponding control points by parameter `t`. Simpler than full morphing — just requires matching structure. ~20 lines.
 - `path/trim-to-bounds`: Cohen-Sutherland or Liang-Barsky line clipping extended to path segments. More complex for curves — may need to flatten to line segments first, then clip. ~40 lines for the line-segment case.
 
-### Polygon operations
+### Polygon inset
 
-Point-in-polygon testing, polygon shrinking/insetting, polygon rotation. Useful for spatial queries, margin control, and composition.
+Shrink a polygon inward by a distance — useful for margin control and nested compositions.
 
 **What to add:**
-- `path/contains-point?` — point-in-polygon test
 - `path/inset` — shrink polygon inward by a distance
 
 **Implementation notes:**
-- `contains-point?`: ray casting algorithm — cast a horizontal ray from the point, count edge crossings. Odd = inside. ~20 lines. Works on any closed polygon defined as `[[x y] ...]`.
-- `path/inset`: offset each edge inward by `d` along its normal, recompute intersections. Simple for convex polygons (~15 lines); concave polygons need special handling at reflex vertices (clip or skip collapsing edges). Start with convex-only, document the limitation.
+- Offset each edge inward by `d` along its normal, recompute intersections. Simple for convex polygons (~15 lines); concave polygons need special handling at reflex vertices (clip or skip collapsing edges). Start with convex-only, document the limitation.
 
 ---
 

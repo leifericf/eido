@@ -123,21 +123,59 @@
                     (recur (+ on-start period)
                            (conj dashes dash-cmds))))))))))))
 
+;; --- chaikin ---
+
+(defn- chaikin-step
+  "One iteration of Chaikin corner-cutting on a point sequence."
+  [points retain-ends?]
+  (let [n (count points)]
+    (if (<= n 1)
+      points
+      (let [pairs (map vector points (rest points))
+            inner (mapcat (fn [[[x0 y0] [x1 y1]]]
+                            [[(+ (* 0.75 x0) (* 0.25 x1))
+                              (+ (* 0.75 y0) (* 0.25 y1))]
+                             [(+ (* 0.25 x0) (* 0.75 x1))
+                              (+ (* 0.25 y0) (* 0.75 y1))]])
+                          pairs)]
+        (if retain-ends?
+          (vec (concat [(first points)] inner [(last points)]))
+          (vec inner))))))
+
+(defn chaikin-commands
+  "Chaikin corner-cutting smoothing on path commands.
+  Produces rounder, more uniform curves than Catmull-Rom.
+  opts: :iterations (3), :retain-ends (true)."
+  [commands opts]
+  (let [iterations (get opts :iterations 3)
+        retain?    (get opts :retain-ends true)
+        points     (extract-points commands)
+        has-close? (= :close (first (last commands)))
+        smoothed   (reduce (fn [pts _] (chaikin-step pts retain?))
+                           points
+                           (range iterations))]
+    (if (empty? smoothed)
+      commands
+      (let [cmds (into [[:move-to (first smoothed)]]
+                       (mapv (fn [p] [:line-to p]) (rest smoothed)))]
+        (if has-close? (conj cmds [:close]) cmds)))))
+
 ;; --- convenience helpers ---
 
 (defn ^{:convenience true :convenience-for 'eido.path.aesthetic/smooth-commands}
   stylize
   "Applies path aesthetic transforms described as data.
-  Wraps smooth-commands, jittered-commands, dash-commands in sequence.
-  steps: vector of {:op :smooth/:jitter/:dash, ...opts}.
-  Example: (stylize cmds [{:op :smooth :samples 40} {:op :dash :dash [10 5]}])"
+  Wraps smooth-commands, jittered-commands, dash-commands, chaikin-commands.
+  steps: vector of {:op :smooth/:jitter/:dash/:chaikin, ...opts}.
+  Example: (stylize cmds [{:op :chaikin :iterations 3} {:op :dash :dash [10 5]}])"
   [commands steps]
   (reduce (fn [cmds {:keys [op] :as step}]
             (let [opts (dissoc step :op)]
               (case op
-                :smooth (smooth-commands cmds opts)
-                :jitter (jittered-commands cmds opts)
-                :dash   (dash-commands cmds opts))))
+                :smooth  (smooth-commands cmds opts)
+                :jitter  (jittered-commands cmds opts)
+                :dash    (dash-commands cmds opts)
+                :chaikin (chaikin-commands cmds opts))))
           commands steps))
 
 (comment
