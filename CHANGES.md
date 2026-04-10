@@ -95,6 +95,18 @@ directly using the migration examples below.
   (layered shape {:layers 30 :opacity 0.04 :deform-fn my-deform-fn :seed 42})
   ```
 
+- **`rd-grid` init keywords match `ca-grid`** — `rd-grid` used
+  `:center-seed` and `:random-seeds` while `ca-grid` used `:center` and
+  `:random`. Both now use bare keywords.
+
+  ```clj
+  ;; Before
+  (rd-grid w h :center-seed seed)
+
+  ;; After
+  (rd-grid w h :center seed)
+  ```
+
 ### Enhancements
 
 - **Namespace docstrings** — 22 artist-facing namespaces now have concise
