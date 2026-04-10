@@ -610,3 +610,51 @@
           clip   (:group/clip (first (:image/nodes result)))]
       (is (= [100.0 100.0] (:rect/xy clip)))
       (is (= [800.0 800.0] (:rect/size clip))))))
+
+(deftest with-units-symmetry-spacing-test
+  (testing "scales symmetry spacing"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :symmetry
+                   :symmetry/type :grid
+                   :symmetry/center [5.0 5.0]
+                   :symmetry/spacing [2.0 2.0]
+                   :symmetry/cols 3
+                   :symmetry/rows 3
+                   :group/children
+                   [{:node/type :shape/circle
+                     :circle/center [0 0]
+                     :circle/radius 0.5}]}]}
+          result (scene/with-units scene)
+          node   (first (:image/nodes result))]
+      (is (= [500.0 500.0] (:symmetry/center node)))
+      (is (= [200.0 200.0] (:symmetry/spacing node)))
+      (is (= 3 (:symmetry/cols node)))
+      (is (= 3 (:symmetry/rows node))))))
+
+(deftest with-units-text-glyphs-test
+  (testing "scales glyph override transforms and stroke"
+    (let [scene {:image/size [10.0 10.0]
+                 :image/units :in
+                 :image/dpi 100
+                 :image/background :white
+                 :image/nodes
+                 [{:node/type :shape/text-glyphs
+                   :text/content "AB"
+                   :text/font {:font/family "SansSerif" :font/size 0.5}
+                   :text/origin [1.0 2.0]
+                   :text/glyphs
+                   [{:glyph/index 0
+                     :node/transform [[:transform/translate 0.1 0.2]]
+                     :style/stroke {:color [:color/rgb 0 0 0] :width 0.05}}]}]}
+          result (scene/with-units scene)
+          node   (first (:image/nodes result))
+          glyph  (first (:text/glyphs node))]
+      (is (= [100.0 200.0] (:text/origin node)))
+      (is (= [:transform/translate 10.0 20.0]
+             (first (:node/transform glyph))))
+      (is (= 5.0 (:width (:style/stroke glyph))))
+      (is (= 0 (:glyph/index glyph))))))

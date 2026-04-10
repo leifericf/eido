@@ -32,7 +32,7 @@
   (loop [cmds commands
          current nil
          result []]
-    (if (empty? cmds)
+    (if-not (seq cmds)
       (if (and current (>= (count current) 2))
         (conj result current)
         result)

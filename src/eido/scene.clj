@@ -266,7 +266,8 @@
   "Keys whose values are [x y] points."
   #{:image/size :rect/xy :rect/size :circle/center :ellipse/center
     :arc/center :line/from :line/to :text/origin :symmetry/center
-    :gradient/from :gradient/to :gradient/center :lsystem/origin})
+    :symmetry/spacing :gradient/from :gradient/to :gradient/center
+    :lsystem/origin})
 
 (def ^:private scalar-keys
   "Keys whose values are single spatial distances."
@@ -380,6 +381,20 @@
                                         (* (double fv) factor)
                                         fv)))
                                   {} v)
+          (= k :text/glyphs)    (mapv (fn [g]
+                                        (reduce-kv
+                                          (fn [gm gk gv]
+                                            (assoc gm gk
+                                              (cond
+                                                (= gk :node/transform)
+                                                (mapv #(scale-transform % factor) gv)
+                                                (= gk :style/fill)
+                                                (scale-fill gv factor)
+                                                (= gk :style/stroke)
+                                                (scale-stroke gv factor)
+                                                :else gv)))
+                                          {} g))
+                                      v)
           :else v)))
     {} node))
 
@@ -397,7 +412,9 @@
         with-units)"
   [scene]
   (let [units (:image/units scene)
-        dpi   (double (:image/dpi scene))
+        dpi   (double (or (:image/dpi scene)
+                          (throw (ex-info "with-units requires :image/dpi"
+                                         {:scene-keys (keys scene)}))))
         factor (case units
                  :cm (/ dpi 2.54)
                  :mm (/ dpi 25.4)

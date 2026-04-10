@@ -173,60 +173,63 @@
       (.dispose writer)))
   path)
 
+(defn- add-tiff-rational-field
+  "Appends a TIFFRational field to a TIFF IFD node."
+  [ifd number name value]
+  (let [field (doto (IIOMetadataNode. "TIFFField")
+                (.setAttribute "number" (str number))
+                (.setAttribute "name" name))
+        rats  (IIOMetadataNode. "TIFFRationals")
+        rat   (doto (IIOMetadataNode. "TIFFRational")
+                (.setAttribute "value" value))]
+    (.appendChild rats rat)
+    (.appendChild field rats)
+    (.appendChild ifd field)))
+
+(defn- add-tiff-short-field
+  "Appends a TIFFShort field to a TIFF IFD node."
+  [ifd number name value]
+  (let [field (doto (IIOMetadataNode. "TIFFField")
+                (.setAttribute "number" (str number))
+                (.setAttribute "name" name))
+        shorts (IIOMetadataNode. "TIFFShorts")
+        short  (doto (IIOMetadataNode. "TIFFShort")
+                 (.setAttribute "value" (str value)))]
+    (.appendChild shorts short)
+    (.appendChild field shorts)
+    (.appendChild ifd field)))
+
+(defn- set-tiff-dpi
+  "Sets DPI metadata on a TIFF image metadata object."
+  [meta dpi]
+  (let [root    (.getAsTree meta "javax_imageio_tiff_image_1.0")
+        ifd     (.item (.getChildNodes root) 0)
+        dpi-str (str (int dpi) "/1")]
+    (add-tiff-rational-field ifd 282 "XResolution" dpi-str)
+    (add-tiff-rational-field ifd 283 "YResolution" dpi-str)
+    (add-tiff-short-field ifd 296 "ResolutionUnit" 2)
+    (.mergeTree meta "javax_imageio_tiff_image_1.0" root)))
+
 (defn- write-tiff
   "Writes a BufferedImage as TIFF with optional DPI metadata and compression.
   Compression: :lzw, :deflate, :none (default :lzw)."
   [^BufferedImage img ^String path dpi compression]
   (let [writer (.next (ImageIO/getImageWritersByFormatName "tiff"))
-        param  (.getDefaultWriteParam writer)
-        _      (let [comp (case (or compression :lzw)
-                           :lzw     "LZW"
-                           :deflate "Deflate"
-                           :none    nil)]
-                 (when comp
-                   (.setCompressionMode param ImageWriteParam/MODE_EXPLICIT)
-                   (.setCompressionType param comp)))
-        ts     (javax.imageio.ImageTypeSpecifier/createFromRenderedImage img)
-        meta   (.getDefaultImageMetadata writer ts param)
-        _      (when dpi
-                 (let [root (.getAsTree meta "javax_imageio_tiff_image_1.0")
-                       ifd  (.item (.getChildNodes root) 0)
-                       dpi-str (str (int dpi) "/1")]
-                   ;; XResolution (tag 282)
-                   (let [field (doto (IIOMetadataNode. "TIFFField")
-                                 (.setAttribute "number" "282")
-                                 (.setAttribute "name" "XResolution"))
-                         rats  (IIOMetadataNode. "TIFFRationals")
-                         rat   (doto (IIOMetadataNode. "TIFFRational")
-                                 (.setAttribute "value" dpi-str))]
-                     (.appendChild rats rat)
-                     (.appendChild field rats)
-                     (.appendChild ifd field))
-                   ;; YResolution (tag 283)
-                   (let [field (doto (IIOMetadataNode. "TIFFField")
-                                 (.setAttribute "number" "283")
-                                 (.setAttribute "name" "YResolution"))
-                         rats  (IIOMetadataNode. "TIFFRationals")
-                         rat   (doto (IIOMetadataNode. "TIFFRational")
-                                 (.setAttribute "value" dpi-str))]
-                     (.appendChild rats rat)
-                     (.appendChild field rats)
-                     (.appendChild ifd field))
-                   ;; ResolutionUnit (tag 296) = 2 (inch)
-                   (let [field (doto (IIOMetadataNode. "TIFFField")
-                                 (.setAttribute "number" "296")
-                                 (.setAttribute "name" "ResolutionUnit"))
-                         shorts (IIOMetadataNode. "TIFFShorts")
-                         short  (doto (IIOMetadataNode. "TIFFShort")
-                                  (.setAttribute "value" "2"))]
-                     (.appendChild shorts short)
-                     (.appendChild field shorts)
-                     (.appendChild ifd field))
-                   (.mergeTree meta "javax_imageio_tiff_image_1.0" root)))]
-    (with-open [out (FileImageOutputStream. (File. path))]
-      (.setOutput writer out)
-      (.write writer nil (IIOImage. img nil meta) param)
-      (.dispose writer)))
+        param  (.getDefaultWriteParam writer)]
+    (when-let [comp (case (or compression :lzw)
+                      :lzw     "LZW"
+                      :deflate "Deflate"
+                      :none    nil)]
+      (.setCompressionMode param ImageWriteParam/MODE_EXPLICIT)
+      (.setCompressionType param comp))
+    (let [ts   (javax.imageio.ImageTypeSpecifier/createFromRenderedImage img)
+          meta (.getDefaultImageMetadata writer ts param)]
+      (when dpi
+        (set-tiff-dpi meta dpi))
+      (with-open [out (FileImageOutputStream. (File. path))]
+        (.setOutput writer out)
+        (.write writer nil (IIOImage. img nil meta) param)
+        (.dispose writer))))
   path)
 
 (defn render-to-file
