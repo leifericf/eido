@@ -405,30 +405,38 @@
   (render-mesh projection (mesh/prism-mesh base-points height) opts))
 
 (defn cylinder
-  "Creates a 3D cylinder projected into 2D."
-  [projection position radius height opts]
-  (let [m (-> (mesh/cylinder-mesh radius height (select-keys opts [:segments]))
+  "Creates a 3D cylinder projected into 2D.
+  opts: :radius, :height, :segments, :style, :light, :cull-back."
+  [projection position opts]
+  (let [m (-> (mesh/cylinder-mesh (:radius opts) (:height opts)
+                (select-keys opts [:segments]))
               (xform/translate-mesh position))]
     (render-mesh projection m opts)))
 
 (defn sphere
-  "Creates a 3D sphere projected into 2D."
-  [projection position radius opts]
-  (let [m (-> (mesh/sphere-mesh radius (select-keys opts [:segments :rings]))
+  "Creates a 3D sphere projected into 2D.
+  opts: :radius, :segments, :rings, :style, :light, :cull-back."
+  [projection position opts]
+  (let [m (-> (mesh/sphere-mesh (:radius opts) (select-keys opts [:segments :rings]))
               (xform/translate-mesh position))]
     (render-mesh projection m opts)))
 
 (defn torus
-  "Creates a 3D torus projected into 2D."
-  [projection position R r opts]
-  (let [m (-> (mesh/torus-mesh R r (select-keys opts [:ring-segments :tube-segments]))
+  "Creates a 3D torus projected into 2D.
+  opts: :major-radius, :minor-radius, :ring-segments, :tube-segments,
+        :style, :light, :cull-back."
+  [projection position opts]
+  (let [m (-> (mesh/torus-mesh (:major-radius opts) (:minor-radius opts)
+                (select-keys opts [:ring-segments :tube-segments]))
               (xform/translate-mesh position))]
     (render-mesh projection m opts)))
 
 (defn cone
-  "Creates a 3D cone projected into 2D."
-  [projection position radius height opts]
-  (let [m (-> (mesh/cone-mesh radius height (select-keys opts [:segments]))
+  "Creates a 3D cone projected into 2D.
+  opts: :radius, :height, :segments, :style, :light, :cull-back."
+  [projection position opts]
+  (let [m (-> (mesh/cone-mesh (:radius opts) (:height opts)
+                (select-keys opts [:segments]))
               (xform/translate-mesh position))]
     (render-mesh projection m opts)))
 
@@ -537,11 +545,12 @@
 (defn text-3d
   "Creates 3D extruded text projected into 2D, returned as a :group node.
   projection: projection map. content: string. font-spec: font map.
-  depth: extrusion depth. opts: same as render-mesh plus :flatness.
+  opts: :depth (extrusion depth), :flatness, :style, :light, :cull-back.
   The mesh is centered at the origin for natural rotation.
   Front/back caps use even-odd fill to correctly render letter holes."
-  [projection content font-spec depth opts]
-  (let [text-m   (text-mesh content font-spec depth opts)
+  [projection content font-spec opts]
+  (let [depth    (:depth opts)
+        text-m   (text-mesh content font-spec depth opts)
         center   (u/mesh-center text-m)
         centered (xform/translate-mesh text-m (mapv - center))
         ;; Render side walls

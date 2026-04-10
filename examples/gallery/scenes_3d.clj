@@ -104,12 +104,14 @@
         {:style {:style/fill [:color/rgb 90 140 200]
                  :style/stroke {:color [:color/rgb 50 80 130] :width 0.5}}
          :light light})
-      (s3d/cylinder proj [2 0 -1.5] 0.9 2.2
-        {:style {:style/fill [:color/rgb 200 100 80]
+      (s3d/cylinder proj [2 0 -1.5]
+        {:radius 0.9 :height 2.2
+         :style {:style/fill [:color/rgb 200 100 80]
                  :style/stroke {:color [:color/rgb 130 55 40] :width 0.5}}
          :light light :segments 20})
-      (s3d/sphere proj [0 1.3 1.8] 1.0
-        {:style {:style/fill [:color/rgb 100 180 100]
+      (s3d/sphere proj [0 1.3 1.8]
+        {:radius 1.0
+         :style {:style/fill [:color/rgb 100 180 100]
                  :style/stroke {:color [:color/rgb 50 110 50] :width 0.3}}
          :light light :segments 16 :rings 8})]}))
 

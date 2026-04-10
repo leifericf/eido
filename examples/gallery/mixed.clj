@@ -25,8 +25,9 @@
                         :light/ambient   0.2
                         :light/intensity 0.8}
                 ;; 3D torus — hot magenta
-                torus-3d (s3d/torus proj [0 0 0] 1.8 0.5
-                           {:style {:style/fill [:color/rgb 255 50 160]
+                torus-3d (s3d/torus proj [0 0 0]
+                           {:major-radius 1.8 :minor-radius 0.5
+                            :style {:style/fill [:color/rgb 255 50 160]
                                     :style/stroke {:color [:color/rgb 255 120 200]
                                                    :width 0.4}}
                             :light light

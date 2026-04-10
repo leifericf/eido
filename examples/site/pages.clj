@@ -1071,8 +1071,9 @@
       light {:light/direction [1 1 0.5]
              :light/ambient 0.25
              :light/intensity 0.8}]
-  (s3d/sphere proj [0 0 0] 1.5
-    {:style {:style/fill [:color/name \"cornflowerblue\"]}
+  (s3d/sphere proj [0 0 0]
+    {:radius 1.5
+     :style {:style/fill [:color/name \"cornflowerblue\"]}
      :light light
      :subdivisions 3}))  ;; higher = smoother sphere"]]
        [:p "Available primitives: " [:code "sphere"] ", " [:code "cube"] ", "

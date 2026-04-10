@@ -204,8 +204,9 @@
                 ;; Static 3D pillars
                 pillars (mapv
                           (fn [pos]
-                            (s3d/cylinder proj pos 0.25 2.5
-                              {:style {:style/fill [:color/rgb 140 120 100]
+                            (s3d/cylinder proj pos
+                              {:radius 0.25 :height 2.5
+                               :style {:style/fill [:color/rgb 140 120 100]
                                        :style/stroke {:color [:color/rgb 80 70 60]
                                                       :width 0.3}}
                                :light light :segments 8}))
@@ -248,8 +249,9 @@
                      :particle/seed 42
                      :particle/max-count 250}
                     90 {:fps 30}))
-        volcano (s3d/cone proj [0 0 0] 3.0 3.5
-                  {:style {:style/fill [:color/rgb 80 50 30]
+        volcano (s3d/cone proj [0 0 0]
+                  {:radius 3.0 :height 3.5
+                   :style {:style/fill [:color/rgb 80 50 30]
                            :style/stroke {:color [:color/rgb 60 35 20]
                                           :width 0.5}}
                    :light light :segments 16})

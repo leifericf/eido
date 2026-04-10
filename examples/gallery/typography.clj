@@ -154,8 +154,9 @@
                                   :yaw 0.0
                                   :pitch (+ (* Math/PI 0.5) rock)
                                   :distance 250})]
-                      (s3d/text-3d proj (str c) font 12
-                        {:style {:style/fill [:color/rgb 255 140 60]}
+                      (s3d/text-3d proj (str c) font
+                        {:depth 12
+                         :style {:style/fill [:color/rgb 255 140 60]}
                          :light {:light/direction [0 -1 0.5]
                                  :light/ambient 0.25
                                  :light/intensity 0.75}})))

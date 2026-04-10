@@ -856,8 +856,9 @@
            light {:light/direction [1 1 0.5]
                   :light/ambient 0.25
                   :light/intensity 0.8}
-           result (s3d/sphere proj [0 0 0] 1.5
-                    {:style {:style/fill [:color/rgb 100 150 255]}
+           result (s3d/sphere proj [0 0 0]
+                    {:radius 1.5
+                     :style {:style/fill [:color/rgb 100 150 255]}
                      :light light
                      :subdivisions 4
                      :smooth true})]
