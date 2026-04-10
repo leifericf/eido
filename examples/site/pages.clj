@@ -96,7 +96,7 @@
           ";; deps.edn
 {:deps
  {io.github.leifericf/eido
-  {:git/tag \"v1.0.0-beta3\" :git/sha \"a8bba4b\"}}}"]]
+  {:git/tag \"v1.0.0-beta4\" :git/sha \"b942c7f\"}}}"]]
    [:h4 "2. Render your first image"]
    [:p "Start a REPL via Calva (\"Jack-in\"), then evaluate:"]
    [:pre [:code
