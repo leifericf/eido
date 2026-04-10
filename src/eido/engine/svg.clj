@@ -228,19 +228,19 @@
   (mapv #(assoc % :fill nil) ops))
 
 (defn- group-ops-by-stroke
-  "Groups ops by stroke color CSS string. Returns a seq of
+  "Groups ops by stroke color CSS string. Returns a vector of
   {:pen css-string :ops [ops...]} in order of first appearance."
   [ops]
-  (let [order   (atom [])
-        groups  (atom {})]
-    (doseq [op ops]
-      (let [k (if-let [sc (:stroke-color op)]
-                (color->css sc)
-                "none")]
-        (when-not (contains? @groups k)
-          (swap! order conj k))
-        (swap! groups update k (fnil conj []) op)))
-    (mapv (fn [k] {:pen k :ops (get @groups k)}) @order)))
+  (let [{:keys [order groups]}
+        (reduce (fn [{:keys [order groups]} op]
+                  (let [k (if-let [sc (:stroke-color op)]
+                            (color->css sc)
+                            "none")]
+                    {:order  (if (contains? groups k) order (conj order k))
+                     :groups (update groups k (fnil conj []) op)}))
+                {:order [] :groups {}}
+                ops)]
+    (mapv (fn [k] {:pen k :ops (get groups k)}) order)))
 
 (defn- deduplicate-ops
   "Removes duplicate ops. Two ops are duplicates if they have the same
