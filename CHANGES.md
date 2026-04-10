@@ -5,6 +5,7 @@
 ### New modules
 
 - **`eido.texture`** — Texture and material helpers for organic rendering. `layered` produces translucent multi-copy groups; `watercolor` wraps it with jitter deformation for watercolor wash simulation.
+- **`eido.io.polyline`** — Polyline data extraction from compiled IR for CNC, plotter, and laser cutter export. Converts all geometry (paths, rects, circles, ellipses, arcs, lines) to vectors of `[x y]` points.
 
 ### New features
 

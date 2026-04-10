@@ -85,7 +85,7 @@
                   eido.scene3d.surface eido.scene3d.modeling
                   eido.scene3d.render]}
    {:category "I/O"
-    :namespaces '[eido.io.obj]}
+    :namespaces '[eido.io.obj eido.io.polyline]}
    {:category "Math"
     :namespaces '[eido.math]}
    {:category "Visual Computation"

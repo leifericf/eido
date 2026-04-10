@@ -1585,6 +1585,7 @@
 (eido/render scene {:output \"out.png\"})          ;; PNG (default)
 (eido/render scene {:output \"out.svg\"})          ;; SVG (vector)
 (eido/render scene {:output \"out.jpg\" :quality 0.9})
+(eido/render scene {:output \"out.tiff\" :dpi 300})  ;; archival TIFF
 
 ;; Animations
 (eido/render frames {:output \"anim.gif\" :fps 30})
@@ -1592,12 +1593,79 @@
 (eido/render frames {:output \"frames/\" :fps 30})   ;; PNG sequence"]]
        [:h4 "Options"]
        [:pre [:code
-              ":scale 2                  ;; 2x resolution (retina)
-:dpi 300                  ;; DPI metadata for print
-:transparent-background true  ;; no background fill
-:loop false               ;; GIF plays once (default: loops)"]]
+              ":scale 2                     ;; 2x resolution (retina)
+:dpi 300                     ;; DPI metadata (PNG/TIFF)
+:transparent-background true ;; no background fill
+:loop false                  ;; GIF plays once (default: loops)
+:tiff/compression :lzw       ;; TIFF: :lzw (default), :deflate, :none
+:quality 0.9                 ;; JPEG quality (0-1)"]]
        [:p "Render without an output path to get a BufferedImage back for further processing, or use "
-        [:code ":format :svg"] " to get an SVG string."]]}
+        [:code ":format :svg"] " to get an SVG string."]
+       [:p "If the scene includes " [:code ":image/dpi"] ", PNG and TIFF output "
+        "automatically embed DPI metadata — no need to pass " [:code ":dpi"] " separately."]]}
+
+     {:id    "print-ready"
+      :title "Print-Ready Output"
+      :content
+      [:div
+       [:p "Artists producing physical output — prints, plotter work, fine art editions — need to think in centimeters or inches, not pixels. Eido provides resolution-independent coordinates and paper size presets."]
+       [:h4 "Paper size presets"]
+       [:pre [:code
+              "(require '[eido.scene :as scene])
+
+;; Standard paper sizes — returns a base scene map
+(scene/paper :a4)
+;=> {:image/size [21.0 29.7] :image/units :cm :image/dpi 300}
+
+(scene/paper :letter :landscape true)
+;=> {:image/size [11.0 8.5] :image/units :in :image/dpi 300}
+
+(scene/paper :a3 :dpi 600)
+;=> {:image/size [29.7 42.0] :image/units :cm :image/dpi 600}
+
+;; Available sizes: :a3 :a4 :a5 :letter :legal :tabloid :square-8"]]
+       [:h4 "Unit conversion"]
+       [:p [:code "scene/with-units"] " converts a scene described in real-world units to pixel coordinates. "
+        "It walks the entire scene tree, scaling all spatial values (coordinates, radii, stroke widths, "
+        "dash patterns, font sizes) while leaving non-spatial values (opacity, angles, colors) untouched:"]
+       [:pre [:code
+              ";; Describe your scene in centimeters
+(-> (scene/paper :a4)
+    (assoc :image/background :white
+           :image/nodes
+           [{:node/type :shape/circle
+             :circle/center [10.5 14.85]  ;; center of A4 in cm
+             :circle/radius 5.0           ;; 5 cm radius
+             :style/stroke {:color :black :width 0.1}}])  ;; 1mm stroke
+    scene/with-units  ;; converts to pixels
+    (eido/render {:output \"print.tiff\"}))
+;; Output: 2480×3508 px TIFF at 300 DPI with embedded DPI metadata"]]
+       [:p "Supported units: " [:code ":cm"] " (centimeters), "
+        [:code ":mm"] " (millimeters), " [:code ":in"] " (inches)."]
+       [:p [:code "with-units"] " is a pure function — it takes a data map and returns a data map. "
+        "You can inspect the converted scene at the REPL before rendering."]]}
+
+     {:id    "polyline-export"
+      :title "Polyline Data Export"
+      :content
+      [:div
+       [:p "For CNC mills, laser cutters, and custom plotter software, raw coordinate data is more useful than rendered images. "
+        "Use " [:code ":format :polylines"] " to extract geometry as EDN:"]
+       [:pre [:code
+              ";; Extract polylines from any scene
+(eido/render scene {:format :polylines})
+;=> {:polylines [[[x1 y1] [x2 y2] ...] ...]
+;    :bounds [800 600]}
+
+;; Write to file
+(eido/render scene {:format :polylines :output \"paths.edn\"})
+
+;; Control curve resolution
+(eido/render scene {:format :polylines :flatness 0.5 :segments 64})"]]
+       [:p "All geometry is converted to polylines: curves are flattened via de Casteljau subdivision, "
+        "circles and ellipses are approximated as polygons. Groups are recursively traversed."]
+       [:p "Options: " [:code ":flatness"] " controls curve subdivision tolerance (default 0.5, lower = more points). "
+        [:code ":segments"] " controls circle/ellipse polygon resolution (default 64)."]]}
 
      {:id    "plotter-svg"
       :title "Plotter-Safe SVG"
