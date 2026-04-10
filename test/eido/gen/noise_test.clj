@@ -157,6 +157,60 @@
       (is (number? v))
       (is (>= v 0.0)))))
 
+;; --- perlin4d ---
+
+(deftest perlin4d-range-test
+  (testing "perlin4d values are in [-1, 1]"
+    (let [values (for [x (range 0 3 0.5)
+                       y (range 0 3 0.5)
+                       z (range 0 3 0.5)
+                       w (range 0 3 0.5)]
+                   (noise/perlin4d x y z w))]
+      (is (every? #(<= -1.0 % 1.0) values)))))
+
+(deftest perlin4d-deterministic-test
+  (testing "same input produces same output"
+    (is (= (noise/perlin4d 1.5 2.3 0.7 0.4)
+           (noise/perlin4d 1.5 2.3 0.7 0.4)))))
+
+(deftest perlin4d-seeded-test
+  (testing "different seeds produce different values"
+    (is (not= (noise/perlin4d 1.5 2.3 0.7 0.4 {:seed 42})
+              (noise/perlin4d 1.5 2.3 0.7 0.4 {:seed 99})))))
+
+;; --- simplex4d ---
+
+(deftest simplex4d-range-test
+  (testing "simplex4d values are in [-1, 1]"
+    (let [values (for [x (range 0 3 0.5)
+                       y (range 0 3 0.5)
+                       z (range 0 3 0.5)
+                       w (range 0 3 0.5)]
+                   (noise/simplex4d x y z w))]
+      (is (every? #(<= -1.0 % 1.0) values)))))
+
+(deftest simplex4d-deterministic-test
+  (testing "same input produces same output"
+    (is (= (noise/simplex4d 1.5 2.3 0.7 0.4)
+           (noise/simplex4d 1.5 2.3 0.7 0.4)))))
+
+(deftest simplex4d-seeded-test
+  (testing "different seeds produce different values"
+    (is (not= (noise/simplex4d 1.5 2.3 0.7 0.4 {:seed 42})
+              (noise/simplex4d 1.5 2.3 0.7 0.4 {:seed 99})))))
+
+(deftest simplex4d-continuity-test
+  (testing "nearby points have similar values"
+    (let [v1 (noise/simplex4d 1.0 1.0 1.0 1.0)
+          v2 (noise/simplex4d 1.001 1.001 1.001 1.001)]
+      (is (< (Math/abs (- v1 v2)) 0.01)))))
+
+(deftest noise-4d-fbm-compatibility-test
+  (testing "4D noise works with fbm via 2D wrapper"
+    (let [v (noise/fbm (fn [x y _opts] (noise/simplex4d x y 0 0)) 1.5 2.3 {:octaves 4})]
+      (is (number? v))
+      (is (<= -1.0 v 1.0)))))
+
 ;; --- preview ---
 
 (deftest preview-test

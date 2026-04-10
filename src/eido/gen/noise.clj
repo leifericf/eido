@@ -162,6 +162,75 @@
                 (dot3 bbb (- xf 1.0) (- yf 1.0) (- zf 1.0)) u) v)
        w))))
 
+;; --- perlin 4D ---
+;; 32 gradient vectors: permutations of (±1,±1,0,0) in 4D.
+
+(def ^:private grad4
+  "4D gradient vectors as [x y z w ...] flattened."
+  (int-array [0 1 1 1, 0 1 1 -1, 0 1 -1 1, 0 1 -1 -1,
+              0 -1 1 1, 0 -1 1 -1, 0 -1 -1 1, 0 -1 -1 -1,
+              1 0 1 1, 1 0 1 -1, 1 0 -1 1, 1 0 -1 -1,
+              -1 0 1 1, -1 0 1 -1, -1 0 -1 1, -1 0 -1 -1,
+              1 1 0 1, 1 1 0 -1, 1 -1 0 1, 1 -1 0 -1,
+              -1 1 0 1, -1 1 0 -1, -1 -1 0 1, -1 -1 0 -1,
+              1 1 1 0, 1 1 -1 0, 1 -1 1 0, 1 -1 -1 0,
+              -1 1 1 0, -1 1 -1 0, -1 -1 1 0, -1 -1 -1 0]))
+
+(defn- dot4 [gi x y z w]
+  (let [i (unchecked-multiply-int (int gi) 4)
+        x (double x) y (double y) z (double z) w (double w)]
+    (+ (* (double (aget ^ints grad4 i)) x)
+       (* (double (aget ^ints grad4 (+ i 1))) y)
+       (* (double (aget ^ints grad4 (+ i 2))) z)
+       (* (double (aget ^ints grad4 (+ i 3))) w))))
+
+(defn perlin4d
+  "4D Perlin noise. Returns a double in [-1, 1].
+  Essential for seamlessly looping animated noise.
+  Looping trick: (perlin4d x y (* r (cos t)) (* r (sin t))).
+  Optionally accepts {:seed n}."
+  ([x y z w]
+   (perlin4d x y z w nil))
+  ([x y z w opts]
+   (let [perm (if-let [s (:seed opts)] (get-perm s) default-perm)
+         x (double x) y (double y) z (double z) w (double w)
+         xi (long (Math/floor x)) yi (long (Math/floor y))
+         zi (long (Math/floor z)) wi (long (Math/floor w))
+         xf (- x xi) yf (- y yi) zf (- z zi) wf (- w wi)
+         u (fade xf) v (fade yf) s (fade zf) t (fade wf)
+         p (fn [a b c d]
+             (rem (perm-at perm
+                    (+ (perm-at perm
+                         (+ (perm-at perm
+                              (+ (perm-at perm (+ xi a)) (+ yi b)))
+                            (+ zi c)))
+                       (+ wi d)))
+                  32))]
+     (nlerp
+       (nlerp
+         (nlerp
+           (nlerp (dot4 (p 0 0 0 0) xf yf zf wf)
+                  (dot4 (p 1 0 0 0) (- xf 1) yf zf wf) u)
+           (nlerp (dot4 (p 0 1 0 0) xf (- yf 1) zf wf)
+                  (dot4 (p 1 1 0 0) (- xf 1) (- yf 1) zf wf) u) v)
+         (nlerp
+           (nlerp (dot4 (p 0 0 1 0) xf yf (- zf 1) wf)
+                  (dot4 (p 1 0 1 0) (- xf 1) yf (- zf 1) wf) u)
+           (nlerp (dot4 (p 0 1 1 0) xf (- yf 1) (- zf 1) wf)
+                  (dot4 (p 1 1 1 0) (- xf 1) (- yf 1) (- zf 1) wf) u) v) s)
+       (nlerp
+         (nlerp
+           (nlerp (dot4 (p 0 0 0 1) xf yf zf (- wf 1))
+                  (dot4 (p 1 0 0 1) (- xf 1) yf zf (- wf 1)) u)
+           (nlerp (dot4 (p 0 1 0 1) xf (- yf 1) zf (- wf 1))
+                  (dot4 (p 1 1 0 1) (- xf 1) (- yf 1) zf (- wf 1)) u) v)
+         (nlerp
+           (nlerp (dot4 (p 0 0 1 1) xf yf (- zf 1) (- wf 1))
+                  (dot4 (p 1 0 1 1) (- xf 1) yf (- zf 1) (- wf 1)) u)
+           (nlerp (dot4 (p 0 1 1 1) xf (- yf 1) (- zf 1) (- wf 1))
+                  (dot4 (p 1 1 1 1) (- xf 1) (- yf 1) (- zf 1) (- wf 1)) u) v) s)
+       t))))
+
 ;; --- fractal noise ---
 
 (defn fbm
@@ -394,6 +463,80 @@
          value (+ (v 0 0 0) (v 1 0 0) (v 0 1 0) (v 1 1 0)
                   (v 0 0 1) (v 1 0 1) (v 0 1 1) (v 1 1 1))]
      (* value (/ 1.0 NORMALIZER_3D)))))
+
+;; --- OpenSimplex2S 4D ---
+
+(def ^:private ^:const SKEW_4D 0.309016994374947)
+(def ^:private ^:const UNSKEW_4D -0.138196601125011)
+(def ^:private ^:const RSQUARED_4D 0.8)
+
+(def ^:private gradients-4d
+  "Pre-computed normalized 4D gradient vectors (32 directions)."
+  (double-array
+    [0 1 1 1, 0 1 1 -1, 0 1 -1 1, 0 1 -1 -1,
+     0 -1 1 1, 0 -1 1 -1, 0 -1 -1 1, 0 -1 -1 -1,
+     1 0 1 1, 1 0 1 -1, 1 0 -1 1, 1 0 -1 -1,
+     -1 0 1 1, -1 0 1 -1, -1 0 -1 1, -1 0 -1 -1,
+     1 1 0 1, 1 1 0 -1, 1 -1 0 1, 1 -1 0 -1,
+     -1 1 0 1, -1 1 0 -1, -1 -1 0 1, -1 -1 0 -1,
+     1 1 1 0, 1 1 -1 0, 1 -1 1 0, 1 -1 -1 0,
+     -1 1 1 0, -1 1 -1 0, -1 -1 1 0, -1 -1 -1 0]))
+
+(def ^:private ^:const N_GRADS_4D 32)
+(def ^:private ^:const NORMALIZER_4D 0.15)
+
+(defn- simplex-grad4 [seed xsvp ysvp zsvp wsvp dx dy dz dw]
+  (let [^doubles grads gradients-4d
+        hash (bit-and (bit-xor (long seed) (long xsvp) (long ysvp)
+                               (long zsvp) (long wsvp))
+                      0x7FFFFFFF)
+        gi (unchecked-int (unchecked-multiply-int (mod hash N_GRADS_4D) 4))
+        dx (double dx) dy (double dy) dz (double dz) dw (double dw)
+        a (- RSQUARED_4D (+ (* dx dx) (* dy dy) (* dz dz) (* dw dw)))]
+    (if (< a 0.0)
+      0.0
+      (let [a2 (* a a)]
+        (* a2 a2
+           (+ (* (aget grads gi) dx)
+              (* (aget grads (inc gi)) dy)
+              (* (aget grads (+ gi 2)) dz)
+              (* (aget grads (+ gi 3)) dw)))))))
+
+(defn- simplex4d-vertex [seed xsb ysb zsb wsb xf yf zf wf dxs dys dzs dws]
+  (let [xfd (- (double xf) (double dxs))
+        yfd (- (double yf) (double dys))
+        zfd (- (double zf) (double dzs))
+        wfd (- (double wf) (double dws))
+        t (* (+ xfd yfd zfd wfd) UNSKEW_4D)
+        dx (+ xfd t) dy (+ yfd t) dz (+ zfd t) dw (+ wfd t)]
+    (simplex-grad4 seed (+ (long xsb) (long dxs))
+                   (+ (long ysb) (long dys))
+                   (+ (long zsb) (long dzs))
+                   (+ (long wsb) (long dws))
+                   dx dy dz dw)))
+
+(defn simplex4d
+  "4D OpenSimplex2S noise. Returns a double in [-1, 1].
+  Essential for seamlessly looping animated noise.
+  Looping trick: (simplex4d x y (* r (cos t)) (* r (sin t))).
+  Optionally accepts {:seed n}."
+  ([x y z w]
+   (simplex4d x y z w nil))
+  ([x y z w opts]
+   (let [seed (long (get opts :seed 0))
+         x (double x) y (double y) z (double z) w (double w)
+         s (* SKEW_4D (+ x y z w))
+         xs (+ x s) ys (+ y s) zs (+ z s) ws (+ w s)
+         xsb (long (Math/floor xs)) ysb (long (Math/floor ys))
+         zsb (long (Math/floor zs)) wsb (long (Math/floor ws))
+         xf (- xs xsb) yf (- ys ysb) zf (- zs zsb) wf (- ws wsb)
+         v (fn [dxs dys dzs dws]
+             (simplex4d-vertex seed xsb ysb zsb wsb xf yf zf wf dxs dys dzs dws))
+         value (+ (v 0 0 0 0) (v 1 0 0 0) (v 0 1 0 0) (v 1 1 0 0)
+                  (v 0 0 1 0) (v 1 0 1 0) (v 0 1 1 0) (v 1 1 1 0)
+                  (v 0 0 0 1) (v 1 0 0 1) (v 0 1 0 1) (v 1 1 0 1)
+                  (v 0 0 1 1) (v 1 0 1 1) (v 0 1 1 1) (v 1 1 1 1))]
+     (max -1.0 (min 1.0 (* value (/ 1.0 NORMALIZER_4D)))))))
 
 ;; --- visual preview ---
 

@@ -6,22 +6,6 @@ Organized by what matters to practicing generative and computational artists, gr
 
 ---
 
-## Noise
-
-### 4D noise
-
-Essential for seamlessly looping animated noise (use the 4th dimension as a time loop) and for generating tileable patterns.
-
-**What to add:**
-- `noise/perlin4d` and/or `noise/simplex4d`
-
-**Implementation notes:**
-- 4D Perlin extends the existing 3D implementation with one more dimension in the gradient table and interpolation. Conceptually straightforward but the code is bulkier (~100 lines for the 4D case alone).
-- 4D simplex is more efficient than 4D Perlin (fewer interpolation steps). If implementing simplex noise, do 4D at the same time.
-- Looping trick: `noise(x, y, cos(t*2π)*r, sin(t*2π)*r)` gives seamless temporal loops. Document this pattern.
-
----
-
 ## Curves and paths
 
 ### Curve splitting and interpolation

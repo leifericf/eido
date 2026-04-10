@@ -544,6 +544,20 @@
 ;; Works with all fractal variants:
 (noise/fbm noise/simplex2d x y {:octaves 6})
 (noise/turbulence noise/simplex2d x y {:octaves 4})"]]
+       [:h4 "4D noise and seamless loops"]
+       [:p "4D noise is essential for seamlessly looping animated noise. Use the 3rd and 4th dimensions as a circular time parameter:"]
+       [:pre [:code
+              ";; 4D Perlin and simplex noise:
+(noise/perlin4d x y z w)
+(noise/simplex4d x y z w {:seed 42})
+
+;; Seamless loop trick — walk a circle in the z/w plane:
+(let [r 1.0
+      t (/ frame total-frames)]
+  (noise/simplex4d x y
+    (* r (Math/cos (* t 2 Math/PI)))
+    (* r (Math/sin (* t 2 Math/PI)))))"]]
+       [:p "The loop radius " [:code "r"] " controls how different each frame is from its neighbors — smaller = smoother transitions, larger = more variation."]
        [:h4 "Noise preview"]
        [:p "Tweak noise parameters and see the result instantly at the REPL:"]
        [:pre [:code

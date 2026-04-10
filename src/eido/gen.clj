@@ -54,6 +54,8 @@
 (import-fn noise/perlin3d)
 (import-fn noise/simplex2d)
 (import-fn noise/simplex3d)
+(import-fn noise/simplex4d)
+(import-fn noise/perlin4d)
 (import-fn noise/fbm)
 (import-fn noise/turbulence)
 (import-fn noise/ridge)
