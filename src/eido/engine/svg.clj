@@ -242,13 +242,83 @@
         (swap! groups update k (fnil conj []) op)))
     (mapv (fn [k] {:pen k :ops (get @groups k)}) @order)))
 
+(defn- deduplicate-ops
+  "Removes duplicate ops. Two ops are duplicates if they have the same
+  :op type, :commands (for paths), geometry keys, and :stroke-color."
+  [ops]
+  (let [op-key (fn [op]
+                 (case (:op op)
+                   :path   [(:op op) (:commands op) (:stroke-color op)]
+                   :line   [(:op op) (:x1 op) (:y1 op) (:x2 op) (:y2 op) (:stroke-color op)]
+                   :rect   [(:op op) (:x op) (:y op) (:w op) (:h op) (:stroke-color op)]
+                   :circle [(:op op) (:cx op) (:cy op) (:r op) (:stroke-color op)]
+                   ;; For other types, use identity (no dedup)
+                   [op]))]
+    (let [seen (volatile! #{})]
+      (filterv (fn [op]
+                 (let [k (op-key op)]
+                   (if (@seen k)
+                     false
+                     (do (vswap! seen conj k) true))))
+               ops))))
+
+(defn- op-start-point
+  "Extracts the start point [x y] of an op for travel optimization."
+  [op]
+  (case (:op op)
+    :path    (let [[cmd & args] (first (:commands op))]
+               (when (= cmd :move-to) [(first args) (second args)]))
+    :line    [(:x1 op) (:y1 op)]
+    :rect    [(:x op) (:y op)]
+    :circle  [(:cx op) (:cy op)]
+    :ellipse [(:cx op) (:cy op)]
+    :arc     [(:cx op) (:cy op)]
+    nil))
+
+(defn- distance-sq
+  "Squared Euclidean distance between two points."
+  ^double [[^double x1 ^double y1] [^double x2 ^double y2]]
+  (let [dx (- x2 x1)
+        dy (- y2 y1)]
+    (+ (* dx dx) (* dy dy))))
+
+(defn- optimize-travel
+  "Reorders ops using greedy nearest-neighbor to minimize pen travel.
+  Starts from origin [0 0], picks the nearest unvisited op each step."
+  [ops]
+  (if (<= (count ops) 1)
+    ops
+    (let [n       (count ops)
+          points  (mapv op-start-point ops)
+          visited (boolean-array n)]
+      (loop [result (transient [])
+             pos    [0.0 0.0]
+             remaining n]
+        (if (zero? remaining)
+          (persistent! result)
+          (let [[best-idx _]
+                (reduce (fn [[bi bd :as best] i]
+                          (if (aget visited i)
+                            best
+                            (let [pt (nth points i)
+                                  d  (if pt (distance-sq pos pt) Double/MAX_VALUE)]
+                              (if (< d bd) [i d] best))))
+                        [-1 Double/MAX_VALUE]
+                        (range n))]
+            (aset visited best-idx true)
+            (let [op (nth ops best-idx)
+                  pt (or (nth points best-idx) pos)]
+              (recur (conj! result op) pt (dec remaining)))))))))
+
 (defn render
   "Renders IR to an SVG XML string.
   opts:
     :scale              — resolution multiplier (default 1)
     :transparent-background — omit background rect
     :stroke-only        — remove all fills, suppress background (plotter mode)
-    :group-by-stroke    — group elements by stroke color into <g> layers"
+    :group-by-stroke    — group elements by stroke color into <g> layers
+    :deduplicate        — remove duplicate paths/shapes (plotter mode)
+    :optimize-travel    — reorder ops to minimize pen travel (plotter mode)"
   ([ir] (render ir {}))
   ([ir opts]
    (let [[w h]        (:ir/size ir)
@@ -259,7 +329,10 @@
          stroke-only? (:stroke-only opts)
          group-by?    (:group-by-stroke opts)
          raw-ops      (:ir/ops ir)
-         ops          (if stroke-only? (strip-fills raw-ops) raw-ops)
+         ops          (cond-> raw-ops
+                        stroke-only?          strip-fills
+                        (:deduplicate opts)   deduplicate-ops
+                        (:optimize-travel opts) optimize-travel)
          header       (str "<svg xmlns=\"http://www.w3.org/2000/svg\""
                            " width=\"" sw "\" height=\"" sh "\""
                            " viewBox=\"0 0 " w " " h "\">")]

@@ -464,6 +464,64 @@
           "two stroke colors → two groups")
       (is (re-find #"id=\"pen-" out)))))
 
+;; --- plotter path optimization ---
+
+(deftest svg-deduplicate-test
+  (testing "removes duplicate ops with same commands and stroke color"
+    (let [dup-op {:op :path
+                  :commands [[:move-to 0 0] [:line-to 100 100]]
+                  :fill nil
+                  :stroke-color {:r 0 :g 0 :b 0 :a 1.0}
+                  :stroke-width 1 :opacity 1.0 :transforms []}
+          unique-op {:op :path
+                     :commands [[:move-to 50 50] [:line-to 200 200]]
+                     :fill nil
+                     :stroke-color {:r 0 :g 0 :b 0 :a 1.0}
+                     :stroke-width 1 :opacity 1.0 :transforms []}
+          ir {:ir/size [200 200]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [dup-op unique-op dup-op dup-op]}
+          out (svg/render ir {:deduplicate true})]
+      (is (= 2 (count (re-seq #"<path " out)))
+          "3 duplicate paths → 2 unique paths")))
+  (testing "preserves ops with different stroke colors"
+    (let [op-a {:op :line :x1 0 :y1 0 :x2 100 :y2 100
+                :fill nil :stroke-color {:r 255 :g 0 :b 0 :a 1.0}
+                :stroke-width 1 :opacity 1.0 :transforms []}
+          op-b (assoc op-a :stroke-color {:r 0 :g 0 :b 255 :a 1.0})
+          ir {:ir/size [200 200]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [op-a op-b]}
+          out (svg/render ir {:deduplicate true})]
+      (is (= 2 (count (re-seq #"<line " out)))))))
+
+(deftest svg-optimize-travel-test
+  (testing "reorders ops to minimize travel distance"
+    (let [;; Three paths far apart — greedy nearest-neighbor should cluster nearby ones
+          op-a {:op :path :commands [[:move-to 0 0] [:line-to 10 0]]
+                :fill nil :stroke-color {:r 0 :g 0 :b 0 :a 1.0}
+                :stroke-width 1 :opacity 1.0 :transforms []}
+          op-b {:op :path :commands [[:move-to 500 500] [:line-to 510 500]]
+                :fill nil :stroke-color {:r 0 :g 0 :b 0 :a 1.0}
+                :stroke-width 1 :opacity 1.0 :transforms []}
+          op-c {:op :path :commands [[:move-to 5 5] [:line-to 15 5]]
+                :fill nil :stroke-color {:r 0 :g 0 :b 0 :a 1.0}
+                :stroke-width 1 :opacity 1.0 :transforms []}
+          ir {:ir/size [600 600]
+              :ir/background {:r 255 :g 255 :b 255 :a 1.0}
+              :ir/ops [op-a op-b op-c]}
+          out-normal (svg/render ir)
+          out-optimized (svg/render ir {:optimize-travel true})]
+      ;; Both should have same number of paths
+      (is (= 3 (count (re-seq #"<path " out-normal))))
+      (is (= 3 (count (re-seq #"<path " out-optimized))))
+      ;; In optimized, op-c (near op-a) should come before op-b (far away)
+      ;; Original order: a, b, c. Optimized: a, c, b
+      (let [paths (re-seq #"M (\d+) (\d+)" out-optimized)
+            starts (mapv (fn [[_ x _]] (Integer/parseInt x)) paths)]
+        (is (= [0 5 500] starts)
+            "greedy nearest-neighbor: 0→5→500 not 0→500→5")))))
+
 ;; --- gradient fill ---
 
 (deftest svg-linear-gradient-test
