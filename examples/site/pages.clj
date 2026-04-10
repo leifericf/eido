@@ -833,7 +833,14 @@
        [:pre [:code
               ";; Is the point inside this irregular shape?
 (path/contains-point? [[0 0] [100 0] [80 100] [20 80]] [50 50])
-;; => true"]]]}
+;; => true"]]
+       [:h4 "Polygon inset"]
+       [:p "Shrink a polygon inward — useful for margin control and nested compositions:"]
+       [:pre [:code
+              ";; Shrink a square by 10 pixels on all sides:
+(path/inset [[0 0] [100 0] [100 100] [0 100]] 10.0)
+;; => [[10 10] [90 10] [90 90] [10 90]]"]]
+       [:p "Works correctly for convex polygons. Concave polygons may produce self-intersecting results."]]}
 
      {:id    "series"
       :title "Long-Form Series"

@@ -207,3 +207,60 @@
                             (< px (+ xi (/ (* (- xj xi) (- py yi))
                                            (- yj yi)))))]
           (recur (inc i) i (if crosses? (not inside?) inside?)))))))
+
+;; --- polygon inset ---
+
+(defn- line-line-intersection
+  "Intersection of two lines defined by point+direction pairs.
+  Returns [x y] or nil if parallel."
+  [[^double px1 ^double py1] [^double dx1 ^double dy1]
+   [^double px2 ^double py2] [^double dx2 ^double dy2]]
+  (let [denom (- (* dx1 dy2) (* dy1 dx2))]
+    (when-not (< (Math/abs denom) 1e-10)
+      (let [t (/ (- (* (- px2 px1) dy2) (* (- py2 py1) dx2)) denom)]
+        [(+ px1 (* t dx1)) (+ py1 (* t dy1))]))))
+
+(defn inset
+  "Shrinks a closed polygon inward by distance d.
+  Returns a vector of [[x y] ...] points.
+  Works correctly for convex polygons; concave polygons may produce
+  self-intersecting results."
+  [polygon d]
+  (if (zero? (double d))
+    (vec polygon)
+    (let [n (count polygon)
+        d (double d)
+        ;; Compute signed area to determine winding direction
+        signed-area (reduce + (map (fn [i]
+                                     (let [[^double x1 ^double y1] (nth polygon i)
+                                           [^double x2 ^double y2] (nth polygon (mod (inc i) n))]
+                                       (- (* x1 y2) (* x2 y1))))
+                                   (range n)))
+        ;; Positive signed area: inward normal is (-dy, dx)
+        ;; Negative signed area: inward normal is (dy, -dx)
+        ccw? (pos? signed-area)
+        offset-edges
+        (mapv (fn [i]
+                (let [[^double x1 ^double y1] (nth polygon i)
+                      [^double x2 ^double y2] (nth polygon (mod (inc i) n))
+                      dx (- x2 x1) dy (- y2 y1)
+                      len (Math/sqrt (+ (* dx dx) (* dy dy)))]
+                  (if (< len 1e-10)
+                    {:point [x1 y1] :dir [dx dy]}
+                    (let [[nx ny] (if ccw?
+                                    [(/ (- dy) len) (/ dx len)]
+                                    [(/ dy len) (/ (- dx) len)])
+                          ox1 (+ x1 (* nx d))
+                          oy1 (+ y1 (* ny d))]
+                      {:point [ox1 oy1] :dir [dx dy]}))))
+              (range n))]
+    ;; Intersect adjacent offset edges to get new vertices
+    ;; Vertex i is the intersection of edge (i-1) and edge (i)
+    (vec
+      (keep (fn [i]
+              (let [e1 (nth offset-edges (mod (dec (+ i n)) n))
+                    e2 (nth offset-edges i)]
+                (line-line-intersection
+                  (:point e1) (:dir e1)
+                  (:point e2) (:dir e2))))
+            (range n))))))

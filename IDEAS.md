@@ -38,16 +38,6 @@ Split a curve at regular arc-length intervals, interpolate between two curves, t
 - `path/interpolate`: given two paths with the same number of commands, lerp corresponding control points by parameter `t`. Simpler than full morphing — just requires matching structure. ~20 lines.
 - `path/trim-to-bounds`: Cohen-Sutherland or Liang-Barsky line clipping extended to path segments. More complex for curves — may need to flatten to line segments first, then clip. ~40 lines for the line-segment case.
 
-### Polygon inset
-
-Shrink a polygon inward by a distance — useful for margin control and nested compositions.
-
-**What to add:**
-- `path/inset` — shrink polygon inward by a distance
-
-**Implementation notes:**
-- Offset each edge inward by `d` along its normal, recompute intersections. Simple for convex polygons (~15 lines); concave polygons need special handling at reflex vertices (clip or skip collapsing edges). Start with convex-only, document the limitation.
-
 ---
 
 ## Composition and spatial layout

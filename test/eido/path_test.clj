@@ -87,3 +87,36 @@
   (testing "works with triangle"
     (is (path/contains-point? [[0 0] [100 0] [50 100]] [50 30]))
     (is (not (path/contains-point? [[0 0] [100 0] [50 100]] [90 90])))))
+
+;; --- inset ---
+
+(defn- approx=
+  "Checks two points are approximately equal."
+  [[x1 y1] [x2 y2] tol]
+  (and (< (Math/abs (- (double x1) (double x2))) tol)
+       (< (Math/abs (- (double y1) (double y2))) tol)))
+
+(deftest inset-square-test
+  (testing "square inset by 10 produces smaller square"
+    (let [polygon [[0 0] [100 0] [100 100] [0 100]]
+          result (path/inset polygon 10.0)]
+      (is (= 4 (count result)))
+      (is (approx= (nth result 0) [10 10] 0.5))
+      (is (approx= (nth result 1) [90 10] 0.5))
+      (is (approx= (nth result 2) [90 90] 0.5))
+      (is (approx= (nth result 3) [10 90] 0.5)))))
+
+(deftest inset-zero-test
+  (testing "inset 0 returns original polygon"
+    (let [polygon [[0.0 0.0] [100.0 0.0] [100.0 100.0] [0.0 100.0]]
+          result (path/inset polygon 0.0)]
+      (is (= 4 (count result)))
+      (is (approx= (nth result 0) [0 0] 0.5)))))
+
+(deftest inset-triangle-test
+  (testing "triangle inset produces smaller triangle"
+    (let [polygon [[50 0] [100 100] [0 100]]
+          result (path/inset polygon 5.0)]
+      (is (= 3 (count result)))
+      ;; Smaller triangle: all points should be inside the original
+      (is (every? (fn [pt] (path/contains-point? polygon pt)) result)))))
