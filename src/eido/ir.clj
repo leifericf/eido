@@ -156,8 +156,11 @@
                (Math/abs (double (- x2 x1)))
                (Math/abs (double (- y2 y1)))])
     :path   (let [pts (keep (fn [[cmd & args]]
-                              (when (#{:move-to :line-to} cmd)
-                                (first args)))
+                              (case cmd
+                                (:move-to :line-to) (first args)
+                                :quad-to            (second args)
+                                :curve-to           (nth args 2)
+                                nil))
                             (:path/commands geom))
                   xs  (map first pts)
                   ys  (map second pts)]

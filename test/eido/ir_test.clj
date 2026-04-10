@@ -201,3 +201,29 @@
                                       :line/from [10 80]
                                       :line/to [100 20]})]
       (is (= [10 20 90.0 60.0] bounds)))))
+
+(deftest geometry-bounds-path-curves-test
+  (testing "path bounds include curve-to endpoints"
+    (let [bounds (ir/geometry-bounds
+                   {:geometry/type :path
+                    :path/commands [[:move-to [50 50]]
+                                   [:curve-to [60 0] [90 0] [100 50]]
+                                   [:line-to [100 100]]
+                                   [:close]]})]
+      (is (= [50 50 50 50] bounds))))
+  (testing "path bounds include quad-to endpoints"
+    (let [bounds (ir/geometry-bounds
+                   {:geometry/type :path
+                    :path/commands [[:move-to [0 0]]
+                                   [:quad-to [50 -10] [100 0]]
+                                   [:quad-to [110 50] [100 100]]
+                                   [:close]]})]
+      (is (= [0 0 100 100] bounds))))
+  (testing "path with only curves still computes bounds"
+    (let [bounds (ir/geometry-bounds
+                   {:geometry/type :path
+                    :path/commands [[:move-to [50 0]]
+                                   [:curve-to [100 0] [100 50] [100 100]]
+                                   [:curve-to [100 150] [50 200] [0 200]]
+                                   [:close]]})]
+      (is (= [0 0 100 200] bounds)))))
