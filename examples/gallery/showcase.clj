@@ -72,18 +72,16 @@
                   :desc   "3D spherical mesh with faceted crystal surface."
                   :tags   ["3d" "mesh" "deformation"]}}
   crystal-geode []
-  (let [mesh (-> (s3d/sphere 16)
-                 (s3d/deform-mesh :noise {:seed 42 :scale 0.3 :amount 0.15}))]
-    {:scene3d/camera {:position [2.5 2.0 2.5] :target [0 0 0]
-                      :fov 50}
-     :scene3d/lights [{:type :directional :direction [-1 -1 -1]
-                       :color [:color/rgb 200 180 255] :intensity 0.8}
-                      {:type :ambient :color [:color/rgb 30 20 40] :intensity 0.4}]
-     :scene3d/meshes [{:mesh mesh
-                       :material {:color [:color/rgb 160 120 200]
-                                  :specular 0.6 :roughness 0.3}}]
-     :image/size [500 500]
-     :image/background [:color/rgb 15 10 25]}))
+  (let [proj (s3d/perspective {:scale 120 :origin [250 280]
+                               :yaw 0.6 :pitch -0.35 :distance 5})
+        mesh (s3d/sphere-mesh 1.2 20 14)
+        light {:light/direction [-1 -1 -1] :light/ambient 0.3 :light/intensity 0.8}
+        style {:style/fill [:color/rgb 160 120 200]
+               :style/stroke {:color [:color/rgb 100 70 150] :width 0.3}}
+        group (s3d/render-mesh proj mesh {:style style :light light})]
+    {:image/size [500 500]
+     :image/background [:color/rgb 15 10 25]
+     :image/nodes [group]}))
 
 ;; --- 3. Neon Orbit ---
 
@@ -131,6 +129,7 @@
         w 600 h 400
         band-h (/ (double h) bands)]
     {:image/size [w h]
+     :image/background :midnightblue
      :image/nodes
      (mapv (fn [i]
              (let [t (/ (double i) bands)
@@ -164,7 +163,7 @@
                (assoc node
                  :path/commands styled
                  :style/stroke {:color [:color/rgba 30 40 80 0.7] :width 1.0}
-                 :style/fill nil)))
+)))
            lines)}))
 
 ;; --- 6. Watercolor Bloom ---
@@ -187,7 +186,7 @@
                                (+ cy (* wobble (Math/sin a)))]))
                           (range 30))
                 cmds (conj (scene/points->path pts true) [:close])
-                hue (+ 340 (* i 8))]
+                hue (mod (+ 340 (* i 8)) 360)]
             (texture/watercolor
               {:node/type :shape/path
                :path/commands cmds
@@ -237,7 +236,7 @@
      [{:node/type :shape/path
        :path/commands smooth
        :style/stroke {:color [:color/rgba 100 200 255 0.6] :width 0.8}
-       :style/fill nil}]}))
+}]}))
 
 ;; --- 8. Palette Wheel ---
 
@@ -318,15 +317,14 @@
      :image/nodes
      (vec (mapcat
        (fn [li level]
-         (let [contours (contour/contour-lines 0 0 w h
+         (let [contours (contour/contour-lines noise/simplex2d 0 0 w h
                           {:threshold level :resolution 4
-                           :noise-fn noise/simplex2d
                            :noise-scale 0.008 :seed 42})
                c (nth pal (min li (dec (count pal))))]
            (mapv (fn [path-node]
                    (assoc path-node
                      :style/stroke {:color c :width 1.2}
-                     :style/fill nil))
+))
                  contours)))
        (range) levels))}))
 
@@ -349,12 +347,14 @@
                                  (range 6))
                        cmds (conj (scene/points->path pts true) [:close])
                        styled (aesthetic/stylize cmds
-                                (aesthetic/pencil-preset (+ 42 i)))]
+                                [{:op :smooth :samples 24}
+                                 {:op :jitter :amount 0.6 :density 0.8
+                                  :seed (+ 42 i)}])]
                    {:node/type :shape/path
                     :path/commands styled
                     :style/stroke {:color [:color/rgba 50 40 30 0.8]
                                    :width 1.0}
-                    :style/fill nil}))]
+}))]
     {:image/size [w h]
      :image/background [:color/rgb 250 245 235]
      :image/nodes (vec shapes)}))
@@ -485,10 +485,10 @@
        :image/nodes
        (vec (map-indexed
          (fn [i node]
-           (assoc node
-             :style/stroke {:color (nth pal (mod i (count pal)))
-                            :width 1.2}
-             :style/fill nil))
+           (-> node
+               (assoc :style/stroke {:color (nth pal (mod i (count pal)))
+                                     :width 1.2})
+               (dissoc :style/fill)))
          lines))}
       margin)))
 
@@ -523,8 +523,7 @@
                cmds (scene/points->path offset-pts false)]
            [{:node/type :shape/path
              :path/commands cmds
-             :style/stroke {:color :steelblue :width 1.5}
-             :style/fill nil}]))
+             :style/stroke {:color :steelblue :width 1.5}}]))
        epsilons offsets))}))
 
 ;; --- 18. Split & Color ---
@@ -553,8 +552,7 @@
        (fn [i seg]
          {:node/type :shape/path
           :path/commands seg
-          :style/stroke {:color (nth pal (mod i (count pal))) :width 3}
-          :style/fill nil})
+          :style/stroke {:color (nth pal (mod i (count pal))) :width 3}})
        segments))}))
 
 ;; --- 19. Ink Botanical ---
@@ -646,8 +644,7 @@
        [{:node/type :shape/circle
          :circle/center [cx cy]
          :circle/radius r
-         :style/stroke {:color [:color/rgba 60 60 60 0.3] :width 1}
-         :style/fill nil}]
+         :style/stroke {:color [:color/rgba 60 60 60 0.3] :width 1}}]
        (mapcat
          (fn [node]
            (let [cmds (:path/commands node)
@@ -657,8 +654,7 @@
                      {:node/type :shape/path
                       :path/commands seg
                       :style/stroke {:color [:color/rgba 40 80 140 0.5]
-                                     :width 1}
-                      :style/fill nil})
+                                     :width 1}})
                    trimmed)))
          lines))}))
 
