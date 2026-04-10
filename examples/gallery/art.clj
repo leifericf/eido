@@ -658,8 +658,9 @@
    [{:node/type :group
      :group/warp {:type :twist :center [250 150] :amount 0.08}
      :group/children
-     [(-> (scene/text-outline "TWIST" {:font/family "Serif" :font/size 100
-                                        :font/weight :bold} [70 190])
+     [(-> (scene/text-outline "TWIST" [70 190]
+                                  {:font/family "Serif" :font/size 100
+                                   :font/weight :bold})
           (assoc :style/fill {:gradient/type :radial
                               :gradient/center [250 -50]
                               :gradient/radius 300
@@ -694,8 +695,8 @@
      :image/background [:color/rgb 10 10 20]
      :image/nodes
      [(scene/text-clip "EIDO"
-        {:font/family "SansSerif" :font/size 220 :font/weight :bold}
         [30 230]
+        {:font/family "SansSerif" :font/size 220 :font/weight :bold}
         (conj colored-cells
               {:node/type :scatter
                :scatter/shape {:node/type :shape/circle

@@ -161,7 +161,7 @@
 (defn text-outline
   "Returns text as a path node — the vector outline of the glyphs.
   Useful as a clip mask, for boolean ops, or as a standalone shape."
-  [content font-spec [ox oy]]
+  [content [ox oy] font-spec]
   (let [cmds (text/text->path-commands content font-spec)]
     {:node/type     :shape/path
      :path/commands cmds
@@ -171,7 +171,7 @@
 (defn text-clip
   "Creates a group clipped to text outlines. Children are clipped to the
   text shape — anything inside the letters shows through."
-  [content font-spec [ox oy] children]
+  [content [ox oy] font-spec children]
   (let [cmds (text/text->path-commands content font-spec)]
     {:node/type      :group
      :group/clip     {:node/type     :shape/path

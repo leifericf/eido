@@ -514,17 +514,16 @@
                         :style/fill [:color/rgba 255 255 255 0.15]}]}
          :node/opacity 0.5}
         shadow-text
-        (-> (scene/text-outline "BOLD"
-              {:font/family "SansSerif" :font/size 180 :font/weight :bold}
-              [42 232])
+        (-> (scene/text-outline "BOLD" [42 232]
+              {:font/family "SansSerif" :font/size 180 :font/weight :bold})
             (assoc :style/fill [:color/rgba 0 0 0 0.3]))]
     {:image/size [600 300]
      :image/background [:color/rgb 20 15 30]
      :image/nodes
      [shadow-text
       (scene/text-clip "BOLD"
-        {:font/family "SansSerif" :font/size 180 :font/weight :bold}
         [38 228]
+        {:font/family "SansSerif" :font/size 180 :font/weight :bold}
         [gradient-bg pattern-overlay])]}))
 
 ;; --- 10. Contour Terrain ---
@@ -794,9 +793,8 @@
          :decorator/spacing 18
          :decorator/rotate? true}
         title-text
-        (-> (scene/text-outline "TERRA INCOGNITA"
-              {:font/family "Serif" :font/size 28 :font/weight :bold}
-              [140 440])
+        (-> (scene/text-outline "TERRA INCOGNITA" [140 440]
+              {:font/family "Serif" :font/size 28 :font/weight :bold})
             (assoc :style/fill ink))]
     {:image/size [600 460]
      :image/background parchment
