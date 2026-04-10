@@ -153,11 +153,11 @@
   (let [cmds (lsystem/lsystem->path-cmds
                (:lsystem/axiom node)
                (:lsystem/rules node)
-               (get node :lsystem/iterations 3)
-               (get node :lsystem/angle 25.0)
-               (get node :lsystem/length 5.0)
-               (get node :lsystem/origin [0 0])
-               (get node :lsystem/heading -90.0))]
+               {:iterations (get node :lsystem/iterations 3)
+                :angle      (get node :lsystem/angle 25.0)
+                :length     (get node :lsystem/length 5.0)
+                :origin     (get node :lsystem/origin [0 0])
+                :heading    (get node :lsystem/heading -90.0)})]
     (wrap-path cmds node)))
 
 (defn- expand-contour [node]

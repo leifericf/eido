@@ -493,7 +493,7 @@
   (let [w 500 h 600
         cmds (lsystem/lsystem->path-cmds
                "F" {"F" "FF+[+F-F-F]-[-F+F+F]"}
-               3 25 10 [250 580] -90)
+               {:iterations 3 :angle 25 :length 10 :origin [250 580] :heading -90})
         jittered (aesthetic/jittered-commands cmds {:amount 1.5 :seed 42})
         dashes (aesthetic/dash-commands jittered {:dash [8.0 4.0]})]
     {:image/size [w h]

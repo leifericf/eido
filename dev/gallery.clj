@@ -745,7 +745,8 @@
 
 (defn organic-mandala []
   (let [branch-cmds (lsystem/lsystem->path-cmds
-                      "F" {"F" "F[-F]F[+F]F"} 3 25.7 8.0 [300 300] -90.0)
+                      "F" {"F" "F[-F]F[+F]F"}
+                      {:iterations 3 :angle 25.7 :length 8.0 :origin [300 300] :heading -90.0})
         n 10
         overrides (vary/by-index n
                     (fn [i] {:style/stroke
