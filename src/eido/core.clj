@@ -237,6 +237,7 @@
    (render-to-file scene path {}))
   ([scene path opts]
    (let [format      (or (:format opts) (detect-format path))
+         dpi         (or (:dpi opts) (:image/dpi scene))
          render-opts (select-keys opts [:scale :transparent-background])]
      (if (= format "svg")
        (spit path (render-to-svg scene (select-keys opts [:scale :transparent-background])))
@@ -245,13 +246,12 @@
            "jpeg" (write-jpeg (ensure-rgb img) path
                               (get opts :quality 0.75))
            "bmp"  (ImageIO/write (ensure-rgb img) "bmp" (File. ^String path))
-           "png"  (if (:dpi opts)
-                    (write-png-with-dpi img path (:dpi opts))
+           "png"  (if dpi
+                    (write-png-with-dpi img path dpi)
                     (ImageIO/write img "png" (File. ^String path)))
            "gif"   (ImageIO/write img "gif" (File. ^String path))
            ("tiff"
-            "tif")  (write-tiff img path
-                      (:dpi opts) (:tiff/compression opts))
+            "tif")  (write-tiff img path dpi (:tiff/compression opts))
 
            (throw (ex-info "Unsupported export format"
                            {:path path :format format})))))

@@ -159,6 +159,24 @@
           (is (= 800 (.getWidth img))))
         (.delete f)))))
 
+(deftest render-to-file-dpi-from-scene-test
+  (testing "PNG auto-reads :image/dpi from scene"
+    (let [scene (assoc sample-scene :image/dpi 300)
+          path  (str (File/createTempFile "eido-auto-dpi" ".png"))]
+      (eido/render-to-file scene path)
+      (let [f (File. ^String path)]
+        (is (.exists f))
+        (is (pos? (.length f)))
+        (.delete f))))
+  (testing "TIFF auto-reads :image/dpi from scene"
+    (let [scene (assoc sample-scene :image/dpi 300)
+          path  (str (File/createTempFile "eido-auto-dpi" ".tiff"))]
+      (eido/render-to-file scene path)
+      (let [f (File. ^String path)]
+        (is (.exists f))
+        (is (pos? (.length f)))
+        (.delete f)))))
+
 (deftest render-to-file-tiff-test
   (testing "writes a valid TIFF file"
     (let [path (str (File/createTempFile "eido-test" ".tiff"))]
