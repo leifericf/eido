@@ -2,62 +2,60 @@
 
 ;; --- Poisson disk sampling ---
 
+(defn- make-grid-ctx
+  "Creates a Poisson disk grid context map."
+  [bx by bw bh cell-size]
+  (let [gw (int (Math/ceil (/ (double bw) (double cell-size))))
+        gh (int (Math/ceil (/ (double bh) (double cell-size))))]
+    {:grid      (object-array (* gw gh))
+     :cell-size (double cell-size)
+     :gw        gw
+     :gh        gh
+     :bx        (double bx)
+     :by        (double by)
+     :bw        (double bw)
+     :bh        (double bh)}))
+
 (defn- grid-index
   "Returns the flat grid index for a point, or nil if out of bounds."
-  [x y bx by cell-size grid-w grid-h]
-  (let [gx (int (/ (- (double x) (double bx)) (double cell-size)))
-        gy (int (/ (- (double y) (double by)) (double cell-size)))]
-    (when (and (>= gx 0) (< gx (int grid-w))
-               (>= gy 0) (< gy (int grid-h)))
-      (+ (* gy (int grid-w)) gx))))
+  [{:keys [bx by cell-size gw gh]} x y]
+  (let [gx (int (/ (- (double x) bx) cell-size))
+        gy (int (/ (- (double y) by) cell-size))]
+    (when (and (>= gx 0) (< gx (int gw))
+               (>= gy 0) (< gy (int gh)))
+      (+ (* gy (int gw)) gx))))
 
 (defn- neighbor-too-close?
   "Returns true if any point in the grid within 2 cells of [gx,gy]
   is closer than min-dist-sq to [x,y]."
-  [^objects grid grid-w grid-h gx gy x y min-dist-sq]
-  (let [grid-w (int grid-w)
-        grid-h (int grid-h)
-        gx     (int gx)
-        gy     (int gy)
-        x      (double x)
-        y      (double y)
+  [{:keys [^objects grid gw gh]} gx gy x y min-dist-sq]
+  (let [gw (int gw) gh (int gh)
+        gx (int gx) gy (int gy)
+        x  (double x) y (double y)
         min-dist-sq (double min-dist-sq)]
-    (loop [dx -2]
-      (if (> dx 2)
-        false
-        (let [found (loop [dy -2]
-                      (if (> dy 2)
-                        false
-                        (let [nx (+ gx dx)
-                              ny (+ gy dy)]
-                          (if (and (>= nx 0) (< nx grid-w)
-                                   (>= ny 0) (< ny grid-h))
-                            (if-let [p (aget grid (+ (* ny grid-w) nx))]
-                              (let [[px py] p
-                                    ddx (- x (double px))
-                                    ddy (- y (double py))]
-                                (if (< (+ (* ddx ddx) (* ddy ddy)) min-dist-sq)
-                                  true
-                                  (recur (inc dy))))
-                              (recur (inc dy)))
-                            (recur (inc dy))))))]
-          (if found
-            true
-            (recur (inc dx))))))))
+    (boolean
+      (some (fn [[dx dy]]
+              (let [nx (+ gx dx)
+                    ny (+ gy dy)]
+                (when (and (>= nx 0) (< nx gw)
+                           (>= ny 0) (< ny gh))
+                  (when-let [p (aget grid (+ (* ny gw) nx))]
+                    (let [[px py] p
+                          ddx (- x (double px))
+                          ddy (- y (double py))]
+                      (< (+ (* ddx ddx) (* ddy ddy)) min-dist-sq))))))
+            (for [dx (range -2 3) dy (range -2 3)] [dx dy])))))
 
 (defn- valid-candidate?
   "Returns true if point [x,y] is within bounds and not too close
   to any existing point in the grid."
-  [x y bx by bw bh cell-size ^objects grid grid-w grid-h min-dist-sq]
-  (let [x (double x) y (double y)
-        bx (double bx) by (double by)
-        bw (double bw) bh (double bh)]
+  [{:keys [bx by bw bh cell-size] :as ctx} x y min-dist-sq]
+  (let [x (double x) y (double y)]
     (and (>= x bx) (<= x (+ bx bw))
          (>= y by) (<= y (+ by bh))
-         (let [gx (int (/ (- x bx) (double cell-size)))
-               gy (int (/ (- y by) (double cell-size)))]
-           (not (neighbor-too-close?
-                  grid grid-w grid-h gx gy x y min-dist-sq))))))
+         (let [gx (int (/ (- x bx) cell-size))
+               gy (int (/ (- y by) cell-size))]
+           (not (neighbor-too-close? ctx gx gy x y min-dist-sq))))))
 
 (defn poisson-disk
   "Generates well-distributed points via Poisson disk sampling.
@@ -65,20 +63,19 @@
   min-dist: minimum distance between points. seed: for determinism."
   [bx by bw bh min-dist seed]
   (let [rng         (java.util.Random. (long seed))
-        cell-size   (/ (double min-dist) (Math/sqrt 2.0))
-        grid-w      (int (Math/ceil (/ bw cell-size)))
-        grid-h      (int (Math/ceil (/ bh cell-size)))
-        grid        (object-array (* grid-w grid-h))
+        min-dist    (double min-dist)
+        min-dist-sq (* min-dist min-dist)
+        cell-size   (/ min-dist (Math/sqrt 2.0))
+        ctx         (make-grid-ctx bx by bw bh cell-size)
+        ^objects grid (:grid ctx)
         k           30
         bx          (double bx)
         by          (double by)
         bw          (double bw)
         bh          (double bh)
-        min-dist    (double min-dist)
-        min-dist-sq (* min-dist min-dist)
         x0          (+ bx (* (.nextDouble rng) bw))
         y0          (+ by (* (.nextDouble rng) bh))]
-    (when-let [idx (grid-index x0 y0 bx by cell-size grid-w grid-h)]
+    (when-let [idx (grid-index ctx x0 y0)]
       (aset grid idx [x0 y0]))
     ;; Use ArrayList for O(1) random removal (swap with last, removeLast)
     (let [active (java.util.ArrayList. ^java.util.Collection (vector [x0 y0]))]
@@ -94,16 +91,12 @@
                                   r     (+ min-dist (* (.nextDouble rng) min-dist))
                                   nx    (+ (double ax) (* r (Math/cos angle)))
                                   ny    (+ (double ay) (* r (Math/sin angle)))]
-                              (if (valid-candidate?
-                                    nx ny bx by bw bh cell-size
-                                    grid grid-w grid-h min-dist-sq)
+                              (if (valid-candidate? ctx nx ny min-dist-sq)
                                 (recur (inc j) [nx ny])
                                 (recur (inc j) nil)))))]
             (if result
               (let [[nx ny] result]
-                (when-let [idx (grid-index
-                                 (double nx) (double ny)
-                                 bx by cell-size grid-w grid-h)]
+                (when-let [idx (grid-index ctx (double nx) (double ny))]
                   (aset grid idx [nx ny]))
                 (.add active result)
                 (recur (conj points result)))
