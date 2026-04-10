@@ -239,6 +239,23 @@
                     (mapv (fn [p] [:line-to p]) (rest points)))]
      (if closed? (conj cmds [:close]) cmds))))
 
+(defn with-margin
+  "Wraps a scene's nodes in a group clipped to an inset rectangle.
+  Margin is the distance in pixels from each edge.
+  Uses existing :group/clip infrastructure — no new rendering machinery."
+  [scene margin]
+  (let [[w h] (:image/size scene)
+        m (double margin)
+        clip-rect {:node/type :shape/rect
+                   :rect/xy [m m]
+                   :rect/size [(- (double w) (* 2 m))
+                               (- (double h) (* 2 m))]}]
+    (update scene :image/nodes
+      (fn [nodes]
+        [{:node/type :group
+          :group/clip clip-rect
+          :group/children (vec nodes)}]))))
+
 (comment
   (grid 3 2 (fn [c r]
               {:node/type :shape/circle

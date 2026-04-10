@@ -21,34 +21,6 @@ Artists who produce physical output (prints, plotter work) need to think in cent
 - Approach: a `scene/with-units` helper that walks the scene map and scales all numeric coordinates by the conversion factor. Applied once at render time. Keeps the core pipeline pixel-based.
 - Standard paper sizes as presets: `scene/a4`, `scene/letter`, `scene/a3` that return `{:image/size [...] :image/dpi 300}`.
 
-### Margin and edge control
-
-Many compositions need explicit control over whether elements can touch the edges or must stay within a margin. Currently done ad-hoc per algorithm.
-
-**What to add:**
-- A margin/padding convention or helper that generators respect
-
-**Implementation notes:**
-- Simplest approach: a `scene/with-margin` helper that takes a scene and a margin value, wraps the nodes in a group with a clip rect inset by the margin. Works with existing clip infrastructure.
-- Alternatively, a `:scene/margin` key in the scene map that generators can read to constrain their output bounds. Requires convention adoption across generators.
-- The clip approach is more reliable — it works even with generators that don't know about margins.
-
----
-
-## Texture and material
-
-### Paper grain / texture masking
-
-Simulating the texture of physical media (watercolor paper, canvas, printmaking stock) by masking or modulating output with a noise-based or image-based texture.
-
-**What to add:**
-- Consider texture overlay / mask support in the render pipeline, or a recipe pattern using existing noise and compositing
-
-**Implementation notes:**
-- Eido already has compositing modes (`group/composite`) and noise. A paper grain effect could be: generate a full-canvas noise field, render it as a semi-transparent overlay using a "multiply" or "overlay" blend mode.
-- Could be a recipe rather than a feature: show how to create a texture node from noise and composite it over the artwork.
-- If making it first-class: a `:texture/grain` effect that takes noise parameters and blend mode, applied at the render stage. Would live in `eido.ir.effect` alongside existing blur/glow.
-
 ---
 
 ## Output and export
@@ -94,18 +66,19 @@ For CNC mills, laser cutters, and custom plotter software, raw polyline coordina
 
 ## Exploration and iteration
 
-### Keyboard-driven seed browsing
+### Visual seed browser (separate project)
 
-At the REPL or in a preview window: press a key to advance to the next seed, another to save/bookmark the current one. A minimal interactive exploration interface.
+A standalone GUI application for browsing seeds interactively — outside Eido's core REPL-driven workflow. This would be a separate project that consumes Eido as a library.
 
-**What to add:**
-- Consider a `browse-seeds` helper that opens a window with keyboard controls for stepping through seeds
+**Concept:**
+- Desktop window with keyboard controls: arrow keys to step through seeds, 's' to bookmark, 'r' to render at full resolution
+- Could be built with Swing, JavaFX, or a web UI served from a local server
+- The REPL workflow (seed-grid + watch-scene + show) already covers this use case for REPL-comfortable users; a GUI would serve artists who prefer a more visual exploration tool
 
-**Implementation notes:**
-- Extend the existing `show` window (dev/user.clj) with keyboard listeners: left/right arrow to step seed, 's' to save/bookmark current seed, 'r' to render at full resolution.
-- The `show` function already creates a reusable Swing JFrame. Adding a KeyListener that calls a callback `(fn [action seed] ...)` is ~20 lines.
-- State: an atom holding the current seed. Arrow keys `swap!` it, the window re-renders on change.
-- Bookmarked seeds could be appended to a simple vector atom or printed to REPL for manual recording.
+**Why separate:**
+- Eido's core is a data-oriented library, not a GUI application
+- A visual browser introduces state management and event handling that don't belong in the core
+- Different release cadence and dependency profile (UI frameworks)
 
 ---
 

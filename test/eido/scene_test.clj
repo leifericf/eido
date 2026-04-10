@@ -281,3 +281,25 @@
   (testing "closed path adds :close"
     (let [cmds (scene/points->path [[0 0] [100 0] [100 100]] true)]
       (is (= :close (first (last cmds)))))))
+
+;; --- with-margin ---
+
+(deftest with-margin-test
+  (testing "wraps nodes in clipped group"
+    (let [scene {:image/size [400 300]
+                 :image/background :white
+                 :image/nodes [{:node/type :shape/circle
+                                :circle/center [200 150]
+                                :circle/radius 50}]}
+          result (scene/with-margin scene 20)]
+      (is (= 1 (count (:image/nodes result))))
+      (is (= :group (:node/type (first (:image/nodes result)))))
+      (is (some? (:group/clip (first (:image/nodes result)))))))
+  (testing "clip rect is inset by margin"
+    (let [scene {:image/size [400 300]
+                 :image/background :white
+                 :image/nodes []}
+          result (scene/with-margin scene 30)
+          clip (:group/clip (first (:image/nodes result)))]
+      (is (= [30.0 30.0] (:rect/xy clip)))
+      (is (= [340.0 240.0] (:rect/size clip))))))

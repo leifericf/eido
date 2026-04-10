@@ -448,7 +448,16 @@
  :style/fill [:color/name \"royalblue\"]
  :node/opacity 0.6}"]]
        [:p "Available blend modes: " [:code ":src-over"] " (default), " [:code ":multiply"]
-        ", " [:code ":screen"] ", " [:code ":overlay"] ", and more."]]}
+        ", " [:code ":screen"] ", " [:code ":overlay"] ", and more."]
+       [:h4 "Margin control"]
+       [:p "Clip all artwork to an inset rectangle — a clean way to enforce margins:"]
+       [:pre [:code
+              "(require '[eido.scene :as scene])
+
+;; 30px margin on all sides:
+(scene/with-margin my-scene 30)"]]
+       [:p "Uses existing " [:code ":group/clip"] " infrastructure — wraps all nodes in a clipped group. Works with any content."
+       ]]}
 
      {:id    "transforms"
       :title "Transforms"
@@ -1409,6 +1418,32 @@
       distort/distort-commands {:type :jitter :amount 4 :seed seed}))
   42)"]]
        [:p "Each layer is independently deformed, creating the characteristic uneven edge of physical watercolor. 30-50 layers works well for interactive use; up to 100 for final renders."]]}
+
+     {:id    "recipe-paper-grain"
+      :title "Paper Grain / Texture"
+      :content
+      [:div
+       [:p "Simulate the texture of physical media (watercolor paper, canvas) using the built-in grain effect and compositing:"]
+       [:pre [:code
+              "(require '[eido.ir.effect :as effect])
+
+;; Paper grain overlay — applies to any artwork:
+{:image/size [600 400]
+ :image/background [:color/rgb 245 240 230]
+ :image/nodes
+ [{:node/type :group
+   :group/composite :overlay
+   :group/children
+   [;; Paper texture layer
+    {:node/type :shape/rect
+     :rect/xy [0 0] :rect/size [600 400]
+     :style/fill [:color/rgb 245 240 230]
+     :node/effects [(effect/grain {:amount 40 :seed 42})]}
+    ;; Your artwork goes here
+    ,,,your nodes,,,]}]}"]]
+       [:p "The grain effect adds film-grain noise to a shape. Compositing via "
+        [:code ":overlay"] " or " [:code ":multiply"]
+        " blends it with the artwork underneath, simulating paper texture."]]}
 
      {:id    "recipe-subdivide-pack"
       :title "Subdivide → Pack → Stylize"
