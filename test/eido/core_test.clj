@@ -563,14 +563,14 @@
 (deftest render-to-gif-test
   (testing "writes a valid animated GIF"
     (let [path (str (File/createTempFile "eido-gif" ".gif"))]
-      (eido/render-to-gif simple-frames path 30)
+      (eido/render-to-gif simple-frames path {:fps 30})
       (is (.exists (File. path)))
       (is (pos? (.length (File. path))))
       (.delete (File. path))))
 
   (testing "GIF is readable with correct dimensions"
     (let [path (str (File/createTempFile "eido-gif" ".gif"))]
-      (eido/render-to-gif simple-frames path 10)
+      (eido/render-to-gif simple-frames path {:fps 10})
       (let [img (ImageIO/read (File. path))]
         (is (= 100 (.getWidth img)))
         (is (= 100 (.getHeight img))))
@@ -578,7 +578,7 @@
 
   (testing "supports render opts"
     (let [path (str (File/createTempFile "eido-gif" ".gif"))]
-      (eido/render-to-gif simple-frames path 30 {:scale 2})
+      (eido/render-to-gif simple-frames path {:fps 30 :scale 2})
       (let [img (ImageIO/read (File. path))]
         (is (= 200 (.getWidth img)))
         (is (= 200 (.getHeight img))))
@@ -588,25 +588,25 @@
 
 (deftest render-to-animated-svg-str-test
   (testing "produces SVG string with animation"
-    (let [out (eido/render-to-animated-svg-str simple-frames 10)]
+    (let [out (eido/render-to-animated-svg-str simple-frames {:fps 10})]
       (is (string? out))
       (is (re-find #"<svg" out))
       (is (re-find #"<animate" out))
       (is (re-find #"</svg>" out))))
 
   (testing "contains all frames"
-    (let [out (eido/render-to-animated-svg-str simple-frames 10)]
+    (let [out (eido/render-to-animated-svg-str simple-frames {:fps 10})]
       (is (= 3 (count (re-seq #"<g " out))))))
 
   (testing "scale option works"
-    (let [out (eido/render-to-animated-svg-str simple-frames 10 {:scale 2})]
+    (let [out (eido/render-to-animated-svg-str simple-frames {:fps 10 :scale 2})]
       (is (re-find #"width=\"200\"" out))
       (is (re-find #"height=\"200\"" out)))))
 
 (deftest render-to-animated-svg-test
   (testing "writes animated SVG to file"
     (let [path (str (File/createTempFile "eido-asvg" ".svg"))]
-      (eido/render-to-animated-svg simple-frames path 10)
+      (eido/render-to-animated-svg simple-frames path {:fps 10})
       (is (.exists (File. path)))
       (let [content (slurp path)]
         (is (re-find #"<svg" content))
@@ -618,7 +618,7 @@
 (deftest single-frame-animation-test
   (testing "render-to-gif with single frame"
     (let [path (str (File/createTempFile "eido-1f" ".gif"))]
-      (eido/render-to-gif [(first simple-frames)] path 10)
+      (eido/render-to-gif [(first simple-frames)] path {:fps 10})
       (is (.exists (File. path)))
       (.delete (File. path))))
 
@@ -631,7 +631,7 @@
         (.delete (File. dir)))))
 
   (testing "render-to-animated-svg-str with single frame"
-    (let [out (eido/render-to-animated-svg-str [(first simple-frames)] 10)]
+    (let [out (eido/render-to-animated-svg-str [(first simple-frames)] {:fps 10})]
       (is (re-find #"<svg" out))
       (is (= 1 (count (re-seq #"<g " out)))))))
 

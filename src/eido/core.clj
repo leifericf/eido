@@ -127,11 +127,11 @@
 
 (defn render-to-animated-svg-str
   "Renders a sequence of scenes to an animated SVG string using SMIL.
-  fps: frames per second.
-  Opts: :scale, :transparent-background."
-  ([scenes fps] (render-to-animated-svg-str scenes fps {}))
-  ([scenes fps opts]
-   (let [scene-vec (vec scenes)]
+  Opts: :fps (required), :scale, :transparent-background."
+  ([scenes opts]
+   (let [fps (or (:fps opts)
+                 (throw (ex-info "render-to-animated-svg-str requires :fps in opts" {})))
+         scene-vec (vec scenes)]
      ;; Validate first frame; skip for rest
      (when (seq scene-vec)
        (compile/validate-scene! (first scene-vec)))
@@ -141,11 +141,9 @@
 
 (defn render-to-animated-svg
   "Renders a sequence of scenes to an animated SVG file.
-  fps: frames per second.
-  Opts: :scale, :transparent-background."
-  ([scenes path fps] (render-to-animated-svg scenes path fps {}))
-  ([scenes path fps opts]
-   (spit path (render-to-animated-svg-str scenes fps opts))
+  Opts: :fps (required), :scale, :transparent-background."
+  ([scenes path opts]
+   (spit path (render-to-animated-svg-str scenes opts))
    path))
 
 (defn- write-png-with-dpi
@@ -295,11 +293,11 @@
 
 (defn render-to-gif
   "Renders a sequence of scenes to an animated GIF.
-  fps: frames per second.
-  Opts: :scale, :transparent-background, :loop (default true)."
-  ([scenes path fps] (render-to-gif scenes path fps {}))
-  ([scenes path fps opts]
-   (let [render-opts (select-keys opts [:scale :transparent-background])
+  Opts: :fps (required), :scale, :transparent-background, :loop (default true)."
+  ([scenes path opts]
+   (let [fps (or (:fps opts)
+                 (throw (ex-info "render-to-gif requires :fps in opts" {})))
+         render-opts (select-keys opts [:scale :transparent-background])
          scene-vec   (vec scenes)]
      ;; Validate first frame; skip validation for subsequent frames
      (when (seq scene-vec)
@@ -370,13 +368,14 @@
                      (throw (ex-info "Animation requires :fps" {})))]
          (if output
            (case (detect-animation-format output)
-             :gif    (render-to-gif input output fps
-                       (merge render-opts (select-keys opts [:loop])))
-             :svg    (render-to-animated-svg input output fps render-opts)
+             :gif    (render-to-gif input output
+                       (merge render-opts {:fps fps} (select-keys opts [:loop])))
+             :svg    (render-to-animated-svg input output
+                       (merge render-opts {:fps fps}))
              :frames (render-animation input output
                        (merge render-opts (select-keys opts [:prefix]))))
            (if (= :svg format)
-             (render-to-animated-svg-str input fps render-opts)
+             (render-to-animated-svg-str input (merge render-opts {:fps fps}))
              (mapv #(render-image % render-opts) input))))
        (cond
          (= :polylines format)
