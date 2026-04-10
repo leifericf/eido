@@ -694,6 +694,26 @@
        [:p "The bar chart above shows the sampled colors in order — notice how the neutral cream dominates, while the gold accent appears sparingly. Change the weights to shift the balance."]
        [:p [:code "weighted-gradient"] " creates gradient stops where each color occupies proportional space — feed into " [:code "gradient-map"] " for smooth interpolation. "
         [:code "shuffle-palette"] " randomizes color order with a seed — great for giving each edition a different arrangement from the same palette."]
+       [:h4 "Palette adjustments"]
+       [:p "Shift an entire palette's mood in one call:"]
+       [:pre [:code
+              ";; Make a palette warmer (shift hues toward orange)
+(palette/warmer my-palette 10)
+
+;; Multiple adjustments at once:
+(palette/adjust my-palette {:darker 0.1 :muted 0.2})
+
+;; All available: warmer, cooler, muted, vivid, darker, lighter"]]
+       [:h4 "Non-linear gradients"]
+       [:p "Apply easing functions to gradient interpolation for more natural transitions:"]
+       [:pre [:code
+              "(require '[eido.animate :as anim])
+
+;; Linear gradient (default):
+(palette/gradient-map stops 0.5)
+
+;; Ease-in: slow start, fast end
+(palette/gradient-map stops 0.5 {:easing anim/ease-in})"]]
        [:h4 "Palette preview"]
        [:p "See a palette instantly at the REPL without building a scene:"]
        [:pre [:code

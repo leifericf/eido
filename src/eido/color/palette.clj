@@ -110,25 +110,74 @@
 (defn gradient-map
   "Interpolates through color stops at parameter t (0-1).
   stops: [[pos color] ...] sorted ascending by pos.
+  Optional opts: {:easing fn} applies an easing function to t before lookup.
   Returns a color vector."
-  [stops t]
-  (let [t (max 0.0 (min 1.0 (double t)))
-        n (count stops)]
-    (cond
-      (<= n 0) [:color/rgb 0 0 0]
-      (= n 1)  (second (first stops))
-      (<= t (ffirst stops)) (second (first stops))
-      (>= t (first (nth stops (dec n)))) (second (nth stops (dec n)))
-      :else
-      (loop [i 0]
-        (if (>= i (dec n))
-          (second (nth stops (dec n)))
-          (let [[p0 c0] (nth stops i)
-                [p1 c1] (nth stops (inc i))]
-            (if (<= p0 t p1)
-              (let [seg-t (if (== p0 p1) 0.0 (/ (- t p0) (- p1 p0)))]
-                (color/lerp c0 c1 seg-t))
-              (recur (inc i)))))))))
+  ([stops t] (gradient-map stops t nil))
+  ([stops t opts]
+   (let [t (max 0.0 (min 1.0 (double t)))
+         t (if-let [e (:easing opts)] (double (e t)) t)
+         n (count stops)]
+     (cond
+       (<= n 0) [:color/rgb 0 0 0]
+       (= n 1)  (second (first stops))
+       (<= t (ffirst stops)) (second (first stops))
+       (>= t (first (nth stops (dec n)))) (second (nth stops (dec n)))
+       :else
+       (loop [i 0]
+         (if (>= i (dec n))
+           (second (nth stops (dec n)))
+           (let [[p0 c0] (nth stops i)
+                 [p1 c1] (nth stops (inc i))]
+             (if (<= p0 t p1)
+               (let [seg-t (if (== p0 p1) 0.0 (/ (- t p0) (- p1 p0)))]
+                 (color/lerp c0 c1 seg-t))
+               (recur (inc i))))))))))
+
+;; --- palette manipulation ---
+
+(defn warmer
+  "Rotates all hues toward warm (positive degrees). Typical: 5-15."
+  [palette amount]
+  (mapv #(color/rotate-hue % amount) palette))
+
+(defn cooler
+  "Rotates all hues toward cool (negative degrees). Typical: 5-15."
+  [palette amount]
+  (mapv #(color/rotate-hue % (- amount)) palette))
+
+(defn muted
+  "Desaturates all colors by amount (0-1)."
+  [palette amount]
+  (mapv #(color/desaturate % amount) palette))
+
+(defn vivid
+  "Saturates all colors by amount (0-1)."
+  [palette amount]
+  (mapv #(color/saturate % amount) palette))
+
+(defn darker
+  "Darkens all colors by amount (0-1)."
+  [palette amount]
+  (mapv #(color/darken % amount) palette))
+
+(defn lighter
+  "Lightens all colors by amount (0-1)."
+  [palette amount]
+  (mapv #(color/lighten % amount) palette))
+
+(defn ^{:convenience true}
+  adjust
+  "Applies multiple palette adjustments in one call.
+  Wraps warmer/cooler/muted/vivid/darker/lighter.
+  opts keys: :warmer, :cooler, :muted, :vivid, :darker, :lighter."
+  [palette opts]
+  (cond-> palette
+    (:warmer opts)  (warmer (:warmer opts))
+    (:cooler opts)  (cooler (:cooler opts))
+    (:muted opts)   (muted (:muted opts))
+    (:vivid opts)   (vivid (:vivid opts))
+    (:darker opts)  (darker (:darker opts))
+    (:lighter opts) (lighter (:lighter opts))))
 
 ;; --- weighted palette utilities ---
 

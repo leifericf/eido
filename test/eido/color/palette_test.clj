@@ -215,6 +215,66 @@
   (testing "preserves palette size"
     (is (= 3 (count (palette/sort-by-lightness [:red :green :blue]))))))
 
+;; --- palette manipulation ---
+
+(deftest warmer-test
+  (testing "output length matches input"
+    (is (= 3 (count (palette/warmer [:red :green :blue] 10)))))
+  (testing "shifts hue"
+    (let [original [:color/rgb 0 128 255]
+          result (first (palette/warmer [original] 15))]
+      (is (not= original result)))))
+
+(deftest cooler-test
+  (testing "output length matches input"
+    (is (= 3 (count (palette/cooler [:red :green :blue] 10))))))
+
+(deftest muted-test
+  (testing "reduces saturation"
+    (let [original [:color/hsl 200 0.8 0.5]
+          result (first (palette/muted [original] 0.3))
+          {:keys [r g b]} (eido.color/resolve-color result)
+          ;; Muted colors have channels closer together
+          spread (- (max r g b) (min r g b))]
+      (is (< spread 200)))))
+
+(deftest vivid-test
+  (testing "output length matches input"
+    (is (= 3 (count (palette/vivid [:red :green :blue] 0.2))))))
+
+(deftest darker-test
+  (testing "makes colors darker"
+    (let [[_ r1 _ _] (first (palette/darker [[:color/rgb 200 100 100]] 0.2))]
+      (is (< r1 200)))))
+
+(deftest lighter-test
+  (testing "makes colors lighter"
+    (let [result (first (palette/lighter [[:color/rgb 50 50 50]] 0.3))
+          {:keys [r]} (eido.color/resolve-color result)]
+      (is (> r 50)))))
+
+(deftest adjust-test
+  (testing "applies multiple adjustments"
+    (let [pal [:red :blue]
+          result (palette/adjust pal {:darker 0.1 :muted 0.2})]
+      (is (= 2 (count result))))))
+
+;; --- eased gradient ---
+
+(deftest gradient-map-eased-test
+  (testing "endpoints unchanged with easing"
+    (let [stops [[0.0 :black] [1.0 :white]]]
+      (is (= (palette/gradient-map stops 0.0 {:easing identity})
+             (palette/gradient-map stops 0.0)))
+      (is (= (palette/gradient-map stops 1.0 {:easing identity})
+             (palette/gradient-map stops 1.0)))))
+  (testing "midpoint differs from linear with ease-in"
+    (let [stops [[0.0 :black] [1.0 :white]]
+          ease-in (fn [t] (* t t))
+          linear-mid (palette/gradient-map stops 0.5)
+          eased-mid (palette/gradient-map stops 0.5 {:easing ease-in})]
+      (is (not= linear-mid eased-mid)))))
+
 ;; --- swatch ---
 
 (deftest swatch-test

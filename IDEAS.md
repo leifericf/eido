@@ -10,30 +10,6 @@ Organized by what matters to practicing generative and computational artists, gr
 
 Color is consistently described as the hardest problem in generative art. Artists spend more time on palettes than on algorithms, and existing tools rarely go deep enough.
 
-### Palette-level manipulation
-
-Adjusting an entire palette (warmer, cooler, more muted, darker) currently requires manually mapping over each color. Palette-level operations would make this a single call.
-
-**What to add:**
-- `palette/warmer`, `palette/cooler` — shift hue toward warm/cool
-- `palette/muted`, `palette/vivid` — adjust saturation across palette
-- `palette/darker`, `palette/lighter` — shift lightness across palette
-
-**Implementation notes:**
-- Each is a one-liner wrapping `mapv` over existing `color/rotate-hue`, `color/saturate`, `color/desaturate`, `color/lighten`, `color/darken`. The value is in naming the operation at the palette level, not in new algorithms.
-- Warmer = rotate hue toward ~30° (orange), cooler = rotate toward ~210° (blue). Amount parameter controls how far.
-
-### Non-linear gradient interpolation
-
-Current gradient mapping is linear only. Quadratic, logarithmic, and easing-function-based gradients produce more natural-feeling transitions — especially for mapping noise or depth to color.
-
-**What to add:**
-- Easing parameter in `palette/gradient-map` (quadratic, logarithmic, ease-in/out)
-
-**Implementation notes:**
-- `gradient-map` currently takes a linear `t` in [0,1]. Add an optional `:easing` key that applies a function to `t` before interpolation: `(gradient-map stops (ease-fn t))`.
-- Easing functions are pure `double -> double` math. Could reuse `eido.animate`'s easing if it has them, or add a small set: `ease-in-quad` (`t²`), `ease-out-quad` (`1-(1-t)²`), `ease-in-out-cubic`, `ease-exponential`.
-
 ### Color extraction from images
 
 A common workflow: photograph a landscape or a physical painting, extract the dominant colors, use them as a palette. Currently requires external tools.
