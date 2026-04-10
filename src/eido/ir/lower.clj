@@ -271,7 +271,8 @@
     (let [fill (:style/fill ctx-style)]
       (assoc item :item/fill
         (cond
-          (vector? fill)         {:fill/type :fill/solid :color fill}
+          (or (vector? fill)
+              (keyword? fill))   {:fill/type :fill/solid :color fill}
           (:gradient/type fill)  (merge {:fill/type :fill/gradient} fill)
           (:color fill)          {:fill/type :fill/solid :color (:color fill)}
           :else                  fill)))

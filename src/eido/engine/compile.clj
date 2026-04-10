@@ -337,7 +337,7 @@
     (nil? fill)                                          nil
     (and (map? fill) (#{:hatch :stipple} (:fill/type fill))) fill
     (and (map? fill) (= :pattern (:fill/type fill)))     fill
-    (vector? fill)                                       {:fill/type :fill/solid :color fill}
+    (or (vector? fill) (keyword? fill))                    {:fill/type :fill/solid :color fill}
     (:gradient/type fill)                                (merge {:fill/type :fill/gradient} fill)
     (:color fill)                                        {:fill/type :fill/solid :color (:color fill)}
     :else                                                fill))

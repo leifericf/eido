@@ -136,21 +136,25 @@
                           mx (:max spec)]
                       (if mx
                         (let [mx (double mx)]
-                          (loop []
-                            (let [v (* mn (Math/pow (- 1.0 (.nextDouble rng))
-                                                    (/ -1.0 alpha)))]
-                              (if (<= v mx) v (recur)))))
+                          (loop [tries 0]
+                            (if (>= tries 10000)
+                              mn
+                              (let [v (* mn (Math/pow (- 1.0 (.nextDouble rng))
+                                                      (/ -1.0 alpha)))]
+                                (if (<= v mx) v (recur (inc tries)))))))
                         (* mn (Math/pow (- 1.0 (.nextDouble rng))
                                         (/ -1.0 alpha)))))
     :triangular     (let [rng (make-rng seed)
                           mn (double (:min spec))
                           mx (double (:max spec))
-                          mode (double (:mode spec))
-                          u (.nextDouble rng)
-                          fc (/ (- mode mn) (- mx mn))]
-                      (if (< u fc)
-                        (+ mn (Math/sqrt (* u (- mx mn) (- mode mn))))
-                        (- mx (Math/sqrt (* (- 1.0 u) (- mx mn) (- mx mode))))))
+                          mode (double (:mode spec))]
+                      (if (== mn mx)
+                        mn
+                        (let [u (.nextDouble rng)
+                              fc (/ (- mode mn) (- mx mn))]
+                          (if (< u fc)
+                            (+ mn (Math/sqrt (* u (- mx mn) (- mode mn))))
+                            (- mx (Math/sqrt (* (- 1.0 u) (- mx mn) (- mx mode))))))))
     :eased          (let [rng (make-rng seed)
                           easing (:easing spec)
                           lo (double (get spec :lo 0))
