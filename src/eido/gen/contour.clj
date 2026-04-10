@@ -31,17 +31,18 @@
 
 (defn- edge-point
   "Returns the interpolated [x y] point on a cell edge.
-  Cell corners: tl(col,row), tr(col+1,row), br(col+1,row+1), bl(col,row+1)."
-  [edge col row res v-tl v-tr v-br v-bl threshold bx by]
-  (let [x0 (+ bx (* col (double res)))
-        y0 (+ by (* row (double res)))
-        x1 (+ x0 (double res))
-        y1 (+ y0 (double res))]
+  corners: [tl tr br bl] corner values.
+  ctx: {:keys [res threshold bx by]} constant across the march."
+  [edge col row [v-tl v-tr v-br v-bl] {:keys [res threshold bx by]}]
+  (let [x0 (+ bx (* col res))
+        y0 (+ by (* row res))
+        x1 (+ x0 res)
+        y1 (+ y0 res)]
     (case (int edge)
-      0 [(+ x0 (* (interp v-tl v-tr threshold) (double res))) y0]        ;; top
-      1 [x1 (+ y0 (* (interp v-tr v-br threshold) (double res)))]        ;; right
-      2 [(+ x0 (* (interp v-bl v-br threshold) (double res))) y1]        ;; bottom
-      3 [x0 (+ y0 (* (interp v-tl v-bl threshold) (double res)))])))     ;; left
+      0 [(+ x0 (* (interp v-tl v-tr threshold) res)) y0]        ;; top
+      1 [x1 (+ y0 (* (interp v-tr v-br threshold) res))]        ;; right
+      2 [(+ x0 (* (interp v-bl v-br threshold) res)) y1]        ;; bottom
+      3 [x0 (+ y0 (* (interp v-tl v-bl threshold) res))])))
 
 (defn- sample-grid
   "Samples noise function on a grid, returns a flat double-array
@@ -66,16 +67,19 @@
 (defn- march-threshold
   "Runs marching squares for a single threshold. Returns line segments."
   [^doubles grid cols rows res threshold bx by]
-  (let [w (inc (int cols))]
+  (let [w   (inc (int cols))
+        ctx {:res (double res) :threshold threshold
+             :bx  (double bx)  :by (double by)}]
     (into []
           (mapcat
             (fn [row]
               (mapcat
                 (fn [col]
-                  (let [v-tl (aget grid (+ (* row w) col))
-                        v-tr (aget grid (+ (* row w) (inc col)))
-                        v-br (aget grid (+ (* (inc row) w) (inc col)))
-                        v-bl (aget grid (+ (* (inc row) w) col))
+                  (let [v-tl    (aget grid (+ (* row w) col))
+                        v-tr    (aget grid (+ (* row w) (inc col)))
+                        v-br    (aget grid (+ (* (inc row) w) (inc col)))
+                        v-bl    (aget grid (+ (* (inc row) w) col))
+                        corners [v-tl v-tr v-br v-bl]
                         case-idx (bit-or
                                    (if (>= v-tl threshold) 1 0)
                                    (if (>= v-tr threshold) 2 0)
@@ -83,8 +87,8 @@
                                    (if (>= v-bl threshold) 8 0))
                         edges (get edge-table case-idx)]
                     (mapv (fn [[e1 e2]]
-                            [(edge-point e1 col row res v-tl v-tr v-br v-bl threshold bx by)
-                             (edge-point e2 col row res v-tl v-tr v-br v-bl threshold bx by)])
+                            [(edge-point e1 col row corners ctx)
+                             (edge-point e2 col row corners ctx)])
                           edges)))
                 (range cols)))
             (range rows)))))
