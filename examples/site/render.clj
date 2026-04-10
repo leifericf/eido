@@ -220,7 +220,7 @@
                              :circle/center [x y]
                              :circle/radius (+ 5 (* 20 t))
                              :style/fill [:color/rgb 0 0 0]})))
-        radial-nodes (vec (scene/radial 12 200 200 120
+        radial-nodes (vec (scene/radial 12 [200 200] 120
                             (fn [x y _angle]
                               {:node/type :shape/circle
                                :circle/center [x y]

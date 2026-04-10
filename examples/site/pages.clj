@@ -502,7 +502,7 @@
        [:h4 "Radial arrangement"]
        [:p "Arrange shapes in a circle — like numbers on a clock face:"]
        [:pre {:data-img "docs-radial.png"} [:code
-              "(scene/radial 12 200 200 120  ;; 12 items around (200,200) radius 120
+              "(scene/radial 12 [200 200] 120  ;; 12 items around [200,200] radius 120
   (fn [x y angle]
     {:node/type :shape/circle
      :circle/center [x y]

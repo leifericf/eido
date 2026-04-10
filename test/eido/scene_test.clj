@@ -69,7 +69,7 @@
 
 (deftest radial-cardinal-test
   (testing "4 points produce cardinal positions starting from top"
-    (let [nodes (scene/radial 4 100 100 50
+    (let [nodes (scene/radial 4 [100 100] 50
                   (fn [x y _a] {:x x :y y}))]
       (is (= 4 (count nodes)))
       ;; top (12 o'clock)
@@ -87,7 +87,7 @@
 
 (deftest radial-single-test
   (testing "n=1 places at top"
-    (let [nodes (scene/radial 1 0 0 10
+    (let [nodes (scene/radial 1 [0 0] 10
                   (fn [x y _a] {:x x :y y}))]
       (is (= 1 (count nodes)))
       (is (approx= 0.0 (:x (first nodes)) 0.01))
@@ -95,11 +95,11 @@
 
 (deftest radial-zero-test
   (testing "n=0 returns empty vector"
-    (is (= [] (scene/radial 0 0 0 10 (fn [x y a] :x))))))
+    (is (= [] (scene/radial 0 [0 0] 10 (fn [x y a] :x))))))
 
 (deftest radial-angle-passed-test
   (testing "angle parameter starts at 0 and increases"
-    (let [nodes (scene/radial 4 0 0 10
+    (let [nodes (scene/radial 4 [0 0] 10
                   (fn [_x _y a] {:angle a}))]
       (is (approx= 0.0 (:angle (nth nodes 0)) 0.01))
       (is (approx= (* 0.5 Math/PI) (:angle (nth nodes 1)) 0.01))

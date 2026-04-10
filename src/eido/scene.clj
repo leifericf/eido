@@ -35,7 +35,7 @@
   "Generates n nodes distributed evenly around a circle.
   f receives (x y angle) where angle is in radians [0, 2*pi).
   Angles start from the top (12 o'clock) and proceed clockwise."
-  [n cx cy radius f]
+  [n [cx cy] radius f]
   (if (<= n 0)
     []
     (let [step (/ (* 2.0 Math/PI) n)]
@@ -102,7 +102,7 @@
   "Creates a closed regular n-sided polygon path node centered at [cx cy]
   with the given radius. First vertex is at the top (12 o'clock)."
   [[cx cy] radius n]
-  (polygon (radial n cx cy radius (fn [x y _a] [x y]))))
+  (polygon (radial n [cx cy] radius (fn [x y _a] [x y]))))
 
 (defn star
   "Creates a closed star path node with n points centered at [cx cy].
@@ -220,7 +220,7 @@
 (defn ^{:convenience true :convenience-for 'eido.scene/radial}
   ring
   "Places n copies of shape in a circle. Returns a vector of translated nodes.
-  Convenience for (radial n cx cy radius (fn [x y _] shape-with-translate))."
+  Convenience for (radial n [cx cy] radius (fn [x y _] shape-with-translate))."
   [n [cx cy] radius shape]
   (vec (for [i (range n)]
          (let [angle (* 2.0 Math/PI (/ (double i) (double n)))

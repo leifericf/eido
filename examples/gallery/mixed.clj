@@ -34,7 +34,7 @@
                             :tube-segments 18})
                 ;; Orbiting 2D halos — rainbow palette
                 n-halos 10
-                halos   (scene/radial n-halos cx cy 170
+                halos   (scene/radial n-halos [cx cy] 170
                           (fn [x y a]
                             (let [i     (int (/ (* a n-halos) (* 2 Math/PI)))
                                   phase (+ angle (* i 0.6))
