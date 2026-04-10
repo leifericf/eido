@@ -59,6 +59,7 @@
 (import-fn noise/fbm)
 (import-fn noise/turbulence)
 (import-fn noise/ridge)
+(import-fn noise/preview)
 
 ;; flow
 (import-fn flow/flow-field)
@@ -142,6 +143,7 @@
 (import-fn series/series-range)
 (import-fn series/seed-grid)
 (import-fn series/param-grid)
+(import-fn series/render-editions)
 
 ;; cellular automata & reaction-diffusion
 (import-fn ca/ca-grid)
