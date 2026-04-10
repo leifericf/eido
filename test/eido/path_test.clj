@@ -164,14 +164,14 @@
 (deftest trim-to-bounds-test
   (testing "fully inside path unchanged"
     (let [cmds [[:move-to [20 20]] [:line-to [80 80]]]
-          result (path/trim-to-bounds cmds 0 0 100 100)]
+          result (path/trim-to-bounds cmds [0 0 100 100])]
       (is (= 1 (count result)))
       (is (= 2 (count (first result))))))
   (testing "fully outside path produces empty"
     (let [cmds [[:move-to [200 200]] [:line-to [300 300]]]
-          result (path/trim-to-bounds cmds 0 0 100 100)]
+          result (path/trim-to-bounds cmds [0 0 100 100])]
       (is (empty? result))))
   (testing "crossing path gets clipped"
     (let [cmds [[:move-to [-50 50]] [:line-to [150 50]]]
-          result (path/trim-to-bounds cmds 0 0 100 100)]
+          result (path/trim-to-bounds cmds [0 0 100 100])]
       (is (pos? (count result))))))

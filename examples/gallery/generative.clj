@@ -151,7 +151,7 @@
                   :tags   ["flow-field" "dashing" "smoothing" "palette" "recipe-flow"]}}
   dashed-flow []
   (let [w 600 h 600
-        paths (flow/flow-field 20 20 560 560
+        paths (flow/flow-field [20 20 560 560]
                 {:density 25 :steps 40 :step-size 3 :seed 42})
         pal (:ocean palette/palettes)]
     {:image/size [w h]
@@ -254,8 +254,8 @@
                   :tags   ["voronoi" "scatter" "palette" "color"]}}
   voronoi-glass []
   (let [w 600 h 600
-        pts (scatter/poisson-disk 20 20 560 560 45 42)
-        cells (voronoi/voronoi-cells pts 0 0 w h)
+        pts (scatter/poisson-disk [20 20 560 560] {:min-dist 45 :seed 42})
+        cells (voronoi/voronoi-cells pts [0 0 w h])
         jewels [[:color/rgb 180 30 50] [:color/rgb 40 100 180]
                 [:color/rgb 220 170 30] [:color/rgb 60 160 80]
                 [:color/rgb 140 50 160] [:color/rgb 220 120 50]]
@@ -325,7 +325,7 @@
                   :tags   ["flow-field" "noise" "smoothing" "color" "recipe-flow"]}}
   noise-flow []
   (let [w 700 h 500
-        paths (flow/flow-field 20 20 660 460
+        paths (flow/flow-field [20 20 660 460]
                 {:density 18 :steps 50 :step-size 3 :seed 77})]
     {:image/size [w h]
      :image/background [:color/rgb 20 18 25]
@@ -419,7 +419,7 @@
     {:image/size [w h]
      :image/background [:color/rgb 245 242 235]
      :image/nodes
-     (let [pts (scatter/poisson-disk 30 30 440 440 6 42)]
+     (let [pts (scatter/poisson-disk [30 30 440 440] {:min-dist 6 :seed 42})]
        (vec (keep
               (fn [[x y]]
                 (let [dx (- x cx) dy (- y cy)

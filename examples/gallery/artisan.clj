@@ -245,7 +245,7 @@
                         :circle/center [8.0 8.0] :circle/radius 3.0
                         :style/fill black}]}
          :style/stroke {:color black :width 3}}
-        dots (scatter/poisson-disk 10 10 530 390 40 42)]
+        dots (scatter/poisson-disk [10 10 530 390] {:min-dist 40 :seed 42})]
     {:image/size [550 420]
      :image/background bg
      :image/nodes
@@ -651,7 +651,7 @@
                   :desc   "Dense scatter of colored dots forming gradient sky and ground."
                   :tags   ["scatter" "noise" "variation"]}}
   pointillist-landscape []
-  (let [pts (scatter/poisson-disk 5 5 595 395 8 42)
+  (let [pts (scatter/poisson-disk [5 5 595 395] {:min-dist 8 :seed 42})
         sky-stops [[0.0 [:color/rgb 40 60 150]]
                    [0.4 [:color/rgb 120 160 220]]
                    [0.6 [:color/rgb 220 180 100]]

@@ -8,9 +8,11 @@
 ;; --- distribution generators ---
 
 (defn grid
-  "Generates a regular grid of [x y] positions within bounds."
-  [bx by bw bh cols rows]
-  (let [dx (/ (double bw) cols)
+  "Generates a regular grid of [x y] positions within bounds.
+  bounds: [x y w h]."
+  [bounds cols rows]
+  (let [[bx by bw bh] bounds
+        dx (/ (double bw) cols)
         dy (/ (double bh) rows)]
     (into []
           (for [row (range rows)
@@ -20,15 +22,20 @@
 
 (defn poisson-disk
   "Generates well-distributed points via Poisson disk sampling.
+  bounds: [x y w h]. opts: :min-dist (required), :seed (default 0).
   Delegates to eido.gen.stipple/poisson-disk."
-  [bx by bw bh min-dist seed]
-  (stipple/poisson-disk bx by bw bh min-dist seed))
+  [bounds opts]
+  (stipple/poisson-disk bounds opts))
 
 (defn noise-field
   "Generates up to n positions biased by noise density.
+  bounds: [x y w h]. opts: :n (required), :seed (default 0).
   Points are placed where noise value exceeds a threshold."
-  [bx by bw bh n seed]
-  (let [rng (java.util.Random. (long seed))
+  [bounds opts]
+  (let [[bx by bw bh] bounds
+        n   (:n opts)
+        seed (get opts :seed 0)
+        rng (java.util.Random. (long seed))
         bx  (double bx)
         by  (double by)
         bw  (double bw)
@@ -64,11 +71,12 @@
 
 (defn jitter
   "Displaces each point by a Gaussian offset scaled by amount.
-  Returns [[x' y'] ...]. Amount controls displacement magnitude:
-  0 = no change, higher = more disorder. Uses Gaussian for natural feel."
-  [points amount seed]
-  (let [rng (java.util.Random. (long seed))
-        amt (double amount)]
+  Returns [[x' y'] ...]. opts: :amount (required), :seed (default 0).
+  Amount controls displacement magnitude: 0 = no change, higher = more
+  disorder. Uses Gaussian for natural feel."
+  [points opts]
+  (let [rng (java.util.Random. (long (get opts :seed 0)))
+        amt (double (:amount opts))]
     (if (zero? amt)
       (vec points)
       (mapv (fn [[x y]]
@@ -77,10 +85,10 @@
             points))))
 
 (comment
-  (grid 0 0 100 100 5 5)
-  (poisson-disk 0 0 100 100 10 42)
-  (noise-field 0 0 100 100 50 42)
-  (jitter (grid 0 0 100 100 5 5) 3.0 42)
+  (grid [0 0 100 100] 5 5)
+  (poisson-disk [0 0 100 100] {:min-dist 10 :seed 42})
+  (noise-field [0 0 100 100] {:n 50 :seed 42})
+  (jitter (grid [0 0 100 100] 5 5) {:amount 3.0 :seed 42})
   (scatter->nodes
     {:node/type :shape/circle :circle/center [0.0 0.0] :circle/radius 3.0
      :style/fill [:color/rgb 255 0 0]}

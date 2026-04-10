@@ -7,19 +7,19 @@
 
 (deftest grid-positions-test
   (testing "grid generates correct number of positions"
-    (let [pts (scatter/grid 0 0 100 100 5 5)]
+    (let [pts (scatter/grid [0 0 100 100] 5 5)]
       (is (= 25 (count pts)))
       (is (every? (fn [[x y]] (and (<= 0 x 100) (<= 0 y 100))) pts)))))
 
 (deftest poisson-disk-positions-test
   (testing "poisson-disk generates positions within bounds"
-    (let [pts (scatter/poisson-disk 0 0 100 100 10 42)]
+    (let [pts (scatter/poisson-disk [0 0 100 100] {:min-dist 10 :seed 42})]
       (is (pos? (count pts)))
       (is (every? (fn [[x y]] (and (<= 0 x 100) (<= 0 y 100))) pts)))))
 
 (deftest noise-field-positions-test
   (testing "noise-field generates positions biased by noise"
-    (let [pts (scatter/noise-field 0 0 100 100 200 42)]
+    (let [pts (scatter/noise-field [0 0 100 100] {:n 200 :seed 42})]
       (is (pos? (count pts)))
       (is (<= (count pts) 200))
       (is (every? (fn [[x y]] (and (<= 0 x 100) (<= 0 y 100))) pts)))))
@@ -57,17 +57,17 @@
 (deftest jitter-test
   (testing "same count as input"
     (let [pts [[0 0] [10 10] [20 20]]
-          result (scatter/jitter pts 5.0 42)]
+          result (scatter/jitter pts {:amount 5.0 :seed 42})]
       (is (= 3 (count result)))))
   (testing "amount=0 produces identity"
     (let [pts [[10.0 20.0] [30.0 40.0]]
-          result (scatter/jitter pts 0.0 42)]
+          result (scatter/jitter pts {:amount 0.0 :seed 42})]
       (is (= pts result))))
   (testing "amount>0 displaces points"
     (let [pts [[50.0 50.0]]
-          result (scatter/jitter pts 10.0 42)]
+          result (scatter/jitter pts {:amount 10.0 :seed 42})]
       (is (not= pts result))))
   (testing "deterministic"
     (let [pts [[0 0] [50 50] [100 100]]]
-      (is (= (scatter/jitter pts 5.0 42)
-             (scatter/jitter pts 5.0 42)))))))
+      (is (= (scatter/jitter pts {:amount 5.0 :seed 42})
+             (scatter/jitter pts {:amount 5.0 :seed 42})))))))

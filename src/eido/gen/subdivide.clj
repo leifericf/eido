@@ -55,8 +55,9 @@
     :h-bias      (0.5)    — probability of horizontal split (vs vertical)
     :padding     (0.0)    — gap between sub-rects
     :seed        (42)"
-  [x y w h opts]
-  (let [[split-lo split-hi] (get opts :split-range [0.3 0.7])
+  [bounds opts]
+  (let [[x y w h] bounds
+        [split-lo split-hi] (get opts :split-range [0.3 0.7])
         cfg {:max-depth (get opts :depth 4)
              :min-size  (get opts :min-size 20.0)
              :split-lo  split-lo

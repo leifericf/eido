@@ -166,11 +166,12 @@
 
 (defn contour-lines
   "Generates contour paths at iso-thresholds of a scalar field.
-  noise-fn: (fn [x y opts] -> double).
+  noise-fn: (fn [x y opts] -> double). bounds: [x y w h].
   Returns a vector of :shape/path nodes.
   opts: :thresholds ([0.0]), :resolution (5), :noise-scale (0.01), :seed (0)."
-  [noise-fn bx by bw bh opts]
-  (let [res         (get opts :resolution 5)
+  [noise-fn bounds opts]
+  (let [[bx by bw bh] bounds
+        res         (get opts :resolution 5)
         noise-scale (get opts :noise-scale 0.01)
         seed        (get opts :seed 0)
         thresholds  (get opts :thresholds [0.0])
@@ -192,6 +193,6 @@
           thresholds)))
 
 (comment
-  (contour-lines noise/perlin2d 0 0 200 200
+  (contour-lines noise/perlin2d [0 0 200 200]
     {:thresholds [-0.2 0.0 0.2] :resolution 4 :noise-scale 0.02 :seed 42})
   )

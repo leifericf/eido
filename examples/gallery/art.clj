@@ -89,8 +89,8 @@
                   :tags   ["scatter" "glow" "opacity"]}}
   starfield []
   (let [pal (:midnight palette/palettes)
-        star-positions (scatter/poisson-disk 0 0 600 400 15 42)
-        bright-positions (scatter/noise-field 0 0 600 400 30 99)]
+        star-positions (scatter/poisson-disk [0 0 600 400] {:min-dist 15 :seed 42})
+        bright-positions (scatter/noise-field [0 0 600 400] {:n 30 :seed 99})]
     {:image/size [600 400]
      :image/background (nth pal 0)
      :image/nodes
@@ -377,7 +377,7 @@
                   :tags   ["flow-field" "brush-strokes" "noise" "palette"]}}
   van-gogh-swirls []
   (let [pal (:fire palette/palettes)
-        paths (flow/flow-field 0 0 600 400
+        paths (flow/flow-field [0 0 600 400]
                 {:density 6 :steps 80 :step-length 1.5
                  :noise-scale 0.004 :seed 77})]
     {:image/size [600 400]
@@ -422,8 +422,8 @@
                   :desc   "Voronoi cells with colored fills and dark outlines."
                   :tags   ["voronoi" "scatter" "color"]}}
   stained-glass []
-  (let [pts (scatter/poisson-disk 20 20 460 360 50 42)
-        cells (voronoi/voronoi-cells pts 0 0 500 400)
+  (let [pts (scatter/poisson-disk [20 20 460 360] {:min-dist 50 :seed 42})
+        cells (voronoi/voronoi-cells pts [0 0 500 400])
         rng (java.util.Random. 42)
         warm-colors [[:color/rgb 200 50 50]
                      [:color/rgb 50 80 180]
@@ -516,7 +516,7 @@
   {:frames
    (anim/frames 40
      (fn [t]
-       (let [paths (flow/flow-field 0 0 400 400
+       (let [paths (flow/flow-field [0 0 400 400]
                      {:density 14 :steps 30 :step-length 2
                       :noise-scale (+ 0.004 (* 0.002 (Math/sin (* t 2 Math/PI))))
                       :seed 42})]
@@ -550,7 +550,7 @@
                   :desc   "Per-instance color variation driven by noise."
                   :tags   ["scatter" "noise" "gradients"]}}
   chromatic-scatter []
-  (let [pts (scatter/poisson-disk 30 30 540 340 18 42)
+  (let [pts (scatter/poisson-disk [30 30 540 340] {:min-dist 18 :seed 42})
         stops [[0.0 [:color/rgb 20 0 80]]
                [0.3 [:color/rgb 180 0 100]]
                [0.6 [:color/rgb 255 120 0]]
@@ -676,8 +676,8 @@
                   :desc   "Voronoi mosaic sunset inside text clip mask."
                   :tags   ["voronoi" "typography" "gradients" "scatter"]}}
   landscape-type []
-  (let [pts (scatter/poisson-disk -30 -240 640 290 35 42)
-        cells (voronoi/voronoi-cells pts -30 -240 640 290)
+  (let [pts (scatter/poisson-disk [-30 -240 640 290] {:min-dist 35 :seed 42})
+        cells (voronoi/voronoi-cells pts [-30 -240 640 290])
         colored-cells (vec (map-indexed
                              (fn [i cell]
                                (let [[_ py] (nth pts i)
@@ -703,7 +703,7 @@
                                :circle/center [0.0 0.0]
                                :circle/radius 2.0
                                :style/fill [:color/rgb 255 255 230]}
-               :scatter/positions (scatter/poisson-disk -20 -230 630 120 22 77)
+               :scatter/positions (scatter/poisson-disk [-20 -230 630 120] {:min-dist 22 :seed 77})
                :scatter/jitter {:x 2 :y 2 :seed 33}}))]}))
 
 ;; --- 20. Venn Booleans ---

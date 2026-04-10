@@ -541,7 +541,7 @@
                      (or d3 []))))})
 
      "docs-dashed-flow.png"
-     (let [paths (flow/flow-field 20 20 460 360
+     (let [paths (flow/flow-field [20 20 460 360]
                    {:density 30 :steps 35 :step-size 3 :seed 42})
            pal (:ocean palette/palettes)]
        {:image/size [500 400] :image/background bg
@@ -724,7 +724,7 @@
         :style/fill [:color/name "steelblue"]}]}
 
      "docs-arch-flowfield.png"
-     (let [paths (flow/flow-field 20 20 360 260
+     (let [paths (flow/flow-field [20 20 360 260]
                    {:density 25 :steps 30 :step-size 3 :seed 42})]
        {:image/size [400 300] :image/background bg
         :image/nodes

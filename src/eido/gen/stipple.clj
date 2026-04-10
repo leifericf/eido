@@ -61,11 +61,13 @@
 
 (defn poisson-disk
   "Generates well-distributed points via Poisson disk sampling.
-  Returns a vector of [x y] within [bx, bx+bw] x [by, by+bh].
-  min-dist: minimum distance between points. seed: for determinism."
-  [bx by bw bh min-dist seed]
-  (let [rng         (java.util.Random. (long seed))
-        min-dist    (double min-dist)
+  bounds: [x y w h] region. opts: :min-dist (required), :seed (default 0).
+  Returns a vector of [x y] within the bounds."
+  [bounds opts]
+  (let [[bx by bw bh] bounds
+        seed        (get opts :seed 0)
+        rng         (java.util.Random. (long seed))
+        min-dist    (double (:min-dist opts))
         min-dist-sq (* min-dist min-dist)
         cell-size   (/ min-dist (Math/sqrt 2.0))
         ctx         (make-grid-ctx bx by bw bh cell-size)
@@ -113,16 +115,17 @@
 
 (defn stipple-fill->nodes
   "Generates circle nodes for a stipple fill within bounds.
+  bounds: [x y w h] region.
   spec: :stipple/density (0-1), :stipple/radius, :stipple/seed,
         :stipple/color."
-  [bx by bw bh spec]
+  [bounds spec]
   (let [density (get spec :stipple/density 0.5)
         radius  (get spec :stipple/radius 1.0)
         seed    (get spec :stipple/seed 0)
         color   (get spec :stipple/color [:color/rgb 0 0 0])
         ;; Scale min-dist inversely with density
         min-dist (* (double radius) 3.0 (- 1.5 (min 1.0 (double density))))
-        pts     (poisson-disk bx by bw bh min-dist seed)]
+        pts     (poisson-disk bounds {:min-dist min-dist :seed seed})]
     (mapv (fn [[x y]]
             {:node/type      :shape/circle
              :circle/center  [x y]
@@ -131,6 +134,6 @@
           pts)))
 
 (comment
-  (count (poisson-disk 0 0 100 100 5 42))
-  (stipple-fill->nodes 0 0 100 100 {:stipple/density 0.5 :stipple/radius 1 :stipple/seed 42})
+  (count (poisson-disk [0 0 100 100] {:min-dist 5 :seed 42}))
+  (stipple-fill->nodes [0 0 100 100] {:stipple/density 0.5 :stipple/radius 1 :stipple/seed 42})
   )

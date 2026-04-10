@@ -91,8 +91,9 @@
     :max-circles (1000)  — cap on total circles
     :seed        (42)
     :bounds-fn   — optional (fn [x y] -> boolean) for non-rectangular containment"
-  [bx by bw bh opts]
-  (let [min-r   (get opts :min-radius 2.0)
+  [bounds opts]
+  (let [[bx by bw bh] bounds
+        min-r   (get opts :min-radius 2.0)
         max-r   (get opts :max-radius 40.0)
         padding (get opts :padding 1.0)
         max-att (get opts :attempts 500)

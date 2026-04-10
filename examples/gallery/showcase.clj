@@ -150,7 +150,7 @@
                   :tags   ["simplex" "flow-field" "collision"]}}
   simplex-flow []
   (let [w 600 h 400
-        lines (flow/flow-field 0 0 w h
+        lines (flow/flow-field [0 0 w h]
                 {:density 12 :steps 80 :step-length 2.5
                  :noise-scale 0.006 :seed 77
                  :collision-distance 6.0})]
@@ -285,7 +285,7 @@
                       (let [r (* ri 28)
                             n-pts (+ 10 (* ri 8))
                             pts (prob/scatter-on-circle n-pts r [cx cy] (+ 42 ri))]
-                        (scatter/jitter pts 2.5 (+ 100 ri))))
+                        (scatter/jitter pts {:amount 2.5 :seed (+ 100 ri)})))
                     (range 1 9)))]
     {:image/size [w h]
      :image/background [:color/rgb 20 18 30]
@@ -475,7 +475,7 @@
   margin-composition []
   (let [w 500 h 500
         margin 40
-        lines (flow/flow-field 0 0 w h
+        lines (flow/flow-field [0 0 w h]
                 {:density 8 :steps 100 :step-length 2
                  :noise-scale 0.008 :seed 33})
         pal (:ocean palette/palettes)]
@@ -634,7 +634,7 @@
   clipped-flow []
   (let [w 500 h 500
         cx 250.0 cy 250.0 r 180.0
-        lines (flow/flow-field 0 0 w h
+        lines (flow/flow-field [0 0 w h]
                 {:density 10 :steps 60 :step-length 2
                  :noise-scale 0.007 :seed 55})]
     {:image/size [w h]
@@ -649,7 +649,7 @@
          (fn [node]
            (let [cmds (:path/commands node)
                  trimmed (path/trim-to-bounds cmds
-                           (- cx r) (- cy r) (* 2 r) (* 2 r))]
+                           [(- cx r) (- cy r) (* 2 r) (* 2 r)])]
              (mapv (fn [seg]
                      {:node/type :shape/path
                       :path/commands seg

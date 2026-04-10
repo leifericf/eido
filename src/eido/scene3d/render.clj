@@ -143,7 +143,7 @@
             spacing  (max 1.0 (* (double (get face-style :hatch/spacing 4)) brightness))
             color    (get face-style :hatch/color [:color/rgb 30 30 30])
             stroke-w (get face-style :hatch/stroke-width 0.5)
-            lines    (hatch/hatch-lines bx by bw bh {:angle angle :spacing spacing})
+            lines    (hatch/hatch-lines [bx by bw bh] {:angle angle :spacing spacing})
             poly     (vec projected)]
         (into []
           (keep (fn [line]
@@ -160,7 +160,7 @@
             seed    (get face-style :stipple/seed (hash projected))
             color   (get face-style :stipple/color [:color/rgb 30 30 30])
             poly    (vec projected)
-            nodes   (stipple/stipple-fill->nodes bx by bw bh
+            nodes   (stipple/stipple-fill->nodes [bx by bw bh]
                       {:stipple/density density :stipple/radius radius
                        :stipple/seed seed :stipple/color color})]
         (into []

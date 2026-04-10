@@ -133,18 +133,16 @@
     (wrap-group children node)))
 
 (defn- expand-voronoi [node]
-  (let [[bx by bw bh] (:voronoi/bounds node)
-        cells (voronoi/voronoi-cells
-                (:voronoi/points node) bx by bw bh)
+  (let [cells (voronoi/voronoi-cells
+                (:voronoi/points node) (:voronoi/bounds node))
         styled (apply-style-overrides
                  cells node (:voronoi/overrides node)
                  [:style/fill :style/stroke :node/opacity])]
     (wrap-group styled node)))
 
 (defn- expand-delaunay [node]
-  (let [[bx by bw bh] (:delaunay/bounds node)
-        edges (voronoi/delaunay-edges
-                (:delaunay/points node) bx by bw bh)
+  (let [edges (voronoi/delaunay-edges
+                (:delaunay/points node) (:delaunay/bounds node))
         styled (mapv #(cond-> %
                         (:style/stroke node)
                         (assoc :style/stroke (:style/stroke node)))
@@ -163,14 +161,13 @@
     (wrap-path cmds node)))
 
 (defn- expand-contour [node]
-  (let [[bx by bw bh] (:contour/bounds node)
-        noise-fn (case (get node :contour/fn :perlin)
+  (let [noise-fn (case (get node :contour/fn :perlin)
                    :perlin eido.gen.noise/perlin2d
                    :fbm    (fn [x y opts]
                              (eido.gen.noise/fbm
                                eido.gen.noise/perlin2d x y
                                (merge opts (:contour/opts node)))))
-        paths (contour/contour-lines noise-fn bx by bw bh
+        paths (contour/contour-lines noise-fn (:contour/bounds node)
                 (or (:contour/opts node) {}))
         styled (mapv #(cond-> %
                         (:style/stroke node)
@@ -179,8 +176,7 @@
     (wrap-group styled node)))
 
 (defn- expand-flow-field [node]
-  (let [[bx by bw bh] (:flow/bounds node)
-        paths     (flow/flow-field bx by bw bh
+  (let [paths     (flow/flow-field (:flow/bounds node)
                     (or (:flow/opts node) {}))
         styled    (apply-style-overrides
                     paths node (:flow/overrides node)

@@ -180,11 +180,11 @@
   (let [geom      (:item/geometry item)
         fill-spec (:item/fill item)
         stroke    (:item/stroke item)
-        [bx by bw bh] (ir/geometry-bounds geom)
+        bounds    (ir/geometry-bounds geom)
         bg-fill   (:hatch/background fill-spec)
         clip-op   (geometry->clip-op geom)
         ;; Generate hatch line nodes
-        hatch-nodes (hatch/hatch-fill->nodes bx by bw bh fill-spec)
+        hatch-nodes (hatch/hatch-fill->nodes bounds fill-spec)
         ;; Convert each hatch line to a concrete op with clip
         hatch-ops (into [] (keep #(scene-node->op % :clip clip-op)) hatch-nodes)
         ;; Background fill (if specified)
@@ -204,11 +204,11 @@
   (let [geom      (:item/geometry item)
         fill-spec (:item/fill item)
         stroke    (:item/stroke item)
-        [bx by bw bh] (ir/geometry-bounds geom)
+        bounds    (ir/geometry-bounds geom)
         bg-fill   (:stipple/background fill-spec)
         clip-op   (geometry->clip-op geom)
         ;; Generate stipple dot nodes
-        dot-nodes (stipple/stipple-fill->nodes bx by bw bh fill-spec)
+        dot-nodes (stipple/stipple-fill->nodes bounds fill-spec)
         ;; Convert each dot to a concrete op with clip
         dot-ops   (into [] (keep #(scene-node->op % :clip clip-op)) dot-nodes)
         ;; Background fill (if specified)

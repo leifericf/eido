@@ -56,10 +56,12 @@
 
 (defn voronoi-cells
   "Generates Voronoi cell polygons from seed points.
+  bounds: [x y w h] clipping region.
   Returns a vector of :shape/path nodes (closed polygons), one per point.
   Uses half-plane intersection: O(n^2) per cell."
-  [points bx by bw bh]
-  (let [bx (double bx) by (double by)
+  [points bounds]
+  (let [[bx by bw bh] bounds
+        bx (double bx) by (double by)
         bw (double bw) bh (double bh)
         bbox [[bx by]
               [(+ bx bw) by]
@@ -107,9 +109,10 @@
 
 (defn delaunay-edges
   "Generates Delaunay triangulation edges as line nodes.
+  bounds: [x y w h] clipping region.
   Derived from Voronoi: two seeds are neighbors if their cells share an edge."
-  [points bx by bw bh]
-  (let [cells (voronoi-cells points bx by bw bh)
+  [points bounds]
+  (let [cells (voronoi-cells points bounds)
         n     (count points)]
     (into []
           (keep (fn [[i j]]
@@ -122,6 +125,6 @@
           (for [i (range n) j (range (inc i) n)] [i j]))))
 
 (comment
-  (voronoi-cells [[50 50] [150 50] [100 150]] 0 0 200 200)
-  (delaunay-edges [[50 50] [150 50] [100 150]] 0 0 200 200)
+  (voronoi-cells [[50 50] [150 50] [100 150]] [0 0 200 200])
+  (delaunay-edges [[50 50] [150 50] [100 150]] [0 0 200 200])
   )

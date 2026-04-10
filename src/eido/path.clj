@@ -387,10 +387,12 @@
 
 (defn trim-to-bounds
   "Clips path commands to a bounding rectangle.
+  bounds: [x y w h] clipping region.
   Returns a vector of path-command vectors (one per visible segment).
   Flattens curves to line segments before clipping."
-  [commands bx by bw bh]
+  [commands bounds]
   (let [points (path-points commands)
+        [bx by bw bh] bounds
         bx (double bx) by (double by) bw (double bw) bh (double bh)]
     (loop [i 1 segments [] current nil]
       (if (>= i (count points))

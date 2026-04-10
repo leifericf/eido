@@ -107,12 +107,14 @@
 
 (defn flow-field
   "Generates path nodes from a noise-based flow field within bounds.
+  bounds: [x y w h] region.
   Returns a vector of :shape/path nodes (streamlines).
   opts: :density (20), :step-length (2.0), :steps (50),
         :noise-scale (0.005), :seed (0), :min-length (3),
         :collision-distance (nil — set to enforce minimum spacing between streamlines)."
-  [bx by bw bh opts]
-  (let [density    (get opts :density 20)
+  [bounds opts]
+  (let [[bx by bw bh] bounds
+        density    (get opts :density 20)
         col-dist   (:collision-distance opts)
         bx         (double bx)
         by         (double by)
@@ -141,6 +143,6 @@
           origins)))
 
 (comment
-  (flow-field 0 0 200 200 {:density 20 :steps 40 :noise-scale 0.005 :seed 42})
-  (flow-field 0 0 200 200 {:density 20 :steps 40 :seed 42 :collision-distance 8.0})
+  (flow-field [0 0 200 200] {:density 20 :steps 40 :noise-scale 0.005 :seed 42})
+  (flow-field [0 0 200 200] {:density 20 :steps 40 :seed 42 :collision-distance 8.0})
   )

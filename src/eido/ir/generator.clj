@@ -127,8 +127,8 @@
   (let [gen-type (:generator/type gen-desc)]
     (case gen-type
       :generator/flow-field
-      (let [[bx by bw bh] (:generator/bounds gen-desc)
-            nodes (flow/flow-field bx by bw bh (:generator/opts gen-desc))
+      (let [nodes (flow/flow-field (:generator/bounds gen-desc)
+                    (:generator/opts gen-desc))
             styled (-> nodes
                        (apply-style (:generator/style gen-desc))
                        (apply-overrides (:generator/overrides gen-desc)))]
@@ -136,8 +136,7 @@
               styled))
 
       :generator/contour
-      (let [[bx by bw bh] (:generator/bounds gen-desc)
-            field-desc (:generator/field gen-desc)
+      (let [field-desc (:generator/field gen-desc)
             noise-fn   (if field-desc
                          (fn [x y opts]
                            (noise/perlin2d x y
@@ -145,7 +144,7 @@
                                (when (:field/seed field-desc)
                                  {:seed (:field/seed field-desc)}))))
                          noise/perlin2d)
-            nodes (contour/contour-lines noise-fn bx by bw bh
+            nodes (contour/contour-lines noise-fn (:generator/bounds gen-desc)
                     (:generator/opts gen-desc))
             styled (apply-style nodes (:generator/style gen-desc))]
         (lower/lower-scene-nodes
@@ -161,9 +160,8 @@
               with-overrides))
 
       :generator/voronoi
-      (let [[bx by bw bh] (:generator/bounds gen-desc)
-            cells (voronoi/voronoi-cells
-                    (:generator/points gen-desc) bx by bw bh)
+      (let [cells (voronoi/voronoi-cells
+                    (:generator/points gen-desc) (:generator/bounds gen-desc))
             styled (-> cells
                        (apply-style (:generator/style gen-desc))
                        (apply-overrides (:generator/overrides gen-desc)))]
@@ -171,9 +169,8 @@
               styled))
 
       :generator/delaunay
-      (let [[bx by bw bh] (:generator/bounds gen-desc)
-            edges (voronoi/delaunay-edges
-                    (:generator/points gen-desc) bx by bw bh)
+      (let [edges (voronoi/delaunay-edges
+                    (:generator/points gen-desc) (:generator/bounds gen-desc))
             styled (apply-style edges (:generator/style gen-desc))]
         (lower/lower-scene-nodes
               styled))

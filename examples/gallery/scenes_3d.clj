@@ -954,7 +954,7 @@
                     (s3d/translate-mesh [0 0.4 0]))
                 {:style/fill [:color/rgb 50 120 40]}])
         points (mapv (fn [[x y]] [(* 0.8 x) 0 (* 0.8 y)])
-                 (scatter/poisson-disk -3 -3 6 6 1.2 42))
+                 (scatter/poisson-disk [-3 -3 6 6] {:min-dist 1.2 :seed 42}))
         forest (s3d/instance-mesh tree {:positions points
                                         :rotate-y {:range [0 6.28] :seed 42}})
         proj (s3d/look-at (s3d/orthographic {:scale 40 :origin [200 220]})

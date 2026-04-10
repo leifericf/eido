@@ -676,7 +676,7 @@
               "(require '[eido.gen.scatter :as scatter])
 
 ;; Break the regularity of a grid
-(scatter/jitter (scatter/grid 0 0 400 400 10 10) 3.0 seed)"]]]}
+(scatter/jitter (scatter/grid [0 0 400 400] 10 10) {:amount 3.0 :seed seed})"]]]}
 
      {:id    "circle-packing"
       :title "Circle Packing"
@@ -814,13 +814,13 @@
         [:code ":collision-distance"] " to enforce minimum spacing — the result is "
         "gallery-ready even density:"]
        [:pre [:code
-              "(flow/flow-field 0 0 500 400
+              "(flow/flow-field [0 0 500 400]
   {:density 15 :steps 50 :seed 42
    :collision-distance 8.0})  ;; streamlines stop when approaching others"]]
        [:h4 "Combining them — dashed flow field"]
        [:p "The real power is chaining: smooth a flow field, then dash it. Each streamline becomes a series of short, flowing strokes:"]
        [:pre {:data-img "docs-dashed-flow.png"} [:code
-              "(let [paths (flow/flow-field 20 20 460 360
+              "(let [paths (flow/flow-field [20 20 460 360]
                 {:density 30 :steps 35 :seed 42})]
   (mapcat (fn [path]
             (-> (:path/commands path)
@@ -893,7 +893,7 @@
        [:p "Clip a path to a bounding rectangle — useful for constraining generated paths:"]
        [:pre [:code
               ";; Clip to a 100x100 rectangle:
-(path/trim-to-bounds path-cmds 0 0 100 100)
+(path/trim-to-bounds path-cmds [0 0 100 100])
 ;; => vector of clipped path-command vectors"]]]}
 
      {:id    "series"
