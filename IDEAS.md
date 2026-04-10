@@ -70,19 +70,6 @@ Shrink a polygon inward by a distance — useful for margin control and nested c
 
 ## Composition and spatial layout
 
-### Flow field collision detection
-
-When tracing streamlines through a flow field, enforce minimum distance between curves. Without this, flow field output tends to have uneven density — clumps and voids.
-
-**What to add:**
-- Collision avoidance option in flow field tracing, using spatial hashing to halt curves that approach existing ones too closely
-
-**Implementation notes:**
-- Maintain a spatial grid (same acceleration structure used in circle packing). As each streamline step is taken, check the grid for nearby existing points. If any point is within `min-distance`, halt the curve.
-- Add `:collision-distance` option to `flow/flow-field`. Default `nil` (current behavior). When set, enables the spatial grid.
-- Starting point distribution also matters: Poisson disc sampling for starting points (already available via `gen.stipple/poisson-disk`) produces more even coverage than random or grid starts.
-- ~40 lines on top of existing flow field code.
-
 ### Resolution-independent coordinates with real-world units
 
 Artists who produce physical output (prints, plotter work) need to think in centimeters or inches, not pixels. Currently Eido works in pixels only, with DPI metadata as an afterthought.

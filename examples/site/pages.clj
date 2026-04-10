@@ -773,6 +773,14 @@
 
 ;; Bottom: dots
 (aesthetic/dash-commands path-cmds {:dash [5.0 15.0]})"]]
+       [:h4 "Flow field collision detection"]
+       [:p "By default, flow field streamlines can cross and overlap. Add "
+        [:code ":collision-distance"] " to enforce minimum spacing — the result is "
+        "gallery-ready even density:"]
+       [:pre [:code
+              "(flow/flow-field 0 0 500 400
+  {:density 15 :steps 50 :seed 42
+   :collision-distance 8.0})  ;; streamlines stop when approaching others"]]
        [:h4 "Combining them — dashed flow field"]
        [:p "The real power is chaining: smooth a flow field, then dash it. Each streamline becomes a series of short, flowing strokes:"]
        [:pre {:data-img "docs-dashed-flow.png"} [:code
