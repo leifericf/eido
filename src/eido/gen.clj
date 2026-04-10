@@ -127,6 +127,8 @@
 (import-fn series/edition-seed)
 (import-fn series/series-params)
 (import-fn series/series-range)
+(import-fn series/seed-grid)
+(import-fn series/param-grid)
 
 ;; cellular automata & reaction-diffusion
 (import-fn ca/ca-grid)

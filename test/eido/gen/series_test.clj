@@ -89,6 +89,87 @@
     (let [params (series/series-params spec-with-weights 42 0)]
       (is (some #{(:tier params)} [:common :rare :epic])))))
 
+;; --- seed-grid ---
+
+(defn- simple-scene [params _edition]
+  {:image/size [40 40]
+   :image/background [:color/hsl (get params :hue 0) 0.5 0.5]
+   :image/nodes []})
+
+(deftest seed-grid-test
+  (testing "returns a BufferedImage"
+    (let [result (series/seed-grid
+                   {:spec {:hue {:type :uniform :lo 0.0 :hi 360.0}}
+                    :master-seed 42
+                    :start 0 :end 4
+                    :scene-fn simple-scene
+                    :cols 2
+                    :thumb-size [40 40]})]
+      (is (instance? java.awt.image.BufferedImage result))))
+  (testing "grid dimensions match cols x rows x thumb-size"
+    (let [result (series/seed-grid
+                   {:spec {:hue {:type :uniform :lo 0.0 :hi 360.0}}
+                    :master-seed 42
+                    :start 0 :end 6
+                    :scene-fn simple-scene
+                    :cols 3
+                    :thumb-size [40 40]})]
+      (is (= 120 (.getWidth result)))   ;; 3 cols x 40
+      (is (= 80 (.getHeight result))))) ;; 2 rows x 40
+  (testing "deterministic output"
+    (let [opts {:spec {:hue {:type :uniform :lo 0.0 :hi 360.0}}
+                :master-seed 42 :start 0 :end 4
+                :scene-fn simple-scene :cols 2 :thumb-size [40 40]}
+          a (series/seed-grid opts)
+          b (series/seed-grid opts)
+          pixels-a (.getRGB a 0 0 (.getWidth a) (.getHeight a) nil 0 (.getWidth a))
+          pixels-b (.getRGB b 0 0 (.getWidth b) (.getHeight b) nil 0 (.getWidth b))]
+      (is (java.util.Arrays/equals ^ints pixels-a ^ints pixels-b)))))
+
+;; --- param-grid ---
+
+(deftest param-grid-test
+  (testing "returns a BufferedImage"
+    (let [result (series/param-grid
+                   {:base-params {:hue 180}
+                    :row-param {:key :hue :values [0 90 180 270]}
+                    :col-param {:key :hue :values [0 120 240]}
+                    :seed 42
+                    :scene-fn (fn [params] (simple-scene params nil))
+                    :thumb-size [40 40]})]
+      (is (instance? java.awt.image.BufferedImage result))))
+  (testing "grid dimensions match rows x cols x thumb-size"
+    (let [result (series/param-grid
+                   {:base-params {:hue 180}
+                    :row-param {:key :hue :values [0 90 180]}
+                    :col-param {:key :hue :values [0 120]}
+                    :seed 42
+                    :scene-fn (fn [params] (simple-scene params nil))
+                    :thumb-size [40 40]})]
+      (is (= 80 (.getWidth result)))    ;; 2 cols x 40
+      (is (= 120 (.getHeight result))))) ;; 3 rows x 40
+  (testing "single-axis sweep (row only)"
+    (let [result (series/param-grid
+                   {:base-params {:hue 180}
+                    :row-param {:key :hue :values [0 90 180 270]}
+                    :seed 42
+                    :scene-fn (fn [params] (simple-scene params nil))
+                    :thumb-size [40 40]})]
+      (is (= 40 (.getWidth result)))    ;; 1 col x 40
+      (is (= 160 (.getHeight result))))) ;; 4 rows x 40
+  (testing "deterministic output"
+    (let [opts {:base-params {:hue 180}
+                :row-param {:key :hue :values [0 90]}
+                :col-param {:key :hue :values [0 120]}
+                :seed 42
+                :scene-fn (fn [params] (simple-scene params nil))
+                :thumb-size [40 40]}
+          a (series/param-grid opts)
+          b (series/param-grid opts)
+          pixels-a (.getRGB a 0 0 (.getWidth a) (.getHeight a) nil 0 (.getWidth a))
+          pixels-b (.getRGB b 0 0 (.getWidth b) (.getHeight b) nil 0 (.getWidth b))]
+      (is (java.util.Arrays/equals ^ints pixels-a ^ints pixels-b)))))
+
 ;; --- convenience helper tests ---
 
 ;; --- batch edition rendering ---

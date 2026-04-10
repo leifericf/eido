@@ -63,6 +63,79 @@
                  [k v])))
         params))
 
+;; --- visual exploration grids ---
+
+(defn- compose-grid
+  "Composes a vector of BufferedImages into a grid. Returns a BufferedImage."
+  [images cols [tw th]]
+  (let [n    (count images)
+        rows (int (Math/ceil (/ (double n) cols)))
+        w    (* cols (int tw))
+        h    (* rows (int th))
+        out  (java.awt.image.BufferedImage. w h java.awt.image.BufferedImage/TYPE_INT_ARGB)
+        g    (.createGraphics out)]
+    (doseq [i (range n)]
+      (let [col (mod i cols)
+            row (quot i cols)
+            img (nth images i)]
+        (.drawImage g ^java.awt.image.BufferedImage img
+                    (int (* col tw)) (int (* row th))
+                    (int tw) (int th) nil)))
+    (.dispose g)
+    out))
+
+(defn seed-grid
+  "Renders a grid of editions as a single BufferedImage for REPL exploration.
+  Each cell shows a different seed; pass the result to show at the REPL.
+  opts:
+    :spec        — parameter spec map
+    :master-seed — master seed for the series
+    :start       — first edition number (inclusive, default 0)
+    :end         — last edition number (exclusive)
+    :scene-fn    — (fn [params edition-number] scene-map)
+    :cols        — number of columns (default 5)
+    :thumb-size  — [width height] per thumbnail (default [160 160])"
+  [{:keys [spec master-seed start end scene-fn cols thumb-size]}]
+  (let [render-fn  (requiring-resolve 'eido.core/render)
+        start      (or start 0)
+        cols       (or cols 5)
+        [tw th]    (or thumb-size [160 160])
+        images     (mapv
+                     (fn [edition]
+                       (let [params (series-params spec master-seed edition)
+                             scene  (scene-fn params edition)
+                             scene  (assoc scene :image/size [tw th])]
+                         (render-fn scene)))
+                     (range start end))]
+    (compose-grid images cols [tw th])))
+
+(defn param-grid
+  "Renders a parameter sweep as a single BufferedImage for REPL exploration.
+  Varies one param across rows, optionally another across columns.
+  Pass the result to show at the REPL.
+  opts:
+    :base-params — base parameter map
+    :row-param   — {:key :param-name :values [v1 v2 ...]}
+    :col-param   — {:key :param-name :values [v1 v2 ...]} (optional, default 1 col)
+    :seed        — seed for scene generation
+    :scene-fn    — (fn [params] scene-map) — takes merged params, returns scene
+    :thumb-size  — [width height] per thumbnail (default [160 160])"
+  [{:keys [base-params row-param col-param seed scene-fn thumb-size]}]
+  (let [render-fn  (requiring-resolve 'eido.core/render)
+        [tw th]    (or thumb-size [160 160])
+        row-vals   (:values row-param)
+        col-vals   (or (:values col-param) [nil])
+        cols       (count col-vals)
+        images     (vec
+                     (for [rv row-vals
+                           cv col-vals]
+                       (let [params (cond-> (assoc base-params (:key row-param) rv)
+                                     cv (assoc (:key col-param) cv))
+                             scene  (scene-fn params)
+                             scene  (assoc scene :image/size [tw th])]
+                         (render-fn scene))))]
+    (compose-grid images cols [tw th])))
+
 ;; --- batch edition rendering ---
 
 (defn render-editions
