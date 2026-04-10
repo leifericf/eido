@@ -234,7 +234,7 @@
      (vec (mapcat
             (fn [{[x y rw rh] :rect} i]
               (let [pal (nth pals (mod i (count pals)))
-                    circles (circle/circle-pack x y rw rh
+                    circles (circle/circle-pack [x y rw rh]
                               {:min-radius 2 :max-radius (/ (min rw rh) 4)
                                :padding 1.5 :max-circles 60 :seed (+ i 100)})
                     colors (palette/weighted-sample pal [1 2 3 2 1]
