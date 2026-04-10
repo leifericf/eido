@@ -3,6 +3,8 @@
   Deterministic seed derivation and parameter sampling for
   numbered editions (Art Blocks / fxhash style workflows)."
   (:require
+    [clojure.edn :as edn]
+    [clojure.java.io :as io]
     [eido.gen.prob :as prob]))
 
 ;; --- seed derivation ---
@@ -205,3 +207,26 @@
   (series-range
     {:density {:type :uniform :lo 10 :hi 50}}
     42 0 5))
+
+;; --- seed bookmarks ---
+
+(defn save-seed!
+  "Appends a seed bookmark to an EDN log file.
+  entry should contain at least :seed; :params and :note are optional.
+  Adds :timestamp automatically. Accumulates one EDN form per line."
+  [path entry]
+  (let [enriched (assoc entry :timestamp (str (java.time.Instant/now)))]
+    (spit path (str (pr-str enriched) "\n") :append true)
+    enriched))
+
+(defn load-seeds
+  "Reads all seed bookmarks from an EDN log file.
+  Returns a vector of maps in append order, or [] if the file does not exist."
+  [path]
+  (if (.exists (io/file path))
+    (let [content (slurp path)]
+      (into []
+            (comp (remove clojure.string/blank?)
+                  (map edn/read-string))
+            (clojure.string/split-lines content)))
+    []))

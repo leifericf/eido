@@ -1,5 +1,6 @@
 (ns eido.gen.series-test
   (:require
+    [clojure.java.io :as io]
     [clojure.string :as str]
     [clojure.test :refer [deftest is testing]]
     [eido.gen.series :as series]))
@@ -272,3 +273,27 @@
       ;; 3 seeds, 3 cols = 1 row of 30x10
       (is (= 30 (.getWidth ^java.awt.image.BufferedImage img)))
       (is (= 10 (.getHeight ^java.awt.image.BufferedImage img))))))
+
+;; --- save-seed ---
+
+(deftest save-seed-roundtrip-test
+  (let [path (str (java.io.File/createTempFile "eido-seeds-" ".edn"))]
+    (try
+      (series/save-seed! path {:seed 42 :params {:hue 120} :note "warm"})
+      (series/save-seed! path {:seed 99 :note "sparse"})
+      (series/save-seed! path {:seed 7})
+      (let [seeds (series/load-seeds path)]
+        (testing "correct count"
+          (is (= 3 (count seeds))))
+        (testing "preserves order"
+          (is (= [42 99 7] (mapv :seed seeds))))
+        (testing "preserves all fields"
+          (is (= {:hue 120} (:params (first seeds))))
+          (is (= "warm" (:note (first seeds)))))
+        (testing "adds timestamps"
+          (is (every? string? (map :timestamp seeds)))))
+      (finally
+        (io/delete-file path true)))))
+
+(deftest load-seeds-missing-file-test
+  (is (= [] (series/load-seeds "/tmp/eido-nonexistent-seeds.edn"))))
