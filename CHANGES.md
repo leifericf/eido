@@ -95,6 +95,41 @@ directly using the migration examples below.
   (layered shape {:layers 30 :opacity 0.04 :deform-fn my-deform-fn :seed 42})
   ```
 
+- **Bounds are now `[x y w h]` vectors** — All generative functions
+  (`flow-field`, `circle-pack`, `voronoi-cells`, `contour-lines`,
+  `subdivide`, `hatch-lines`, `hatch-fill->nodes`, `stipple-fill->nodes`,
+  `scatter/grid`, `scatter/poisson-disk`, `scatter/noise-field`,
+  `delaunay-edges`, `path/trim-to-bounds`) now accept bounds as a single
+  `[x y w h]` vector instead of four positional `bx by bw bh` args.
+  Bounds become a first-class value artists can store and reuse.
+
+  ```clj
+  ;; Before
+  (flow-field 0 0 800 600 opts)
+  (voronoi-cells points 0 0 800 600)
+
+  ;; After
+  (def canvas [0 0 800 600])
+  (flow-field canvas opts)
+  (voronoi-cells points canvas)
+  ```
+
+- **`scatter/poisson-disk`, `noise-field`, `jitter` use opts maps** —
+  Seeds and parameters moved into opts for consistency with `flow-field`
+  and `circle-pack`.
+
+  ```clj
+  ;; Before
+  (poisson-disk 0 0 800 600 10 42)
+  (noise-field 0 0 800 600 50 42)
+  (jitter points 3.0 42)
+
+  ;; After
+  (poisson-disk [0 0 800 600] {:min-dist 10 :seed 42})
+  (noise-field [0 0 800 600] {:n 50 :seed 42})
+  (jitter points {:amount 3.0 :seed 42})
+  ```
+
 - **`line-node` accepts stroke map** — The 3-arity form now takes a
   stroke map `{:color c :width w}` instead of separate `color` and
   `width` positional args. Matches how `circle-node` and `rect-node`
