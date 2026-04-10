@@ -5,7 +5,10 @@
   (:require
     [clojure.edn :as edn]
     [clojure.java.io :as io]
-    [eido.gen.prob :as prob]))
+    [eido.gen.prob :as prob])
+  (:import
+    [java.io File]
+    [javax.imageio ImageIO]))
 
 ;; --- seed derivation ---
 
@@ -196,6 +199,35 @@
       (spit (str output-dir "/metadata.edn")
             (pr-str (mapv #(dissoc % :file) results)))
       results)))
+
+(defn export-edition-package
+  "Renders a complete edition package: images, manifests, and optional contact sheet.
+  opts: same as render-editions, plus:
+    :contact-sheet? — generate a grid thumbnail image (default true)
+    :contact-cols   — columns in contact sheet (default 5)
+    :thumb-size     — per-thumbnail size (default [160 160])
+  Returns {:editions [...] :contact-sheet path-or-nil}."
+  [{:keys [spec master-seed start end scene-fn output-dir
+           format render-opts traits
+           contact-sheet? contact-cols thumb-size]
+    :or   {contact-sheet? true contact-cols 5 thumb-size [160 160]}}]
+  (let [editions (render-editions
+                   {:spec spec :master-seed master-seed
+                    :start start :end end
+                    :scene-fn scene-fn :output-dir output-dir
+                    :format format :render-opts render-opts
+                    :traits traits :emit-manifest? true})
+        sheet    (when contact-sheet?
+                   (let [img  (seed-grid {:spec spec :master-seed master-seed
+                                          :start start :end end
+                                          :scene-fn scene-fn
+                                          :cols contact-cols
+                                          :thumb-size thumb-size})
+                         path (str output-dir "/contact-sheet.png")]
+                     (ImageIO/write img "png" (File. ^String path))
+                     path))]
+    {:editions      editions
+     :contact-sheet sheet}))
 
 (comment
   (edition-seed 42 0)

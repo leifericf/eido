@@ -297,3 +297,40 @@
 
 (deftest load-seeds-missing-file-test
   (is (= [] (series/load-seeds "/tmp/eido-nonexistent-seeds.edn"))))
+
+;; --- export-edition-package ---
+
+(defn- delete-dir! [path]
+  (let [dir (io/file path)]
+    (doseq [f (reverse (file-seq dir))]
+      (.delete f))))
+
+(deftest export-edition-package-test
+  (let [dir (str "/tmp/eido-pkg-" (System/currentTimeMillis))]
+    (try
+      (let [result (series/export-edition-package
+                     {:spec {:hue {:type :uniform :lo 0.0 :hi 360.0}}
+                      :master-seed 42
+                      :start 0 :end 3
+                      :scene-fn (fn [params _ed]
+                                  {:image/size [20 20]
+                                   :image/background [:color/hsl (:hue params) 0.5 0.9]
+                                   :image/nodes []})
+                      :output-dir dir
+                      :contact-cols 3
+                      :thumb-size [20 20]})]
+        (testing "returns 3 editions"
+          (is (= 3 (count (:editions result)))))
+        (testing "edition files exist"
+          (doseq [e (:editions result)]
+            (is (.exists (io/file (:file e))))))
+        (testing "per-edition manifests exist"
+          (doseq [e (:editions result)]
+            (is (.exists (io/file (str/replace (:file e) #"\.[^.]+$" ".edn"))))))
+        (testing "metadata.edn exists"
+          (is (.exists (io/file dir "metadata.edn"))))
+        (testing "contact sheet exists"
+          (is (some? (:contact-sheet result)))
+          (is (.exists (io/file (:contact-sheet result))))))
+      (finally
+        (delete-dir! dir)))))
