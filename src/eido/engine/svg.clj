@@ -12,10 +12,10 @@
       (if (< i 0)
         "0"
         (let [c (.charAt s i)]
-          (cond
-            (= c \0) (recur (dec i))
-            (= c \.) (.substring s 0 i)
-            :else     (.substring s 0 (inc i))))))))
+          (case c
+            \0 (recur (dec i))
+            \. (.substring s 0 i)
+            (.substring s 0 (inc i))))))))
 
 (defn- color->css
   "Converts a resolved color map to CSS rgb()/rgba() string."

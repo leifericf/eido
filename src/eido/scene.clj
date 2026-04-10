@@ -82,11 +82,10 @@
         n   (count pts)]
     {:node/type :shape/path
      :path/commands
-     (cond
-       (= n 0) []
-       (= n 1) [[:move-to (first pts)]]
-       (= n 2) [[:move-to (first pts)] [:line-to (second pts)]]
-       :else
+     (case n
+       0 []
+       1 [[:move-to (first pts)]]
+       2 [[:move-to (first pts)] [:line-to (second pts)]]
        (let [;; Pad with mirrored endpoints for natural boundary
              padded (vec (concat [(first pts)] pts [(peek pts)]))
              curves (for [i (range 1 (dec (count padded) ))]
@@ -390,14 +389,14 @@
                                         (reduce-kv
                                           (fn [gm gk gv]
                                             (assoc gm gk
-                                              (cond
-                                                (= gk :node/transform)
+                                              (case gk
+                                                :node/transform
                                                 (mapv #(scale-transform % factor) gv)
-                                                (= gk :style/fill)
+                                                :style/fill
                                                 (scale-fill gv factor)
-                                                (= gk :style/stroke)
+                                                :style/stroke
                                                 (scale-stroke gv factor)
-                                                :else gv)))
+                                                gv)))
                                           {} g))
                                       v)
           :else v)))
