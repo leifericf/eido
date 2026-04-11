@@ -879,8 +879,8 @@
                           (mapv #(vector :line-to %) (rest spiral-pts)))
         text-node (scene/text-on-path
                     "In the beginning was the word and the word was data and the data was good -- "
-                    {:font/family "Serif" :font/size 14}
-                    spiral-cmds)
+                    spiral-cmds
+                    {:font/family "Serif" :font/size 14})
         ;; Spiral path as faint guide
         guide {:node/type :shape/path
                :path/commands spiral-cmds

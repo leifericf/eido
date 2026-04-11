@@ -146,7 +146,7 @@
 (defn text-on-path
   "Creates text that follows a path. path-commands uses the same format
   as :shape/path — [[:move-to [x y]] [:curve-to ...] ...]."
-  [content font-spec path-commands]
+  [content path-commands font-spec]
   {:node/type    :shape/text-on-path
    :text/content content
    :text/font    font-spec
