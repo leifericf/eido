@@ -1,7 +1,8 @@
 (ns eido.gen
   "Generative tools: noise, flow fields, contours, scatter, Voronoi,
   L-systems, particle systems, stipple, hatch patterns, probability,
-  circle packing, subdivision, series, cellular automata, and boids.
+  circle packing, subdivision, series, cellular automata, boids,
+  graph coloring, constraint tiling, Celtic knots, and shape grammars.
 
   This namespace re-exports all public vars from:
     eido.gen.noise     — Perlin & simplex noise (2D/3D, FBM, turbulence, ridge)
@@ -20,6 +21,10 @@
     eido.gen.series    — long-form generative series utilities
     eido.gen.ca        — cellular automata & reaction-diffusion
     eido.gen.boids     — flocking simulation with steering behaviors
+    eido.gen.coloring  — graph coloring via constraint satisfaction
+    eido.gen.tiling    — constraint-based tile placement (Wang, Truchet, pipes)
+    eido.gen.knot      — Celtic knot patterns via constraint satisfaction
+    eido.gen.grammar   — constrained shape grammars (bounded L-systems)
 
   Users can require this namespace for the full API, or require
   sub-namespaces directly for finer-grained imports."
@@ -27,9 +32,12 @@
     [eido.gen.boids :as boids]
     [eido.gen.ca :as ca]
     [eido.gen.circle :as circle]
+    [eido.gen.coloring :as coloring]
     [eido.gen.contour :as contour]
     [eido.gen.flow :as flow]
+    [eido.gen.grammar :as grammar]
     [eido.gen.hatch :as hatch]
+    [eido.gen.knot :as knot]
     [eido.gen.lsystem :as lsystem]
     [eido.gen.noise :as noise]
     [eido.gen.particle :as particle]
@@ -38,6 +46,7 @@
     [eido.gen.series :as series]
     [eido.gen.stipple :as stipple]
     [eido.gen.subdivide :as subdivide]
+    [eido.gen.tiling :as tiling]
     [eido.gen.vary :as vary]
     [eido.gen.voronoi :as voronoi]))
 
@@ -177,6 +186,35 @@
 (import-fn boids/separation)
 (import-fn boids/flee)
 (import-fn boids/seek)
+
+;; graph coloring
+(import-fn coloring/cells-adjacency)
+(import-fn coloring/rects-adjacency)
+(import-fn coloring/color-regions)
+
+;; constraint tiling
+(import-fn tiling/tile)
+(import-fn tiling/truchet-arcs)
+(import-fn tiling/truchet-triangles)
+(import-fn tiling/wang-basic)
+(import-fn tiling/pipe-tiles)
+(import-fn tiling/random-grid)
+(def tiling-solve tiling/solve)
+(alter-meta! (var tiling-solve) merge
+  (dissoc (meta (var tiling/solve)) :name :ns))
+(import-fn tiling/tiling->nodes)
+
+;; celtic knots
+(def knot-solve knot/solve)
+(alter-meta! (var knot-solve) merge
+  (dissoc (meta (var knot/solve)) :name :ns))
+(import-fn knot/knot->nodes)
+
+;; constrained shape grammar
+(def grammar-solve grammar/solve)
+(alter-meta! (var grammar-solve) merge
+  (dissoc (meta (var grammar/solve)) :name :ns))
+(import-fn grammar/grammar->path-cmds)
 
 ;; convenience helpers
 (import-fn prob/mixture)
