@@ -67,12 +67,40 @@
 
 (defn random-grid
   "Random tile assignment for unconstrained tile sets (Truchet etc.).
-  Returns a 2D vector of tile indices."
-  [n-tiles cols rows seed]
-  (let [rng (prob/make-rng seed)]
-    (mapv (fn [_] (mapv (fn [_] (.nextInt ^java.util.Random rng n-tiles))
-                        (range cols)))
-          (range rows))))
+  Returns a 2D vector of tile indices.
+
+  n-tiles:    number of available tiles
+  cols, rows: grid dimensions
+  seed:       for deterministic randomness
+  opts (optional):
+    :weight-fn (fn [row col] {tile-idx weight}) — spatial tile probability.
+               Tiles with higher weight are more likely at that position.
+               Omit or return nil for uniform distribution."
+  ([n-tiles cols rows seed] (random-grid n-tiles cols rows seed {}))
+  ([n-tiles cols rows seed opts]
+   (let [rng       (prob/make-rng seed)
+         weight-fn (:weight-fn opts)]
+     (mapv (fn [r]
+             (mapv (fn [c]
+                     (if weight-fn
+                       (let [weights (weight-fn r c)]
+                         (if (and weights (seq weights))
+                           ;; Weighted random selection
+                           (let [entries (vec weights)
+                                 total   (reduce + (map val entries))
+                                 roll    (* (.nextDouble ^java.util.Random rng) (double total))]
+                             (loop [remaining entries acc 0.0]
+                               (if (empty? remaining)
+                                 (key (first entries))
+                                 (let [[tile-idx w] (first remaining)
+                                       acc' (+ acc (double w))]
+                                   (if (>= acc' roll)
+                                     tile-idx
+                                     (recur (rest remaining) acc'))))))
+                           (.nextInt ^java.util.Random rng n-tiles)))
+                       (.nextInt ^java.util.Random rng n-tiles)))
+                   (range cols)))
+           (range rows)))))
 
 ;; --- constraint solver ---
 
