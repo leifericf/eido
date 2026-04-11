@@ -78,13 +78,16 @@
   Wraps (by-index n (fn [i] {:style/fill ...}))."
   ([n palette] (by-palette n palette {}))
   ([n palette opts]
-   (let [weights (:weights opts)
+   (let [pn      (count palette)
+         weights (:weights opts)
          seed    (get opts :seed 0)]
-     (if weights
-       (let [colors (palette/weighted-sample palette weights n seed)]
-         (mapv (fn [c] {:style/fill c}) colors))
-       (mapv (fn [i] {:style/fill (nth palette (mod i (count palette)))})
-             (range n))))))
+     (if (zero? pn)
+       (vec (repeat n {}))
+       (if weights
+         (let [colors (palette/weighted-sample palette weights n seed)]
+           (mapv (fn [c] {:style/fill c}) colors))
+         (mapv (fn [i] {:style/fill (nth palette (mod i pn))})
+               (range n)))))))
 
 (defn ^{:convenience true :convenience-for 'eido.gen.vary/by-noise}
   by-noise-palette

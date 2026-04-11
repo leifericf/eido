@@ -189,9 +189,12 @@
          weights (:weights opts)
          seed    (get opts :seed 0)
          style   (:style opts)
-         colors  (if weights
-                   (palette/weighted-sample palette weights n seed)
-                   (mapv #(nth palette (mod % (count palette))) (range n)))]
+         pn      (count palette)
+         colors  (if (zero? pn)
+                   (vec (repeat n nil))
+                   (if weights
+                     (palette/weighted-sample palette weights n seed)
+                     (mapv #(nth palette (mod % pn)) (range n))))]
      (mapv (fn [{[x y] :center r :radius} color]
              (merge {:node/type :shape/circle :circle/center [x y]
                      :circle/radius r :style/fill color} style))
