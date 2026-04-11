@@ -8,7 +8,16 @@ argument-hint: [focus-area]
 
 # Exploratory REPL-Driven Testing
 
-Find bugs and fix them. This skill runs comprehensive testing of Eido via the REPL, finds issues that unit tests miss, and **fixes every issue it finds** — one commit per fix.
+Find bugs the automated test suite misses, fix them, and add regression tests. This skill connects to the REPL and systematically probes for crashes, edge cases, and inconsistencies that static test suites can't cover.
+
+## What the automated suite already covers (skip these)
+
+These are handled by `clj -M:test` — do NOT duplicate them:
+- **Facade completeness** → `test/eido/facade_test.clj`
+- **Property-based invariants** (noise ranges, circle-pack bounds/overlap, poisson-disk distance, voronoi cell count, uniform range, shuffle preservation) → `test/eido/gen/property_test.clj`
+- **Feature combination rendering** (gradient+clip, scatter+shadow, flow-field+opacity, etc.) → `test/eido/integration/feature_combo_test.clj`
+- **Pixel sampling and determinism** (25 catalog scenes rendered twice, pixel-diffed) → `test/eido/integration/visual_regression_test.clj`
+- **SVG structural validation** (gradients, clips in SVG output) → `test/eido/integration/feature_combo_test.clj`
 
 ## Core Loop
 
@@ -17,11 +26,12 @@ Repeat until no more issues are found:
 1. **Test** — run the next layer of testing (see below)
 2. **Find** — when a test fails, diagnose the root cause by reading the source
 3. **Fix** — apply the fix in the source file
-4. **Verify** — run `clj -M:test` to confirm no regressions
-5. **Commit** — `git add <file> && git commit -m "Fix ..."` with a descriptive message
-6. **Continue** — move to the next test
+4. **Add regression test** — add an automated test (in the appropriate test file) so this bug stays caught by `clj -M:test`
+5. **Verify** — run `clj -M:test` to confirm no regressions and the new test passes
+6. **Commit** — `git add <files> && git commit -m "Fix ..."` with a descriptive message (include fix + test in same commit)
+7. **Continue** — move to the next test
 
-Do NOT batch fixes. Do NOT just report issues. Fix each one as you find it, verify, commit, then keep going. The goal is zero issues remaining when you're done.
+Do NOT batch fixes. Do NOT just report issues. Fix each one as you find it, add a regression test, verify, commit, then keep going.
 
 ## Noumenon MCP — Query Before Reading
 
@@ -44,8 +54,9 @@ Useful queries for this skill:
 ## Setup
 
 1. Call `noumenon_status` to verify the knowledge graph is current.
-2. Check for a running nREPL by reading `.nrepl-port`. If none, start one with `clj -M:dev`.
-2. Use the nREPL eval helper at `/tmp/nrepl-eval.clj` if it exists, or create it:
+2. **Run `clj -M:test` first.** If any automated tests fail, fix those before doing exploratory testing. The automated suite covers property-based invariants, feature combinations, visual regression, and facade completeness — there's no point exploring further if the foundation is broken.
+3. Check for a running nREPL by reading `.nrepl-port`. If none, start one with `clj -M:dev`.
+4. Use the nREPL eval helper at `/tmp/nrepl-eval.clj` if it exists, or create it:
 
 ```clojure
 (require '[nrepl.core :as nrepl])
@@ -76,36 +87,22 @@ The optional `$ARGUMENTS` narrows the scope. If empty, run all areas. Valid focu
 - `3d` — 3D pipeline (meshes, cameras, transforms, topology, surface, convenience functions, full render)
 - `text` — text functions (text, text-glyphs, text-on-path, text-stack, text-outline, text-clip)
 - `format` — output formats (PNG, JPEG, TIFF, BMP, SVG, GIF, polylines, animated SVG)
-- `api` — API consistency (parameter orders, opts maps, return types, facade completeness)
+- `api` — API consistency (parameter orders, opts maps, return types)
 - `edge` — edge cases specifically (zero bounds, empty collections, nil values, extreme parameters)
-- `property` — property-based testing (invariants over random inputs)
 - `fuzz` — random scene fuzzing (robustness under random valid input)
-- `pixel` — pixel sampling (verify rendered output correctness)
 - `roundtrip` — round-trip testing (OBJ, polyline, manifest write→read)
 
 ## Testing Strategies
 
-Run these in order — each layer builds on the previous:
+Run these in order. These are the layers that are NOT covered by the automated suite — they require REPL-level exploration.
 
-### Layer 1: Mechanical Checks (fast, high signal)
+### Layer 1: Docstring & Arity Audit (fast, high signal)
 
-#### Facade completeness
-Walk every public var in sub-namespaces and verify the facade re-exports it:
-
-```clojure
-(defn check-facade [facade-ns sub-namespaces]
-  (let [facade-vars (set (keys (ns-publics (find-ns facade-ns))))
-        sub-vars    (reduce #(into %1 (keys (ns-publics (find-ns %2)))) #{} sub-namespaces)
-        missing     (clojure.set/difference sub-vars facade-vars)]
-    (when (seq missing) (println "MISSING:" (sort missing)))))
-```
-
-Check: `eido.gen`, `eido.path`, `eido.scene3d`. New sub-namespace functions are easy to forget.
-
-#### Docstring/arity verification
-For every public fn, check `:doc` exists and `:arglists` metadata is present.
+For every public fn in the API surface, check `:doc` exists and `:arglists` metadata is present. This catches functions that were added without documentation.
 
 ### Layer 2: Parametric Edge Cases
+
+Systematic zero/negative/boundary value sweep. The automated property tests check invariants over random inputs, but they don't specifically target the dangerous boundary values.
 
 #### Division-by-zero sweep
 A recurring bug class: `(int (Math/ceil (/ x divisor)))` where `divisor` can be zero.
@@ -135,25 +132,7 @@ For every numeric parameter with a documented range, test BOTH boundaries:
 - Corner radius: 0, larger than rect
 - Image size: 1x1
 
-### Layer 3: Property-Based Testing
-
-Test invariants over many random inputs (100+ iterations each):
-
-```clojure
-;; P1: render always returns BufferedImage of [w h]
-;; P2: circle-pack circles are within bounds
-;; P3: perlin2d always in [-1, 1]
-;; P4: voronoi cell count = input point count
-;; P5: poisson-disk respects minimum distance
-;; P6: flow-field returns :shape/path nodes
-;; P7: color/resolve-color always has :r :g :b :a
-;; P8: path/union is commutative (same command count)
-;; P9: SVG output is always parseable XML
-```
-
-Use `java.util.Random` with a fixed seed for reproducibility.
-
-### Layer 4: Random Scene Fuzzing
+### Layer 3: Random Scene Fuzzing
 
 Generate 200+ random valid scenes with:
 - Random shape types (rect, circle, ellipse, line, path)
@@ -161,6 +140,8 @@ Generate 200+ random valid scenes with:
 - Random nesting depth (1-5 levels of groups)
 - Random transforms (translate, rotate, scale, shear — stacked)
 - Random effects (shadow, glow, blur)
+- Random gradients (linear, radial)
+- Random clips
 
 Verify: `eido/render` either succeeds or throws `ExceptionInfo` with `:errors`. Never NPE, ClassCastException, or StackOverflow.
 
@@ -169,61 +150,27 @@ Verify: `eido/render` either succeeds or throws `ExceptionInfo` with `:errors`. 
   (eido/render random-scene))
 ```
 
-### Layer 5: Output Verification
+The automated visual regression tests use a fixed 25-scene catalog. This layer generates *random* scenes to find crashes the catalog doesn't cover.
 
-#### Pixel sampling
-Render known scenes, sample specific pixels:
-- Red circle at center → pixel at center is red
-- Left-half blue rect → left pixel blue, right pixel white
-- Gradient → left red, right blue, middle purple
-- 50% opacity red on white → r~255, g~128, b~128
-- Translate moves shape → pixel at old position is background
-- Clip masks correctly → inside red, outside white
+### Layer 4: Cross-Format Consistency
 
-```clojure
-(defn pixel-rgb [^BufferedImage img x y]
-  (let [rgb (.getRGB img (int x) (int y))]
-    {:r (bit-and (bit-shift-right rgb 16) 0xFF)
-     :g (bit-and (bit-shift-right rgb 8) 0xFF)
-     :b (bit-and rgb 0xFF)}))
-```
-
-#### SVG structural validation
-Parse SVG as XML, verify:
-- No `NaN` or `Infinity` in attribute values
-- Element count matches node count (+1 for background rect)
-- Valid XML (parse succeeds)
-- Gradients produce `<linearGradient>`/`<radialGradient>` + `<stop>` elements
-- Clips produce `<clipPath>` elements
+Render the same scene to PNG and SVG. Verify:
+- SVG shape count matches node count (+1 for background rect)
+- SVG is valid XML (parse succeeds)
+- No `NaN` or `Infinity` in SVG attribute values
 
 ```clojure
 (defn parse-svg [s]
   (clojure.xml/parse (java.io.ByteArrayInputStream. (.getBytes s "UTF-8"))))
 ```
 
-#### Cross-format consistency
-Render same scene to PNG and SVG. Count SVG shapes, verify matches node count.
-
-#### Determinism
-Render same scene twice with same seed, compare byte-identical output:
-```clojure
-(defn render-bytes [scene]
-  (let [img (eido/render scene)
-        buf (int-array (* (.getWidth img) (.getHeight img)))]
-    (.getRGB img 0 0 (.getWidth img) (.getHeight img) buf 0 (.getWidth img))
-    (vec buf)))
-(= (render-bytes scene) (render-bytes scene))
-```
-
-Test with: simple shapes, seeded generative (circle-pack, flow-field), effects (grain with seed), hatch fills.
-
-### Layer 6: Round-Trip Testing
+### Layer 5: Round-Trip Testing
 
 - **OBJ**: `write-obj` → `parse-obj` → verify face count matches
-- **Polylines**: `render {:format :polylines}` → `polylines->edn` → `edn/read-string` → verify structure
+- **Polylines**: `render {:format :polylines}` → `pr-str` → `edn/read-string` → verify structure
 - **Manifest**: `render {:emit-manifest? true}` → `slurp .edn` → verify `:scene`, `:seed`
 
-### Layer 7: API Consistency
+### Layer 6: API Consistency
 
 Eido's beta5 established these conventions. Verify they hold:
 
