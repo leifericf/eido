@@ -246,3 +246,17 @@ These are the bug classes found in previous runs — check for them specifically
 - **Empty palette mod-zero**: `(mod i (count []))` in palette cycling → add `(zero? pn)` guard before mod
 - **Nil function call**: optional function params called without nil check → add `(or f default-fn)` fallback
 - **IR constructor integration**: after adding new constructors to `ir.clj`, verify `compile` + `render` still produce correct op types for all shape types
+- **Nil first-element destructuring**: `(:key (first []))` → nil, then destructuring nil causes NPE. Guard with `(empty? coll)` check. Found in animated SVG with 0 frames.
+- **Missing geometry type in context**: when a new shape type is added, test it works as a clip mask, with transforms, with effects, and in SVG output — not just as a plain fill.
+- **Style override dropping**: scatter/decorator/generator nodes can lose `:node/opacity` or `:node/transform` during IR lowering. Test by rendering with opacity < 1 and verifying pixel values.
+
+## Git History Analysis
+
+Run `git log --all --grep='[Ff]ix' --format='%s'` periodically to mine historical bug patterns. The 100+ fixes in Eido's history cluster into:
+
+1. **Division-by-zero** (8 fixes): `Math/ceil`, `mod`, palette interpolation with n=1
+2. **API migration drift** (12 fixes): old positional args surviving refactors, callers not updated
+3. **Missing geometry support** (4 fixes): new shapes not wired into fill/clip/transform/SVG paths
+4. **3D normal direction** (5 fixes): inverted normals on caps, side faces, torus
+5. **Rendering state leaks** (3 fixes): opacity, buffer boundaries, composite modes
+6. **SVG output correctness** (4 fixes): alpha channel dropped, NaN coordinates, SMIL timing
