@@ -234,7 +234,9 @@
       :rotate    (.rotate g (double (first args)))
       :shear-x   (.shear g (double (first args)) 0.0)
       :shear-y   (.shear g 0.0 (double (first args)))
-      :scale     (.scale g (double (first args)) (double (second args))))))
+      :scale     (let [sx (double (first args))
+                       sy (double (or (second args) sx))]
+                   (.scale g sx sy)))))
 
 (def ^:private ^:dynamic *prev-opacity*
   "Tracks the last opacity set on the Graphics2D to skip redundant calls."
