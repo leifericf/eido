@@ -38,6 +38,9 @@
    :image/background [:color/rgb 255 255 255]
    :image/nodes nodes})
 
+;; Entries are [name scene-map] or [name scene-map {:png-only true}]
+;; when the feature doesn't support SVG output.
+
 (def ^:private feature-catalog
   [;; shapes
    ["rect"
@@ -208,6 +211,151 @@
                      :text/origin [10 60]
                      :style/fill {:color [:color/rgb 0 0 0]}}])]
 
+   ;; text variants
+   ["text-glyphs"
+    (catalog-scene [{:node/type :shape/text-glyphs
+                     :text/content "AB"
+                     :text/font {:font/family "SansSerif" :font/size 30}
+                     :text/origin [10 60]
+                     :style/fill {:color [:color/rgb 0 0 0]}}])]
+
+   ["text-on-path"
+    (catalog-scene [{:node/type :shape/text-on-path
+                     :text/content "Hello"
+                     :text/font {:font/family "SansSerif" :font/size 16}
+                     :text/path [[:move-to [10 80]] [:curve-to [30 10] [70 10] [90 80]]]
+                     :style/fill {:color [:color/rgb 0 0 0]}}])]
+
+   ;; procedural fills
+   ["hatch-fill"
+    (catalog-scene [{:node/type :shape/rect
+                     :rect/xy [10 10] :rect/size [80 80]
+                     :style/fill {:fill/type :hatch
+                                  :hatch/angle 45
+                                  :hatch/spacing 6
+                                  :hatch/stroke-width 1
+                                  :hatch/color [:color/rgb 0 0 0]}}])]
+
+   ["stipple-fill"
+    (catalog-scene [{:node/type :shape/circle
+                     :circle/center [50 50] :circle/radius 35
+                     :style/fill {:fill/type :stipple
+                                  :stipple/density 3
+                                  :stipple/radius 1.0
+                                  :stipple/color [:color/rgb 0 0 0]}}])]
+
+   ;; filters
+   ["filter-grayscale"
+    (catalog-scene [{:node/type :shape/circle
+                     :circle/center [50 50] :circle/radius 35
+                     :style/fill {:color [:color/rgb 255 0 0]}
+                     :group/filter :grayscale}])]
+
+   ["filter-sepia"
+    (catalog-scene [{:node/type :shape/circle
+                     :circle/center [50 50] :circle/radius 35
+                     :style/fill {:color [:color/rgb 0 100 200]}
+                     :group/filter :sepia}])]
+
+   ["filter-invert"
+    (catalog-scene [{:node/type :shape/circle
+                     :circle/center [50 50] :circle/radius 35
+                     :style/fill {:color [:color/rgb 200 0 50]}
+                     :group/filter :invert}])]
+
+   ;; composite / blend mode (PNG only — SVG renderer doesn't support :buffer op)
+   ["composite-multiply"
+    (catalog-scene [{:node/type :group
+                     :group/composite :multiply
+                     :group/children
+                     [{:node/type :shape/rect
+                       :rect/xy [10 10] :rect/size [60 60]
+                       :style/fill {:color [:color/rgb 255 0 0]}}
+                      {:node/type :shape/rect
+                       :rect/xy [30 30] :rect/size [60 60]
+                       :style/fill {:color [:color/rgb 0 0 255]}}]}])
+    {:png-only true}]
+
+   ;; corner radius
+   ["corner-radius"
+    (catalog-scene [{:node/type :shape/rect
+                     :rect/xy [10 10] :rect/size [80 80]
+                     :rect/corner-radius 15
+                     :style/fill {:color [:color/rgb 100 150 200]}}])]
+
+   ;; stroke caps and joins
+   ["stroke-round-cap"
+    (catalog-scene [{:node/type :shape/line
+                     :line/from [20 50] :line/to [80 50]
+                     :style/stroke {:color [:color/rgb 0 0 0] :width 10 :cap :round}}])]
+
+   ["stroke-round-join"
+    (catalog-scene [{:node/type :shape/path
+                     :path/commands [[:move-to [20 80]] [:line-to [50 20]] [:line-to [80 80]]]
+                     :style/stroke {:color [:color/rgb 0 0 0] :width 8 :join :round}}])]
+
+   ;; generative nodes
+   ["scatter"
+    (catalog-scene [{:node/type :scatter
+                     :scatter/shape {:node/type :shape/circle
+                                     :circle/center [0 0] :circle/radius 5
+                                     :style/fill {:color [:color/rgb 200 50 50]}}
+                     :scatter/positions [[20 20] [50 50] [80 80] [20 80] [80 20]]}])
+    {:png-only true}]
+
+   ["flow-field"
+    (catalog-scene [{:node/type :flow-field
+                     :flow/bounds [5 5 90 90]
+                     :style/stroke {:color [:color/rgb 0 0 100] :width 1}}])]
+
+   ["voronoi"
+    (catalog-scene [{:node/type :voronoi
+                     :voronoi/points [[20 20] [80 30] [50 70] [30 80] [75 75]]
+                     :voronoi/bounds [0 0 100 100]
+                     :style/stroke {:color [:color/rgb 0 0 0] :width 1}}])]
+
+   ["delaunay"
+    (catalog-scene [{:node/type :delaunay
+                     :delaunay/points [[20 20] [80 30] [50 70] [30 80] [75 75]]
+                     :delaunay/bounds [0 0 100 100]
+                     :style/stroke {:color [:color/rgb 0 0 0] :width 1}}])]
+
+   ["contour"
+    (catalog-scene [{:node/type :contour
+                     :contour/bounds [0 0 100 100]
+                     :style/stroke {:color [:color/rgb 0 0 150] :width 1}}])]
+
+   ["lsystem"
+    (catalog-scene [{:node/type :lsystem
+                     :lsystem/axiom "F"
+                     :lsystem/rules {"F" "FF+[+F-F]-[-F+F]"}
+                     :lsystem/iterations 3
+                     :lsystem/angle 25.0
+                     :lsystem/length 4.0
+                     :lsystem/origin [50 95]
+                     :lsystem/heading -90.0
+                     :style/stroke {:color [:color/rgb 60 40 20] :width 1}}])]
+
+   ;; compound nodes
+   ["symmetry-radial"
+    (catalog-scene [{:node/type :symmetry
+                     :symmetry/type :radial
+                     :symmetry/n 6
+                     :symmetry/center [50 50]
+                     :group/children
+                     [{:node/type :shape/rect
+                       :rect/xy [50 45] :rect/size [30 10]
+                       :style/fill {:color [:color/rgb 200 0 0]}}]}])]
+
+   ["path-decorated"
+    (catalog-scene [{:node/type :path/decorated
+                     :path/commands [[:move-to [10 50]] [:line-to [90 50]]]
+                     :decorator/shape {:node/type :shape/circle
+                                       :circle/center [0 0] :circle/radius 4
+                                       :style/fill {:color [:color/rgb 200 0 0]}}
+                     :decorator/spacing 15}])
+    {:png-only true}]
+
    ;; feature interactions
    ["gradient-with-clip"
     (catalog-scene [{:node/type :group
@@ -232,34 +380,39 @@
 
 ;; --- determinism test ---
 
+(defn- entry-name  [entry] (nth entry 0))
+(defn- entry-scene [entry] (nth entry 1))
+(defn- entry-opts  [entry] (nth entry 2 {}))
+
 (deftest visual-catalog-determinism-test
   (testing "every catalog scene renders identically on consecutive runs"
-    (doseq [[feature-name scene] feature-catalog]
-      (testing feature-name
-        (let [img1 (eido/render scene)
-              img2 (eido/render scene)]
+    (doseq [entry feature-catalog]
+      (testing (entry-name entry)
+        (let [img1 (eido/render (entry-scene entry))
+              img2 (eido/render (entry-scene entry))]
           (is (instance? BufferedImage img1)
-              (str feature-name " should produce an image"))
+              (str (entry-name entry) " should produce an image"))
           (is (images-identical? img1 img2)
-              (str feature-name " should be deterministic")))))))
+              (str (entry-name entry) " should be deterministic")))))))
 
 ;; --- smoke test: all features render ---
 
 (deftest visual-catalog-smoke-test
   (testing "every catalog scene renders to expected dimensions"
-    (doseq [[feature-name scene] feature-catalog]
-      (testing feature-name
-        (let [img (eido/render scene)]
-          (is (= 100 (.getWidth img)) (str feature-name " width"))
-          (is (= 100 (.getHeight img)) (str feature-name " height")))))))
+    (doseq [entry feature-catalog]
+      (testing (entry-name entry)
+        (let [img (eido/render (entry-scene entry))]
+          (is (= 100 (.getWidth img)) (str (entry-name entry) " width"))
+          (is (= 100 (.getHeight img)) (str (entry-name entry) " height")))))))
 
 ;; --- SVG catalog determinism ---
 
 (deftest visual-catalog-svg-determinism-test
   (testing "every catalog scene produces identical SVG on consecutive runs"
-    (doseq [[feature-name scene] feature-catalog]
-      (testing feature-name
-        (let [svg1 (str (eido/render scene {:format :svg}))
-              svg2 (str (eido/render scene {:format :svg}))]
+    (doseq [entry feature-catalog
+            :when (not (:png-only (entry-opts entry)))]
+      (testing (entry-name entry)
+        (let [svg1 (str (eido/render (entry-scene entry) {:format :svg}))
+              svg2 (str (eido/render (entry-scene entry) {:format :svg}))]
           (is (= svg1 svg2)
-              (str feature-name " SVG should be deterministic")))))))
+              (str (entry-name entry) " SVG should be deterministic")))))))
