@@ -1,24 +1,81 @@
 # Changes
 
-## Unreleased
+## v1.0.0-beta6 — Constraint Solving & Robustness
 
 ### New features
 
 - **Graph coloring** (`eido.gen.coloring`) — Assigns colors to regions
   (Voronoi cells, subdivision rects, or any set with adjacency) such that
   no two adjacent regions share a color. Uses `core.logic` CLP(FD) for
-  constraint solving. Composes with existing generators via adjacency helpers
-  `cells-adjacency` and `rects-adjacency`. Supports `:pin` to fix specific
-  regions to specific colors while the solver completes the rest, and `:seed`
-  for deterministic variety.
+  constraint solving. Composes with existing generators via adjacency
+  helpers `cells-adjacency` and `rects-adjacency`.
+
+  ```clj
+  (let [cells (voronoi/voronoi-cells points [0 0 600 600])
+        adj   (coloring/cells-adjacency cells)]
+    (coloring/color-regions cells adj palette {:seed 42}))
+  ```
+
+  Supports `:pin` to fix specific regions to specific colors while the
+  solver completes the rest consistently:
+
+  ```clj
+  (coloring/color-regions cells adj palette
+    {:seed 42 :pin {0 [:color/rgb 230 190 50]}})
+  ```
 
 - **Bounded L-system expansion** — `lsystem->path-cmds` now accepts rules
-  with vector alternatives (e.g. `{"F" ["FF+[+F]" "F+F" "F"]}`). When
-  combined with `:bounds [x y w h]`, the system tries the fullest expansion
-  first and backs off individual branches when they overflow the canvas.
-  Results are automatically scaled to fill the bounds. Six curated presets:
-  `lsystem/bush`, `lsystem/fern`, `lsystem/coral`, `lsystem/lightning`,
-  `lsystem/seaweed`, `lsystem/tree`.
+  with vector alternatives. When combined with `:bounds`, the system tries
+  the fullest expansion first and backs off individual branches when they
+  overflow the canvas. Results are automatically scaled to fill the bounds.
+
+  ```clj
+  ;; Rules as vectors of alternatives (fullest to smallest)
+  (lsystem/lsystem->path-cmds "F"
+    {"F" ["FF+[+F-F-F]-[-F+F+F]" "F+[+F]-[-F]" "F"]}
+    {:iterations 4 :angle 22.5 :length 5
+     :origin [200 380] :heading -90
+     :bounds [0 0 400 400] :seed 42})
+  ```
+
+  Six curated presets with distinct growth character: `lsystem/bush`,
+  `lsystem/fern`, `lsystem/coral`, `lsystem/lightning`, `lsystem/seaweed`,
+  `lsystem/tree`.
+
+- **Gallery examples** — Four new examples: Voronoi Coloring, Pinned
+  Coloring, Bounded Fern, Lightning.
+
+### Bug fixes
+
+- `circle-pack` — Circles no longer extend outside bounds; crash on
+  zero or negative bounds returns empty vector instead of throwing.
+- `poisson-disk` — Crash on zero or negative min-dist now returns empty.
+- `flow-field` — Crash on zero density or bounds now returns empty.
+- `contour-lines` — Crash on zero resolution or bounds now returns empty.
+- `hatch-lines` — Crash on zero or negative spacing now returns empty.
+- `split-at-length` — Crash on zero segment length now returns input.
+- `compose-grid` — Crash on zero columns now returns empty.
+- `pick` — Crash on empty collection now returns nil.
+- `pack->colored-nodes` / `by-palette` — Crash on empty palette now returns
+  unstyled nodes.
+- `texture/layered` — Crash when `:deform-fn` is omitted now uses identity.
+- `animated SVG` — Crash on empty frame sequence now returns empty SVG.
+- `cube` / `prism` — Now use opts map for geometry params, matching API
+  convention.
+- `text-on-path` — Parameter order fixed to match API convention.
+
+### Facade exports
+
+- Added missing exports to `eido.gen`: boids steering forces (`alignment`,
+  `cohesion`, `separation`, `seek`, `flee`), and all previously missing
+  user-facing functions from gen and scene3d sub-namespaces.
+
+### Testing
+
+- Added property-based tests (test.check) for gen algorithms.
+- Added E2E feature combination tests.
+- Added visual regression test catalog covering all visual features.
+- Added facade completeness tests ensuring all public vars are re-exported.
 
 ### Dependencies
 
