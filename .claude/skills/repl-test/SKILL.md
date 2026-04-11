@@ -8,7 +8,20 @@ argument-hint: [focus-area]
 
 # Exploratory REPL-Driven Testing
 
-Run comprehensive, generative, parametric edge-case testing of Eido via the REPL. This is a manual QA sweep — not a substitute for the test suite, but a complement that catches issues unit tests miss (zero-division crashes, API inconsistencies, rendering artifacts).
+Find bugs and fix them. This skill runs comprehensive testing of Eido via the REPL, finds issues that unit tests miss, and **fixes every issue it finds** — one commit per fix.
+
+## Core Loop
+
+Repeat until no more issues are found:
+
+1. **Test** — run the next layer of testing (see below)
+2. **Find** — when a test fails, diagnose the root cause by reading the source
+3. **Fix** — apply the fix in the source file
+4. **Verify** — run `clj -M:test` to confirm no regressions
+5. **Commit** — `git add <file> && git commit -m "Fix ..."` with a descriptive message
+6. **Continue** — move to the next test
+
+Do NOT batch fixes. Do NOT just report issues. Fix each one as you find it, verify, commit, then keep going. The goal is zero issues remaining when you're done.
 
 ## Setup
 
@@ -210,9 +223,23 @@ For each test, print a short status line:
   Error: [class] [message]     ;; with enough context to reproduce
 ```
 
-At the end, summarize:
-- Total tests run
-- Failures found (with file:line if identifiable)
-- Suggested fixes
+When a test fails:
+1. Read the source file at the failing location
+2. Diagnose: is it a missing guard, wrong parameter order, missing export, etc.?
+3. Fix the source
+4. Run `clj -M:test` — must pass with same or higher assertion count
+5. Commit: `git add <file> && git commit -m "Fix <description>"`
+6. Re-run the failing test to confirm it passes
+7. Continue testing
 
-If a fix is obvious and safe (e.g., adding a `(pos? x)` guard), fix it immediately, run `clj -M:test`, and commit with a descriptive message. One commit per fix.
+At the end, summarize: total tests run, issues found and fixed (with commit SHAs), remaining areas of concern.
+
+## Common Fix Patterns
+
+These are the bug classes found in previous runs — check for them specifically:
+
+- **Division by zero**: `(int (Math/ceil (/ x 0)))` → add `(pos? divisor)` guard, return `[]`
+- **Missing facade export**: new public fn in sub-ns not in facade → add `(import-fn ns/fn-name)`
+- **API inconsistency**: positional args that should be in opts map → move to opts, update callers
+- **Parameter order**: doesn't match `[content origin font-spec ...]` or `[projection position opts]` convention → swap args, update callers
+- **Empty collection crash**: `(.nextInt rng (count []))` → add `(pos? n)` guard, return `nil`
