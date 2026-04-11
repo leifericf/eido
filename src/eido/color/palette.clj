@@ -191,14 +191,17 @@
   weights: vector of positive numbers (same length as palette).
   seed: long for deterministic selection."
   [palette weights seed]
-  (let [idx (prob/weighted-choice weights seed)]
-    (nth palette idx)))
+  (when (seq palette)
+    (let [idx (prob/weighted-choice weights seed)]
+      (nth palette idx))))
 
 (defn weighted-sample
   "Samples n colors from palette with replacement, biased by weights."
   [palette weights n seed]
-  (let [indices (prob/weighted-sample n weights seed)]
-    (mapv #(nth palette %) indices)))
+  (if (empty? palette)
+    []
+    (let [indices (prob/weighted-sample n weights seed)]
+      (mapv #(nth palette %) indices))))
 
 (defn weighted-gradient
   "Creates gradient stops where each color occupies proportional space.

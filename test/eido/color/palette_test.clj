@@ -149,6 +149,14 @@
   (testing "returns a color from the palette"
     (is (some #{(palette/weighted-pick test-palette [1 1 1] 42)} test-palette))))
 
+(deftest weighted-pick-empty-test
+  (testing "empty palette returns nil"
+    (is (nil? (palette/weighted-pick [] [] 42)))))
+
+(deftest weighted-sample-empty-test
+  (testing "empty palette returns []"
+    (is (= [] (palette/weighted-sample [] [] 5 42)))))
+
 (deftest weighted-sample-count-test
   (testing "returns exactly n colors"
     (is (= 10 (count (palette/weighted-sample test-palette [1 1 1] 10 42))))))
