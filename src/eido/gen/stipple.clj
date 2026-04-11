@@ -64,21 +64,23 @@
   bounds: [x y w h] region. opts: :min-dist (required), :seed (default 0).
   Returns a vector of [x y] within the bounds."
   [bounds opts]
-  (let [[bx by bw bh] bounds
-        seed        (get opts :seed 0)
-        rng         (java.util.Random. (long seed))
-        min-dist    (double (:min-dist opts))
-        min-dist-sq (* min-dist min-dist)
-        cell-size   (/ min-dist (Math/sqrt 2.0))
-        ctx         (make-grid-ctx bx by bw bh cell-size)
-        ^objects grid (:grid ctx)
-        k           30
-        bx          (double bx)
-        by          (double by)
-        bw          (double bw)
-        bh          (double bh)
-        x0          (+ bx (* (.nextDouble rng) bw))
-        y0          (+ by (* (.nextDouble rng) bh))]
+  (let [[bx by bw bh] bounds]
+    (if-not (and (pos? bw) (pos? bh) (pos? (:min-dist opts)))
+      []
+      (let [seed        (get opts :seed 0)
+            rng         (java.util.Random. (long seed))
+            min-dist    (double (:min-dist opts))
+            min-dist-sq (* min-dist min-dist)
+            cell-size   (/ min-dist (Math/sqrt 2.0))
+            ctx         (make-grid-ctx bx by bw bh cell-size)
+            ^objects grid (:grid ctx)
+            k           30
+            bx          (double bx)
+            by          (double by)
+            bw          (double bw)
+            bh          (double bh)
+            x0          (+ bx (* (.nextDouble rng) bw))
+            y0          (+ by (* (.nextDouble rng) bh))]
     (when-let [idx (grid-index ctx x0 y0)]
       (aset grid idx [x0 y0]))
     ;; Use ArrayList for O(1) random removal (swap with last, removeLast)
@@ -109,7 +111,7 @@
                 (when (not= ri last-idx)
                   (.set active ri (.get active last-idx)))
                 (.remove active last-idx)
-                (recur points)))))))))
+                (recur points)))))))))))
 
 ;; --- stipple fill expansion ---
 
