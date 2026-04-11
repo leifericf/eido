@@ -4,10 +4,14 @@
   indexed set with adjacency) such that no two adjacent regions share
   a color. Uses core.logic CLP(FD) for the constraint solver.
 
-  Key creative controls:
-    :pin       — fix specific regions to specific colors
-    :weights   — prefer certain colors globally
-    :weight-fn — vary color preference spatially per region"
+  Primary function: `color-regions` — takes scene nodes, adjacency,
+  and a palette, returns nodes with :style/fill applied. The solver
+  guarantees no two adjacent regions share a color.
+
+  Creative control:
+    :seed — different seeds produce different valid colorings
+    :pin  — fix specific regions to specific colors; the solver
+            completes the rest consistently"
   (:require
     [clojure.core.logic :as l]
     [clojure.core.logic.fd :as fd]
@@ -45,6 +49,7 @@
 
 (defn rects-adjacency
   "Computes adjacency from subdivision rects.
+  Two rects are adjacent if they share an edge.
   rects: vector of {:rect [x y w h]} maps.
   Returns a set of [i j] pairs (i < j)."
   [rects]
@@ -90,33 +95,14 @@
            (l/run 1 [q]
              (l/== q vars)
              (l/everyg #(fd/in % domain) vars)
-             ;; Pin constraints
              (l/everyg (fn [[idx color-idx]]
                          (fd/== (nth vars idx) color-idx))
                        pins)
-             ;; Adjacency constraints
              (l/everyg (fn [[i j]]
                          (fd/!= (nth vars i) (nth vars j)))
                        (seq adjacency)))))))))
 
 ;; --- scene node conversion ---
-
-(defn- weighted-pin-map
-  "Computes pin map from weight-fn: for each region, call weight-fn
-  and pin the region to its highest-weighted color index."
-  [n-regions nodes weight-fn pin-ratio seed]
-  (let [prefs   (mapv (fn [i]
-                         (let [weights (weight-fn i (nth nodes i))]
-                           (when (seq weights)
-                             (key (apply max-key val weights)))))
-                       (range n-regions))
-        n-pins  (long (* n-regions (double pin-ratio)))
-        indices (prob/shuffle-seeded (vec (range n-regions)) seed)]
-    (into {}
-      (keep (fn [i]
-              (when-let [pref (nth prefs i)]
-                [i pref])))
-      (take n-pins indices))))
 
 (defn color-regions
   "Applies graph coloring to scene nodes.
@@ -124,53 +110,48 @@
   adjacency: collection of [i j] pairs
   palette:   vector of colors
   opts:
-    :seed      (0)    — shuffles palette mapping for variety
-    :pin       {}     — map of region-idx -> color (fix specific regions)
-    :weight-fn nil    — (fn [region-idx node] {color-idx weight})
-                        spatial color preference per region
-    :pin-ratio (0.3)  — fraction of regions to pin when using weight-fn
+    :seed (0)          — shuffles palette assignment for variety
+    :pin  {idx color}  — fix specific regions to specific colors;
+                          the solver completes the rest consistently
   Returns nodes with :style/fill applied, or nil if no valid coloring exists."
   ([nodes adjacency palette] (color-regions nodes adjacency palette {}))
   ([nodes adjacency palette opts]
-   (let [n          (count nodes)
-         nc         (count palette)
-         seed       (get opts :seed 0)
-         ;; Shuffle palette first — all pin logic works in shuffled space
+   (let [n    (count nodes)
+         nc   (count palette)
+         seed (get opts :seed 0)
+         ;; Shuffle palette by seed — all pin logic works in shuffled space
          shuffled   (prob/shuffle-seeded palette seed)
          color->idx (zipmap shuffled (range))
-         ;; Explicit pins: map colors to indices in shuffled palette
+         ;; Map explicit color pins to shuffled indices
          explicit-pins (get opts :pin {})
-         idx-pins   (into {}
-                      (map (fn [[region-idx color]]
-                             [region-idx (get color->idx color 0)]))
-                      explicit-pins)
-         ;; Weight-fn pins (already in color-idx space)
-         weight-fn  (:weight-fn opts)
-         pin-ratio  (get opts :pin-ratio 0.3)
-         wf-pins    (when weight-fn
-                      (weighted-pin-map n nodes weight-fn pin-ratio seed))
-         all-pins   (merge wf-pins idx-pins)
+         idx-pins (into {}
+                    (map (fn [[region-idx color]]
+                           [region-idx (get color->idx color 0)]))
+                    explicit-pins)
          ;; Solve
-         assignment (solve n adjacency nc {:pin all-pins})]
+         assignment (solve n adjacency nc {:pin idx-pins})]
      (when assignment
        (mapv (fn [node color-idx]
                (assoc node :style/fill (nth shuffled (long color-idx))))
              nodes assignment)))))
 
 (comment
-  ;; Basic coloring
+  ;; Basic: 4 regions in a cycle
   (solve 4 #{[0 1] [1 2] [2 3] [0 3]} 3)
 
   ;; With pinning
-  (solve 4 #{[0 1] [1 2] [2 3] [0 3]} 3 {:pin {0 2, 2 1}})
+  (solve 4 #{[0 1] [1 2] [2 3] [0 3]} 3 {:pin {0 2 2 1}})
 
-  ;; Weight-fn example: prefer warm colors in the center
-  (let [weight-fn (fn [i node]
-                    (let [[x y] (or (:circle/center node) [200 200])
-                          dist (Math/sqrt (+ (* (- x 200) (- x 200))
-                                             (* (- y 200) (- y 200))))]
-                      (if (< dist 100)
-                        {0 3.0 1 1.0 2 1.0 3 1.0}   ;; prefer color 0 near center
-                        {0 1.0 1 1.0 2 3.0 3 1.0})))] ;; prefer color 2 at edges
-    weight-fn)
+  ;; Voronoi + coloring
+  (require '[eido.gen.voronoi :as voronoi])
+  (let [points [[50 50] [150 50] [100 150] [50 150] [150 150]]
+        cells  (voronoi/voronoi-cells points [0 0 200 200])
+        adj    (cells-adjacency cells)
+        palette [[:color/rgb 230 80 80] [:color/rgb 80 180 80]
+                 [:color/rgb 80 80 230] [:color/rgb 230 200 60]]]
+    (color-regions cells adj palette {:seed 42}))
+
+  ;; Pinning: fix region 0 to red, solver handles the rest
+  (let [red [:color/rgb 230 80 80]]
+    (color-regions cells adj palette {:seed 42 :pin {0 red}}))
   )
