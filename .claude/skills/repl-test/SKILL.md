@@ -243,3 +243,6 @@ These are the bug classes found in previous runs — check for them specifically
 - **API inconsistency**: positional args that should be in opts map → move to opts, update callers
 - **Parameter order**: doesn't match `[content origin font-spec ...]` or `[projection position opts]` convention → swap args, update callers
 - **Empty collection crash**: `(.nextInt rng (count []))` → add `(pos? n)` guard, return `nil`
+- **Empty palette mod-zero**: `(mod i (count []))` in palette cycling → add `(zero? pn)` guard before mod
+- **Nil function call**: optional function params called without nil check → add `(or f default-fn)` fallback
+- **IR constructor integration**: after adding new constructors to `ir.clj`, verify `compile` + `render` still produce correct op types for all shape types
