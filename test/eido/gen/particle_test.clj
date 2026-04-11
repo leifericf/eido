@@ -239,3 +239,9 @@
       (is (pos? (count frame)))
       (doseq [node frame]
         (is (= :shape/circle (:node/type node)))))))
+
+(deftest zero-fps-test
+  (testing "zero or negative fps returns empty"
+    (let [config (particle/with-position particle/fountain [0 0])]
+      (is (empty? (vec (particle/simulate config 5 {:fps 0}))))
+      (is (empty? (vec (particle/simulate config 5 {:fps -1})))))))

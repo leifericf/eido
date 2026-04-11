@@ -304,13 +304,15 @@
 
   Returns a lazy seq of n state maps."
   [config n opts]
-  (let [fps  (or (:fps opts) 30)
-        dt   (/ 1.0 (double fps))
-        seed (or (:particle/seed config) 42)
-        init {:particles [] :rng (make-rng seed) :next-id 0 :time 0.0}]
-    (->> (iterate (partial step config dt) init)
-         (rest)
-         (take n))))
+  (let [fps  (or (:fps opts) 30)]
+    (if-not (and (pos? n) (pos? fps))
+      ()
+      (let [dt   (/ 1.0 (double fps))
+            seed (or (:particle/seed config) 42)
+            init {:particles [] :rng (make-rng seed) :next-id 0 :time 0.0}]
+        (->> (iterate (partial step config dt) init)
+             (rest)
+             (take n))))))
 
 (defn render-frame
   "Renders a simulation state to a vector of Eido node maps.
