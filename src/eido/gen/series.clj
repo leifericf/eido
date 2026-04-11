@@ -86,6 +86,7 @@
   "Composes a vector of BufferedImages into a grid. Returns a BufferedImage."
   [images cols [tw th]]
   (let [n    (count images)
+        cols (max 1 (int cols))
         rows (int (Math/ceil (/ (double n) cols)))
         w    (* cols (int tw))
         h    (* rows (int th))
