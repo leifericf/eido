@@ -89,6 +89,12 @@
 (import-fn particle/simulate)
 (import-fn particle/with-position)
 (import-fn particle/with-seed)
+(import-fn particle/fire)
+(import-fn particle/confetti)
+(import-fn particle/fountain)
+(import-fn particle/smoke)
+(import-fn particle/snow)
+(import-fn particle/sparks)
 
 ;; stipple
 (def stipple-poisson-disk stipple/poisson-disk)
@@ -144,6 +150,9 @@
 (import-fn series/seed-grid)
 (import-fn series/param-grid)
 (import-fn series/render-editions)
+(import-fn series/export-edition-package)
+(import-fn series/load-seeds)
+(import-fn series/save-seed!)
 
 ;; cellular automata & reaction-diffusion
 (import-fn ca/ca-grid)
@@ -154,12 +163,14 @@
 (import-fn ca/rd-step)
 (import-fn ca/rd-run)
 (import-fn ca/rd->nodes)
+(import-fn ca/rd-presets)
 
 ;; boids
 (import-fn boids/init-flock)
 (import-fn boids/step-flock)
 (import-fn boids/simulate-flock)
 (import-fn boids/flock->nodes)
+(import-fn boids/classic)
 
 ;; convenience helpers
 (import-fn prob/mixture)
