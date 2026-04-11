@@ -28,10 +28,19 @@
     :fixed {}       — map of [r c] -> 0 or 1 (pin specific crossings)
 
   Returns a 2D vector where each cell is 0 (horizontal-over),
-  1 (vertical-over), or nil (hole)."
+  1 (vertical-over), or nil (hole).
+
+  Hole sources (checked in order):
+    :holes-fn (fn [r c] bool)  — function that returns true for absent crossings
+    :holes #{[r c] ...}        — static set of absent crossings"
   [rows cols opts]
-  (let [seed   (get opts :seed 42)
-        holes  (get opts :holes #{})
+  (let [seed     (get opts :seed 42)
+        holes-fn (:holes-fn opts)
+        holes    (if holes-fn
+                   (into #{} (for [r (range rows) c (range cols)
+                                   :when (holes-fn r c)]
+                               [r c]))
+                   (get opts :holes #{}))
         fixed  (get opts :fixed {})
         coords (vec (for [r (range rows) c (range cols)
                           :when (not (holes [r c]))]
@@ -207,7 +216,8 @@
     :gap     (0.15) — fraction of cell-size for undercrossing gap
     :bow     (0.3)  — fraction of cell-size for curve amplitude
     :style   {}     — base style merged into all nodes
-    :palette []     — distinct color per strand (cycles if fewer than strands)"
+    :palette []     — distinct color per strand (cycles if fewer than strands)
+    :strand-width-fn — (fn [over?] width) vary stroke width by over/under"
   ([grid cell-size] (knot->nodes grid cell-size [0 0] {}))
   ([grid cell-size offset] (knot->nodes grid cell-size offset {}))
   ([grid cell-size offset opts]
@@ -215,10 +225,11 @@
          cs       (double cell-size)
          bow      (* cs (double (get opts :bow 0.3)))
          gap      (* cs (double (get opts :gap 0.15)))
-         style    (:style opts)
-         palette  (:palette opts)
-         strands  (trace-strands grid)
-         cfg      {:cs cs :bow bow :gap gap :ox ox :oy oy :grid grid}]
+         style          (:style opts)
+         palette        (:palette opts)
+         strand-width-fn (:strand-width-fn opts)
+         strands        (trace-strands grid)
+         cfg            {:cs cs :bow bow :gap gap :ox ox :oy oy :grid grid}]
      (into []
        (mapcat
          (fn [strand-idx strand]
@@ -229,7 +240,13 @@
                               (assoc :style/stroke
                                 {:color strand-color
                                  :width (get-in style [:style/stroke :width] 2)}))]
-             (mapv #(crossing-node cfg % base-style) strand)))
+             (mapv (fn [visit]
+                     (let [node (crossing-node cfg visit base-style)]
+                       (if strand-width-fn
+                         (assoc-in node [:style/stroke :width]
+                                   (strand-width-fn (:over? visit)))
+                         node)))
+                   strand)))
          (range) strands)))))
 
 (comment
