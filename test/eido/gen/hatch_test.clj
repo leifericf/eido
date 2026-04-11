@@ -23,7 +23,11 @@
     (let [lines (hatch/hatch-lines [0 0 100 100] {:angle 90 :spacing 10})]
       (is (pos? (count lines)))
       ;; All lines should be vertical (x1 == x2)
-      (is (every? (fn [[x1 _y1 x2 _y2]] (< (Math/abs (- x1 x2)) 0.01)) lines)))))
+      (is (every? (fn [[x1 _y1 x2 _y2]] (< (Math/abs (- x1 x2)) 0.01)) lines))))
+  (testing "zero-area bounds return empty"
+    (is (= [] (hatch/hatch-lines [0 0 0 0] {:spacing 5})))
+    (is (= [] (hatch/hatch-lines [0 0 0 100] {:spacing 5})))
+    (is (= [] (hatch/hatch-lines [0 0 100 0] {:spacing 5})))))
 
 ;; --- expansion to scene nodes ---
 

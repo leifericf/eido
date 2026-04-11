@@ -115,7 +115,8 @@
   [bounds opts]
   (let [[bx by bw bh] bounds
         density    (get opts :density 20)]
-    (if-not (and (pos? bw) (pos? bh) (pos? density))
+    (if-not (and (pos? bw) (pos? bh) (pos? density)
+                  (pos? (get opts :step-length 2.0)))
       []
       (let [col-dist   (:collision-distance opts)
             bx         (double bx)

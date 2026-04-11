@@ -71,3 +71,11 @@
           total-pts (reduce + (map #(count (:path/commands %)) paths))]
       (is (> (count paths) 3) "should produce multiple streamlines")
       (is (> total-pts 20) "streamlines should have substance"))))
+
+(deftest flow-field-zero-step-length-test
+  (testing "zero step-length returns empty"
+    (is (= [] (flow/flow-field [0 0 100 100]
+                {:density 5 :step-length 0 :steps 10}))))
+  (testing "negative step-length returns empty"
+    (is (= [] (flow/flow-field [0 0 100 100]
+                {:density 5 :step-length -1 :steps 10})))))

@@ -8,30 +8,30 @@
   "Generates hatch line segments [x1 y1 x2 y2] within a bounding box.
   bounds: [x y w h]. opts: :angle (45), :spacing (5)."
   [bounds {:keys [angle spacing] :or {angle 45 spacing 5}}]
-  (if-not (pos? spacing)
-    []
-    (let [[bx by bw bh] bounds
-          angle-rad (* (double angle) (/ Math/PI 180.0))
-        cos-a     (Math/cos angle-rad)
-        sin-a     (Math/sin angle-rad)
-        ;; Diagonal of bounding box — ensures full coverage at any angle
-        diag      (Math/sqrt (+ (* bw bw) (* bh bh)))
-        cx        (+ bx (/ bw 2.0))
-        cy        (+ by (/ bh 2.0))
-        spacing   (double spacing)
-        n         (int (Math/ceil (/ diag spacing)))]
-    (into []
-          (for [i (range (- n) (inc n))
-                :let [offset (* i spacing)
-                      ;; Line perpendicular to angle direction, offset along normal
-                      ;; Line runs along the angle direction
-                      px (+ cx (* offset (- sin-a)))
-                      py (+ cy (* offset cos-a))
-                      x1 (- px (* diag cos-a))
-                      y1 (- py (* diag sin-a))
-                      x2 (+ px (* diag cos-a))
-                      y2 (+ py (* diag sin-a))]]
-            [x1 y1 x2 y2])))))
+  (let [[bx by bw bh] bounds]
+    (if-not (and (pos? spacing) (pos? bw) (pos? bh))
+      []
+      (let [angle-rad (* (double angle) (/ Math/PI 180.0))
+            cos-a     (Math/cos angle-rad)
+            sin-a     (Math/sin angle-rad)
+            ;; Diagonal of bounding box — ensures full coverage at any angle
+            diag      (Math/sqrt (+ (* bw bw) (* bh bh)))
+            cx        (+ bx (/ bw 2.0))
+            cy        (+ by (/ bh 2.0))
+            spacing   (double spacing)
+            n         (int (Math/ceil (/ diag spacing)))]
+        (into []
+              (for [i (range (- n) (inc n))
+                    :let [offset (* i spacing)
+                          ;; Line perpendicular to angle direction, offset along normal
+                          ;; Line runs along the angle direction
+                          px (+ cx (* offset (- sin-a)))
+                          py (+ cy (* offset cos-a))
+                          x1 (- px (* diag cos-a))
+                          y1 (- py (* diag sin-a))
+                          x2 (+ px (* diag cos-a))
+                          y2 (+ py (* diag sin-a))]]
+                [x1 y1 x2 y2]))))))
 
 (defn hatch-fill->nodes
   "Converts a hatch fill spec to scene path nodes (lines).
