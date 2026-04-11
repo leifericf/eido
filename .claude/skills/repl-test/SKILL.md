@@ -2,7 +2,7 @@
 name: repl-test
 description: Run exploratory REPL-driven testing across all Eido user-facing functions with parametric edge cases, generative stress tests, and rendering pipeline verification.
 user-invocable: true
-allowed-tools: Bash Read Grep Glob mcp__noumenon__noumenon_status mcp__noumenon__noumenon_query mcp__noumenon__noumenon_ask mcp__noumenon__noumenon_list_queries
+allowed-tools: Bash Read Grep Glob mcp__noumenon__*
 argument-hint: [focus-area]
 ---
 
