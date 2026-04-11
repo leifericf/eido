@@ -8,8 +8,10 @@
   "Generates hatch line segments [x1 y1 x2 y2] within a bounding box.
   bounds: [x y w h]. opts: :angle (45), :spacing (5)."
   [bounds {:keys [angle spacing] :or {angle 45 spacing 5}}]
-  (let [[bx by bw bh] bounds
-        angle-rad (* (double angle) (/ Math/PI 180.0))
+  (if-not (pos? spacing)
+    []
+    (let [[bx by bw bh] bounds
+          angle-rad (* (double angle) (/ Math/PI 180.0))
         cos-a     (Math/cos angle-rad)
         sin-a     (Math/sin angle-rad)
         ;; Diagonal of bounding box — ensures full coverage at any angle
@@ -29,7 +31,7 @@
                       y1 (- py (* diag sin-a))
                       x2 (+ px (* diag cos-a))
                       y2 (+ py (* diag sin-a))]]
-            [x1 y1 x2 y2]))))
+            [x1 y1 x2 y2])))))
 
 (defn hatch-fill->nodes
   "Converts a hatch fill spec to scene path nodes (lines).
