@@ -16,7 +16,7 @@
   [shape-node opts]
   (let [n         (:layers opts)
         opacity   (:opacity opts)
-        deform-fn (:deform-fn opts)
+        deform-fn (or (:deform-fn opts) (fn [node _i _s] node))
         seed      (get opts :seed 0)]
     {:node/type :group
      :group/children
