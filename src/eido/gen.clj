@@ -171,6 +171,7 @@
 (import-fn boids/simulate-flock)
 (import-fn boids/flock->nodes)
 (import-fn boids/classic)
+(import-fn boids/murmuration)
 (import-fn boids/alignment)
 (import-fn boids/cohesion)
 (import-fn boids/separation)

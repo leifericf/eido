@@ -5,11 +5,11 @@
     eido.scene3d.camera    — projections & camera positioning
     eido.scene3d.mesh      — mesh constructors (primitives, platonics, parametric)
     eido.scene3d.transform — translate, rotate, scale, deform, mirror
-    eido.scene3d.topology  — subdivision, auto-smooth
+    eido.scene3d.topology  — subdivision, auto-smooth, adjacency, normals
     eido.scene3d.surface   — UV projection, coloring, painting, material maps
     eido.scene3d.modeling  — extrude/inset/bevel faces, L-system, instancing
     eido.scene3d.render    — shading, render-mesh, depth-sort, convenience, text
-    eido.scene3d.util      — make-face, mesh-bounds, mesh-center, merge-meshes
+    eido.scene3d.util      — make-face, mesh-bounds, mesh-center, merge-meshes, palette-color, lerp-color
 
   Users can require this namespace for the full API, or require
   sub-namespaces directly for finer-grained imports."
@@ -49,6 +49,12 @@
 (import-fn u/merge-meshes)
 (import-fn u/mesh-bounds)
 (import-fn u/mesh-center)
+(import-fn u/axis-component)
+(import-fn u/axis-range)
+(import-fn u/edge-key)
+(import-fn u/lerp-color)
+(import-fn u/make-face-selector)
+(import-fn u/palette-color)
 
 ;; --- mesh ---
 
@@ -76,6 +82,8 @@
 
 (import-fn topology/subdivide)
 (import-fn topology/auto-smooth-edges)
+(import-fn topology/build-face-adjacency)
+(import-fn topology/compute-vertex-normals)
 
 ;; --- surface ---
 
