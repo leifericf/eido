@@ -2,7 +2,7 @@
 name: repl-test
 description: Run exploratory REPL-driven testing across all Eido user-facing functions with parametric edge cases, generative stress tests, and rendering pipeline verification.
 user-invocable: true
-allowed-tools: Bash Read Grep Glob
+allowed-tools: Bash Read Grep Glob mcp__noumenon__noumenon_status mcp__noumenon__noumenon_query mcp__noumenon__noumenon_ask mcp__noumenon__noumenon_list_queries
 argument-hint: [focus-area]
 ---
 
@@ -23,9 +23,28 @@ Repeat until no more issues are found:
 
 Do NOT batch fixes. Do NOT just report issues. Fix each one as you find it, verify, commit, then keep going. The goal is zero issues remaining when you're done.
 
+## Noumenon MCP — Query Before Reading
+
+**Always query Noumenon before reading source files.** A PreToolUse hook enforces this — file-reading tools are blocked until a Noumenon MCP query has been made.
+
+1. Call `noumenon_status` with `repo_path: "eido"` to check the graph is populated.
+2. Use `noumenon_query` or `noumenon_ask` to find files, dependencies, complexity hotspots, or code smells before reading.
+3. Then read specific files for implementation details.
+
+Pass `"eido"` as `repo_path`, not a filesystem path.
+
+Useful queries for this skill:
+- `smells-by-type` — find code smells to investigate
+- `complex-hotspots` — high-churn + high-complexity files
+- `uncalled-segments` — potentially dead code
+- `segments-with-safety-concerns` — safety flags to verify
+- `file-segment-issues` with `file-path` — smells in a specific file
+- `bug-hotspots` — files with most fix commits (likely to have more bugs)
+
 ## Setup
 
-1. Check for a running nREPL by reading `.nrepl-port`. If none, start one with `clj -M:dev`.
+1. Call `noumenon_status` to verify the knowledge graph is current.
+2. Check for a running nREPL by reading `.nrepl-port`. If none, start one with `clj -M:dev`.
 2. Use the nREPL eval helper at `/tmp/nrepl-eval.clj` if it exists, or create it:
 
 ```clojure
