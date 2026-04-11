@@ -85,43 +85,42 @@
         :offset (0.0) — shift the pattern start
   Returns a vector of path-command vectors, one per dash."
   [commands opts]
-  (let [[dash-on dash-off] (:dash opts)
-        offset  (get opts :offset 0.0)
-        flat    (text/flatten-commands commands 0.5)
-        total   (text/path-length flat)
-        period  (+ (double dash-on) (double dash-off))]
-    (when (and (pos? total) (pos? period))
-      (loop [dist   (double offset)
-             dashes []]
-        (if (>= dist total)
-          dashes
-          ;; Calculate start of this dash within the period
-          (let [phase    (mod dist period)
-                on-start (if (< phase dash-on)
-                           dist
-                           (+ dist (- period phase)))
-                on-end   (min total (+ on-start dash-on))]
-            (if (>= on-start total)
-              dashes
-              (let [;; Sample points along the dash
-                    step 1.0
-                    pts  (loop [d on-start acc []]
-                           (if (>= d on-end)
-                             (let [end-pt (text/point-at flat on-end)]
-                               (if end-pt
-                                 (conj acc (:point end-pt))
-                                 acc))
-                             (let [pt (text/point-at flat d)]
-                               (recur (+ d step)
-                                      (if pt
-                                        (conj acc (:point pt))
-                                        acc)))))]
-                (if (< (count pts) 2)
-                  (recur (+ on-start period) dashes)
-                  (let [dash-cmds (into [[:move-to (first pts)]]
-                                        (mapv (fn [p] [:line-to p]) (rest pts)))]
-                    (recur (+ on-start period)
-                           (conj dashes dash-cmds))))))))))))
+  (when-let [[dash-on dash-off] (:dash opts)]
+    (let [offset  (get opts :offset 0.0)
+          flat    (text/flatten-commands commands 0.5)
+          total   (text/path-length flat)
+          period  (+ (double dash-on) (double dash-off))]
+      (when (and (pos? total) (pos? period))
+        (loop [dist   (double offset)
+               dashes []]
+          (if (>= dist total)
+            dashes
+            ;; Calculate start of this dash within the period
+            (let [phase    (mod dist period)
+                  on-start (if (< phase dash-on)
+                             dist
+                             (+ dist (- period phase)))
+                  on-end   (min total (+ on-start dash-on))]
+              (if (>= on-start total)
+                dashes
+                (let [step 1.0
+                      pts  (loop [d on-start acc []]
+                             (if (>= d on-end)
+                               (let [end-pt (text/point-at flat on-end)]
+                                 (if end-pt
+                                   (conj acc (:point end-pt))
+                                   acc))
+                               (let [pt (text/point-at flat d)]
+                                 (recur (+ d step)
+                                        (if pt
+                                          (conj acc (:point pt))
+                                          acc)))))]
+                  (if (< (count pts) 2)
+                    (recur (+ on-start period) dashes)
+                    (let [dash-cmds (into [[:move-to (first pts)]]
+                                          (mapv (fn [p] [:line-to p]) (rest pts)))]
+                      (recur (+ on-start period)
+                             (conj dashes dash-cmds)))))))))))))
 
 ;; --- chaikin ---
 

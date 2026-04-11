@@ -83,6 +83,10 @@
           d2 (aes/dash-commands line-cmds {:dash [20.0 10.0] :offset 5.0})]
       (is (not= d1 d2)))))
 
+(deftest dash-commands-missing-dash-test
+  (testing "missing :dash key returns nil, not NPE"
+    (is (nil? (aes/dash-commands line-cmds {})))))
+
 ;; --- convenience helper tests ---
 
 (deftest stylize-test
