@@ -118,7 +118,11 @@
                 (recur n (inc fails) circles)
                 (let [[gx gy] (grid-xy grid x y)
                       neighbors (grid-neighbors grid gx gy rc)
-                      r (find-radius x y neighbors min-r max-r padding)]
+                      ;; Clamp max radius to stay within bounds
+                      edge-r (min (- x bx-d) (- (+ bx-d bw-d) x)
+                                  (- y by-d) (- (+ by-d bh-d) y))
+                      r (when (>= edge-r min-r)
+                          (find-radius x y neighbors min-r (min max-r edge-r) padding))]
                   (if r
                     (let [circle {:center [x y] :radius r}]
                       (grid-add! grid gx gy circle)
