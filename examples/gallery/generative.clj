@@ -20,6 +20,7 @@
     [eido.gen.stipple :as stipple]
     [eido.gen.subdivide :as subdivide]
     [eido.gen.vary :as vary]
+    [eido.gen.coloring :as coloring]
     [eido.gen.voronoi :as voronoi]
     [eido.path.aesthetic :as aesthetic]
     [eido.path.morph :as morph]
@@ -813,6 +814,89 @@
             (int (+ 10 (* 150 v)))
             (int (+ 30 (* 220 v)))])))}))
 
+;; --- 25. Voronoi Graph Coloring ---
+
+(defn ^{:example {:output "gen-voronoi-coloring.png"
+                  :title  "Voronoi Coloring"
+                  :desc   "Constraint-solved coloring — no adjacent cells share a color."
+                  :tags   ["voronoi" "coloring" "constraint" "color"]}}
+  voronoi-coloring []
+  (let [w 600 h 600
+        pts     (scatter/poisson-disk [30 30 540 540] {:min-dist 40 :seed 42})
+        cells   (voronoi/voronoi-cells pts [0 0 w h])
+        adj     (coloring/cells-adjacency cells)
+        palette [[:color/rgb 230 80 60]  [:color/rgb 240 170 50]
+                 [:color/rgb 60 160 80]  [:color/rgb 40 100 180]]
+        colored (coloring/color-regions cells adj palette {:seed 17})]
+    {:image/size [w h]
+     :image/background [:color/rgb 25 25 30]
+     :image/nodes
+     (mapv #(assoc % :style/stroke {:color [:color/rgb 25 25 30] :width 2.5})
+           colored)}))
+
+;; --- 26. Voronoi Coloring with Pinned Regions ---
+
+(defn ^{:example {:output "gen-pinned-coloring.png"
+                  :title  "Pinned Coloring"
+                  :desc   "Artist pins center cell to gold — solver colors the rest."
+                  :tags   ["voronoi" "coloring" "constraint" "color" "pin"]}}
+  pinned-coloring []
+  (let [w 600 h 600
+        pts     (scatter/poisson-disk [25 25 550 550] {:min-dist 50 :seed 88})
+        cells   (voronoi/voronoi-cells pts [0 0 w h])
+        adj     (coloring/cells-adjacency cells)
+        ;; Find the cell closest to center
+        center-idx (first (apply min-key
+                            (fn [[i [x y]]]
+                              (+ (* (- x 300) (- x 300)) (* (- y 300) (- y 300))))
+                            (map-indexed vector pts)))
+        gold    [:color/rgb 230 190 50]
+        palette [[:color/rgb 30 50 90] [:color/rgb 50 90 140]
+                 [:color/rgb 80 140 170] gold]
+        colored (coloring/color-regions cells adj palette
+                  {:seed 42 :pin {center-idx gold}})]
+    {:image/size [w h]
+     :image/background [:color/rgb 15 15 25]
+     :image/nodes
+     (mapv #(assoc % :style/stroke {:color [:color/rgb 15 15 25] :width 2})
+           colored)}))
+
+;; --- 27. Bounded Fern ---
+
+(defn ^{:example {:output "gen-bounded-fern.png"
+                  :title  "Bounded Fern"
+                  :desc   "L-system fern that grows to fill its canvas, constrained by bounds."
+                  :tags   ["lsystem" "constraint" "botanical"]}}
+  bounded-fern []
+  (let [w 600 h 600
+        cmds (lsystem/lsystem->path-cmds "F" lsystem/fern
+               {:iterations 5 :angle 22.5 :length 4.0
+                :origin [300 580] :heading -90
+                :bounds [0 0 w h] :seed 42})]
+    {:image/size [w h]
+     :image/background [:color/rgb 245 242 235]
+     :image/nodes [{:node/type     :shape/path
+                    :path/commands cmds
+                    :style/stroke  {:color [:color/rgb 40 75 35] :width 1.2}}]}))
+
+;; --- 28. Lightning Strike ---
+
+(defn ^{:example {:output "gen-lightning.png"
+                  :title  "Lightning"
+                  :desc   "Jagged branching lightning — bounded L-system on dark sky."
+                  :tags   ["lsystem" "constraint"]}}
+  bounded-lightning []
+  (let [w 600 h 600
+        cmds (lsystem/lsystem->path-cmds "F" lsystem/lightning
+               {:iterations 5 :angle 18 :length 5.0
+                :origin [300 20] :heading 90
+                :bounds [0 0 w h] :seed 7})]
+    {:image/size [w h]
+     :image/background [:color/rgb 15 10 30]
+     :image/nodes [{:node/type     :shape/path
+                    :path/commands cmds
+                    :style/stroke  {:color [:color/rgb 220 200 255] :width 1}}]}))
+
 (comment
   (circle-pack-palette)
   (mondrian)
@@ -837,4 +921,8 @@
   (boids-seek)
   (terrain-stripes)
   (series-showcase)
-  (rd-ripple))
+  (rd-ripple)
+  (voronoi-coloring)
+  (pinned-coloring)
+  (bounded-fern)
+  (bounded-lightning))

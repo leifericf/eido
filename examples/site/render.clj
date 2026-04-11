@@ -76,7 +76,7 @@
                   eido.gen.particle eido.gen.stipple eido.gen.hatch
                   eido.gen.vary eido.gen.prob eido.gen.circle
                   eido.gen.subdivide eido.gen.series eido.gen.ca
-                  eido.gen.boids]}
+                  eido.gen.boids eido.gen.coloring]}
    {:category "Texture"
     :namespaces '[eido.texture]}
    {:category "Animation"
