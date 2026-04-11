@@ -310,7 +310,9 @@
         dists (cumulative-dists points)
         total (double (peek dists))
         seg-len (double segment-length)
-        n-segs (max 1 (int (Math/ceil (/ total seg-len))))]
+        n-segs (if (pos? seg-len)
+                 (max 1 (int (Math/ceil (/ total seg-len))))
+                 1)]
     (if (<= n-segs 1)
       [(into [[:move-to (first points)]]
              (mapv (fn [p] [:line-to p]) (rest points)))]
