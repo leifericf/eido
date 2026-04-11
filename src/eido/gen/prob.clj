@@ -97,11 +97,14 @@
     (< (.nextDouble rng) (double p))))
 
 (defn pick
-  "Picks one element from coll uniformly at random."
+  "Picks one element from coll uniformly at random.
+  Returns nil if coll is empty."
   [coll seed]
-  (let [rng (make-rng seed)
-        v   (vec coll)]
-    (nth v (.nextInt rng (count v)))))
+  (let [v (vec coll)
+        n (count v)]
+    (when (pos? n)
+      (let [rng (make-rng seed)]
+        (nth v (.nextInt rng n))))))
 
 (defn pick-weighted
   "Picks one element from items using corresponding weights."
