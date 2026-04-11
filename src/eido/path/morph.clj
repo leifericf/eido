@@ -54,9 +54,11 @@
   (let [flat (text/flatten-commands (mapv ensure-doubles commands) 0.5)
         points (extract-points flat)]
     (when (>= (count points) 2)
-      (let [dists (cumulative-dists points)
-            total (peek dists)
-            step  (/ total (dec n))]
+      (if (<= n 1)
+        [[:move-to (first points)]]
+        (let [dists (cumulative-dists points)
+              total (peek dists)
+              step  (/ total (dec n))]
         (into [[:move-to (first points)]]
               (for [i (range 1 n)]
                 (let [target (* i step)]
@@ -72,7 +74,7 @@
                         [:line-to (lerp-pt (nth points (dec j))
                                            (nth points j)
                                            seg-t)])
-                      (recur (inc j)))))))))))
+                      (recur (inc j))))))))))))
 
 ;; --- morph ---
 

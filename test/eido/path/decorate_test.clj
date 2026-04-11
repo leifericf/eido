@@ -39,3 +39,11 @@
           few  (decorator/decorate-path path-cmds shape {:spacing 50})
           many (decorator/decorate-path path-cmds shape {:spacing 10})]
       (is (> (count many) (count few))))))
+
+(deftest decorate-path-edge-cases-test
+  (testing "zero or missing spacing returns empty"
+    (let [path-cmds [[:move-to [0.0 0.0]] [:line-to [100.0 0.0]]]
+          shape {:node/type :shape/circle :circle/center [0.0 0.0]
+                 :circle/radius 2.0 :style/fill [:color/rgb 0 0 0]}]
+      (is (= [] (decorator/decorate-path path-cmds shape {:spacing 0})))
+      (is (= [] (decorator/decorate-path path-cmds shape {}))))))

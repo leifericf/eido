@@ -29,6 +29,12 @@
     (let [result (morph/resample square 10)]
       (is (= 10 (count (filter #(#{:move-to :line-to} (first %)) result)))))))
 
+(deftest resample-n-1-test
+  (testing "resample with n=1 returns just the start point, not divide-by-zero"
+    (let [result (morph/resample square 1)]
+      (is (= 1 (count result)))
+      (is (= :move-to (ffirst result))))))
+
 (deftest resample-preserves-start-test
   (testing "resample starts at same point"
     (let [[_ start-a] (first square)

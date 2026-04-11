@@ -29,11 +29,14 @@
   opts: :spacing (required), :rotate? (default false).
   Returns a vector of group nodes with transforms."
   [path-cmds shape opts]
-  (let [path-cmds (coerce-doubles path-cmds)
-        total    (text/path-length path-cmds)
-        spacing  (double (:spacing opts))
-        rotate?  (get opts :rotate? false)
-        n        (int (Math/floor (/ total spacing)))]
+  (let [spacing-val (:spacing opts)]
+    (if-not (and spacing-val (pos? spacing-val))
+      []
+      (let [path-cmds (coerce-doubles path-cmds)
+            total    (text/path-length path-cmds)
+            spacing  (double spacing-val)
+            rotate?  (get opts :rotate? false)
+            n        (int (Math/floor (/ total spacing)))]
     (into []
           (keep (fn [i]
                   (let [d (* i spacing)
@@ -46,7 +49,7 @@
                         {:node/type      :group
                          :node/transform transforms
                          :group/children [shape]})))))
-          (range (inc n)))))
+          (range (inc n)))))))
 
 (comment
   (decorate-path
