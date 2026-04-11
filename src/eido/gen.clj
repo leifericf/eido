@@ -187,12 +187,12 @@
 (import-fn coloring/color-regions)
 
 ;; lsystem presets (constrained expansion with vector alternatives)
-(def lsystem-bush lsystem/bush)
-(def lsystem-fern lsystem/fern)
-(def lsystem-coral lsystem/coral)
-(def lsystem-lightning lsystem/lightning)
-(def lsystem-seaweed lsystem/seaweed)
-(def lsystem-tree lsystem/tree)
+(import-fn lsystem/bush)
+(import-fn lsystem/fern)
+(import-fn lsystem/coral)
+(import-fn lsystem/lightning)
+(import-fn lsystem/seaweed)
+(import-fn lsystem/tree)
 
 ;; convenience helpers
 (import-fn prob/mixture)

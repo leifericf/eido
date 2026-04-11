@@ -75,7 +75,7 @@
 
 ;; --- constraint solver ---
 
-(defn solve
+(defn- solve
   "Solves a graph coloring problem via CLP(FD).
   n-regions:  number of regions to color
   adjacency:  collection of [i j] pairs

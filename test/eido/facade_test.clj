@@ -27,7 +27,7 @@
                      'eido.gen.lsystem 'eido.gen.noise 'eido.gen.particle
                      'eido.gen.prob 'eido.gen.scatter 'eido.gen.series
                      'eido.gen.stipple 'eido.gen.subdivide 'eido.gen.vary
-                     'eido.gen.voronoi])]
+                     'eido.gen.voronoi 'eido.gen.coloring])]
       (is (empty? missing)
           (str "eido.gen is missing exports: " (sort missing))))))
 
