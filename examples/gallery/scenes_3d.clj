@@ -100,8 +100,9 @@
     {:image/size [400 400]
      :image/background [:color/rgb 245 243 238]
      :image/nodes
-     [(s3d/cube proj [-1.5 0 -1.5] 2
-        {:style {:style/fill [:color/rgb 90 140 200]
+     [(s3d/cube proj [-1.5 0 -1.5]
+        {:size 2
+         :style {:style/fill [:color/rgb 90 140 200]
                  :style/stroke {:color [:color/rgb 50 80 130] :width 0.5}}
          :light light})
       (s3d/cylinder proj [2 0 -1.5]

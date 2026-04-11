@@ -2638,7 +2638,7 @@ CircleOp{...original-shape...}"]]
 ;; Primitive constructors
 (s3d/sphere-mesh 1.0)
 (s3d/sphere-mesh 1.0 {:segments 32 :rings 20})
-(s3d/cube-mesh 1.0)
+(s3d/cube-mesh [0 0 0] 1.0)
 (s3d/cylinder-mesh 0.5 2.0)
 (s3d/torus-mesh 1.5 0.5)
 (s3d/plane-mesh 2.0 2.0)

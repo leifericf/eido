@@ -1254,7 +1254,7 @@
 
 (deftest cube-convenience-test
   (let [proj (s3d/isometric {:scale 50 :origin [200 200]})
-        result (s3d/cube proj [0 0 0] 1 {})]
+        result (s3d/cube proj [0 0 0] {:size 1})]
     (is (= :group (:node/type result)))
     (is (pos? (count (:group/children result))))))
 

@@ -394,15 +394,20 @@
 
 (defn cube
   "Creates a 3D cube projected into 2D, returned as a :group node.
-  projection: projection map. position: [x y z]. size: number.
-  opts: :style, :light, :cull-back."
-  [projection position size opts]
-  (render-mesh projection (mesh/cube-mesh position size) opts))
+  opts: :size (1), :style, :light, :cull-back."
+  [projection position opts]
+  (let [size (get opts :size 1)]
+    (render-mesh projection (mesh/cube-mesh position size) opts)))
 
 (defn prism
-  "Creates a 3D prism projected into 2D."
-  [projection base-points height opts]
-  (render-mesh projection (mesh/prism-mesh base-points height) opts))
+  "Creates a 3D prism projected into 2D.
+  opts: :base-points, :height, :style, :light, :cull-back."
+  [projection position opts]
+  (let [base-points (:base-points opts)
+        height      (:height opts)]
+    (render-mesh projection
+      (xform/translate-mesh (mesh/prism-mesh base-points height) position)
+      opts)))
 
 (defn cylinder
   "Creates a 3D cylinder projected into 2D.
