@@ -440,7 +440,9 @@
   Opts: :scale, :transparent-background."
   ([irs fps] (render-animated irs fps {}))
   ([irs fps opts]
-   (let [[w h]   (:ir/size (first irs))
+   (if (empty? irs)
+     ""
+     (let [[w h]   (:ir/size (first irs))
          scale   (get opts :scale 1)
          sw      (int (* w scale))
          sh      (int (* h scale))
@@ -466,7 +468,7 @@
                     (into (map :body frame-results))
                     true
                     (conj "</svg>"))]
-     (str/join "\n" lines))))
+     (str/join "\n" lines)))))
 
 (comment
   ;; Static SVG
