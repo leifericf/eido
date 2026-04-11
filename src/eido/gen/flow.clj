@@ -114,12 +114,14 @@
         :collision-distance (nil — set to enforce minimum spacing between streamlines)."
   [bounds opts]
   (let [[bx by bw bh] bounds
-        density    (get opts :density 20)
-        col-dist   (:collision-distance opts)
-        bx         (double bx)
-        by         (double by)
-        bw         (double bw)
-        bh         (double bh)
+        density    (get opts :density 20)]
+    (if-not (and (pos? bw) (pos? bh) (pos? density))
+      []
+      (let [col-dist   (:collision-distance opts)
+            bx         (double bx)
+            by         (double by)
+            bw         (double bw)
+            bh         (double bh)
         cols       (long (Math/ceil (/ bw density)))
         rows       (long (Math/ceil (/ bh density)))
         half-d     (/ (double density) 2.0)
@@ -140,7 +142,7 @@
                        :path/commands (into [[:move-to (first pts)]]
                                             (mapv (fn [p] [:line-to p])
                                                   (rest pts)))}))))
-          origins)))
+          origins)))))
 
 (comment
   (flow-field [0 0 200 200] {:density 20 :steps 40 :noise-scale 0.005 :seed 42})
