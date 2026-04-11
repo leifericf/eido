@@ -2,17 +2,47 @@
   "Constrained shape grammars: L-system expansion with bounds checking.
 
   Standard L-systems expand blindly — they don't know about canvas
-  boundaries. This generator adds two capabilities:
+  boundaries. This generator adds three capabilities:
 
   1. Bounded expansion: multiple alternative rules per symbol (from full
-     growth to no growth). The solver tries the fullest expansion first
-     and backs off individual branches when they exceed bounds.
+     growth to no growth). Tries the fullest expansion first and backs
+     off individual branches when they exceed bounds.
 
-  2. Scale-to-fit: after expansion, the result is automatically scaled
-     and centered to fill the target canvas, making effective use of
-     the available space."
+  2. Depth bias: a function that biases rule selection by recursion depth.
+     'Full growth at the trunk, constrained at the tips.'
+
+  3. Scale-to-fit: after expansion, the result is automatically scaled
+     and centered to fill the target canvas.
+
+  Includes curated rule presets for common botanical and fractal forms."
   (:require
     [eido.gen.prob :as prob]))
+
+;; --- rule presets ---
+
+(def bush
+  "Bushy plant with symmetric branching."
+  {"F" ["FF+[+F-F-F]-[-F+F+F]" "F+[+F]-[-F]" "F"]})
+
+(def fern
+  "Asymmetric fern with curving fronds."
+  {"F" ["FF-[-F+F+F]+[+F-F-F]" "F-[F]+[F]" "F"]})
+
+(def coral
+  "Dense branching coral structure."
+  {"F" ["FF+F-F+F+FF" "F+F-F" "F"]})
+
+(def lightning
+  "Jagged branching lightning bolt."
+  {"F" ["F[+F]F[-F]F" "F[+F][-F]" "F"]})
+
+(def seaweed
+  "Swaying organic tendrils."
+  {"F" ["FF[-F++F][+F--F]++F--F" "F[-F][+F]" "F"]})
+
+(def tree
+  "Classic branching tree with taper."
+  {"F" ["FF+[+F-F]-[-F+F]" "F+F-F" "F"]})
 
 ;; --- geometry helpers ---
 
@@ -102,6 +132,10 @@
     :heading (-90)      — initial direction (degrees)
     :bounds [0 0 w h]   — bounding box constraint
     :seed (42)          — controls variety in rule selection
+    :depth-bias nil     — (fn [depth] preferred-rule-idx)
+                          biases rule choice by recursion depth.
+                          depth 0 = first expansion, 1 = second, etc.
+                          Return 0 for full growth, higher for less.
 
   Returns the expanded string that fits within bounds."
   [axiom rules opts]
@@ -112,6 +146,7 @@
         heading    (get opts :heading -90)
         bounds     (get opts :bounds [0 0 400 400])
         seed       (get opts :seed 42)
+        depth-bias (:depth-bias opts)
         max-alts   (apply max 1 (map count (vals rules)))
         rng        (prob/make-rng seed)]
     (loop [current axiom, iter 0]
@@ -120,22 +155,24 @@
         (let [n-sites (count-sites current rules)]
           (if (zero? n-sites)
             current
-            ;; Strategy: try full expansion first (all zeros = biggest rule).
-            ;; If it fits, use it. If not, randomly back off individual sites.
-            (let [full-choices (vec (repeat n-sites 0))
-                  full-expanded (expand-with-choices current rules full-choices)]
-              (if (within-bounds? full-expanded angle length origin heading bounds)
-                ;; Full expansion fits — use it
-                (recur full-expanded (inc iter))
-                ;; Full expansion overflows — try random combinations,
-                ;; preferring lower values (more growth)
-                (let [attempts (min 200 (long (Math/pow max-alts (min n-sites 4))))
+            ;; Preferred rule: depth-bias if given, otherwise 0 (full growth)
+            (let [pref     (if depth-bias
+                             (min (long (depth-bias iter)) (dec max-alts))
+                             0)
+                  base     (vec (repeat n-sites pref))
+                  base-exp (expand-with-choices current rules base)]
+              (if (within-bounds? base-exp angle length origin heading bounds)
+                (recur base-exp (inc iter))
+                ;; Overflow — try random combinations biased toward pref
+                (let [attempts  (min 200 (long (Math/pow max-alts (min n-sites 4))))
                       candidates
                       (mapv (fn [_]
-                              (mapv (fn [_] (.nextInt ^java.util.Random rng max-alts))
+                              (mapv (fn [_]
+                                      (if (< (.nextDouble ^java.util.Random rng) 0.5)
+                                        pref
+                                        (.nextInt ^java.util.Random rng max-alts)))
                                     (range n-sites)))
                             (range attempts))
-                      ;; Sort by total growth (lower sum = more growth)
                       sorted (sort-by #(reduce + %) candidates)
                       valid  (first
                                (filter
@@ -145,7 +182,6 @@
                                  sorted))]
                   (if valid
                     (recur (expand-with-choices current rules valid) (inc iter))
-                    ;; Nothing fits — return current
                     current))))))))))
 
 ;; --- turtle interpreter with scale-to-fit ---

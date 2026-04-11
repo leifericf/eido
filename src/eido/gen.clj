@@ -216,6 +216,14 @@
   (dissoc (meta (var grammar/solve)) :name :ns))
 (import-fn grammar/grammar->path-cmds)
 
+;; grammar rule presets
+(def grammar-bush grammar/bush)
+(def grammar-fern grammar/fern)
+(def grammar-coral grammar/coral)
+(def grammar-lightning grammar/lightning)
+(def grammar-seaweed grammar/seaweed)
+(def grammar-tree grammar/tree)
+
 ;; convenience helpers
 (import-fn prob/mixture)
 (import-fn vary/by-palette)
