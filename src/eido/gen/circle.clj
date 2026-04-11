@@ -93,35 +93,37 @@
     :seed        (42)
     :bounds-fn   — optional (fn [x y] -> boolean) for non-rectangular containment"
   [bounds opts]
-  (let [[bx by bw bh] bounds
-        min-r   (get opts :min-radius 2.0)
-        max-r   (get opts :max-radius 40.0)
-        padding (get opts :padding 1.0)
-        max-att (get opts :attempts 500)
-        max-n   (get opts :max-circles 1000)
-        seed    (get opts :seed 42)
-        bounds? (get opts :bounds-fn nil)
-        rng     (prob/make-rng seed)
-        bx-d    (double bx) by-d (double by)
-        bw-d    (double bw) bh-d (double bh)
-        cell    (double (+ max-r max-r padding))
-        grid    (make-grid cell bx by bw bh)
-        rc      (Math/ceil (/ (+ max-r max-r padding) cell))]
-    (loop [n 0 fails 0 circles []]
-      (if (or (>= n max-n) (>= fails max-att))
-        circles
-        (let [x (+ bx-d (* (.nextDouble rng) bw-d))
-              y (+ by-d (* (.nextDouble rng) bh-d))]
-          (if (and bounds? (not (bounds? x y)))
-            (recur n (inc fails) circles)
-            (let [[gx gy] (grid-xy grid x y)
-                  neighbors (grid-neighbors grid gx gy rc)
-                  r (find-radius x y neighbors min-r max-r padding)]
-              (if r
-                (let [circle {:center [x y] :radius r}]
-                  (grid-add! grid gx gy circle)
-                  (recur (inc n) 0 (conj circles circle)))
-                (recur n (inc fails) circles)))))))))
+  (let [[bx by bw bh] bounds]
+    (if-not (and (pos? bw) (pos? bh))
+      []
+      (let [min-r   (get opts :min-radius 2.0)
+            max-r   (get opts :max-radius 40.0)
+            padding (get opts :padding 1.0)
+            max-att (get opts :attempts 500)
+            max-n   (get opts :max-circles 1000)
+            seed    (get opts :seed 42)
+            bounds? (get opts :bounds-fn nil)
+            rng     (prob/make-rng seed)
+            bx-d    (double bx) by-d (double by)
+            bw-d    (double bw) bh-d (double bh)
+            cell    (double (+ max-r max-r padding))
+            grid    (make-grid cell bx by bw bh)
+            rc      (Math/ceil (/ (+ max-r max-r padding) cell))]
+        (loop [n 0 fails 0 circles []]
+          (if (or (>= n max-n) (>= fails max-att))
+            circles
+            (let [x (+ bx-d (* (.nextDouble rng) bw-d))
+                  y (+ by-d (* (.nextDouble rng) bh-d))]
+              (if (and bounds? (not (bounds? x y)))
+                (recur n (inc fails) circles)
+                (let [[gx gy] (grid-xy grid x y)
+                      neighbors (grid-neighbors grid gx gy rc)
+                      r (find-radius x y neighbors min-r max-r padding)]
+                  (if r
+                    (let [circle {:center [x y] :radius r}]
+                      (grid-add! grid gx gy circle)
+                      (recur (inc n) 0 (conj circles circle)))
+                    (recur n (inc fails) circles)))))))))))
 
 ;; --- path containment ---
 
