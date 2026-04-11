@@ -1,5 +1,31 @@
 # Changes
 
+## Unreleased
+
+### New features
+
+- **Graph coloring** (`eido.gen.coloring`) — Assigns colors to regions
+  (Voronoi cells, subdivision rects, or any set with adjacency) such that
+  no two adjacent regions share a color. Uses `core.logic` CLP(FD) for
+  constraint solving. Composes with existing generators via adjacency helpers
+  `cells-adjacency` and `rects-adjacency`. Supports `:pin` to fix specific
+  regions to specific colors while the solver completes the rest, and `:seed`
+  for deterministic variety.
+
+- **Bounded L-system expansion** — `lsystem->path-cmds` now accepts rules
+  with vector alternatives (e.g. `{"F" ["FF+[+F]" "F+F" "F"]}`). When
+  combined with `:bounds [x y w h]`, the system tries the fullest expansion
+  first and backs off individual branches when they overflow the canvas.
+  Results are automatically scaled to fill the bounds. Six curated presets:
+  `lsystem/bush`, `lsystem/fern`, `lsystem/coral`, `lsystem/lightning`,
+  `lsystem/seaweed`, `lsystem/tree`.
+
+### Dependencies
+
+- Added `org.clojure/core.logic 1.1.0` — used by graph coloring solver.
+
+---
+
 ## v1.0.0-beta5 — API Consistency
 
 ### Breaking changes
