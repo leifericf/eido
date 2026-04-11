@@ -33,9 +33,12 @@
       (is (<= max-y 380) "max-y within bounds"))))
 
 (deftest solve-seed-variety-test
-  (testing "different seeds produce different expansions"
-    (let [r1 (grammar/solve "F" test-rules (assoc test-opts :seed 1))
-          r2 (grammar/solve "F" test-rules (assoc test-opts :seed 42))]
+  (testing "different seeds produce different expansions when constrained"
+    (let [opts {:iterations 3 :angle 25 :length 8
+                :origin [80 140] :heading -90
+                :bounds [0 0 160 160]}
+          r1 (grammar/solve "F" test-rules (assoc opts :seed 1))
+          r2 (grammar/solve "F" test-rules (assoc opts :seed 99))]
       (is (not= r1 r2)))))
 
 (deftest solve-deterministic-test
