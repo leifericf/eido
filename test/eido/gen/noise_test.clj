@@ -82,7 +82,11 @@
   (testing "more octaves add detail (different result)"
     (let [v1 (noise/fbm noise/perlin2d 1.5 2.3 {:octaves 1})
           v4 (noise/fbm noise/perlin2d 1.5 2.3 {:octaves 4})]
-      (is (not= v1 v4)))))
+      (is (not= v1 v4))))
+  (testing "zero octaves returns 0.0, not NaN"
+    (is (= 0.0 (noise/fbm noise/perlin2d 1.0 1.0 {:octaves 0})))
+    (is (= 0.0 (noise/turbulence noise/perlin2d 1.0 1.0 {:octaves 0})))
+    (is (= 0.0 (noise/ridge noise/perlin2d 1.0 1.0 {:octaves 0})))))
 
 ;; --- turbulence ---
 

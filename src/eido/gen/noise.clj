@@ -246,21 +246,23 @@
          lacunarity (get opts :lacunarity 2.0)
          gain       (get opts :gain 0.5)
          seed-opts  (when-let [s (:seed opts)] {:seed s})]
-     (loop [i         0
-            amplitude 1.0
-            frequency 1.0
-            total     0.0
-            max-amp   0.0]
-       (if (>= i octaves)
-         (/ total max-amp)
-         (let [v (noise-fn (* (double x) frequency)
-                           (* (double y) frequency)
-                           seed-opts)]
-           (recur (inc i)
-                  (* amplitude (double gain))
-                  (* frequency (double lacunarity))
-                  (+ total (* amplitude v))
-                  (+ max-amp amplitude))))))))
+     (if-not (pos? octaves)
+       0.0
+       (loop [i         0
+              amplitude 1.0
+              frequency 1.0
+              total     0.0
+              max-amp   0.0]
+         (if (>= i octaves)
+           (/ total max-amp)
+           (let [v (noise-fn (* (double x) frequency)
+                             (* (double y) frequency)
+                             seed-opts)]
+             (recur (inc i)
+                    (* amplitude (double gain))
+                    (* frequency (double lacunarity))
+                    (+ total (* amplitude v))
+                    (+ max-amp amplitude)))))))))
 
 (defn turbulence
   "Turbulence — fbm using absolute values of noise.
@@ -272,21 +274,23 @@
          lacunarity (get opts :lacunarity 2.0)
          gain       (get opts :gain 0.5)
          seed-opts  (when-let [s (:seed opts)] {:seed s})]
-     (loop [i         0
-            amplitude 1.0
-            frequency 1.0
-            total     0.0
-            max-amp   0.0]
-       (if (>= i octaves)
-         (/ total max-amp)
-         (let [v (Math/abs (double (noise-fn (* (double x) frequency)
-                                            (* (double y) frequency)
-                                            seed-opts)))]
-           (recur (inc i)
-                  (* amplitude (double gain))
-                  (* frequency (double lacunarity))
-                  (+ total (* amplitude v))
-                  (+ max-amp amplitude))))))))
+     (if-not (pos? octaves)
+       0.0
+       (loop [i         0
+              amplitude 1.0
+              frequency 1.0
+              total     0.0
+              max-amp   0.0]
+         (if (>= i octaves)
+           (/ total max-amp)
+           (let [v (Math/abs (double (noise-fn (* (double x) frequency)
+                                              (* (double y) frequency)
+                                              seed-opts)))]
+             (recur (inc i)
+                    (* amplitude (double gain))
+                    (* frequency (double lacunarity))
+                    (+ total (* amplitude v))
+                    (+ max-amp amplitude)))))))))
 
 (defn ridge
   "Ridged multifractal noise — inverts absolute value for sharp ridges.
@@ -299,22 +303,24 @@
          gain       (get opts :gain 0.5)
          offset     (get opts :offset 1.0)
          seed-opts  (when-let [s (:seed opts)] {:seed s})]
-     (loop [i         0
-            amplitude 1.0
-            frequency 1.0
-            total     0.0
-            max-amp   0.0]
-       (if (>= i octaves)
-         (/ total max-amp)
-         (let [v (- (double offset)
-                    (Math/abs (double (noise-fn (* (double x) frequency)
-                                               (* (double y) frequency)
-                                               seed-opts))))]
-           (recur (inc i)
-                  (* amplitude (double gain))
-                  (* frequency (double lacunarity))
-                  (+ total (* amplitude v))
-                  (+ max-amp amplitude))))))))
+     (if-not (pos? octaves)
+       0.0
+       (loop [i         0
+              amplitude 1.0
+              frequency 1.0
+              total     0.0
+              max-amp   0.0]
+         (if (>= i octaves)
+           (/ total max-amp)
+           (let [v (- (double offset)
+                      (Math/abs (double (noise-fn (* (double x) frequency)
+                                                 (* (double y) frequency)
+                                                 seed-opts))))]
+             (recur (inc i)
+                    (* amplitude (double gain))
+                    (* frequency (double lacunarity))
+                    (+ total (* amplitude v))
+                    (+ max-amp amplitude)))))))))
 
 ;; --- OpenSimplex2S (public domain, KdotJPG) ---
 ;; Smooth variant of OpenSimplex2 noise. Uses distance-based falloff kernel
