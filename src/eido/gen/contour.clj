@@ -171,7 +171,10 @@
   opts: :thresholds ([0.0]), :resolution (5), :noise-scale (0.01), :seed (0)."
   [noise-fn bounds opts]
   (let [[bx by bw bh] bounds
-        res         (get opts :resolution 5)
+        res         (get opts :resolution 5)]
+    (if-not (and (pos? bw) (pos? bh) (pos? res))
+      []
+      (let [
         noise-scale (get opts :noise-scale 0.01)
         seed        (get opts :seed 0)
         thresholds  (get opts :thresholds [0.0])
@@ -190,7 +193,7 @@
                                                 (mapv (fn [p] [:line-to p])
                                                       (rest chain)))}))
                       chains))))
-          thresholds)))
+          thresholds)))))
 
 (comment
   (contour-lines noise/perlin2d [0 0 200 200]
