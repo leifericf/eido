@@ -56,6 +56,18 @@
                        (shade-color (get-in style [:style/stroke :color]) brightness)))))
        style))))
 
+(def ^:private ^:const distance-epsilon
+  "Below this distance from centroid, a vertex is considered degenerate."
+  0.001)
+
+(def ^:private ^:const expansion-scale
+  "Fraction of max-distance used for polygon gap-sealing expansion."
+  0.15)
+
+(def ^:private ^:const expansion-max-px
+  "Maximum expansion in pixels to seal anti-aliasing gaps."
+  0.4)
+
 (defn- expand-polygon
   "Expands projected 2D polygon slightly outward from its centroid
   to seal anti-aliasing gaps between adjacent faces."
@@ -63,17 +75,17 @@
   (let [n  (count projected)
         cx (/ (reduce + (map first projected)) n)
         cy (/ (reduce + (map second projected)) n)
-        max-d (reduce max 0.001
+        max-d (reduce max distance-epsilon
                 (map (fn [[x y]]
                        (Math/sqrt (+ (let [dx (- x cx)] (* dx dx))
                                      (let [dy (- y cy)] (* dy dy)))))
                      projected))
-        expand (min 0.4 (* 0.15 max-d))]
+        expand (min expansion-max-px (* expansion-scale max-d))]
     (mapv (fn [[x y]]
             (let [dx (- x cx)
                   dy (- y cy)
                   d  (Math/sqrt (+ (* dx dx) (* dy dy)))]
-              (if (< d 0.001)
+              (if (< d distance-epsilon)
                 [x y]
                 (let [s (/ (+ d expand) d)]
                   [(+ cx (* dx s))
