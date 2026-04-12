@@ -532,6 +532,185 @@
     (:radius opts) (assoc :paint/radius (:radius opts))
     (:seed opts)   (assoc :paint/seed (:seed opts))))
 
+;; --- UX helpers for programmatic artists ---
+
+(defn auto-pressure
+  "Derives a pressure curve from path geometry.
+  points: [[x y] ...] — point sequence.
+  opts:
+    :mode — :taper (default), :curvature, or :speed
+    :start — pressure at stroke start (default 0.3)
+    :end — pressure at stroke end (default 0.2)
+    :smoothing — smooth the derived curve (0.0-1.0, default 0.3)
+  Returns [[t pressure] ...] suitable for :paint/pressure."
+  ([points] (auto-pressure points {}))
+  ([points opts]
+   (let [mode (get opts :mode :taper)
+         start-p (double (get opts :start 0.3))
+         end-p   (double (get opts :end 0.2))
+         n (count points)]
+     (if (< n 2)
+       [[0.0 1.0]]
+       (let [;; Compute cumulative distances
+             dists (loop [i 1 acc [0.0]]
+                     (if (>= i n)
+                       acc
+                       (let [[x0 y0] (nth points (dec i))
+                             [x1 y1] (nth points i)
+                             d (Math/sqrt (+ (* (- (double x1) (double x0))
+                                                (- (double x1) (double x0)))
+                                             (* (- (double y1) (double y0))
+                                                (- (double y1) (double y0)))))]
+                         (recur (inc i) (conj acc (+ (peek acc) d))))))
+             total (double (peek dists))]
+         (if (< total 0.001)
+           [[0.0 1.0]]
+           (case mode
+             :taper
+             ;; Smooth taper: fade in from start-p, peak at 0.3-0.7, fade to end-p
+             (mapv (fn [d]
+                     (let [t (/ (double d) total)
+                           ;; Smooth bell: sin curve peaked in middle
+                           mid-p (+ start-p (* (- 1.0 (Math/max start-p end-p))
+                                                (Math/sin (* t Math/PI))))]
+                       [t (Math/max 0.01 (Math/min 1.0 mid-p))]))
+                   dists)
+
+             :curvature
+             ;; Tight curves get more pressure
+             (mapv (fn [i d]
+                     (let [t (/ (double d) total)
+                           ;; Curvature from angle change between segments
+                           curv (if (and (> i 0) (< i (dec n)))
+                                  (let [[x0 y0] (nth points (dec i))
+                                        [x1 y1] (nth points i)
+                                        [x2 y2] (nth points (inc i))
+                                        a1 (Math/atan2 (- (double y1) (double y0))
+                                                       (- (double x1) (double x0)))
+                                        a2 (Math/atan2 (- (double y2) (double y1))
+                                                       (- (double x2) (double x1)))
+                                        da (Math/abs (- a2 a1))]
+                                    (Math/min 1.0 (* da 2.0)))
+                                  0.5)
+                           p (+ 0.3 (* 0.7 curv))]
+                       [t (Math/max 0.01 (Math/min 1.0 p))]))
+                   (range n) dists)
+
+             :speed
+             ;; Longer segments = faster = lighter pressure
+             (mapv (fn [i d]
+                     (let [t (/ (double d) total)
+                           seg-len (if (< i (dec n))
+                                     (- (double (nth dists (inc i))) (double d))
+                                     0.0)
+                           speed (if (> total 0.0) (/ seg-len total) 0.0)
+                           p (- 1.0 (* speed (double (dec n))))]
+                       [t (Math/max 0.1 (Math/min 1.0 p))]))
+                   (range n) dists)
+
+             ;; Default: flat
+             [[0.0 1.0] [1.0 1.0]])))))))
+
+(defn auto-speed
+  "Derives a speed curve from path segment lengths.
+  Returns [[t speed] ...] where speed is normalized 0-1."
+  [points]
+  (let [n (count points)]
+    (if (< n 2)
+      [[0.0 0.5]]
+      (let [dists (loop [i 1 acc [0.0]]
+                    (if (>= i n)
+                      acc
+                      (let [[x0 y0] (nth points (dec i))
+                            [x1 y1] (nth points i)
+                            d (Math/sqrt (+ (* (- (double x1) (double x0))
+                                               (- (double x1) (double x0)))
+                                            (* (- (double y1) (double y0))
+                                               (- (double y1) (double y0)))))]
+                        (recur (inc i) (conj acc (+ (peek acc) d))))))
+            total (double (peek dists))
+            seg-lens (mapv (fn [i]
+                             (if (< i (dec n))
+                               (- (double (nth dists (inc i))) (double (nth dists i)))
+                               0.0))
+                           (range n))
+            max-len (apply max 0.001 seg-lens)]
+        (mapv (fn [i d]
+                [(if (> total 0.0) (/ (double d) total) 0.0)
+                 (/ (double (nth seg-lens i)) max-len)])
+              (range n) dists)))))
+
+(def dynamics-profiles
+  "Named dynamics profiles for common artistic styles."
+  {:calligraphy [{:sensor/input :speed :sensor/target :paint/radius
+                  :sensor/curve [[0.0 0.3] [0.3 0.8] [0.7 1.0] [1.0 0.5]]}
+                 {:sensor/input :pressure :sensor/target :paint/opacity
+                  :sensor/curve [[0.0 0.5] [0.5 1.0] [1.0 0.8]]}]
+
+   :expressive  [{:sensor/input :pressure :sensor/target :paint/radius
+                  :sensor/curve [[0.0 0.2] [0.5 1.0] [1.0 0.8]]}
+                 {:sensor/input :speed :sensor/target :paint/opacity
+                  :sensor/curve [[0.0 0.8] [0.5 1.0] [1.0 0.3]]}]
+
+   :steady      [{:sensor/input :pressure :sensor/target :paint/opacity
+                  :sensor/curve [[0.0 0.8] [1.0 1.0]]}]
+
+   :feathered   [{:sensor/input :pressure :sensor/target :paint/radius
+                  :sensor/curve [[0.0 0.1] [0.3 0.6] [1.0 1.0]]}
+                 {:sensor/input :pressure :sensor/target :paint/opacity
+                  :sensor/curve [[0.0 0.2] [0.5 0.7] [1.0 1.0]]}]
+
+   :bold        [{:sensor/input :pressure :sensor/target :paint/radius
+                  :sensor/curve [[0.0 0.7] [1.0 1.0]]}
+                 {:sensor/input :pressure :sensor/target :paint/opacity
+                  :sensor/curve [[0.0 0.9] [1.0 1.0]]}]})
+
+(defn dynamics-profile
+  "Returns a named dynamics profile.
+  (dynamics-profile :calligraphy)
+  (dynamics-profile :expressive)"
+  [profile-name]
+  (get dynamics-profiles profile-name []))
+
+(defn stroke-from-path
+  "Creates a stroke descriptor from path commands with auto-derived
+  pressure and speed curves. Convenience for programmatic artists who
+  don't have physical input devices.
+
+  path-commands: [[:move-to [x y]] [:line-to [x y]] ...]
+  opts:
+    :brush — preset keyword or spec map
+    :color — stroke color
+    :radius — brush radius
+    :dynamics — keyword for dynamics-profile, or custom dynamics vec
+    :pressure — :auto (default), :taper, :curvature, :speed, or explicit curve
+    :seed — deterministic seed"
+  [path-commands opts]
+  (let [points (stroke/path-commands->points path-commands 0.5)
+        pressure-opt (get opts :pressure :auto)
+        pressure (cond
+                   (= pressure-opt :auto) (auto-pressure points {:mode :taper})
+                   (= pressure-opt :taper) (auto-pressure points {:mode :taper})
+                   (= pressure-opt :curvature) (auto-pressure points {:mode :curvature})
+                   (= pressure-opt :speed) (auto-pressure points {:mode :speed})
+                   (vector? pressure-opt) pressure-opt
+                   :else (auto-pressure points {:mode :taper}))
+        dynamics-kw (get opts :dynamics)
+        dynamics (cond
+                   (keyword? dynamics-kw) (dynamics-profile dynamics-kw)
+                   (vector? dynamics-kw) dynamics-kw
+                   :else nil)
+        brush-spec (resolve-brush (or (:brush opts) :pencil))
+        brush-with-dynamics (if dynamics
+                              (assoc brush-spec :brush/dynamics dynamics)
+                              brush-spec)]
+    (cond-> {:path/commands  path-commands
+             :paint/brush    brush-with-dynamics
+             :paint/pressure pressure}
+      (:color opts)  (assoc :paint/color (:color opts))
+      (:radius opts) (assoc :paint/radius (:radius opts))
+      (:seed opts)   (assoc :paint/seed (:seed opts)))))
+
 (comment
   (let [s (make-surface [400 200])
         _ (render-stroke! s

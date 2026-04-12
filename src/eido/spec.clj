@@ -326,6 +326,61 @@
   (s/keys :req [:node/type :path/commands :decorator/shape :decorator/spacing]
           :opt [:decorator/rotate? :node/opacity :node/transform]))
 
+;; --- paint specs ---
+
+(s/def :tip/shape #{:circle :ellipse :rect :line})
+(s/def :tip/hardness ::unit-val)
+(s/def :tip/aspect (s/and number? pos?))
+(s/def :brush/tip (s/keys :opt [:tip/shape :tip/hardness :tip/aspect]))
+
+(s/def :paint/opacity ::unit-val)
+(s/def :paint/flow ::unit-val)
+(s/def :paint/spacing (s/and number? pos?))
+(s/def :paint/blend #{:source-over :multiply :erase :glazed :opaque})
+(s/def :brush/paint (s/keys :opt [:paint/opacity :paint/flow :paint/spacing :paint/blend]))
+
+(s/def :grain/type #{:fbm :turbulence :ridge :fiber :weave :canvas})
+(s/def :grain/mode #{:world :local})
+(s/def :brush/grain (s/keys :opt [:grain/type :grain/mode]))
+
+(s/def :jitter/position (s/and number? #(>= % 0.0)))
+(s/def :jitter/opacity (s/and number? #(>= % 0.0)))
+(s/def :jitter/size (s/and number? #(>= % 0.0)))
+(s/def :jitter/angle (s/and number? #(>= % 0.0)))
+(s/def :brush/jitter (s/keys :opt [:jitter/position :jitter/opacity :jitter/size :jitter/angle]))
+
+(s/def :spatter/mode #{:scatter :drip :spray})
+(s/def :brush/spatter (s/keys :opt [:spatter/mode]))
+
+(s/def :smudge/mode #{:smear :dull})
+(s/def :brush/smudge (s/keys :opt [:smudge/mode]))
+
+(s/def :wet/enabled boolean?)
+(s/def :brush/wet (s/keys :opt [:wet/enabled]))
+
+(s/def :impasto/height ::unit-val)
+(s/def :brush/impasto (s/keys :opt [:impasto/height]))
+
+(s/def :deform/mode #{:push :swirl :blur :sharpen})
+(s/def :brush/deform (s/keys :opt [:deform/mode]))
+
+(s/def :brush/type #{:brush/dab :brush/deform})
+(s/def ::brush-spec (s/keys :req [:brush/type]
+                            :opt [:brush/tip :brush/paint :brush/grain :brush/jitter
+                                  :brush/spatter :brush/smudge :brush/wet
+                                  :brush/impasto :brush/deform]))
+
+(s/def :paint/brush (s/or :keyword keyword? :spec ::brush-spec))
+(s/def :paint/color ::color)
+(s/def :paint/radius (s/and number? pos?))
+(s/def :paint/pressure (s/coll-of (s/tuple number? number?)))
+(s/def :paint/seed int?)
+
+(defmethod node-type :paint/surface [_]
+  (s/keys :req [:node/type]
+          :opt [:paint/size :paint/strokes :paint/children
+                :node/opacity :node/transform]))
+
 (defmethod node-type :default [_]
   (s/with-gen
     (s/and (s/keys :req [:node/type])

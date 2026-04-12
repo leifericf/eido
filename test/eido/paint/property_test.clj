@@ -13,7 +13,22 @@
     [eido.paint.stroke :as stroke]
     [eido.paint.surface :as surface]
     [eido.paint.kernel :as kernel]
-    [eido.paint.blend :as blend]))
+    [eido.paint.blend :as blend]
+    [eido.paint :as paint]
+    [eido.spec]
+    [clojure.spec.alpha :as s]))
+
+;; --- spec conformance ---
+
+(defspec all-presets-conform-to-spec 1
+  (prop/for-all [_ (tc-gen/return nil)]
+    (every? (fn [[k v]]
+              (let [valid? (clojure.spec.alpha/valid? :eido.spec/brush-spec v)]
+                (when-not valid?
+                  (println "Preset" k "fails spec:"
+                    (clojure.spec.alpha/explain-str :eido.spec/brush-spec v)))
+                valid?))
+            (deref (resolve 'eido.paint/presets)))))
 
 ;; --- generators ---
 

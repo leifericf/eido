@@ -34,9 +34,14 @@
    :group/children [painted-path-nodes ...]}
   ```
 
-- **Brush presets** — `:pencil`, `:marker`, `:airbrush`, `:chalk`,
-  `:ink`, `:oil`, `:watercolor`, `:pastel`. Override any parameter
-  with a full brush spec map.
+- **36 brush presets** across 7 families: dry media (pencil, graphite,
+  charcoal, conte, chalk, pastel, soft-pastel, crayon), ink & pen
+  (ink, ballpoint, felt-tip, fountain-pen, brush-pen, technical-pen),
+  markers (marker, flat-marker, chisel-marker, highlighter), wet paint
+  (watercolor, gouache, acrylic-wash), thick paint (oil, acrylic,
+  impasto, tempera), tools (smudge-tool, palette-knife, eraser,
+  blender), and effects (airbrush, spray-paint, splatter). Override
+  any parameter with a full brush spec map.
 
 - **Procedural tip fields** — Ellipse, rounded rectangle, and line/nib
   signed distance function evaluators with hardness-controlled falloff
@@ -63,8 +68,44 @@
 - **Wet media diffusion** — Tile-local Laplacian diffusion on wetness
   planes with edge darkening for watercolor-style bloom effects.
 
-- **Blend modes** — Source-over (default), multiply, and erase blend
-  modes in premultiplied RGBA float space.
+- **Blend modes** — Source-over (default), multiply, erase, glazed
+  (max-blend for markers), and opaque (strong coverage for thick paint)
+  blend modes in premultiplied RGBA float space.
+
+- **Per-dab jitter** — `:brush/jitter` spec adds per-dab variation to
+  position, opacity, size, and angle. All jitter is deterministic via
+  seeded RNG. Presets for chalk, pastel, oil, and watercolor include
+  default jitter values.
+
+- **Local grain mode** — `:grain/mode :local` evaluates grain
+  coordinates relative to dab center rotated by stroke angle, creating
+  brush-mark texture that moves with the stroke.
+
+- **Impasto height simulation** — `:brush/impasto` deposits height
+  values onto surface tiles. Directional lighting in `compose-to-image`
+  creates highlight/shadow effect for visible paint thickness.
+
+- **Spatter, drip, and spray** — `:brush/spatter` emits secondary
+  particles alongside strokes when speed exceeds a threshold. Three
+  modes: `:scatter` (perpendicular), `:drip` (gravity), `:spray` (cone).
+
+- **Deform brushes** — New brush type `:brush/deform` with four modes:
+  `:push` (displace along stroke), `:swirl` (rotate around center),
+  `:blur` (3x3 average), `:sharpen` (unsharp mask). Presets: `:push`,
+  `:swirl`, `:blur-tool`, `:sharpen-tool`.
+
+- **Watercolor enhancements** — `:wet/granulation` concentrates pigment
+  in noise-field valleys for salt-crystal texture. `:wet/edge-sharpness`
+  applies a power curve for controllable edge crispness.
+
+- **UX helpers for programmatic artists** —
+  - `auto-pressure`: derives pressure curves from path geometry
+    (`:taper`, `:curvature`, `:speed` modes)
+  - `auto-speed`: derives speed curves from segment lengths
+  - `dynamics-profile`: named presets (`:calligraphy`, `:expressive`,
+    `:steady`, `:feathered`, `:bold`)
+  - `stroke-from-path`: one-call stroke creation with auto-derived
+    pressure and optional dynamics profile
 
 - **Convenience constructors** — `painted-path`, `paint-surface`,
   `paint-group`, and `stroke` helpers following the `eido.scene`

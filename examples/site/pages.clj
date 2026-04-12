@@ -1604,16 +1604,17 @@
        [:p "Each point carries six values: x, y, pressure, speed, tilt-x, tilt-y. "
         "Pressure modulates radius and opacity along the stroke."]
        [:h4 "Brush presets"]
-       [:p "Built-in presets cover common media:"]
+       [:p "36 built-in presets cover dry media, ink, markers, paint, tools, and effects. "
+        "A few common ones:"]
        [:pre [:code
-              ":pencil    ;; hard, fine, opaque
-:marker    ;; hard edge, semi-transparent
-:airbrush  ;; very soft, low opacity
-:chalk     ;; medium soft, low opacity
-:ink       ;; hard, high opacity
-:oil       ;; medium, moderate opacity
-:watercolor ;; soft, very low opacity
-:pastel    ;; medium soft, slightly elliptical"]]
+              ":chalk       ;; dry, textured with jitter
+:ink         ;; hard, high opacity
+:watercolor  ;; wet diffusion, granulation
+:oil         ;; smudge, color mixing
+:charcoal    ;; soft with heavy grain
+:flat-marker ;; glazed rectangular tip
+:brush-pen   ;; calligraphic
+:impasto     ;; thick paint with height"]]
        [:p "Override any preset parameter:"]
        [:pre [:code
               "{:paint/brush {:brush/type :brush/dab
@@ -1677,7 +1678,119 @@
    :paint/radius 2.0}]}"]]
        [:p "The flow field generates paths, and each path is rendered as a painted "
         "stroke with the ink brush. The same approach works with "
-        [:code ":scatter"] ", " [:code ":symmetry"] ", and other generators."]]}]}
+        [:code ":scatter"] ", " [:code ":symmetry"] ", and other generators."]]}
+
+     {:id    "paint-jitter"
+      :title "Stroke Texture (Jitter)"
+      :content
+      [:div
+       [:p "Per-dab variation creates realistic brush-mark texture. "
+        "Add " [:code ":brush/jitter"] " to any brush spec:"]
+       [:pre [:code
+              "{:brush/jitter {:jitter/position 0.15   ;; random X/Y offset (fraction of radius)
+                :jitter/opacity  0.25   ;; per-dab opacity variation
+                :jitter/size     0.1    ;; per-dab radius variation
+                :jitter/angle    0.15}} ;; random angle offset"]]
+       [:p "Presets like " [:code ":chalk"] ", " [:code ":pastel"] ", "
+        [:code ":oil"] ", and " [:code ":watercolor"] " include default jitter. "
+        "All jitter is deterministic — set " [:code ":paint/seed"] " for reproducible results."]]}
+
+     {:id    "paint-buildup"
+      :title "Buildup Modes"
+      :content
+      [:div
+       [:p "Control how paint accumulates within a stroke via "
+        [:code ":paint/blend"] " in the brush paint spec:"]
+       [:pre [:code
+              ";; Glazed — prevents over-saturation (markers, ink wash)
+{:brush/paint {:paint/blend :glazed ...}}
+
+;; Opaque — thick coverage (oil, acrylic, gouache)
+{:brush/paint {:paint/blend :opaque ...}}
+
+;; Erase — removes existing paint
+{:brush/paint {:paint/blend :erase ...}}"]]
+       [:p "For thick paint with visible height, add " [:code ":brush/impasto"] ":"]
+       [:pre [:code
+              "{:brush/impasto {:impasto/height 0.6}}  ;; simulates raised paint"]]]}
+
+     {:id    "paint-spatter"
+      :title "Spatter and Drip"
+      :content
+      [:div
+       [:p "Speed-driven particle emission creates spatter, drip, and spray effects:"]
+       [:pre [:code
+              "{:brush/spatter {:spatter/threshold 0.3   ;; speed above which spatter activates
+                :spatter/density   0.5   ;; particles per dab
+                :spatter/spread    3.0   ;; distance in radii
+                :spatter/size      [0.03 0.2]  ;; [min max] fraction of brush radius
+                :spatter/opacity   [0.2 0.7]   ;; [min max]
+                :spatter/mode      :scatter}}  ;; :scatter, :drip, or :spray"]]
+       [:p "Modes: " [:code ":scatter"] " (perpendicular to stroke), "
+        [:code ":drip"] " (downward with gravity), "
+        [:code ":spray"] " (cone along stroke direction)."]]}
+
+     {:id    "paint-tools"
+      :title "Tool Presets"
+      :content
+      [:div
+       [:p "36 built-in presets organized by family:"]
+       [:pre [:code
+              ";; Dry media:     :pencil :graphite :charcoal :conte :chalk
+;;                :pastel :soft-pastel :crayon
+;; Ink & pen:     :ink :ballpoint :felt-tip :fountain-pen
+;;                :brush-pen :technical-pen
+;; Marker:        :marker :flat-marker :chisel-marker :highlighter
+;; Wet paint:     :watercolor :gouache :acrylic-wash
+;; Thick paint:   :oil :acrylic :impasto :tempera
+;; Tools:         :smudge-tool :palette-knife :eraser :blender
+;; Effects:       :airbrush :spray-paint :splatter
+;; Deform:        :push :swirl :blur-tool :sharpen-tool"]]
+       [:p "Each preset includes appropriate jitter, grain, buildup mode, and "
+        "interaction settings for realistic default behavior."]]}
+
+     {:id    "paint-deform"
+      :title "Deform Tools"
+      :content
+      [:div
+       [:p "Deform brushes modify existing pixels without depositing paint:"]
+       [:pre [:code
+              ";; Push pixels along stroke direction
+{:paint/brush :push :paint/radius 20.0}
+
+;; Swirl pixels around dab center
+{:paint/brush :swirl :paint/radius 25.0}
+
+;; Blur existing paint
+{:paint/brush :blur-tool :paint/radius 15.0}
+
+;; Sharpen edges
+{:paint/brush :sharpen-tool :paint/radius 12.0}"]]
+       [:p "These work on shared surfaces — lay down paint first, then deform it."]]}
+
+     {:id    "paint-helpers"
+      :title "UX Helpers"
+      :content
+      [:div
+       [:p "Convenience functions for programmatic artists without physical input devices:"]
+       [:pre [:code
+              "(require '[eido.paint :as paint])
+
+;; Auto-derive pressure from path geometry
+(paint/auto-pressure points {:mode :taper})   ;; bell-shaped
+(paint/auto-pressure points {:mode :curvature}) ;; tight curves = pressure
+(paint/auto-pressure points {:mode :speed})   ;; fast = lighter
+
+;; Auto-derive speed curve
+(paint/auto-speed points)
+
+;; Named dynamics profiles
+(paint/dynamics-profile :calligraphy)  ;; or :expressive :steady :feathered :bold
+
+;; One-call stroke creation with auto-derived pressure
+(paint/stroke-from-path path-commands
+  {:brush :chalk :color [:color/rgb 60 40 30] :radius 12
+   :dynamics :calligraphy})"]]]}]}
 
    {:category "Output"
     :id       "output"
