@@ -387,7 +387,7 @@
       (is (has-painted-pixels? img 240))))
 
   (testing "spatter modes render without error"
-    (doseq [mode [:scatter :drip :spray]]
+    (doseq [mode [:scatter :spray]]
       (let [img (eido/render
                   {:image/size [100 100]
                    :image/background [:color/rgb 255 255 255]

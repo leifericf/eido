@@ -148,28 +148,27 @@
 
 (defn ^{:example {:output "paint-spatter-modes.png"
                   :title  "Spatter Modes"
-                  :desc   "Three spatter modes: scatter (perpendicular), drip (gravity), spray (cone)."
-                  :tags   ["paint" "spatter" "drip" "spray" "comparison"]}}
+                  :desc   "Two spatter modes: scatter (perpendicular) and spray (cone along stroke)."
+                  :tags   ["paint" "spatter" "spray" "comparison"]}}
   spatter-modes []
-  (let [w 600 h 350
+  (let [w 600 h 250
         mk (fn [y mode color seed]
               (let [b {:brush/type :brush/dab
-                       :brush/tip {:tip/shape :ellipse :tip/hardness 0.6}
-                       :brush/paint {:paint/opacity 0.5 :paint/flow 0.9 :paint/spacing 0.05}
-                       :brush/spatter {:spatter/threshold 0.2 :spatter/density 0.5 :spatter/spread 3.5
-                                       :spatter/size [0.03 0.2] :spatter/opacity [0.2 0.7]
+                       :brush/tip {:tip/shape :ellipse :tip/hardness 0.15}
+                       :brush/paint {:paint/opacity 0.1 :paint/flow 0.7 :paint/spacing 0.035}
+                       :brush/spatter {:spatter/threshold 0.3 :spatter/density 0.5 :spatter/spread 1.5
+                                       :spatter/size [0.05 0.15] :spatter/opacity [0.15 0.5]
                                        :spatter/mode mode}
-                       :brush/jitter {:jitter/position 0.08 :jitter/opacity 0.15}}]
-                {:paint/brush b :paint/color color :paint/radius 10.0 :paint/seed seed
+                       :brush/jitter {:jitter/position 0.06 :jitter/opacity 0.1}}]
+                {:paint/brush b :paint/color color :paint/radius 12.0 :paint/seed seed
                  :paint/points (mapv (fn [i] [(+ 60 (* i 24)) y (+ 0.4 (* 0.5 (Math/sin (* i 0.12)))) 0 0 0])
                                      (range 22))}))]
     {:image/size [w h] :image/background [:color/rgb 242 238 228]
      :image/nodes
      [{:node/type :paint/surface :paint/size [w h]
        :paint/strokes
-       [(mk 70 :scatter [:color/rgb 200 40 30] 42)
-        (mk 180 :drip [:color/rgb 30 30 140] 77)
-        (mk 290 :spray [:color/rgb 30 120 50] 99)]}]}))
+       [(mk 80 :scatter [:color/rgb 200 40 30] 42)
+        (mk 170 :spray [:color/rgb 30 120 50] 99)]}]}))
 
 (defn ^{:example {:output "paint-wet-granulation.png"
                   :title  "Wet Media Granulation"

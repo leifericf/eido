@@ -149,7 +149,9 @@
           tip-spec     (:tip opts)
           jitter-spec  (:jitter opts)
           seed         (long (get opts :seed 0))
-          c            (:color opts)]
+          c            (:color opts)
+          ;; Compute max segment length for speed normalization
+          max-seg-len  (double (apply max 0.001 segments))]
       (when (> total-len 0.0)
         (loop [dist       0.0      ;; distance along path for next dab
                seg-idx    0        ;; current segment index
@@ -179,8 +181,8 @@
                                             (- (double x1) (double x0)))
                       stroke-t (/ dist total-len)
                       pressure (curve-lookup pressure-curve stroke-t)
-                      ;; Per-dab speed estimate (segment-relative)
-                      speed    (if (> total-len 0.0) (/ seg-len total-len) 0.0)
+                      ;; Per-dab speed: normalized so longest segment = 1.0
+                      speed    (/ seg-len max-seg-len)
                       r (* base-radius pressure)
                       o (* base-opacity pressure)
                       raw-dab {:dab/cx       px

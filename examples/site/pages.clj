@@ -1725,9 +1725,8 @@
                 :spatter/spread    3.0   ;; distance in radii
                 :spatter/size      [0.03 0.2]  ;; [min max] fraction of brush radius
                 :spatter/opacity   [0.2 0.7]   ;; [min max]
-                :spatter/mode      :scatter}}  ;; :scatter, :drip, or :spray"]]
+                :spatter/mode      :scatter}}  ;; :scatter or :spray"]]
        [:p "Modes: " [:code ":scatter"] " (perpendicular to stroke), "
-        [:code ":drip"] " (downward with gravity), "
         [:code ":spray"] " (cone along stroke direction)."]]}
 
      {:id    "paint-tools"

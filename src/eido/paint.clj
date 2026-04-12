@@ -342,8 +342,11 @@
         wet-spec      (:brush/wet brush-spec)
         impasto-spec  (:brush/impasto brush-spec)
         jitter-spec   (:brush/jitter brush-spec)
+        ;; Derive seed from stroke content if not explicit, so each
+        ;; stroke gets unique jitter without requiring manual seeds
         stroke-seed   (long (or (:paint/seed stroke-desc)
-                                (:stroke/seed stroke-desc) 0))
+                                (:stroke/seed stroke-desc)
+                                (hash stroke-desc)))
         opacity    (get-in brush-spec [:brush/paint :paint/opacity] 0.5)
         spacing-px (brush-spacing-px brush-spec radius)
         ;; Get points — either explicit or from path commands
@@ -449,35 +452,45 @@
             [opa-min opa-max]   (get spatter-spec :spatter/opacity [0.2 0.8])
             mode      (get spatter-spec :spatter/mode :scatter)]
         (doseq [d dabs]
-          (let [speed (double (get d :dab/speed 0.0))]
+          (let [speed (double (get d :dab/speed 0.0))
+                ;; Scale spatter by dab opacity (tracks pressure)
+                dab-strength (double (:dab/opacity d))]
             (when (> speed threshold)
-              (let [intensity (* (- speed threshold) (/ 1.0 (- 1.0 threshold)))
-                    n         (int (Math/ceil (* density intensity 3.0)))
+              (let [intensity (* (- speed threshold) (/ 1.0 (Math/max 0.01 (- 1.0 threshold))))
+                    ;; Fewer particles where stroke is thin/faint
+                    n         (int (Math/ceil (* density intensity dab-strength 3.0)))
                     ^Random rng (Random. (unchecked-add
                                            stroke-seed
                                            (long (* (:dab/cx d) 17.0))))]
                 (dotimes [_ n]
-                  (let [;; Direction based on mode
-                        base-angle (double (:dab/angle d))
+                  (let [base-angle (double (:dab/angle d))
                         angle (case mode
                                 :scatter (+ base-angle (* (- (.nextDouble rng) 0.5) Math/PI))
-                                :drip    (+ (* Math/PI 0.5) (* (.nextGaussian rng) 0.2))
                                 :spray   (+ base-angle (* (.nextGaussian rng) 0.4))
-                                (+ base-angle (* (.nextGaussian rng) Math/PI)))
-                        dist  (* spread radius (.nextDouble rng))
+                                (+ base-angle (* (- (.nextDouble rng) 0.5) Math/PI)))
+                        ;; Spread scales with dab radius (already pressure-scaled)
+                        ;; Squared distribution clusters near stroke
+                        dab-r (double (:dab/radius d))
+                        dist (* spread dab-r (.nextDouble rng) (.nextDouble rng))
                         px    (+ (:dab/cx d) (* dist (Math/cos angle)))
                         py    (+ (:dab/cy d) (* dist (Math/sin angle)))
                         sz    (+ (double size-min)
                                  (* (.nextDouble rng) (- (double size-max) (double size-min))))
+                        ;; Scale particle size to dab radius, min 1.5px
+                        pr    (Math/max 1.5 (* sz dab-r))
                         op    (+ (double opa-min)
                                  (* (.nextDouble rng) (- (double opa-max) (double opa-min))))
-                        particle {:dab/cx px :dab/cy py
-                                  :dab/radius (* sz radius)
-                                  :dab/hardness 0.7
-                                  :dab/opacity op
-                                  :dab/aspect 1.0
-                                  :dab/angle 0.0
-                                  :dab/color (:dab/color d)}]
+                        particle (cond-> {:dab/cx px :dab/cy py
+                                          :dab/radius pr
+                                          :dab/hardness (get tip-spec :tip/hardness 0.3)
+                                          :dab/opacity op
+                                          :dab/aspect 1.0
+                                          :dab/angle (double (:dab/angle d))
+                                          :dab/tip tip-spec
+                                          :dab/color (:dab/color d)}
+                                   grain-spec                     (assoc :dab/grain grain-spec)
+                                   substrate-spec                 (assoc :dab/substrate substrate-spec)
+                                   (not= blend-mode :source-over) (assoc :dab/blend blend-mode))]
                     (kernel/rasterize-dab! surface particle)))))))))
     ;; Post-stroke: run wet diffusion if configured
     (when (and wet-spec (:wet/enabled wet-spec true))
@@ -568,16 +581,140 @@
     (:radius opts) (assoc :paint/radius (:radius opts))
     (:seed opts)   (assoc :paint/seed (:seed opts))))
 
-;; --- UX helpers for programmatic artists ---
+;; --- point generators ---
+
+(defn circle-points
+  "Generates stroke points around a circle or arc.
+  center: [cx cy].
+  opts: {:radius 50, :n 20, :start 0.0, :end (* 2 PI), :pressure 0.8}
+  Returns [[x y pressure 0 0 0] ...] suitable for :paint/points."
+  ([center] (circle-points center {}))
+  ([center opts]
+   (let [[cx cy] center
+         radius  (double (get opts :radius 50.0))
+         n       (long (get opts :n 20))
+         start-a (double (get opts :start 0.0))
+         end-a   (double (get opts :end (* 2.0 Math/PI)))
+         p       (double (get opts :pressure 0.8))]
+     (mapv (fn [i]
+             (let [t (/ (double i) (double (dec n)))
+                   a (+ start-a (* t (- end-a start-a)))]
+               [(+ (double cx) (* radius (Math/cos a)))
+                (+ (double cy) (* radius (Math/sin a)))
+                p 0 0 0]))
+           (range n)))))
+
+(defn wave-points
+  "Generates stroke points along a wavy line.
+  from: [x0 y0].
+  opts: {:to [x1 y1], :amplitude 15, :frequency 0.15, :n 20, :pressure 0.7}
+  Returns [[x y pressure 0 0 0] ...]."
+  ([from] (wave-points from {}))
+  ([from opts]
+   (let [[x0 y0] from
+         [x1 y1] (get opts :to [(+ (double x0) 100) (double y0)])
+         n     (long (get opts :n 20))
+         amp   (double (get opts :amplitude 15.0))
+         freq  (double (get opts :frequency 0.15))
+         p     (double (get opts :pressure 0.7))
+         dx    (- (double x1) (double x0))
+         dy    (- (double y1) (double y0))
+         len   (Math/sqrt (+ (* dx dx) (* dy dy)))
+         nx    (if (> len 0) (/ (- dy) len) 0.0)
+         ny    (if (> len 0) (/ dx len) 0.0)]
+     (mapv (fn [i]
+             (let [t (/ (double i) (double (dec n)))
+                   wave (* amp (Math/sin (* t (double n) freq)))]
+               [(+ (double x0) (* t dx) (* wave nx))
+                (+ (double y0) (* t dy) (* wave ny))
+                p 0 0 0]))
+           (range n)))))
+
+(defn line-points
+  "Generates stroke points along a straight line.
+  from: [x0 y0].
+  opts: {:to [x1 y1], :n 15, :pressure 0.8}
+  Returns [[x y pressure 0 0 0] ...]."
+  ([from] (line-points from {}))
+  ([from opts]
+   (let [[x0 y0] from
+         [x1 y1] (get opts :to [(+ (double x0) 100) (double y0)])
+         n (long (get opts :n 15))
+         p (double (get opts :pressure 0.8))]
+     (mapv (fn [i]
+             (let [t (/ (double i) (double (dec n)))]
+               [(+ (double x0) (* t (- (double x1) (double x0))))
+                (+ (double y0) (* t (- (double y1) (double y0))))
+                p 0 0 0]))
+           (range n)))))
+
+;; --- area fill helpers ---
+
+(defn fill-rect
+  "Generates stroke descriptors to fill a rectangular area with paint.
+  bounds: [x y w h].
+  opts: {:brush :chalk, :color [...], :radius 8.0, :density 15, :seed 0}
+  Returns a vector of stroke descriptors for :paint/strokes."
+  ([bounds] (fill-rect bounds {}))
+  ([bounds opts]
+   (let [[bx by bw bh] bounds
+         brush   (or (:brush opts) :chalk)
+         color   (or (:color opts) [:color/rgb 0 0 0])
+         radius  (double (get opts :radius 8.0))
+         density (long (get opts :density 15))
+         seed    (long (get opts :seed (hash bounds)))
+         rng     (java.util.Random. seed)]
+     (mapv (fn [i]
+             (let [y (+ (double by) (* (double bh) (.nextDouble rng)))
+                   x0 (+ (double bx) (* (double bw) 0.05 (.nextDouble rng)))
+                   x1 (+ (double bx) (double bw) (* (double bw) -0.05 (.nextDouble rng)))]
+               {:paint/brush brush :paint/color color :paint/radius radius
+                :paint/seed (+ seed i)
+                :paint/points (line-points [x0 y]
+                                {:to [x1 y] :n 12
+                                 :pressure (+ 0.4 (* 0.4 (.nextDouble rng)))})}))
+           (range density)))))
+
+(defn fill-ellipse
+  "Generates stroke descriptors to fill an elliptical area with paint.
+  center: [cx cy].
+  opts: {:rx 50, :ry 30, :brush :oil, :color [...], :radius 8.0,
+         :density 12, :seed 0}
+  Returns a vector of stroke descriptors for :paint/strokes."
+  ([center] (fill-ellipse center {}))
+  ([center opts]
+   (let [[cx cy] center
+         rx      (double (get opts :rx 50.0))
+         ry      (double (get opts :ry (get opts :rx 50.0)))
+         brush   (or (:brush opts) :oil)
+         color   (or (:color opts) [:color/rgb 0 0 0])
+         radius  (double (get opts :radius 8.0))
+         density (long (get opts :density 12))
+         seed    (long (get opts :seed (hash center)))
+         rng     (java.util.Random. seed)]
+     (mapv (fn [i]
+             (let [a (* 2.0 Math/PI (.nextDouble rng))
+                   d (Math/sqrt (.nextDouble rng))
+                   px (+ (double cx) (* rx d (Math/cos a)))
+                   py (+ (double cy) (* ry d (Math/sin a)))
+                   sa (* (.nextGaussian rng) 0.5)
+                   len (+ 5.0 (* 12.0 (.nextDouble rng)))]
+               {:paint/brush brush :paint/color color :paint/radius radius
+                :paint/seed (+ seed i)
+                :paint/points (mapv (fn [j]
+                                      (let [t (/ (double j) 3.0)]
+                                        [(+ px (* len t (Math/cos sa)))
+                                         (+ py (* len t (Math/sin sa)))
+                                         (+ 0.5 (* 0.4 (Math/sin (* t Math/PI)))) 0 0 0]))
+                                    (range 4))}))
+           (range density)))))
+
+;; --- pressure helpers ---
 
 (defn auto-pressure
   "Derives a pressure curve from path geometry.
   points: [[x y] ...] — point sequence.
-  opts:
-    :mode — :taper (default), :curvature, or :speed
-    :start — pressure at stroke start (default 0.3)
-    :end — pressure at stroke end (default 0.2)
-    :smoothing — smooth the derived curve (0.0-1.0, default 0.3)
+  opts: {:mode :taper (default), :start 0.3, :end 0.2}
   Returns [[t pressure] ...] suitable for :paint/pressure."
   ([points] (auto-pressure points {}))
   ([points opts]
@@ -587,8 +724,7 @@
          n (count points)]
      (if (< n 2)
        [[0.0 1.0]]
-       (let [;; Compute cumulative distances
-             dists (loop [i 1 acc [0.0]]
+       (let [dists (loop [i 1 acc [0.0]]
                      (if (>= i n)
                        acc
                        (let [[x0 y0] (nth points (dec i))
@@ -603,20 +739,16 @@
            [[0.0 1.0]]
            (case mode
              :taper
-             ;; Smooth taper: fade in from start-p, peak at 0.3-0.7, fade to end-p
              (mapv (fn [d]
                      (let [t (/ (double d) total)
-                           ;; Smooth bell: sin curve peaked in middle
                            mid-p (+ start-p (* (- 1.0 (Math/max start-p end-p))
                                                 (Math/sin (* t Math/PI))))]
                        [t (Math/max 0.01 (Math/min 1.0 mid-p))]))
                    dists)
 
              :curvature
-             ;; Tight curves get more pressure
              (mapv (fn [i d]
                      (let [t (/ (double d) total)
-                           ;; Curvature from angle change between segments
                            curv (if (and (> i 0) (< i (dec n)))
                                   (let [[x0 y0] (nth points (dec i))
                                         [x1 y1] (nth points i)
@@ -632,116 +764,24 @@
                        [t (Math/max 0.01 (Math/min 1.0 p))]))
                    (range n) dists)
 
-             :speed
-             ;; Longer segments = faster = lighter pressure
-             (mapv (fn [i d]
-                     (let [t (/ (double d) total)
-                           seg-len (if (< i (dec n))
-                                     (- (double (nth dists (inc i))) (double d))
-                                     0.0)
-                           speed (if (> total 0.0) (/ seg-len total) 0.0)
-                           p (- 1.0 (* speed (double (dec n))))]
-                       [t (Math/max 0.1 (Math/min 1.0 p))]))
-                   (range n) dists)
-
-             ;; Default: flat
              [[0.0 1.0] [1.0 1.0]])))))))
-
-(defn auto-speed
-  "Derives a speed curve from path segment lengths.
-  Returns [[t speed] ...] where speed is normalized 0-1."
-  [points]
-  (let [n (count points)]
-    (if (< n 2)
-      [[0.0 0.5]]
-      (let [dists (loop [i 1 acc [0.0]]
-                    (if (>= i n)
-                      acc
-                      (let [[x0 y0] (nth points (dec i))
-                            [x1 y1] (nth points i)
-                            d (Math/sqrt (+ (* (- (double x1) (double x0))
-                                               (- (double x1) (double x0)))
-                                            (* (- (double y1) (double y0))
-                                               (- (double y1) (double y0)))))]
-                        (recur (inc i) (conj acc (+ (peek acc) d))))))
-            total (double (peek dists))
-            seg-lens (mapv (fn [i]
-                             (if (< i (dec n))
-                               (- (double (nth dists (inc i))) (double (nth dists i)))
-                               0.0))
-                           (range n))
-            max-len (apply max 0.001 seg-lens)]
-        (mapv (fn [i d]
-                [(if (> total 0.0) (/ (double d) total) 0.0)
-                 (/ (double (nth seg-lens i)) max-len)])
-              (range n) dists)))))
-
-(def dynamics-profiles
-  "Named dynamics profiles for common artistic styles."
-  {:calligraphy [{:sensor/input :speed :sensor/target :paint/radius
-                  :sensor/curve [[0.0 0.3] [0.3 0.8] [0.7 1.0] [1.0 0.5]]}
-                 {:sensor/input :pressure :sensor/target :paint/opacity
-                  :sensor/curve [[0.0 0.5] [0.5 1.0] [1.0 0.8]]}]
-
-   :expressive  [{:sensor/input :pressure :sensor/target :paint/radius
-                  :sensor/curve [[0.0 0.2] [0.5 1.0] [1.0 0.8]]}
-                 {:sensor/input :speed :sensor/target :paint/opacity
-                  :sensor/curve [[0.0 0.8] [0.5 1.0] [1.0 0.3]]}]
-
-   :steady      [{:sensor/input :pressure :sensor/target :paint/opacity
-                  :sensor/curve [[0.0 0.8] [1.0 1.0]]}]
-
-   :feathered   [{:sensor/input :pressure :sensor/target :paint/radius
-                  :sensor/curve [[0.0 0.1] [0.3 0.6] [1.0 1.0]]}
-                 {:sensor/input :pressure :sensor/target :paint/opacity
-                  :sensor/curve [[0.0 0.2] [0.5 0.7] [1.0 1.0]]}]
-
-   :bold        [{:sensor/input :pressure :sensor/target :paint/radius
-                  :sensor/curve [[0.0 0.7] [1.0 1.0]]}
-                 {:sensor/input :pressure :sensor/target :paint/opacity
-                  :sensor/curve [[0.0 0.9] [1.0 1.0]]}]})
-
-(defn dynamics-profile
-  "Returns a named dynamics profile.
-  (dynamics-profile :calligraphy)
-  (dynamics-profile :expressive)"
-  [profile-name]
-  (get dynamics-profiles profile-name []))
 
 (defn stroke-from-path
   "Creates a stroke descriptor from path commands with auto-derived
-  pressure and speed curves. Convenience for programmatic artists who
-  don't have physical input devices.
-
+  pressure. Convenience for composing paths with paint.
   path-commands: [[:move-to [x y]] [:line-to [x y]] ...]
-  opts:
-    :brush — preset keyword or spec map
-    :color — stroke color
-    :radius — brush radius
-    :dynamics — keyword for dynamics-profile, or custom dynamics vec
-    :pressure — :auto (default), :taper, :curvature, :speed, or explicit curve
-    :seed — deterministic seed"
+  opts: {:brush :chalk, :color [...], :radius 12.0,
+         :pressure :taper (or :curvature, or explicit curve), :seed 42}"
   [path-commands opts]
   (let [points (stroke/path-commands->points path-commands 0.5)
-        pressure-opt (get opts :pressure :auto)
+        pressure-opt (get opts :pressure :taper)
         pressure (cond
-                   (= pressure-opt :auto) (auto-pressure points {:mode :taper})
                    (= pressure-opt :taper) (auto-pressure points {:mode :taper})
                    (= pressure-opt :curvature) (auto-pressure points {:mode :curvature})
-                   (= pressure-opt :speed) (auto-pressure points {:mode :speed})
                    (vector? pressure-opt) pressure-opt
-                   :else (auto-pressure points {:mode :taper}))
-        dynamics-kw (get opts :dynamics)
-        dynamics (cond
-                   (keyword? dynamics-kw) (dynamics-profile dynamics-kw)
-                   (vector? dynamics-kw) dynamics-kw
-                   :else nil)
-        brush-spec (resolve-brush (or (:brush opts) :pencil))
-        brush-with-dynamics (if dynamics
-                              (assoc brush-spec :brush/dynamics dynamics)
-                              brush-spec)]
+                   :else (auto-pressure points {:mode :taper}))]
     (cond-> {:path/commands  path-commands
-             :paint/brush    brush-with-dynamics
+             :paint/brush    (or (:brush opts) :pencil)
              :paint/pressure pressure}
       (:color opts)  (assoc :paint/color (:color opts))
       (:radius opts) (assoc :paint/radius (:radius opts))

@@ -349,7 +349,7 @@
 (s/def :jitter/angle (s/and number? #(>= % 0.0)))
 (s/def :brush/jitter (s/keys :opt [:jitter/position :jitter/opacity :jitter/size :jitter/angle]))
 
-(s/def :spatter/mode #{:scatter :drip :spray})
+(s/def :spatter/mode #{:scatter :spray})
 (s/def :brush/spatter (s/keys :opt [:spatter/mode]))
 
 (s/def :smudge/mode #{:smear :dull})

@@ -74,39 +74,59 @@
         (is (some? (paint/compose s))
             (str "preset " k " should render without error"))))))
 
+(deftest circle-points-test
+  (testing "generates correct number of points"
+    (let [pts (paint/circle-points [100 100] {:radius 50 :n 20})]
+      (is (= 20 (count pts)))
+      (is (every? #(= 6 (count %)) pts))))
+
+  (testing "points lie on circle"
+    (let [pts (paint/circle-points [0 0] {:radius 50 :n 12})]
+      (doseq [[x y _ _ _ _] pts]
+        (let [d (Math/sqrt (+ (* x x) (* y y)))]
+          (is (< (Math/abs (- d 50.0)) 0.1))))))
+
+  (testing "arc subset"
+    (let [pts (paint/circle-points [0 0] {:radius 50 :n 10 :start 0.0 :end Math/PI})]
+      (is (= 10 (count pts)))
+      (is (every? #(>= (second %) -1.0) pts)))))
+
+(deftest wave-points-test
+  (testing "generates points between from and to"
+    (let [pts (paint/wave-points [0 0] {:to [100 0] :n 15})]
+      (is (= 15 (count pts)))
+      (is (< (Math/abs (ffirst pts)) 1.0) "starts near from")
+      (is (< (Math/abs (- (first (last pts)) 100.0)) 1.0) "ends near to"))))
+
+(deftest line-points-test
+  (testing "generates straight line"
+    (let [pts (paint/line-points [0 0] {:to [100 0] :n 11})]
+      (is (= 11 (count pts)))
+      (is (every? #(< (Math/abs (second %)) 0.01) pts)))))
+
+(deftest fill-rect-test
+  (testing "generates stroke descriptors"
+    (let [strokes (paint/fill-rect [10 10 200 100] {:density 10 :brush :chalk})]
+      (is (= 10 (count strokes)))
+      (is (every? #(= :chalk (:paint/brush %)) strokes))
+      (is (every? #(some? (:paint/points %)) strokes)))))
+
+(deftest fill-ellipse-test
+  (testing "generates stroke descriptors"
+    (let [strokes (paint/fill-ellipse [100 100] {:rx 50 :ry 30 :density 8 :brush :oil})]
+      (is (= 8 (count strokes)))
+      (is (every? #(= :oil (:paint/brush %)) strokes)))))
+
 (deftest auto-pressure-test
   (testing "taper mode creates bell-shaped pressure"
     (let [pts [[0 0] [50 0] [100 0]]
           curve (paint/auto-pressure pts {:mode :taper})]
       (is (= 3 (count curve)))
       (is (every? (fn [[t p]] (and (<= 0.0 t 1.0) (<= 0.01 p 1.0))) curve))
-      ;; Middle should be higher than endpoints
       (is (> (second (nth curve 1)) (second (first curve))))))
-
-  (testing "curvature mode varies with angle changes"
-    (let [pts [[0 0] [50 50] [100 0]]  ;; sharp turn
-          curve (paint/auto-pressure pts {:mode :curvature})]
-      (is (= 3 (count curve)))
-      (is (every? (fn [[t p]] (<= 0.01 p 1.0)) curve))))
 
   (testing "single point returns default"
     (is (= [[0.0 1.0]] (paint/auto-pressure [[50 50]])))))
-
-(deftest auto-speed-test
-  (testing "longer segments have higher speed"
-    (let [curve (paint/auto-speed [[0 0] [10 0] [100 0]])]
-      (is (= 3 (count curve)))
-      ;; Last segment (90px) should be faster than first (10px)
-      (is (> (second (nth curve 1)) (second (first curve)))))))
-
-(deftest dynamics-profile-test
-  (testing "named profiles return sensor specs"
-    (doseq [k [:calligraphy :expressive :steady :feathered :bold]]
-      (is (seq (paint/dynamics-profile k))
-          (str "profile " k " should return entries"))))
-
-  (testing "unknown profile returns empty"
-    (is (= [] (paint/dynamics-profile :nonexistent)))))
 
 (deftest stroke-from-path-test
   (testing "creates stroke descriptor with auto pressure"
@@ -115,13 +135,7 @@
                  {:brush :chalk :color [:color/rgb 60 40 30] :radius 12})]
       (is (some? (:paint/pressure desc)))
       (is (= [:color/rgb 60 40 30] (:paint/color desc)))
-      (is (= 12 (:paint/radius desc)))))
-
-  (testing "dynamics are wired into brush"
-    (let [desc (paint/stroke-from-path
-                 [[:move-to [0 0]] [:line-to [100 0]]]
-                 {:brush :ink :dynamics :calligraphy})]
-      (is (seq (get-in desc [:paint/brush :brush/dynamics]))))))
+      (is (= 12 (:paint/radius desc))))))
 
 (deftest render-strokes-test
   (testing "multiple strokes accumulate"
