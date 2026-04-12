@@ -144,30 +144,30 @@
   Pure function — no mutation, uses primitive accumulators."
   [^floats buf lx ly w h]
   (let [lx (long lx) ly (long ly) w (long w) h (long h)]
-  (loop [oy (long -1)
-         sum-r 0.0 sum-g 0.0 sum-b 0.0 sum-a 0.0
-         cnt (long 0)]
-    (if (> oy 1)
-      (when (pos? cnt)
-        (let [n (double cnt)]
-          [(/ sum-r n) (/ sum-g n) (/ sum-b n) (/ sum-a n)]))
-      (let [[sr sg sb sa c]
-            (loop [ox (long -1)
-                   sr sum-r sg sum-g sb sum-b sa sum-a
-                   c cnt]
-              (if (> ox 1)
-                [sr sg sb sa c]
-                (let [nx (+ lx ox) ny (+ ly oy)]
-                  (if (and (>= nx 0) (< nx w) (>= ny 0) (< ny h))
-                    (let [bi (* (+ (* ny w) nx) 4)]
-                      (recur (inc ox)
-                             (+ sr (double (aget buf bi)))
-                             (+ sg (double (aget buf (+ bi 1))))
-                             (+ sb (double (aget buf (+ bi 2))))
-                             (+ sa (double (aget buf (+ bi 3))))
-                             (inc c)))
-                    (recur (inc ox) sr sg sb sa c)))))]
-        (recur (inc oy) sr sg sb sa c))))))
+    (loop [oy (long -1)
+           sum-r 0.0 sum-g 0.0 sum-b 0.0 sum-a 0.0
+           cnt (long 0)]
+      (if (> oy 1)
+        (when (pos? cnt)
+          (let [n (double cnt)]
+            [(/ sum-r n) (/ sum-g n) (/ sum-b n) (/ sum-a n)]))
+        (let [[sr sg sb sa c]
+              (loop [ox (long -1)
+                     sr sum-r sg sum-g sb sum-b sa sum-a
+                     c cnt]
+                (if (> ox 1)
+                  [sr sg sb sa c]
+                  (let [nx (+ lx ox) ny (+ ly oy)]
+                    (if (and (>= nx 0) (< nx w) (>= ny 0) (< ny h))
+                      (let [bi (* (+ (* ny w) nx) 4)]
+                        (recur (inc ox)
+                               (+ sr (double (aget buf bi)))
+                               (+ sg (double (aget buf (+ bi 1))))
+                               (+ sb (double (aget buf (+ bi 2))))
+                               (+ sa (double (aget buf (+ bi 3))))
+                               (inc c)))
+                      (recur (inc ox) sr sg sb sa c)))))]
+          (recur (inc oy) sr sg sb sa c))))))
 
 (defn- deform-blur-sharpen!
   "Applies blur or sharpen deform to the surface within the given region.
@@ -309,18 +309,18 @@
   "Copies surface pixels in the [x0,y0)→[x1,y1) region into a float buffer."
   [surface ^floats buf x0 y0 x1 y1 w]
   (let [x0 (long x0) y0 (long y0) x1 (long x1) y1 (long y1) w (long w)]
-  (loop [py y0]
-    (when (< py y1)
-      (loop [px x0]
-        (when (< px x1)
-          (let [[r g b a] (surface/get-pixel surface px py)
-                bi (* (+ (* (- py y0) w) (- px x0)) 4)]
-            (aset buf bi (float r))
-            (aset buf (+ bi 1) (float g))
-            (aset buf (+ bi 2) (float b))
-            (aset buf (+ bi 3) (float a)))
-          (recur (unchecked-inc px))))
-      (recur (unchecked-inc py))))))
+    (loop [py y0]
+      (when (< py y1)
+        (loop [px x0]
+          (when (< px x1)
+            (let [[r g b a] (surface/get-pixel surface px py)
+                  bi (* (+ (* (- py y0) w) (- px x0)) 4)]
+              (aset buf bi (float r))
+              (aset buf (+ bi 1) (float g))
+              (aset buf (+ bi 2) (float b))
+              (aset buf (+ bi 3) (float a)))
+            (recur (unchecked-inc px))))
+        (recur (unchecked-inc py))))))
 
 (defn deform-dab!
   "Applies a deform operation on existing surface pixels within dab radius.
