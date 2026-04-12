@@ -576,6 +576,12 @@
         (is (= 100 (.getHeight img))))
       (.delete (File. path))))
 
+  (testing "fps=0 throws ExceptionInfo"
+    (let [path (str (File/createTempFile "eido-gif" ".gif"))]
+      (is (thrown? clojure.lang.ExceptionInfo
+            (eido/render-to-gif simple-frames path {:fps 0})))
+      (.delete (File. path))))
+
   (testing "supports render opts"
     (let [path (str (File/createTempFile "eido-gif" ".gif"))]
       (eido/render-to-gif simple-frames path {:fps 30 :scale 2})
@@ -601,7 +607,11 @@
   (testing "scale option works"
     (let [out (eido/render-to-animated-svg-str simple-frames {:fps 10 :scale 2})]
       (is (re-find #"width=\"200\"" out))
-      (is (re-find #"height=\"200\"" out)))))
+      (is (re-find #"height=\"200\"" out))))
+
+  (testing "fps=0 throws ExceptionInfo"
+    (is (thrown? clojure.lang.ExceptionInfo
+          (eido/render-to-animated-svg-str simple-frames {:fps 0})))))
 
 (deftest render-to-animated-svg-test
   (testing "writes animated SVG to file"

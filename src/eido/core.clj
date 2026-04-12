@@ -140,6 +140,8 @@
   ([scenes opts]
    (let [fps (or (:fps opts)
                  (throw (ex-info "render-to-animated-svg-str requires :fps in opts" {})))
+         _   (when-not (pos? fps)
+               (throw (ex-info "render-to-animated-svg-str :fps must be positive" {:fps fps})))
          scene-vec (vec scenes)]
      ;; Validate first frame; skip for rest
      (when (seq scene-vec)
@@ -322,6 +324,8 @@
   ([scenes path opts]
    (let [fps (or (:fps opts)
                  (throw (ex-info "render-to-gif requires :fps in opts" {})))
+         _   (when-not (pos? fps)
+               (throw (ex-info "render-to-gif :fps must be positive" {:fps fps})))
          render-opts (select-keys opts [:scale :transparent-background])
          scene-vec   (vec scenes)]
      ;; Validate first frame; skip validation for subsequent frames
