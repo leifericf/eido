@@ -85,9 +85,12 @@
       (let [[x y] (first points)
             c     (:color opts)]
         [{:dab/cx (double x) :dab/cy (double y)
-          :dab/radius (:radius opts 8.0)
-          :dab/hardness (:hardness opts 0.7)
-          :dab/opacity (:opacity opts 1.0)
+          :dab/radius (get opts :radius 8.0)
+          :dab/hardness (get opts :hardness 0.7)
+          :dab/opacity (get opts :opacity 1.0)
+          :dab/aspect (get opts :aspect 1.0)
+          :dab/angle 0.0
+          :dab/tip (:tip opts)
           :dab/color c}])
       [])
     ;; Multiple points — walk the polyline at spacing intervals
@@ -99,7 +102,9 @@
           base-radius  (double (get opts :radius 8.0))
           base-hard    (double (get opts :hardness 0.7))
           base-opacity (double (get opts :opacity 1.0))
+          base-aspect  (double (get opts :aspect 1.0))
           pressure-curve (:pressure opts)
+          tip-spec     (:tip opts)
           c            (:color opts)]
       (when (> total-len 0.0)
         (loop [dist       0.0      ;; distance along path for next dab
@@ -119,13 +124,16 @@
                                 (/ (- dist seg-offset) seg-len)
                                 0.0)
                       local-t (Math/max 0.0 (Math/min 1.0 local-t))
-                      [px py] (lerp-point (nth points seg-idx)
-                                          (nth points (inc seg-idx))
-                                          local-t)
-                      ;; Normalized stroke parameter [0..1]
+                      p0      (nth points seg-idx)
+                      p1      (nth points (inc seg-idx))
+                      [px py] (lerp-point p0 p1 local-t)
+                      ;; Compute stroke direction angle
+                      [x0 y0] p0
+                      [x1 y1] p1
+                      seg-angle (Math/atan2 (- (double y1) (double y0))
+                                            (- (double x1) (double x0)))
                       stroke-t (/ dist total-len)
                       pressure (curve-lookup pressure-curve stroke-t)
-                      ;; Apply pressure to radius and opacity
                       r (* base-radius pressure)
                       o (* base-opacity pressure)]
                   (recur (+ dist spacing-px)
@@ -137,6 +145,9 @@
                             :dab/radius   r
                             :dab/hardness base-hard
                             :dab/opacity  o
+                            :dab/aspect   base-aspect
+                            :dab/angle    seg-angle
+                            :dab/tip      tip-spec
                             :dab/color    c})))))))))))
 
 ;; --- stroke points with explicit data ---

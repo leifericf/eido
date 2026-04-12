@@ -96,7 +96,9 @@
         resolved   (color/resolve-color raw-color)
         radius     (double (get stroke-desc :stroke/radius
                              (get stroke-desc :paint/radius 8.0)))
-        hardness   (get-in brush-spec [:brush/tip :tip/hardness] 0.7)
+        tip-spec   (:brush/tip brush-spec)
+        hardness   (get tip-spec :tip/hardness 0.7)
+        aspect     (get tip-spec :tip/aspect 1.0)
         opacity    (get-in brush-spec [:brush/paint :paint/opacity] 0.5)
         spacing-px (brush-spacing-px brush-spec radius)
         ;; Get points — either explicit or from path commands
@@ -119,6 +121,8 @@
                 :radius   radius
                 :hardness hardness
                 :opacity  opacity
+                :aspect   aspect
+                :tip      tip-spec
                 :pressure pressure})]
     (doseq [d dabs]
       (kernel/rasterize-dab! surface d))))

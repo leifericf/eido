@@ -5,51 +5,46 @@
   using premultiplied-alpha blending. Inner loops use mutable float
   arrays and primitive math for performance."
   (:require
-    [eido.paint.surface :as surface]))
-
-;; --- coverage ---
-
-(defn- hardness-curve
-  "Applies a hardness falloff to a [0..1] distance value.
-  hardness 1.0 = hard edge, 0.0 = fully soft."
-  ^double [^double dist ^double hardness]
-  (if (>= dist 1.0)
-    0.0
-    (let [soft-start hardness]
-      (if (<= dist soft-start)
-        1.0
-        ;; Smooth falloff from soft-start to 1.0
-        (let [t (/ (- dist soft-start) (- 1.0 soft-start))]
-          (- 1.0 (* t t)))))))
+    [eido.paint.surface :as surface]
+    [eido.paint.tip :as tip]))
 
 ;; --- dab rasterization ---
 
 (defn rasterize-dab!
-  "Rasterizes a single circular dab onto the surface.
+  "Rasterizes a single dab onto the surface.
   Mutates tile arrays in place. Returns nil.
 
   dab is a map:
     :dab/cx, :dab/cy   — center position (surface coords)
     :dab/radius         — radius in pixels
+    :dab/aspect         — aspect ratio (optional, default 1.0)
+    :dab/angle          — rotation angle in radians (optional, default 0)
     :dab/hardness       — falloff sharpness [0..1]
     :dab/opacity        — dab opacity [0..1]
-    :dab/color          — {:r 0-255 :g 0-255 :b 0-255 :a 0-1}"
+    :dab/color          — {:r 0-255 :g 0-255 :b 0-255 :a 0-1}
+    :dab/tip            — tip spec map (optional, uses defaults)"
   [surface dab]
   (let [cx       (double (:dab/cx dab))
         cy       (double (:dab/cy dab))
         radius   (double (:dab/radius dab))
-        hardness (double (get dab :dab/hardness 0.7))
+        aspect   (double (get dab :dab/aspect 1.0))
+        angle    (double (get dab :dab/angle 0.0))
         opacity  (double (get dab :dab/opacity 1.0))
         color    (:dab/color dab)
         cr       (/ (double (:r color)) 255.0)
         cg       (/ (double (:g color)) 255.0)
         cb       (/ (double (:b color)) 255.0)
         ca       (double (get color :a 1.0))
-        ;; Bounding box in surface pixels
-        x0       (long (Math/floor (- cx radius)))
-        y0       (long (Math/floor (- cy radius)))
-        x1       (long (Math/ceil (+ cx radius)))
-        y1       (long (Math/ceil (+ cy radius)))
+        tip-spec (or (:dab/tip dab)
+                     {:tip/shape    :ellipse
+                      :tip/hardness (get dab :dab/hardness 0.7)
+                      :tip/aspect   aspect})
+        ;; Bounding box — expand by aspect ratio for elliptical tips
+        extent   (* radius (max 1.0 aspect))
+        x0       (long (Math/floor (- cx extent)))
+        y0       (long (Math/floor (- cy extent)))
+        x1       (long (Math/ceil (+ cx extent)))
+        y1       (long (Math/ceil (+ cy extent)))
         ;; Clamp to surface bounds
         sw       (long (:surface/width surface))
         sh       (long (:surface/height surface))
@@ -63,12 +58,13 @@
       (when (< py y1)
         (loop [px x0]
           (when (< px x1)
-            (let [dx   (- (+ (double px) 0.5) cx)
-                  dy   (- (+ (double py) 0.5) cy)
-                  dist (* (Math/sqrt (+ (* dx dx) (* dy dy))) inv-r)]
-              (when (< dist 1.0)
-                (let [coverage  (hardness-curve dist hardness)
-                      alpha     (* coverage opacity ca)
+            (let [;; Offset from dab center, normalized by radius
+                  nx (* (- (+ (double px) 0.5) cx) inv-r)
+                  ny (* (- (+ (double py) 0.5) cy) inv-r)
+                  ;; Evaluate tip SDF for coverage
+                  coverage (tip/evaluate-tip tip-spec nx ny angle)]
+              (when (> coverage 0.0)
+                (let [alpha     (* coverage opacity ca)
                       ;; Premultiplied source
                       src-r     (* cr alpha)
                       src-g     (* cg alpha)
@@ -107,4 +103,14 @@
                        :dab/color {:r 200 :g 50 :b 30 :a 1.0}})
     (println "Center:" (surface/get-pixel s 50 50))
     (println "Edge:"   (surface/get-pixel s 69 50))
-    (println "Outside:" (surface/get-pixel s 75 50))))
+    (println "Outside:" (surface/get-pixel s 75 50)))
+
+  ;; Elliptical dab
+  (let [s (surface/create-surface 100 100)]
+    (rasterize-dab! s {:dab/cx 50.0 :dab/cy 50.0 :dab/radius 15.0
+                       :dab/aspect 2.0 :dab/angle 0.5
+                       :dab/tip {:tip/shape :ellipse :tip/hardness 0.7 :tip/aspect 2.0}
+                       :dab/opacity 0.8
+                       :dab/color {:r 200 :g 50 :b 30 :a 1.0}})
+    (let [img (surface/compose-to-image s)]
+      (javax.imageio.ImageIO/write img "png" (java.io.File. "/tmp/ellipse-dab.png")))))
