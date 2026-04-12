@@ -365,6 +365,18 @@
       (:group/composite node)   (assoc :group/composite (:group/composite node))
       (:group/filter node)      (assoc :group/filter (:group/filter node)))))
 
+(defn- glyph-advances
+  "Pre-computes advance width for each glyph from position data.
+  The last glyph uses the font's em size as fallback."
+  [glyph-data ^Font font]
+  (let [n (count glyph-data)]
+    (mapv (fn [i]
+            (if (< i (dec n))
+              (- (get-in (nth glyph-data (inc i)) [:position 0])
+                 (get-in (nth glyph-data i) [:position 0]))
+              (double (.getSize2D font))))
+          (range n))))
+
 (defn text-on-path-node->group
   "Expands a :shape/text-on-path node into a :group with glyphs along a path."
   [node]
@@ -375,44 +387,37 @@
         path-cmds  (:text/path node)
         offset     (or (:text/offset node) 0.0)
         spacing    (or (:text/spacing node) 0.0)
-        children
-        (loop [glyphs glyph-data
-               dist   (double offset)
-               result (transient [])]
-          (if-not (seq glyphs)
-            (persistent! result)
-            (let [{:keys [commands position]} (first glyphs)
-                  [gx _] position
-                  advance (if (> (count glyphs) 1)
-                            (- (get-in (second glyphs) [:position 0]) gx)
-                            (double (.getSize2D font)))
+        advances   (glyph-advances glyph-data font)
+        fill       (:style/fill node)
+        stk        (:style/stroke node)
+        {:keys [result]}
+        (reduce
+          (fn [{:keys [dist result]} [i {:keys [commands]}]]
+            (let [advance    (double (nth advances i))
                   center-dist (+ dist (/ advance 2.0))
-                  loc (point-at path-cmds center-dist)]
+                  loc         (point-at path-cmds center-dist)
+                  next-dist   (+ dist advance spacing)]
               (if loc
                 (let [{:keys [point angle]} loc
                       [px py] point]
-                  (recur (rest glyphs)
-                         (+ dist advance spacing)
-                         (conj! result
-                           (cond-> {:node/type      :shape/path
-                                    :path/commands  commands
-                                    :path/fill-rule :even-odd
-                                    ;; translate to path point, rotate by tangent,
-                                    ;; then offset to center glyph on baseline
-                                    :node/transform [[:transform/translate px py]
-                                                     [:transform/rotate angle]
-                                                     [:transform/translate
-                                                       (- (/ advance 2.0))
-                                                       (- (/ ascent 2.0))]]}
-                             (:style/fill node)
-                             (assoc :style/fill (:style/fill node))
-                             (:style/stroke node)
-                             (assoc :style/stroke (:style/stroke node))))))
-                (recur (rest glyphs)
-                       (+ dist advance spacing)
-                       result)))))]
+                  {:dist   next-dist
+                   :result (conj result
+                             (cond-> {:node/type      :shape/path
+                                      :path/commands  commands
+                                      :path/fill-rule :even-odd
+                                      :node/transform
+                                      [[:transform/translate px py]
+                                       [:transform/rotate angle]
+                                       [:transform/translate
+                                         (- (/ advance 2.0))
+                                         (- (/ ascent 2.0))]]}
+                               fill (assoc :style/fill fill)
+                               stk  (assoc :style/stroke stk)))})
+                {:dist next-dist :result result})))
+          {:dist (double offset) :result []}
+          (map-indexed vector glyph-data))]
     (cond-> {:node/type      :group
-             :group/children children}
+             :group/children result}
       (:node/opacity node)    (assoc :node/opacity (:node/opacity node))
       (:node/transform node)  (assoc :node/transform (:node/transform node))
       (:group/composite node) (assoc :group/composite (:group/composite node))
