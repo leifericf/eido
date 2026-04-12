@@ -43,3 +43,11 @@
                                         :extrude/scale 0.5})]
     (testing "scaled extrusion still produces faces"
       (is (= 30 (count m))))))
+
+(deftest omitted-selector-defaults-to-all-test
+  (testing "inset without :select/type defaults to all faces"
+    (let [m (modeling/inset-faces cube {:inset/amount 0.2})]
+      (is (= 30 (count m)))))
+  (testing "extrude without :select/type defaults to all faces"
+    (let [m (modeling/extrude-faces cube {:extrude/amount 0.5})]
+      (is (= 30 (count m))))))

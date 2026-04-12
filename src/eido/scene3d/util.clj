@@ -125,4 +125,7 @@
           hi   (double (get opts :select/max Double/POSITIVE_INFINITY))]
       (fn [_face centroid _normal]
         (let [v (axis-component axis centroid)]
-          (and (>= v lo) (<= v hi)))))))
+          (and (>= v lo) (<= v hi)))))
+
+    ;; Default: select all faces when :select/type is missing or unrecognized
+    (fn [_face _centroid _normal] true)))
