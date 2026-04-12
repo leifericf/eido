@@ -54,3 +54,32 @@
                                 :dab/hardness 0.7 :dab/opacity 0.5
                                 :dab/color {:r 100 :g 100 :b 100 :a 1.0}})
       (is true "should not throw"))))
+
+(deftest deform-dab-modes-test
+  (testing "all deform modes work without crash"
+    (let [s (surface/create-surface 100 100)]
+      (kernel/rasterize-dab! s {:dab/cx 50.0 :dab/cy 50.0 :dab/radius 30.0
+                                :dab/hardness 0.6 :dab/opacity 0.8
+                                :dab/color {:r 200 :g 50 :b 30 :a 1.0}})
+      (doseq [mode [:push :swirl :blur :sharpen]]
+        (kernel/deform-dab! s {:dab/cx 50.0 :dab/cy 50.0 :dab/radius 20.0
+                               :dab/angle 0.5
+                               :dab/deform {:deform/mode mode :deform/strength 0.5}})
+        (let [[r _g _b a] (surface/get-pixel s 50 50)]
+          (is (>= r 0.0) (str mode " red channel non-negative"))
+          (is (<= r 1.0) (str mode " red channel <= 1.0"))
+          (is (>= a 0.0) (str mode " alpha non-negative")))))))
+
+(deftest deform-dab-sharpen-overflow-test
+  (testing "repeated sharpen does not overflow float range"
+    (let [s (surface/create-surface 100 100)]
+      (kernel/rasterize-dab! s {:dab/cx 50.0 :dab/cy 50.0 :dab/radius 30.0
+                                :dab/hardness 0.6 :dab/opacity 0.8
+                                :dab/color {:r 200 :g 50 :b 30 :a 1.0}})
+      (dotimes [_ 50]
+        (kernel/deform-dab! s {:dab/cx 50.0 :dab/cy 50.0 :dab/radius 20.0
+                               :dab/deform {:deform/mode :sharpen
+                                            :deform/strength 0.8}}))
+      (let [[r g b a] (surface/get-pixel s 50 50)]
+        (is (every? #(<= 0.0 % 1.0) [r g b a])
+            "all channels must stay in [0,1] range")))))

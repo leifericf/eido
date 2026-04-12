@@ -217,10 +217,10 @@
                           tlx (rem px ts)
                           tly (rem py ts)
                           fi  (surface/pixel-idx tlx tly)]
-                      (aset tile fi (float (Math/max 0.0 nr)))
-                      (aset tile (unchecked-inc-int fi) (float (Math/max 0.0 ng)))
-                      (aset tile (unchecked-add-int fi 2) (float (Math/max 0.0 nb)))
-                      (aset tile (unchecked-add-int fi 3) (float (Math/max 0.0 na))))))))
+                      (aset tile fi (float (Math/min 1.0 (Math/max 0.0 nr))))
+                      (aset tile (unchecked-inc-int fi) (float (Math/min 1.0 (Math/max 0.0 ng))))
+                      (aset tile (unchecked-add-int fi 2) (float (Math/min 1.0 (Math/max 0.0 nb))))
+                      (aset tile (unchecked-add-int fi 3) (float (Math/min 1.0 (Math/max 0.0 na)))))))))
             (recur (unchecked-inc px))))
         (recur (unchecked-inc py))))))
 
@@ -298,10 +298,10 @@
                           tlx (rem px ts)
                           tly (rem py ts)
                           fi  (surface/pixel-idx tlx tly)]
-                      (aset tile fi (float nr))
-                      (aset tile (unchecked-inc-int fi) (float ng))
-                      (aset tile (unchecked-add-int fi 2) (float nb))
-                      (aset tile (unchecked-add-int fi 3) (float na)))))))
+                      (aset tile fi (float (Math/min 1.0 (Math/max 0.0 nr))))
+                      (aset tile (unchecked-inc-int fi) (float (Math/min 1.0 (Math/max 0.0 ng))))
+                      (aset tile (unchecked-add-int fi 2) (float (Math/min 1.0 (Math/max 0.0 nb))))
+                      (aset tile (unchecked-add-int fi 3) (float (Math/min 1.0 (Math/max 0.0 na)))))))))
             (recur (unchecked-inc px))))
         (recur (unchecked-inc py))))))
 
