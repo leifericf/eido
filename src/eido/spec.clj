@@ -336,7 +336,7 @@
 (s/def :paint/opacity ::unit-val)
 (s/def :paint/flow ::unit-val)
 (s/def :paint/spacing (s/and number? pos?))
-(s/def :paint/blend #{:source-over :multiply :erase :glazed :opaque})
+(s/def :paint/blend #{:source-over :multiply :erase :glazed :opaque :subtractive})
 (s/def :brush/paint (s/keys :opt [:paint/opacity :paint/flow :paint/spacing :paint/blend]))
 
 (s/def :grain/type #{:fbm :turbulence :ridge :fiber :weave :canvas})

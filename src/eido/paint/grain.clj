@@ -23,26 +23,29 @@
     (Math/pow normalized power)))
 
 (defn- fbm-grain
-  "Fractal Brownian motion grain."
+  "Fractal Brownian motion grain. Uses simplex noise to avoid
+  grid-aligned artifacts visible in Perlin at medium scales."
   ^double [^double x ^double y grain-spec]
   (let [scale (double (get grain-spec :grain/scale 0.1))
         contrast (double (get grain-spec :grain/contrast 0.5))
-        octaves (get grain-spec :grain/octaves 4)
+        octaves (get grain-spec :grain/octaves 6)
         seed (get grain-spec :grain/seed 0)
-        v (noise/fbm noise/perlin2d (* x scale) (* y scale)
+        v (noise/fbm noise/simplex2d (* x scale) (* y scale)
             {:octaves octaves :seed seed})]
     (remap v contrast)))
 
 (defn- turbulence-grain
-  "Turbulence grain — absolute-value fBm for billowy textures."
+  "Turbulence grain — high-frequency stippled texture.
+  Uses fine-grained noise with high octaves for a sandy/granular feel."
   ^double [^double x ^double y grain-spec]
   (let [scale (double (get grain-spec :grain/scale 0.1))
         contrast (double (get grain-spec :grain/contrast 0.5))
-        octaves (get grain-spec :grain/octaves 4)
+        octaves (get grain-spec :grain/octaves 8)
         seed (get grain-spec :grain/seed 0)
-        v (noise/turbulence noise/perlin2d (* x scale) (* y scale)
-            {:octaves octaves :seed seed})]
-    (Math/max 0.0 (Math/min 1.0 (* v contrast 2.0)))))
+        ;; High-octave fBm gives fine-grained stipple
+        v (noise/fbm noise/simplex2d (* x scale 1.5) (* y scale 1.5)
+            {:octaves octaves :lacunarity 2.2 :seed seed})]
+    (remap v contrast)))
 
 (defn- ridge-grain
   "Ridged multifractal grain — sharp-edged texture."
@@ -50,49 +53,62 @@
   (let [scale (double (get grain-spec :grain/scale 0.1))
         contrast (double (get grain-spec :grain/contrast 0.5))
         seed (get grain-spec :grain/seed 0)
-        v (noise/ridge noise/perlin2d (* x scale) (* y scale)
-            {:octaves 4 :seed seed})]
+        v (noise/ridge noise/simplex2d (* x scale) (* y scale)
+            {:octaves 5 :seed seed})]
     (Math/max 0.0 (Math/min 1.0 (* v contrast)))))
 
 (defn- fiber-grain
-  "Fiber/directional grain — anisotropic noise stretched along one axis."
+  "Fiber/directional grain — anisotropic noise stretched along one axis.
+  Uses layered simplex for richer texture."
   ^double [^double x ^double y grain-spec]
   (let [scale (double (get grain-spec :grain/scale 0.1))
         contrast (double (get grain-spec :grain/contrast 0.5))
         stretch (double (get grain-spec :grain/stretch 4.0))
         angle (double (get grain-spec :grain/angle 0.0))
         seed (get grain-spec :grain/seed 0)
-        ;; Rotate and stretch
         cos-a (Math/cos angle)
         sin-a (Math/sin angle)
         rx (+ (* x cos-a) (* y sin-a))
         ry (+ (* (- x) sin-a) (* y cos-a))
-        v (noise/fbm noise/perlin2d (* rx scale) (* ry scale (/ 1.0 stretch))
-            {:octaves 3 :seed seed})]
+        ;; Primary fiber direction
+        v1 (noise/fbm noise/simplex2d (* rx scale) (* ry scale (/ 1.0 stretch))
+             {:octaves 4 :seed seed})
+        ;; Fine cross-fiber detail
+        v2 (noise/simplex2d (* rx scale 3.0) (* ry scale 3.0) {:seed (+ seed 31)})
+        v (+ (* 0.8 v1) (* 0.2 v2))]
     (remap v contrast)))
 
 (defn- weave-grain
-  "Canvas/weave grain — two perpendicular periodic patterns."
+  "Weave grain — rough, pitted surface texture like coarse linen.
+  Uses ridged noise for sharp valleys where paint skips."
   ^double [^double x ^double y grain-spec]
   (let [scale (double (get grain-spec :grain/scale 0.05))
         contrast (double (get grain-spec :grain/contrast 0.5))
-        ;; Two perpendicular sine-based patterns
-        warp-x (* 0.3 (noise/perlin2d (* x scale 0.3) (* y scale 0.3) {}))
-        warp-y (* 0.3 (noise/perlin2d (* y scale 0.3) (* x scale 0.3) {:seed 1}))
-        thread-x (Math/sin (* (+ x warp-x) scale Math/PI 2.0))
-        thread-y (Math/sin (* (+ y warp-y) scale Math/PI 2.0))
-        ;; Combine: woven pattern from max of perpendicular threads
-        v (* 0.5 (+ 1.0 (Math/max thread-x thread-y)))]
+        seed (get grain-spec :grain/seed 0)
+        ;; Use a higher internal scale so texture is fine relative to dabs
+        v (noise/ridge noise/simplex2d (* x scale 4.3) (* y scale 4.3)
+            {:octaves 5 :seed seed})]
     (Math/max 0.0 (Math/min 1.0 (* v contrast)))))
 
 (defn- canvas-grain
-  "Canvas texture — like weave but with added fine noise."
+  "Canvas grain — fine, irregular paper surface.
+  Uses 3D noise sampled on a tilted plane to avoid 2D lattice artifacts."
   ^double [^double x ^double y grain-spec]
-  (let [base (weave-grain x y grain-spec)
-        fine-scale (* 3.0 (double (get grain-spec :grain/scale 0.05)))
-        fine (noise/perlin2d (* x fine-scale) (* y fine-scale) {:seed 42})
-        mix (+ base (* 0.2 fine))]
-    (Math/max 0.0 (Math/min 1.0 mix))))
+  (let [scale (double (get grain-spec :grain/scale 0.05))
+        contrast (double (get grain-spec :grain/contrast 0.5))
+        seed (get grain-spec :grain/seed 0)
+        ;; Manual fBm over perlin3d on a tilted plane
+        sx (* x scale 1.1)
+        sy (* y scale 1.1)
+        sz (* (+ x y) scale 0.37)
+        opts {:seed seed}
+        ;; Higher internal multiplier for finer texture
+        m 2.5
+        v (+ (* 0.5  (noise/perlin3d (* sx m) (* sy m) (* sz m) opts))
+             (* 0.25 (noise/perlin3d (* sx m 2.0) (* sy m 2.0) (* sz m 2.0) opts))
+             (* 0.125 (noise/perlin3d (* sx m 4.0) (* sy m 4.0) (* sz m 4.0) opts))
+             (* 0.0625 (noise/perlin3d (* sx m 8.0) (* sy m 8.0) (* sz m 8.0) opts)))]
+    (remap v contrast)))
 
 ;; --- public evaluator ---
 

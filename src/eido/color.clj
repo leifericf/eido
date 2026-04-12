@@ -505,6 +505,34 @@
   [color-a color-b t]
   (lerp color-a color-b t {:space :oklab}))
 
+;; --- subtractive pigment mixing ---
+
+(defn mix-subtractive
+  "Mixes two colors subtractively, simulating how real paint pigments blend.
+  Blue + yellow = green, red + blue = purple, etc.
+
+  color-a, color-b: [r g b] in linear RGB [0..1] float space.
+  t: mix ratio (0.0 = all color-a, 1.0 = all color-b).
+
+  Uses a reflectance multiplication model: pigments absorb light,
+  so mixing pigments multiplies their reflectance spectra. Approximated
+  by geometric mean: result_ch = a_ch^(1-t) * b_ch^t.
+
+"
+  ^doubles [color-a color-b ^double t]
+  (let [[ar ag ab] color-a
+        [br bg bb] color-b
+        ar (double ar) ag (double ag) ab (double ab)
+        br (double br) bg (double bg) bb (double bb)
+        inv-t (- 1.0 t)
+        eps 0.001
+        mr (* (Math/pow (Math/max eps ar) inv-t) (Math/pow (Math/max eps br) t))
+        mg (* (Math/pow (Math/max eps ag) inv-t) (Math/pow (Math/max eps bg) t))
+        mb (* (Math/pow (Math/max eps ab) inv-t) (Math/pow (Math/max eps bb) t))]
+    (double-array [(Math/max 0.0 (Math/min 1.0 mr))
+                   (Math/max 0.0 (Math/min 1.0 mg))
+                   (Math/max 0.0 (Math/min 1.0 mb))])))
+
 (comment
   (resolve-color [:color/rgb 200 0 0])
   (resolve-color [:color/hsl 0 1.0 0.5])

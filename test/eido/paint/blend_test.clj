@@ -51,6 +51,27 @@
       (is (<= b (max 0.2 0.1)))
       (is (<= a (max 0.5 0.3))))))
 
+(deftest subtractive-test
+  (testing "blue + yellow produces green"
+    (let [;; Premultiplied: color * alpha
+          blue  [(* 0.12 0.5) (* 0.31 0.5) (* 0.86 0.5) 0.5]
+          yellow [(* 0.94 0.5) (* 0.86 0.5) (* 0.16 0.5) 0.5]
+          [r g b a] (blend/blend :subtractive yellow blue)]
+      ;; Green channel should be dominant
+      (is (> g r) "green should be stronger than red")
+      (is (> g b) "green should be stronger than blue")
+      (is (> a 0.0) "alpha should be positive")))
+
+  (testing "no destination returns source unchanged"
+    (let [[r _g _b a] (blend/blend :subtractive [0.3 0.0 0.0 0.5] [0.0 0.0 0.0 0.0])]
+      (is (> r 0.0))
+      (is (< (Math/abs (- a 0.5)) 0.001))))
+
+  (testing "no source returns destination unchanged"
+    (let [[_r g _b a] (blend/blend :subtractive [0.0 0.0 0.0 0.0] [0.0 0.3 0.0 0.5])]
+      (is (> g 0.0))
+      (is (< (Math/abs (- a 0.5)) 0.001)))))
+
 (deftest opaque-test
   (testing "opaque source replaces destination"
     (let [[r _g _b a] (blend/blend :opaque

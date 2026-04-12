@@ -20,7 +20,7 @@
   brush-sampler []
   (let [w 700 h 600
         mk (fn [y brush color label]
-              {:paint/brush brush :paint/color color :paint/radius 6.0 :paint/seed (hash label)
+              {:paint/brush brush :paint/color color :paint/seed (hash label)
                :paint/points (mapv (fn [i] [(+ 40 (* i 30)) (+ y (* 8 (noise/perlin2d (* i 0.1) y {:seed (hash label)})))
                                             (+ 0.3 (* 0.5 (Math/sin (* i 0.15)))) 0 0 0])
                                    (range 21))})
@@ -193,6 +193,141 @@
      :image/nodes
      [{:node/type :paint/surface :paint/size [w h]
        :paint/strokes [(mk 60 0.0) (mk 155 0.3) (mk 250 0.7)]}]}))
+
+;; ============================================================
+;; Subtractive Color Mixing
+;; ============================================================
+
+(defn ^{:example {:output "paint-subtractive-mixing.png"
+                  :title  "Subtractive Pigment Mixing"
+                  :desc   "Three primary paint colors crossing: blue+yellow=green, red+blue=purple, red+yellow=orange."
+                  :tags   ["paint" "subtractive" "color-mixing" "pigment"]}}
+  subtractive-mixing []
+  (let [w 500 h 400
+        sb {:brush/type :brush/dab
+            :brush/tip {:tip/shape :ellipse :tip/hardness 0.08}
+            :brush/paint {:paint/opacity 0.05 :paint/flow 0.45 :paint/spacing 0.025
+                          :paint/blend :subtractive}
+            :brush/wet {:wet/enabled true :wet/deposit 0.2 :wet/diffusion 0.3
+                        :wet/diffusion-steps 12 :wet/edge-darken 0.1 :wet/edge-sharpness 1.5}
+            :brush/jitter {:jitter/position 0.1 :jitter/opacity 0.15 :jitter/size 0.1}}]
+    {:image/size [w h] :image/background [:color/rgb 245 240 228]
+     :image/nodes
+     [{:node/type :group :paint/surface {:paint/size [w h]}
+       :group/children
+       [;; Blue horizontal band
+        {:node/type :shape/path
+         :path/commands [[:move-to [30 200]] [:line-to [470 200]]]
+         :paint/brush sb :paint/color [:color/rgb 40 90 210] :paint/radius 55.0
+         :paint/pressure [[0.0 0.5] [0.5 0.8] [1.0 0.5]]}
+        ;; Yellow diagonal — crosses blue to make green
+        {:node/type :shape/path
+         :path/commands [[:move-to [120 20]] [:line-to [200 380]]]
+         :paint/brush sb :paint/color [:color/rgb 235 215 45] :paint/radius 50.0
+         :paint/pressure [[0.0 0.5] [0.5 0.8] [1.0 0.5]]}
+        ;; Red diagonal — crosses blue to make purple
+        {:node/type :shape/path
+         :path/commands [[:move-to [380 20]] [:line-to [300 380]]]
+         :paint/brush sb :paint/color [:color/rgb 210 45 35] :paint/radius 50.0
+         :paint/pressure [[0.0 0.5] [0.5 0.8] [1.0 0.5]]}]}]}))
+
+(defn ^{:example {:output "paint-oil-color-blend.png"
+                  :title  "Oil Color Blending"
+                  :desc   "Thick oil paint smudged together: red+blue, blue+yellow, red+yellow."
+                  :tags   ["paint" "oil" "subtractive" "color-mixing" "smudge"]}}
+  oil-color-blend []
+  (let [w 600 h 250
+        ob {:brush/type :brush/dab
+            :brush/tip {:tip/shape :ellipse :tip/hardness 0.15 :tip/aspect 1.4}
+            :brush/paint {:paint/opacity 0.12 :paint/flow 0.8 :paint/spacing 0.02
+                          :paint/blend :subtractive}
+            :brush/jitter {:jitter/position 0.12 :jitter/opacity 0.2
+                           :jitter/size 0.15 :jitter/angle 0.1}}
+        pair (fn [x color-a color-b seed]
+               ;; Multiple passes per color for richer coverage
+               (vec (concat
+                 (for [i (range 3)]
+                   {:node/type :shape/path
+                    :path/commands [[:move-to [(+ x (* i 4)) 30]] [:line-to [(+ x 85 (* i 4)) 220]]]
+                    :paint/brush ob :paint/color color-a :paint/radius 22.0 :paint/seed (+ seed i)
+                    :paint/pressure [[0.0 0.5] [0.5 1.0] [1.0 0.6]]})
+                 (for [i (range 3)]
+                   {:node/type :shape/path
+                    :path/commands [[:move-to [(+ x 150 (* i 4)) 30]] [:line-to [(+ x 65 (* i 4)) 220]]]
+                    :paint/brush ob :paint/color color-b :paint/radius 22.0 :paint/seed (+ seed 10 i)
+                    :paint/pressure [[0.0 0.5] [0.5 1.0] [1.0 0.6]]}))))]
+    {:image/size [w h] :image/background [:color/rgb 238 232 218]
+     :image/nodes
+     [{:node/type :group :paint/surface {:paint/size [w h]}
+       :group/children
+       (vec (concat
+              (pair 30  [:color/rgb 200 35 30]  [:color/rgb 30 60 200] 10)
+              (pair 220 [:color/rgb 30 60 200]  [:color/rgb 235 210 35] 20)
+              (pair 410 [:color/rgb 200 35 30]  [:color/rgb 235 210 35] 30)))}]}))
+
+(defn ^{:example {:output "paint-acrylic-color-blend.png"
+                  :title  "Acrylic Color Blending"
+                  :desc   "Glossy acrylic paint mixing: saturated, smooth coverage."
+                  :tags   ["paint" "acrylic" "subtractive" "color-mixing" "glossy"]}}
+  acrylic-color-blend []
+  (let [w 600 h 250
+        ab {:brush/type :brush/dab
+            :brush/tip {:tip/shape :ellipse :tip/hardness 0.8}
+            :brush/paint {:paint/opacity 0.18 :paint/flow 0.95 :paint/spacing 0.02
+                          :paint/blend :subtractive}}
+        pair (fn [x color-a color-b seed]
+               (vec (concat
+                 (for [i (range 3)]
+                   {:node/type :shape/path
+                    :path/commands [[:move-to [(+ x (* i 4)) 30]] [:line-to [(+ x 85 (* i 4)) 220]]]
+                    :paint/brush ab :paint/color color-a :paint/radius 22.0 :paint/seed (+ seed i)
+                    :paint/pressure [[0.0 0.5] [0.5 1.0] [1.0 0.6]]})
+                 (for [i (range 3)]
+                   {:node/type :shape/path
+                    :path/commands [[:move-to [(+ x 150 (* i 4)) 30]] [:line-to [(+ x 65 (* i 4)) 220]]]
+                    :paint/brush ab :paint/color color-b :paint/radius 22.0 :paint/seed (+ seed 10 i)
+                    :paint/pressure [[0.0 0.5] [0.5 1.0] [1.0 0.6]]}))))]
+    {:image/size [w h] :image/background [:color/rgb 240 238 232]
+     :image/nodes
+     [{:node/type :group :paint/surface {:paint/size [w h]}
+       :group/children
+       (vec (concat
+              (pair 30  [:color/rgb 210 30 25]  [:color/rgb 25 55 210] 10)
+              (pair 220 [:color/rgb 25 55 210]  [:color/rgb 240 220 30] 20)
+              (pair 410 [:color/rgb 210 30 25]  [:color/rgb 240 220 30] 30)))}]}))
+
+(defn ^{:example {:output "paint-gouache-color-blend.png"
+                  :title  "Gouache Color Blending"
+                  :desc   "Matte gouache mixing: opaque, flat coverage with chalky blending zones."
+                  :tags   ["paint" "gouache" "subtractive" "color-mixing" "matte"]}}
+  gouache-color-blend []
+  (let [w 600 h 250
+        gb {:brush/type :brush/dab
+            :brush/tip {:tip/shape :ellipse :tip/hardness 0.55}
+            :brush/paint {:paint/opacity 0.25 :paint/flow 0.85 :paint/spacing 0.03
+                          :paint/blend :subtractive}
+            :brush/grain {:grain/type :canvas :grain/scale 0.06 :grain/contrast 0.35}
+            :brush/jitter {:jitter/position 0.03 :jitter/opacity 0.05}}
+        pair (fn [x color-a color-b seed]
+               (vec (concat
+                 (for [i (range 3)]
+                   {:node/type :shape/path
+                    :path/commands [[:move-to [(+ x (* i 4)) 30]] [:line-to [(+ x 85 (* i 4)) 220]]]
+                    :paint/brush gb :paint/color color-a :paint/radius 22.0 :paint/seed (+ seed i)
+                    :paint/pressure [[0.0 0.5] [0.5 1.0] [1.0 0.6]]})
+                 (for [i (range 3)]
+                   {:node/type :shape/path
+                    :path/commands [[:move-to [(+ x 150 (* i 4)) 30]] [:line-to [(+ x 65 (* i 4)) 220]]]
+                    :paint/brush gb :paint/color color-b :paint/radius 22.0 :paint/seed (+ seed 10 i)
+                    :paint/pressure [[0.0 0.5] [0.5 1.0] [1.0 0.6]]}))))]
+    {:image/size [w h] :image/background [:color/rgb 235 230 220]
+     :image/nodes
+     [{:node/type :group :paint/surface {:paint/size [w h]}
+       :group/children
+       (vec (concat
+              (pair 30  [:color/rgb 195 35 30]  [:color/rgb 30 50 190] 10)
+              (pair 220 [:color/rgb 30 50 190]  [:color/rgb 230 210 35] 20)
+              (pair 410 [:color/rgb 195 35 30]  [:color/rgb 230 210 35] 30)))}]}))
 
 ;; ============================================================
 ;; Generator Compositions — Paint + Generators

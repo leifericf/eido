@@ -2,9 +2,12 @@
   "Paint-specific blend modes for the paint engine.
 
   Standard source-over is the default. Additional modes:
-    :buildup — opacity accumulates linearly (linearized)
-    :glaze   — transparent layering that preserves underlying detail
-    :erase   — removes paint from the surface")
+    :glazed      — max blend prevents over-saturation (markers)
+    :opaque      — strong coverage (oil, acrylic)
+    :erase       — removes paint from the surface
+    :subtractive — pigment mixing (blue+yellow=green)"
+  (:require
+    [eido.color :as color]))
 
 ;; --- blend operations ---
 ;; All work in premultiplied RGBA float space.
@@ -66,6 +69,71 @@
        (+ (* sb weight) (* db inv-w))
        (Math/min 1.0 (+ (* sa weight) (* da inv-w)))])))
 
+(defn blend-subtractive
+  "Subtractive pigment blend — simulates how real paint colors mix.
+  When blue paint meets yellow paint, the result is green.
+
+  Blends between source-over (for transparency) and reflectance-space
+  mixing (for color interaction), weighted by destination paint thickness.
+  This avoids the muddiness of pure geometric-mean mixing at low alpha."
+  [[^double sr ^double sg ^double sb ^double sa]
+   [^double dr ^double dg ^double db ^double da]]
+  (if (< da 0.005)
+    ;; No existing paint — standard deposit
+    [sr sg sb sa]
+    (if (< sa 0.005)
+      ;; No source paint — keep destination
+      [dr dg db da]
+      (let [;; Un-premultiply both (with safe floor)
+            inv-sa (/ 1.0 (Math/max 0.01 sa))
+            inv-da (/ 1.0 (Math/max 0.01 da))
+            src-r (Math/min 1.0 (* sr inv-sa))
+            src-g (Math/min 1.0 (* sg inv-sa))
+            src-b (Math/min 1.0 (* sb inv-sa))
+            dst-r (Math/min 1.0 (* dr inv-da))
+            dst-g (Math/min 1.0 (* dg inv-da))
+            dst-b (Math/min 1.0 (* db inv-da))
+            ;; How much subtractive mixing to apply:
+            ;; Even thin paint should mix subtractively — that's the point
+            ;; of choosing this blend mode. Scale aggressively.
+            sub-weight (Math/min 1.0 (* da 5.0))
+            ;; Mix ratio for the subtractive component
+            ;; Based on relative paint amounts
+            mix-t (/ sa (+ sa da))
+            ;; Subtractive result (reflectance multiplication)
+            ^doubles sub-mixed (color/mix-subtractive
+                                 [dst-r dst-g dst-b]
+                                 [src-r src-g src-b]
+                                 mix-t)
+            sub-r (aget sub-mixed 0)
+            sub-g (aget sub-mixed 1)
+            sub-b (aget sub-mixed 2)
+            ;; Additive result (standard source-over, un-premultiplied)
+            inv-src-a (- 1.0 sa)
+            add-a (+ sa (* da inv-src-a))
+            add-r (if (> add-a 0.001)
+                    (/ (+ sr (* dr inv-src-a)) add-a)
+                    src-r)
+            add-g (if (> add-a 0.001)
+                    (/ (+ sg (* dg inv-src-a)) add-a)
+                    src-g)
+            add-b (if (> add-a 0.001)
+                    (/ (+ sb (* db inv-src-a)) add-a)
+                    src-b)
+            ;; Blend between additive and subtractive by paint thickness
+            w sub-weight
+            inv-w (- 1.0 w)
+            mr (+ (* sub-r w) (* add-r inv-w))
+            mg (+ (* sub-g w) (* add-g inv-w))
+            mb (+ (* sub-b w) (* add-b inv-w))
+            ;; Combined alpha
+            out-a (Math/min 1.0 (+ sa (* da inv-src-a)))
+            ;; Re-premultiply
+            out-r (* (Math/max 0.0 (Math/min 1.0 mr)) out-a)
+            out-g (* (Math/max 0.0 (Math/min 1.0 mg)) out-a)
+            out-b (* (Math/max 0.0 (Math/min 1.0 mb)) out-a)]
+        [out-r out-g out-b out-a]))))
+
 ;; --- dispatcher ---
 
 (defn blend
@@ -78,5 +146,6 @@
     :erase       (blend-erase src dst)
     :glazed      (blend-glazed src dst)
     :opaque      (blend-opaque src dst)
+    :subtractive (blend-subtractive src dst)
     ;; Default: source-over
     (blend-source-over src dst)))

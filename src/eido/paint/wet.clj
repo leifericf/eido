@@ -69,6 +69,59 @@
               new-val (+ center (* strength laplacian))]
           (aset wet idx (float (Math/max 0.0 (Math/min 1.0 new-val)))))))))
 
+(defn diffuse-color-tile!
+  "Spreads color between wet pixels using wetness-weighted Laplacian.
+  Where wet paint meets wet paint, their colors intermingle.
+  strength: color transfer rate [0..1]."
+  [wet color ts strength]
+  (let [^floats wet wet
+        ^floats color color
+        ts (long ts)
+        strength (double strength)
+        n (* ts ts)
+        ^floats buf-r (float-array n)
+        ^floats buf-g (float-array n)
+        ^floats buf-b (float-array n)]
+    ;; Copy current color state (premultiplied)
+    (dotimes [i n]
+      (let [ci (* i 4)]
+        (aset buf-r i (aget color ci))
+        (aset buf-g i (aget color (+ ci 1)))
+        (aset buf-b i (aget color (+ ci 2)))))
+    ;; Diffuse color weighted by wetness at both source and destination
+    (dotimes [y ts]
+      (dotimes [x ts]
+        (let [idx (+ (* y ts) x)
+              w (double (aget wet idx))]
+          (when (> w 0.02)
+            (let [ci (* idx 4)
+                  cr (double (aget buf-r idx))
+                  cg (double (aget buf-g idx))
+                  cb (double (aget buf-b idx))
+                  ;; Sample neighbors weighted by their wetness
+                  sample (fn [nx ny]
+                           (let [ni (+ (* ny ts) nx)
+                                 nw (double (aget wet ni))]
+                             (if (> nw 0.02)
+                               [(* nw (aget buf-r ni))
+                                (* nw (aget buf-g ni))
+                                (* nw (aget buf-b ni))
+                                nw]
+                               [0.0 0.0 0.0 0.0])))
+                  [lr lg lb lw] (if (> x 0) (sample (dec x) y) [0.0 0.0 0.0 0.0])
+                  [rr rg rb rw] (if (< x (dec ts)) (sample (inc x) y) [0.0 0.0 0.0 0.0])
+                  [ur ug ub uw] (if (> y 0) (sample x (dec y)) [0.0 0.0 0.0 0.0])
+                  [dr_ dg db dw] (if (< y (dec ts)) (sample x (inc y)) [0.0 0.0 0.0 0.0])
+                  total-w (+ (double lw) (double rw) (double uw) (double dw))
+                  ;; Weighted average of neighbor colors
+                  f (* strength w (Math/min 0.25 (/ total-w (max 1.0 (* 4.0 w)))))
+                  avg-r (if (> total-w 0.01) (/ (+ (double lr) (double rr) (double ur) (double dr_)) total-w) cr)
+                  avg-g (if (> total-w 0.01) (/ (+ (double lg) (double rg) (double ug) (double dg)) total-w) cg)
+                  avg-b (if (> total-w 0.01) (/ (+ (double lb) (double rb) (double ub) (double db)) total-w) cb)]
+              (aset color ci (float (+ cr (* f (- avg-r cr)))))
+              (aset color (+ ci 1) (float (+ cg (* f (- avg-g cg)))))
+              (aset color (+ ci 2) (float (+ cb (* f (- avg-b cb))))))))))))
+
 (defn darken-edges!
   "Increases pigment concentration at wetness boundaries.
   Creates the characteristic dark edges of watercolor.
@@ -171,9 +224,10 @@
                  ^floats wet (when wet-planes (aget ^objects wet-planes idx))
                  ^floats color (when tiles (aget ^objects tiles idx))]
              (when (and wet color)
-               ;; Run diffusion iterations
+               ;; Run diffusion iterations (wetness + color)
                (dotimes [_ iterations]
-                 (diffuse-tile! wet ts diffusion-strength))
+                 (diffuse-tile! wet ts diffusion-strength)
+                 (diffuse-color-tile! wet color ts (* diffusion-strength 0.5)))
                ;; Apply edge darkening
                (when (> darken-amount 0.0)
                  (darken-edges! wet color ts darken-amount sharpness))
