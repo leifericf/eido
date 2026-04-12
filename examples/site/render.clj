@@ -57,7 +57,8 @@
     gallery.scenes-3d
     gallery.mixed
     gallery.particles
-    gallery.typography])
+    gallery.typography
+    gallery.paint])
 
 (def api-namespace-groups
   "API namespaces organized by category for sidebar display."
@@ -79,6 +80,8 @@
                   eido.gen.boids eido.gen.coloring]}
    {:category "Texture"
     :namespaces '[eido.texture]}
+   {:category "Paint"
+    :namespaces '[eido.paint]}
    {:category "Animation"
     :namespaces '[eido.animate]}
    {:category "3D"

@@ -1578,6 +1578,107 @@
        vec))"]]
        [:p "The reaction-diffusion presets (:coral, :mitosis, :ripple, :spots) each produce distinctive field patterns. Contour extraction turns continuous fields into drawable regions."]]}]}
 
+   {:category "Paint Engine"
+    :id       "paint"
+    :intro    [:div
+               [:p "The paint engine renders brushstrokes as pixel-level dab sequences onto a tiled raster surface. "
+                "Everything is procedural — no bitmap textures. Brushes are data, strokes are data, and paint "
+                "composes naturally with generators like flow fields and scatter."]]
+    :sections
+    [{:id    "paint-basics"
+      :title "Basics"
+      :content
+      [:div
+       [:p "The simplest way to use paint is the standalone " [:code ":paint/surface"] " node. "
+        "Define strokes with explicit point data including pressure:"]
+       [:pre {:data-img "paint-chalk-sketch.png"} [:code
+              "{:node/type :paint/surface
+ :paint/size [600 400]
+ :paint/strokes
+ [{:stroke/brush  :chalk
+   :stroke/color  [:color/rgb 80 60 40]
+   :stroke/radius 12.0
+   :stroke/points [[50 100 0.8 0 0 0]    ;; [x y pressure speed tilt-x tilt-y]
+                   [300 60 1.0 1.0 0 0]
+                   [550 100 0.3 0.5 0 0]]}]}"]]
+       [:p "Each point carries six values: x, y, pressure, speed, tilt-x, tilt-y. "
+        "Pressure modulates radius and opacity along the stroke."]
+       [:h4 "Brush presets"]
+       [:p "Built-in presets cover common media:"]
+       [:pre [:code
+              ":pencil    ;; hard, fine, opaque
+:marker    ;; hard edge, semi-transparent
+:airbrush  ;; very soft, low opacity
+:chalk     ;; medium soft, low opacity
+:ink       ;; hard, high opacity
+:oil       ;; medium, moderate opacity
+:watercolor ;; soft, very low opacity
+:pastel    ;; medium soft, slightly elliptical"]]
+       [:p "Override any preset parameter:"]
+       [:pre [:code
+              "{:stroke/brush {:brush/type :brush/dab
+                :brush/tip {:tip/shape :ellipse :tip/hardness 0.9}
+                :brush/paint {:paint/opacity 0.7 :paint/spacing 0.03}}}"]]]}
+
+     {:id    "paint-paths"
+      :title "Painted Paths"
+      :content
+      [:div
+       [:p "Add " [:code ":paint/brush"] " to any path node to render it as a painted stroke "
+        "instead of a vector shape:"]
+       [:pre {:data-img "paint-layered-strokes.png"} [:code
+              "{:node/type :shape/path
+ :path/commands [[:move-to [50 100]]
+                 [:curve-to [150 30] [350 170] [550 100]]]
+ :paint/brush :chalk
+ :paint/color [:color/rgb 80 60 40]
+ :paint/radius 12.0
+ :paint/pressure [[0.0 0.3] [0.5 1.0] [1.0 0.1]]}"]]
+       [:p [:code ":paint/pressure"] " is a " [:code "[[t pressure] ...]"]
+        " curve where t goes from 0 (start) to 1 (end). "
+        "Pressure scales both radius and opacity."]]}
+
+     {:id    "paint-surfaces"
+      :title "Shared Surfaces"
+      :content
+      [:div
+       [:p "When multiple strokes need to interact (smudge, wet mixing), "
+        "wrap them in a group with " [:code ":paint/surface"] ":"]
+       [:pre [:code
+              "{:node/type :group
+ :paint/surface {:substrate/tooth 0.4}
+ :group/children
+ [{:node/type :shape/path
+   :path/commands [...]
+   :paint/brush :oil
+   :paint/color [:color/rgb 200 60 30]}
+  {:node/type :shape/path
+   :path/commands [...]
+   :paint/brush :oil
+   :paint/color [:color/rgb 50 100 200]}]}"]]
+       [:p "All painted children render onto the same raster surface, so later strokes "
+        "can interact with earlier ones."]]}
+
+     {:id    "paint-generators"
+      :title "Composing with Generators"
+      :content
+      [:div
+       [:p "Paint parameters propagate through generators. "
+        "This means you can paint flow fields, scatter patterns, and symmetry groups:"]
+       [:pre {:data-img "paint-ink-flow.png"} [:code
+              "{:node/type :group
+ :paint/surface {:paint/size [600 600]}
+ :group/children
+ [{:node/type :flow-field
+   :flow/bounds [30 30 540 540]
+   :flow/opts {:density 20 :steps 40 :seed 77}
+   :paint/brush :ink
+   :paint/color [:color/rgb 15 12 8]
+   :paint/radius 2.0}]}"]]
+       [:p "The flow field generates paths, and each path is rendered as a painted "
+        "stroke with the ink brush. The same approach works with "
+        [:code ":scatter"] ", " [:code ":symmetry"] ", and other generators."]]}]}
+
    {:category "Output"
     :id       "output"
     :sections
@@ -1789,7 +1890,8 @@
        [:p "Most of Eido's API is stable. Provisional status is reserved for newer subsystems whose configuration surface is still being refined:"]
        [:ul
         [:li [:code "eido.gen.particle"] " — particle system configuration (emitters, forces, lifetime curves) may simplify as usage patterns emerge."]
-        [:li [:code "eido.texture"] " — texture and material helpers are new and may expand or restructure."]]
+        [:li [:code "eido.texture"] " — texture and material helpers are new and may expand or restructure."]
+        [:li [:code "eido.paint"] " — paint engine brush specs, stroke parameters, and surface configuration are being refined."]]
        [:p "Provisional does not mean broken — it means function names, argument shapes, or option keys might change in a future release. Pin a specific Eido version in your " [:code "deps.edn"] " to avoid surprises."]]}]}])
 
 ;; --- Architecture page ---

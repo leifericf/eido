@@ -333,7 +333,8 @@
                          :shape/line :shape/path :group
                          :shape/text :shape/text-glyphs :shape/text-on-path
                          :lsystem :voronoi :delaunay :contour
-                         :flow-field :symmetry :scatter :path/decorated}
+                         :flow-field :symmetry :scatter :path/decorated
+                         :paint/surface}
                        (:node/type %)))
     #(s/gen #{:shape/rect})))
 

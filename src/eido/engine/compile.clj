@@ -274,6 +274,42 @@
           node))
       node)))
 
+;; --- paint param propagation ---
+
+(def ^:private paint-keys
+  "Keys to propagate from paint-group parents to leaf path children."
+  [:paint/brush :paint/color :paint/radius :paint/pressure :paint/speed :paint/seed])
+
+(defn- propagate-paint-params
+  "Walks an expanded node tree and propagates paint params from a source
+  node to all leaf paths that don't already have :paint/brush set."
+  [node source]
+  (let [params (select-keys source paint-keys)]
+    (if (empty? params)
+      node
+      (if (= :group (:node/type node))
+        (update node :group/children
+          #(mapv (fn [c] (propagate-paint-params c source)) %))
+        ;; Leaf node — merge paint params if it's a path and doesn't have its own
+        (if (and (#{:shape/path :shape/line} (:node/type node))
+                 (not (:paint/brush node)))
+          (merge node params)
+          node)))))
+
+(defn- flatten-paint-children
+  "Expands children of a paint-surface group and propagates paint
+  params from parent nodes to generated leaf paths."
+  [children]
+  (into []
+    (mapcat
+      (fn [child]
+        (let [expanded (expand-node child)
+              with-paint (propagate-paint-params expanded child)]
+          (if (= :group (:node/type with-paint))
+            (:group/children with-paint)
+            [with-paint]))))
+    children))
+
 (defn validate-scene!
   "Validates a scene map; throws ex-info with :errors on failure."
   [scene]
@@ -283,7 +319,8 @@
 
 (def ^:private generator-node-types
   "Node types that map to generator descriptors in the semantic IR."
-  #{:flow-field :contour :scatter :voronoi :delaunay :path/decorated :lsystem})
+  #{:flow-field :contour :scatter :voronoi :delaunay :path/decorated :lsystem
+    :paint/surface})
 
 (defn- normalize-node
   "Like expand-node but preserves semantic constructs as data instead of
@@ -314,6 +351,15 @@
       (= :symmetry node-type)
       (expand-node (update node :group/children #(mapv normalize-node %)))
 
+      ;; Groups with :paint/surface — convert to paint-surface generator
+      (and (= :group node-type) (:paint/surface node))
+      (let [flat-children (flatten-paint-children (:group/children node))]
+        {:node/type :paint/surface
+         :paint/surface (:paint/surface node)
+         :paint/size (:paint/size node)
+         :paint/children flat-children
+         :node/opacity (:node/opacity node)})
+
       ;; Groups — normalize children
       (= :group node-type)
       (let [expanded (update node :group/children #(mapv normalize-node %))]
@@ -321,6 +367,14 @@
           (-> (warp/warp-node expanded warp-spec)
               (dissoc :group/warp))
           expanded))
+
+      ;; Path with :paint/brush — wrap in implicit paint-surface
+      (and (#{:shape/path :shape/line} node-type) (:paint/brush node))
+      (let [expanded (expand-node node)]
+        {:node/type :paint/surface
+         :paint/surface {}
+         :paint/children [expanded]
+         :node/opacity (:node/opacity node)})
 
       ;; Everything else goes through the legacy expand-node
       :else
@@ -413,6 +467,13 @@
      :generator/spacing       (get node :decorator/spacing 20)
      :generator/rotate?       (get node :decorator/rotate? true)
      :generator/overrides     (:decorator/overrides node)}
+
+    :paint/surface
+    {:generator/type    :generator/paint-surface
+     :paint/surface     (:paint/surface node)
+     :paint/size        (:paint/size node)
+     :paint/children    (:paint/children node)
+     :paint/strokes     (:paint/strokes node)}
 
     :lsystem
     nil ;; L-systems still go through legacy (complex parameter passing)

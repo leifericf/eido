@@ -19,6 +19,7 @@
     [eido.gen.particle :as particle]
     [eido.gen.scatter :as scatter]
     [eido.gen.voronoi :as voronoi]
+    [eido.ir :as ir]
     [eido.ir.lower :as lower]
     [eido.ir.vary :as ir-vary]
     [eido.path.decorate :as decorator]
@@ -194,6 +195,74 @@
             with-overrides (apply-overrides nodes (:generator/overrides gen-desc))]
         (lower/lower-scene-nodes
               with-overrides))
+
+      :generator/paint-surface
+      (let [paint   (requiring-resolve 'eido.paint/render-stroke!)
+            compose (requiring-resolve 'eido.paint/compose)
+            mk-surf (requiring-resolve 'eido.paint/make-surface)
+            children (:paint/children gen-desc)
+            size    (or (:paint/size gen-desc) [800 600])
+            surface (mk-surf size)]
+        ;; Collect all paintable leaf nodes from the tree, applying
+        ;; group transforms as offsets to path commands
+        (letfn [(collect-painted [node offset]
+                  (cond
+                    ;; Leaf with paint params — render it
+                    (and (#{:shape/path :shape/line} (:node/type node))
+                         (:paint/brush node))
+                    (let [[ox oy] offset
+                          shifted (if (and (pos? ox) (pos? oy)
+                                          (:path/commands node))
+                                    (update node :path/commands
+                                      (fn [cmds]
+                                        (mapv (fn [cmd]
+                                                (case (first cmd)
+                                                  :move-to [:move-to (mapv + (second cmd) [ox oy])]
+                                                  :line-to [:line-to (mapv + (second cmd) [ox oy])]
+                                                  :curve-to (let [[_ c1 c2 p] cmd]
+                                                              [:curve-to (mapv + c1 [ox oy])
+                                                                         (mapv + c2 [ox oy])
+                                                                         (mapv + p [ox oy])])
+                                                  :quad-to (let [[_ cp p] cmd]
+                                                             [:quad-to (mapv + cp [ox oy])
+                                                                       (mapv + p [ox oy])])
+                                                  :close cmd
+                                                  cmd))
+                                              cmds)))
+                                    node)]
+                      (paint surface shifted))
+
+                    ;; Group — recurse with accumulated offset
+                    (= :group (:node/type node))
+                    (let [transforms (or (:node/transform node) [])
+                          ;; Extract translate offset if present
+                          [dx dy] (reduce (fn [[ax ay] t]
+                                            (if (= :transform/translate (first t))
+                                              [(+ ax (double (nth t 1)))
+                                               (+ ay (double (nth t 2)))]
+                                              [ax ay]))
+                                          offset transforms)]
+                      (doseq [c (:group/children node)]
+                        (collect-painted c [dx dy])))
+
+                    ;; Ignore non-paintable nodes
+                    :else nil))]
+          (doseq [child children]
+            (collect-painted child [0.0 0.0])))
+        ;; Also handle explicit :paint/strokes on the descriptor
+        (when-let [strokes (:paint/strokes gen-desc)]
+          (doseq [s strokes]
+            (paint surface s)))
+        ;; Compose tiles to image and return as a rect op with procedural-image fill
+        (let [img   (compose surface)
+              [w h] size]
+          [(ir/->RectOp :rect 0 0 w h nil
+                        {:fill/type :procedural-image
+                         :image     img
+                         :offset    [0.0 0.0]}
+                        nil nil 1.0
+                        nil nil nil
+                        nil nil)]))
 
       (throw (ex-info (str "Unknown generator type: " gen-type)
                       {:generator gen-desc})))))
