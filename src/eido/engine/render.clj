@@ -96,23 +96,18 @@
    :round BasicStroke/JOIN_ROUND
    :bevel BasicStroke/JOIN_BEVEL})
 
-(def ^:private stroke-cache
-  "Caches BasicStroke objects by [width cap join] to avoid repeated allocation."
-  (atom {}))
+(def ^:private create-basic-stroke
+  "Creates and caches a BasicStroke for the given [width cap join]. Memoized."
+  (memoize (fn ^BasicStroke [w cap join]
+             (BasicStroke. w cap join))))
 
 (defn- get-basic-stroke
-  "Returns a cached BasicStroke for the given params."
+  "Returns a BasicStroke for the given params. Non-dash strokes are memoized."
   ^BasicStroke [w cap join dash]
   (if dash
     ;; Dashed strokes not cached (float-array identity varies)
     (BasicStroke. w cap join (float 10.0) (float-array dash) (float 0.0))
-    (let [k     [w cap join]
-          cache (swap! stroke-cache
-                  (fn [m]
-                    (if (contains? m k)
-                      m
-                      (assoc m k (BasicStroke. w cap join)))))]
-      (get cache k))))
+    (create-basic-stroke w cap join)))
 
 (defn- apply-stroke [^Graphics2D g shape {:keys [stroke-color stroke-width
                                                   stroke-cap stroke-join
