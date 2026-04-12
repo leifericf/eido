@@ -9,8 +9,6 @@
 
 ;; --- font resolution ---
 
-(defonce ^:private font-cache (atom {}))
-
 (defn- font-style
   "Derives java.awt.Font style int from font-spec :font/weight and :font/style."
   [{:font/keys [weight style]}]
@@ -25,17 +23,18 @@
     (-> (Font/createFont Font/TRUETYPE_FONT is)
         (.deriveFont (int style) (float size)))))
 
-(defn resolve-font
-  "Resolves a font-spec map to a java.awt.Font. Cached."
+(defn- create-font
+  "Creates a java.awt.Font from a font-spec map."
   ^Font [font-spec]
-  (or (get @font-cache font-spec)
-      (let [size  (:font/size font-spec)
-            style (font-style font-spec)
-            font  (if-let [file (:font/file font-spec)]
-                    (load-font-from-file file size style)
-                    (Font. ^String (:font/family font-spec) (int style) (int size)))]
-        (swap! font-cache assoc font-spec font)
-        font)))
+  (let [size  (:font/size font-spec)
+        style (font-style font-spec)]
+    (if-let [file (:font/file font-spec)]
+      (load-font-from-file file size style)
+      (Font. ^String (:font/family font-spec) (int style) (int size)))))
+
+(def resolve-font
+  "Resolves a font-spec map to a java.awt.Font. Memoized."
+  (memoize create-font))
 
 ;; --- Java 2D Shape -> Eido path commands ---
 
