@@ -369,6 +369,141 @@
                                     :gradient/stops [[0.0 [:color/rgb 255 0 0]]
                                                      [1.0 [:color/rgb 0 0 255]]]}}]}])]
 
+   ;; paint engine
+   ["paint-ink-stroke"
+    (catalog-scene [{:node/type :shape/path
+                     :path/commands [[:move-to [10 50]] [:line-to [90 50]]]
+                     :paint/brush :ink
+                     :paint/color [:color/rgb 0 0 0]
+                     :paint/radius 5.0}])
+    {:png-only true}]
+
+   ["paint-chalk-pressure"
+    (catalog-scene [{:node/type :shape/path
+                     :path/commands [[:move-to [10 50]]
+                                    [:curve-to [30 20] [70 80] [90 50]]]
+                     :paint/brush :chalk
+                     :paint/color [:color/rgb 80 60 40]
+                     :paint/radius 8.0
+                     :paint/pressure [[0.0 0.2] [0.5 1.0] [1.0 0.1]]}])
+    {:png-only true}]
+
+   ["paint-standalone-surface"
+    (catalog-scene [{:node/type :paint/surface
+                     :paint/strokes
+                     [{:paint/brush :marker
+                       :paint/color [:color/rgb 200 50 50]
+                       :paint/radius 6.0
+                       :paint/points [[10 50 0.8 0 0 0] [90 50 0.5 0 0 0]]}]}])
+    {:png-only true}]
+
+   ["paint-group-multi-stroke"
+    (catalog-scene [{:node/type :group
+                     :paint/surface {}
+                     :group/children
+                     [{:node/type :shape/path
+                       :path/commands [[:move-to [10 30]] [:line-to [90 30]]]
+                       :paint/brush :ink
+                       :paint/color [:color/rgb 0 0 0]
+                       :paint/radius 4.0}
+                      {:node/type :shape/path
+                       :path/commands [[:move-to [10 70]] [:line-to [90 70]]]
+                       :paint/brush :chalk
+                       :paint/color [:color/rgb 100 50 20]
+                       :paint/radius 6.0}]}])
+    {:png-only true}]
+
+   ["paint-with-grain"
+    (catalog-scene [{:node/type :shape/path
+                     :path/commands [[:move-to [10 50]] [:line-to [90 50]]]
+                     :paint/brush {:brush/type :brush/dab
+                                   :brush/tip {:tip/shape :ellipse :tip/hardness 0.5}
+                                   :brush/grain {:grain/type :fbm :grain/scale 0.1
+                                                 :grain/contrast 0.5}
+                                   :brush/paint {:paint/opacity 0.15 :paint/spacing 0.04}}
+                     :paint/color [:color/rgb 60 40 25]
+                     :paint/radius 10.0}])
+    {:png-only true}]
+
+   ["paint-with-substrate"
+    (catalog-scene [{:node/type :paint/surface
+                     :paint/surface {:substrate/tooth 0.4 :substrate/scale 0.15}
+                     :paint/strokes
+                     [{:paint/brush :chalk
+                       :paint/color [:color/rgb 80 60 40]
+                       :paint/radius 12.0
+                       :paint/points [[10 50 0.8 0 0 0] [90 50 0.6 0 0 0]]}]}])
+    {:png-only true}]
+
+   ["paint-bristle"
+    (catalog-scene [{:node/type :shape/path
+                     :path/commands [[:move-to [10 50]] [:line-to [90 50]]]
+                     :paint/brush {:brush/type :brush/dab
+                                   :brush/tip {:tip/shape :circle :tip/hardness 0.5}
+                                   :brush/bristles {:bristle/count 5 :bristle/spread 0.6}
+                                   :brush/paint {:paint/opacity 0.3 :paint/spacing 0.03}}
+                     :paint/color [:color/rgb 30 80 40]
+                     :paint/radius 12.0}])
+    {:png-only true}]
+
+   ["paint-elliptical-tip"
+    (catalog-scene [{:node/type :shape/path
+                     :path/commands [[:move-to [10 50]]
+                                    [:curve-to [40 20] [60 80] [90 50]]]
+                     :paint/brush {:brush/type :brush/dab
+                                   :brush/tip {:tip/shape :ellipse
+                                               :tip/hardness 0.8
+                                               :tip/aspect 3.0}
+                                   :brush/paint {:paint/opacity 0.7 :paint/spacing 0.03}}
+                     :paint/color [:color/rgb 15 10 5]
+                     :paint/radius 6.0}])
+    {:png-only true}]
+
+   ["paint-flow-field"
+    (catalog-scene [{:node/type :group
+                     :paint/surface {}
+                     :group/children
+                     [{:node/type :flow-field
+                       :flow/bounds [5 5 90 90]
+                       :flow/opts {:density 30 :steps 15 :seed 42}
+                       :paint/brush :ink
+                       :paint/color [:color/rgb 0 0 0]
+                       :paint/radius 1.5}]}])
+    {:png-only true}]
+
+   ["paint-symmetry-radial"
+    (catalog-scene [{:node/type :group
+                     :paint/surface {}
+                     :group/children
+                     [{:node/type :symmetry
+                       :symmetry/type :radial
+                       :symmetry/n 4
+                       :symmetry/center [50 50]
+                       :group/children
+                       [{:node/type :shape/path
+                         :path/commands [[:move-to [50 50]] [:line-to [90 50]]]
+                         :paint/brush :ink
+                         :paint/color [:color/rgb 0 0 0]
+                         :paint/radius 2.0}]}]}])
+    {:png-only true}]
+
+   ["paint-style-fill-fallback"
+    (catalog-scene [{:node/type :shape/path
+                     :path/commands [[:move-to [10 50]] [:line-to [90 50]]]
+                     :style/fill [:color/rgb 0 0 200]
+                     :paint/brush :ink
+                     :paint/radius 5.0}])
+    {:png-only true}]
+
+   ["paint-with-translate"
+    (catalog-scene [{:node/type :shape/path
+                     :path/commands [[:move-to [10 10]] [:line-to [90 10]]]
+                     :paint/brush :ink
+                     :paint/color [:color/rgb 0 0 0]
+                     :paint/radius 4.0
+                     :node/transform [[:transform/translate 0 40]]}])
+    {:png-only true}]
+
    ["gradient-with-opacity"
     (catalog-scene [{:node/type :shape/rect
                      :rect/xy [0 0] :rect/size [100 100]

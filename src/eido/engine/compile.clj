@@ -326,12 +326,24 @@
   "Like expand-node but preserves semantic constructs as data instead of
   expanding them to geometry. Generators, hatch/stipple fills, and effects
   are kept as-is for semantic lowering.
-  Other node types are expanded normally via expand-node."
-  [node]
+  Other node types are expanded normally via expand-node.
+  scene-size: [w h] from the scene, threaded for paint surface defaults."
+  ([node] (normalize-node node nil))
+  ([node scene-size]
   (let [fill      (:style/fill node)
         node-type (:node/type node)]
     (cond
       ;; Generator node types — preserve for semantic lowering (except L-systems)
+      ;; For standalone :paint/surface, also expand any children and merge paint/size
+      (and (= :paint/surface node-type))
+      (let [children    (:paint/children node)
+            flat        (if (seq children)
+                          (flatten-paint-children children)
+                          [])
+            paint-size  (or (:paint/size node) scene-size)]
+        (cond-> (assoc node :paint/size paint-size)
+          (seq flat) (assoc :paint/children flat)))
+
       (and (generator-node-types node-type)
            (not= :lsystem node-type))
       node
@@ -349,36 +361,66 @@
 
       ;; Symmetry — expand children with normalize-node
       (= :symmetry node-type)
-      (expand-node (update node :group/children #(mapv normalize-node %)))
+      (expand-node (update node :group/children #(mapv (fn [c] (normalize-node c scene-size)) %)))
 
       ;; Groups with :paint/surface — convert to paint-surface generator
       (and (= :group node-type) (:paint/surface node))
-      (let [flat-children (flatten-paint-children (:group/children node))]
+      (let [flat-children (flatten-paint-children (:group/children node))
+            paint-size    (or (:paint/size node) scene-size)]
         {:node/type :paint/surface
          :paint/surface (:paint/surface node)
-         :paint/size (:paint/size node)
+         :paint/size paint-size
          :paint/children flat-children
-         :node/opacity (:node/opacity node)})
+         :node/opacity (:node/opacity node)
+         :node/transform (:node/transform node)})
 
       ;; Groups — normalize children
       (= :group node-type)
-      (let [expanded (update node :group/children #(mapv normalize-node %))]
+      (let [expanded (update node :group/children #(mapv (fn [c] (normalize-node c scene-size)) %))]
         (if-let [warp-spec (:group/warp expanded)]
           (-> (warp/warp-node expanded warp-spec)
               (dissoc :group/warp))
           expanded))
 
-      ;; Path with :paint/brush — wrap in implicit paint-surface
+      ;; Path/line with :paint/brush — wrap in implicit paint-surface
       (and (#{:shape/path :shape/line} node-type) (:paint/brush node))
-      (let [expanded (expand-node node)]
+      (let [expanded   (expand-node node)
+            transforms (or (:node/transform expanded) [])
+            ;; Extract translate offset and apply to path commands directly
+            [tx ty] (reduce (fn [[ax ay] t]
+                              (if (= :transform/translate (first t))
+                                [(+ ax (double (nth t 1)))
+                                 (+ ay (double (nth t 2)))]
+                                [ax ay]))
+                            [0.0 0.0] transforms)
+            shifted  (if (and (not (and (zero? tx) (zero? ty)))
+                              (:path/commands expanded))
+                       (update expanded :path/commands
+                         (fn [cmds]
+                           (mapv (fn [cmd]
+                                   (case (first cmd)
+                                     :move-to [:move-to (mapv + (second cmd) [tx ty])]
+                                     :line-to [:line-to (mapv + (second cmd) [tx ty])]
+                                     :curve-to (let [[_ c1 c2 p] cmd]
+                                                 [:curve-to (mapv + c1 [tx ty])
+                                                            (mapv + c2 [tx ty])
+                                                            (mapv + p [tx ty])])
+                                     :quad-to (let [[_ cp p] cmd]
+                                                [:quad-to (mapv + cp [tx ty])
+                                                          (mapv + p [tx ty])])
+                                     :close cmd
+                                     cmd))
+                                 cmds)))
+                       expanded)]
         {:node/type :paint/surface
          :paint/surface {}
-         :paint/children [expanded]
+         :paint/size scene-size
+         :paint/children [(dissoc shifted :node/transform)]
          :node/opacity (:node/opacity node)})
 
       ;; Everything else goes through the legacy expand-node
       :else
-      (expand-node node))))
+      (expand-node node)))))
 
 (defn- node->fill-descriptor
   "Converts a scene-level fill to a semantic fill descriptor."
@@ -473,7 +515,8 @@
      :paint/surface     (:paint/surface node)
      :paint/size        (:paint/size node)
      :paint/children    (:paint/children node)
-     :paint/strokes     (:paint/strokes node)}
+     :paint/strokes     (:paint/strokes node)
+     :paint/default-color (:style/fill node)}
 
     :lsystem
     nil ;; L-systems still go through legacy (complex parameter passing)
@@ -575,7 +618,7 @@
   [scene]
   (let [bg    (color/resolve-color (:image/background scene))
         size  (:image/size scene)
-        nodes (mapv normalize-node (:image/nodes scene))
+        nodes (mapv #(normalize-node % size) (:image/nodes scene))
         items (vec (keep scene-node->draw-item nodes))]
     (ir/container size bg items)))
 

@@ -183,3 +183,184 @@
                                 r (bit-and (bit-shift-right argb 16) 0xFF)]
                             (recur (inc x) (if (< r 200) (inc cnt) cnt)))))]
         (is (> mid-dark 20) "center row should have painted pixels")))))
+
+;; --- SVG output ---
+
+(deftest paint-svg-output-test
+  (testing "paint surface renders as embedded image in SVG"
+    (let [svg (eido/render
+                {:image/size [200 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :paint/surface
+                   :paint/size [200 100]
+                   :paint/strokes
+                   [{:stroke/brush :ink
+                     :stroke/color [:color/rgb 0 0 0]
+                     :stroke/radius 5.0
+                     :stroke/points [[20 50 1.0 0 0 0] [180 50 1.0 0 0 0]]}]}]}
+                {:format :svg})]
+      (is (string? svg))
+      (is (re-find #"<image" svg) "should contain <image> element")
+      (is (re-find #"data:image/png;base64," svg) "should contain base64 PNG data")
+      (is (not (re-find #"rgb\(,,\)" svg)) "should not have empty rgb() values")))
+
+  (testing "painted path also works in SVG"
+    (let [svg (eido/render
+                {:image/size [200 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [20 50]] [:line-to [180 50]]]
+                   :paint/brush :ink
+                   :paint/color [:color/rgb 0 0 0]
+                   :paint/radius 5.0}]}
+                {:format :svg})]
+      (is (re-find #"<image" svg) "painted path should embed as image in SVG"))))
+
+;; --- API consistency ---
+
+(deftest paint-size-defaults-to-image-size-test
+  (testing "paint/size defaults to image/size when omitted"
+    (let [img (eido/render
+                {:image/size [300 200]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :paint/surface
+                   :paint/strokes
+                   [{:paint/brush :ink :paint/color [:color/rgb 0 0 0]
+                     :paint/radius 5.0
+                     :paint/points [[20 100 1.0 0 0 0] [280 100 1.0 0 0 0]]}]}]})]
+      (is (= 300 (.getWidth img)))
+      (is (has-painted-pixels? img 200)))))
+
+(deftest style-fill-fallback-test
+  (testing ":style/fill is used as paint color when :paint/color is absent"
+    (let [img (eido/render
+                {:image/size [200 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [20 50]] [:line-to [180 50]]]
+                   :style/fill [:color/rgb 0 0 200]
+                   :paint/brush :ink
+                   :paint/radius 6.0}]})]
+      (is (has-painted-pixels? img 240) "blue paint should be visible"))))
+
+(deftest unified-paint-namespace-test
+  (testing ":paint/ namespace works on standalone surface strokes"
+    (let [img (eido/render
+                {:image/size [200 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :paint/surface
+                   :paint/strokes
+                   [{:paint/brush :ink
+                     :paint/color [:color/rgb 200 0 0]
+                     :paint/radius 5.0
+                     :paint/points [[20 50 1.0 0 0 0] [180 50 1.0 0 0 0]]}]}]})]
+      (is (has-painted-pixels? img 200)))))
+
+(deftest standalone-surface-with-children-test
+  (testing "standalone :paint/surface accepts both strokes and children"
+    (let [img (eido/render
+                {:image/size [200 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :paint/surface
+                   :paint/strokes
+                   [{:paint/brush :ink :paint/color [:color/rgb 200 0 0]
+                     :paint/radius 5.0
+                     :paint/points [[20 30 1.0 0 0 0] [180 30 1.0 0 0 0]]}]
+                   :paint/children
+                   [{:node/type :shape/path
+                     :path/commands [[:move-to [20 70]] [:line-to [180 70]]]
+                     :paint/brush :ink
+                     :paint/color [:color/rgb 0 0 200]
+                     :paint/radius 5.0}]}]})]
+      (is (has-painted-pixels? img 200)))))
+
+;; --- transform support ---
+
+(deftest paint-with-translate-test
+  (testing "translate transform moves painted stroke"
+    (let [img (eido/render
+                {:image/size [200 200]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [20 20]] [:line-to [180 20]]]
+                   :paint/brush :ink
+                   :paint/color [:color/rgb 0 0 0]
+                   :paint/radius 5.0
+                   :node/transform [[:transform/translate 0 80]]}]})
+          at-original (bit-and (bit-shift-right (.getRGB img 100 20) 16) 0xFF)
+          at-shifted  (bit-and (bit-shift-right (.getRGB img 100 100) 16) 0xFF)]
+      (is (> at-original 200) "original y should be clear")
+      (is (< at-shifted 100) "translated y should have paint"))))
+
+;; --- symmetry composition ---
+
+(deftest paint-symmetry-test
+  (testing "radial symmetry correctly rotates paint strokes"
+    (let [img (eido/render
+                {:image/size [300 300]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :group
+                   :paint/surface {:paint/size [300 300]}
+                   :group/children
+                   [{:node/type :symmetry
+                     :symmetry/type :radial
+                     :symmetry/n 4
+                     :symmetry/center [150 150]
+                     :group/children
+                     [{:node/type :shape/path
+                       :path/commands [[:move-to [150 150]] [:line-to [250 150]]]
+                       :paint/brush :ink
+                       :paint/color [:color/rgb 0 0 0]
+                       :paint/radius 3.0}]}]}]})
+          check (fn [x y] (< (bit-and (bit-shift-right (.getRGB img x y) 16) 0xFF) 200))]
+      (is (check 210 150) "right arm should have paint")
+      (is (check 150 90)  "up arm should have paint")
+      (is (check 90 150)  "left arm should have paint")
+      (is (check 150 210) "down arm should have paint"))))
+
+;; --- convenience constructors ---
+
+(deftest convenience-constructors-test
+  (testing "painted-path helper creates valid scene node"
+    (let [p ((requiring-resolve 'eido.paint/painted-path)
+              [[100 100] [200 100] [300 150]]
+              {:brush :chalk :color [:color/rgb 80 60 40] :radius 10.0})]
+      (is (= :shape/path (:node/type p)))
+      (is (= :chalk (:paint/brush p)))
+      (is (= 10.0 (:paint/radius p)))
+      (let [img (eido/render
+                  {:image/size [400 200]
+                   :image/background [:color/rgb 255 255 255]
+                   :image/nodes [p]})]
+        (is (has-painted-pixels? img 240)))))
+
+  (testing "paint-surface helper creates valid node"
+    (let [mk-stroke (requiring-resolve 'eido.paint/stroke)
+          mk-surf   (requiring-resolve 'eido.paint/paint-surface)
+          s (mk-surf
+              [(mk-stroke [[50 50 0.8 0 0 0] [150 50 0.6 0 0 0]]
+                 {:brush :ink :color [:color/rgb 0 0 0] :radius 5.0})]
+              {:size [200 100]})]
+      (is (= :paint/surface (:node/type s)))
+      (let [img (eido/render
+                  {:image/size [200 100]
+                   :image/background [:color/rgb 255 255 255]
+                   :image/nodes [s]})]
+        (is (has-painted-pixels? img 200)))))
+
+  (testing "paint-group helper creates group with surface"
+    (let [mk-path  (requiring-resolve 'eido.paint/painted-path)
+          mk-group (requiring-resolve 'eido.paint/paint-group)
+          g (mk-group
+              [(mk-path [[20 50] [180 50]]
+                 {:brush :ink :color [:color/rgb 0 0 0] :radius 5.0})])]
+      (is (= :group (:node/type g)))
+      (is (some? (:paint/surface g))))))

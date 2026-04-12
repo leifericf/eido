@@ -203,53 +203,84 @@
             children (:paint/children gen-desc)
             size    (or (:paint/size gen-desc) [800 600])
             surface (mk-surf size)
-            substrate-spec (:paint/surface gen-desc)]
+            substrate-spec (:paint/surface gen-desc)
+            default-color  (:paint/default-color gen-desc)]
         ;; Collect all paintable leaf nodes from the tree, applying
-        ;; group transforms as offsets to path commands
-        (letfn [(collect-painted [node offset]
+        ;; group transforms to path commands via affine matrix.
+        ;; Matrix is [a b tx c d ty] for: x' = a*x + b*y + tx, y' = c*x + d*y + ty
+        (letfn [(mat-identity [] [1.0 0.0 0.0 0.0 1.0 0.0])
+                (mat-compose [[a1 b1 tx1 c1 d1 ty1] [a2 b2 tx2 c2 d2 ty2]]
+                  [(+ (* a1 a2) (* b1 c2))
+                   (+ (* a1 b2) (* b1 d2))
+                   (+ (* a1 tx2) (* b1 ty2) tx1)
+                   (+ (* c1 a2) (* d1 c2))
+                   (+ (* c1 b2) (* d1 d2))
+                   (+ (* c1 tx2) (* d1 ty2) ty1)])
+                (mat-from-transforms [transforms]
+                  (reduce (fn [m t]
+                            (case (first t)
+                              :transform/translate
+                              (let [tx (double (nth t 1)) ty (double (nth t 2))]
+                                (mat-compose m [1.0 0.0 tx 0.0 1.0 ty]))
+                              :transform/rotate
+                              (let [a (double (nth t 1))
+                                    c (Math/cos a) s (Math/sin a)]
+                                (mat-compose m [c (- s) 0.0 s c 0.0]))
+                              :transform/scale
+                              (let [sx (double (nth t 1)) sy (double (nth t 2))]
+                                (mat-compose m [sx 0.0 0.0 0.0 sy 0.0]))
+                              ;; Skip other transform types
+                              m))
+                          (mat-identity) transforms))
+                (mat-identity? [[a b tx c d ty]]
+                  (and (== a 1.0) (== b 0.0) (== tx 0.0)
+                       (== c 0.0) (== d 1.0) (== ty 0.0)))
+                (transform-point [[a b tx c d ty] [px py]]
+                  [(+ (* a px) (* b py) tx)
+                   (+ (* c px) (* d py) ty)])
+                (transform-cmd [mat cmd]
+                  (case (first cmd)
+                    :move-to  [:move-to (transform-point mat (second cmd))]
+                    :line-to  [:line-to (transform-point mat (second cmd))]
+                    :curve-to (let [[_ c1 c2 p] cmd]
+                                [:curve-to (transform-point mat c1)
+                                           (transform-point mat c2)
+                                           (transform-point mat p)])
+                    :quad-to  (let [[_ cp p] cmd]
+                                [:quad-to (transform-point mat cp)
+                                          (transform-point mat p)])
+                    :close cmd
+                    cmd))
+                (collect-painted [node mat]
                   (cond
                     ;; Leaf with paint params — render it
                     (and (#{:shape/path :shape/line} (:node/type node))
                          (:paint/brush node))
-                    (let [[ox oy] offset
-                          shifted (if (and (pos? ox) (pos? oy)
+                    (let [shifted (if (and (not (mat-identity? mat))
                                           (:path/commands node))
-                                    (update node :path/commands
-                                      (fn [cmds]
-                                        (mapv (fn [cmd]
-                                                (case (first cmd)
-                                                  :move-to [:move-to (mapv + (second cmd) [ox oy])]
-                                                  :line-to [:line-to (mapv + (second cmd) [ox oy])]
-                                                  :curve-to (let [[_ c1 c2 p] cmd]
-                                                              [:curve-to (mapv + c1 [ox oy])
-                                                                         (mapv + c2 [ox oy])
-                                                                         (mapv + p [ox oy])])
-                                                  :quad-to (let [[_ cp p] cmd]
-                                                             [:quad-to (mapv + cp [ox oy])
-                                                                       (mapv + p [ox oy])])
-                                                  :close cmd
-                                                  cmd))
-                                              cmds)))
-                                    node)]
-                      (paint surface shifted substrate-spec))
+                                   (update node :path/commands
+                                     #(mapv (partial transform-cmd mat) %))
+                                   node)
+                          with-color (if (and default-color
+                                             (not (:paint/color shifted))
+                                             (not (:stroke/color shifted))
+                                             (not (:style/fill shifted)))
+                                       (assoc shifted :paint/color default-color)
+                                       shifted)]
+                      (paint surface with-color substrate-spec))
 
-                    ;; Group — recurse with accumulated offset
+                    ;; Group — recurse with composed transform
                     (= :group (:node/type node))
-                    (let [transforms (or (:node/transform node) [])
-                          ;; Extract translate offset if present
-                          [dx dy] (reduce (fn [[ax ay] t]
-                                            (if (= :transform/translate (first t))
-                                              [(+ ax (double (nth t 1)))
-                                               (+ ay (double (nth t 2)))]
-                                              [ax ay]))
-                                          offset transforms)]
+                    (let [child-mat (if-let [ts (seq (:node/transform node))]
+                                     (mat-compose mat (mat-from-transforms ts))
+                                     mat)]
                       (doseq [c (:group/children node)]
-                        (collect-painted c [dx dy])))
+                        (collect-painted c child-mat)))
 
                     ;; Ignore non-paintable nodes
                     :else nil))]
           (doseq [child children]
-            (collect-painted child [0.0 0.0])))
+            (collect-painted child (mat-identity))))
         ;; Also handle explicit :paint/strokes on the descriptor
         (when-let [strokes (:paint/strokes gen-desc)]
           (doseq [s strokes]

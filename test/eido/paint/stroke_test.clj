@@ -58,6 +58,21 @@
       (is (< (Math/abs (- (second (first pressure)) 0.5)) 0.01))
       (is (< (Math/abs (- (second (last pressure)) 1.0)) 0.01)))))
 
+(deftest resample-zero-spacing-test
+  (testing "zero spacing does not cause infinite loop"
+    (let [dabs (stroke/resample-stroke [[0 0] [100 0]] 0.0
+                 {:color {:r 0 :g 0 :b 0 :a 1.0} :radius 5.0})]
+      (is (pos? (count dabs)) "should produce dabs with fallback spacing")))
+
+  (testing "negative spacing does not cause infinite loop"
+    (let [dabs (stroke/resample-stroke [[0 0] [100 0]] -5.0
+                 {:color {:r 0 :g 0 :b 0 :a 1.0} :radius 5.0})]
+      (is (pos? (count dabs)))))
+
+  (testing "zero-length stroke returns empty"
+    (is (nil? (stroke/resample-stroke [[50 50] [50 50]] 5.0
+                {:color {:r 0 :g 0 :b 0 :a 1.0} :radius 5.0})))))
+
 (deftest path-commands-to-points-test
   (testing "flattens bezier to point sequence"
     (let [pts (stroke/path-commands->points

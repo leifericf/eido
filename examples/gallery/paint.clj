@@ -29,11 +29,11 @@
                                                                      {:seed (+ seed 100)})))]
                                              [x y (max 0.1 p) 0 0 0]))
                                          (range 21))]
-                        {:stroke/brush :chalk
-                         :stroke/color color
-                         :stroke/radius (+ 8.0 (* 6.0 (.nextDouble rng)))
-                         :stroke/points points
-                         :stroke/seed seed}))]
+                        {:paint/brush :chalk
+                         :paint/color color
+                         :paint/radius (+ 8.0 (* 6.0 (.nextDouble rng)))
+                         :paint/points points
+                         :paint/seed seed}))]
     {:image/size [w h]
      :image/background [:color/rgb 245 238 225]
      :image/nodes

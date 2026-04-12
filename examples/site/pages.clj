@@ -1595,12 +1595,12 @@
               "{:node/type :paint/surface
  :paint/size [600 400]
  :paint/strokes
- [{:stroke/brush  :chalk
-   :stroke/color  [:color/rgb 80 60 40]
-   :stroke/radius 12.0
-   :stroke/points [[50 100 0.8 0 0 0]    ;; [x y pressure speed tilt-x tilt-y]
-                   [300 60 1.0 1.0 0 0]
-                   [550 100 0.3 0.5 0 0]]}]}"]]
+ [{:paint/brush  :chalk
+   :paint/color  [:color/rgb 80 60 40]
+   :paint/radius 12.0
+   :paint/points [[50 100 0.8 0 0 0]    ;; [x y pressure speed tilt-x tilt-y]
+                  [300 60 1.0 1.0 0 0]
+                  [550 100 0.3 0.5 0 0]]}]}"]]
        [:p "Each point carries six values: x, y, pressure, speed, tilt-x, tilt-y. "
         "Pressure modulates radius and opacity along the stroke."]
        [:h4 "Brush presets"]
@@ -1616,9 +1616,9 @@
 :pastel    ;; medium soft, slightly elliptical"]]
        [:p "Override any preset parameter:"]
        [:pre [:code
-              "{:stroke/brush {:brush/type :brush/dab
-                :brush/tip {:tip/shape :ellipse :tip/hardness 0.9}
-                :brush/paint {:paint/opacity 0.7 :paint/spacing 0.03}}}"]]]}
+              "{:paint/brush {:brush/type :brush/dab
+               :brush/tip {:tip/shape :ellipse :tip/hardness 0.9}
+               :brush/paint {:paint/opacity 0.7 :paint/spacing 0.03}}}"]]]}
 
      {:id    "paint-paths"
       :title "Painted Paths"

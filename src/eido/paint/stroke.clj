@@ -94,7 +94,8 @@
           :dab/color c}])
       [])
     ;; Multiple points — walk the polyline at spacing intervals
-    (let [;; Compute cumulative arc lengths
+    (let [spacing-px (if (pos? spacing-px) spacing-px 1.0) ;; guard against zero/negative
+          ;; Compute cumulative arc lengths
           segments (mapv (fn [i]
                           (segment-length (nth points i) (nth points (inc i))))
                         (range (dec (count points))))

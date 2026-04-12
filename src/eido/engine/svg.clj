@@ -1,6 +1,10 @@
 (ns eido.engine.svg
   (:require
-    [clojure.string :as str]))
+    [clojure.string :as str])
+  (:import
+    [java.io ByteArrayOutputStream]
+    [java.util Base64]
+    [javax.imageio ImageIO]))
 
 (defn- fmt
   "Formats a number, stripping unnecessary trailing zeros and dot."
@@ -133,18 +137,39 @@
            " A " rx " " ry " 0 " large-arc " " sweep
            " " (fmt x2) " " (fmt y2)))))
 
+(defn- image->data-uri
+  "Converts a BufferedImage to a PNG data URI string."
+  [^java.awt.image.BufferedImage img]
+  (let [baos (ByteArrayOutputStream.)]
+    (ImageIO/write img "png" baos)
+    (str "data:image/png;base64,"
+         (.encodeToString (Base64/getEncoder) (.toByteArray baos)))))
+
 (defn- op->svg
   "Converts a single IR op to an SVG element string."
   ([op] (op->svg op nil))
   ([op gradient-id]
    (case (:op op)
      :rect
-     (let [{:keys [x y w h corner-radius]} op]
-       (str "<rect x=\"" x "\" y=\"" y
-            "\" width=\"" w "\" height=\"" h "\""
-            (when corner-radius
-              (str " rx=\"" corner-radius "\" ry=\"" corner-radius "\""))
-            " " (style-attrs op gradient-id) "/>"))
+     (let [{:keys [x y w h corner-radius fill]} op]
+       ;; Procedural-image fill: embed as <image> element
+       (if (and (map? fill) (= :procedural-image (:fill/type fill)))
+         (let [^java.awt.image.BufferedImage img (:image fill)
+               [ox oy] (or (:offset fill) [0.0 0.0])
+               data-uri (image->data-uri img)]
+           (str "<image x=\"" (+ (double x) (double ox))
+                "\" y=\"" (+ (double y) (double oy))
+                "\" width=\"" (.getWidth img)
+                "\" height=\"" (.getHeight img)
+                "\" href=\"" data-uri "\""
+                (when (and (:opacity op) (not= (:opacity op) 1.0))
+                  (str " opacity=\"" (:opacity op) "\""))
+                "/>"))
+         (str "<rect x=\"" x "\" y=\"" y
+              "\" width=\"" w "\" height=\"" h "\""
+              (when corner-radius
+                (str " rx=\"" corner-radius "\" ry=\"" corner-radius "\""))
+            " " (style-attrs op gradient-id) "/>")))
      :circle
      (let [{:keys [cx cy r]} op]
        (str "<circle cx=\"" cx "\" cy=\"" cy

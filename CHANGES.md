@@ -1,5 +1,94 @@
 # Changes
 
+## Unreleased — Paint Engine
+
+### New features
+
+- **Procedural paint engine** (`eido.paint`) — CPU-first dab-based brush
+  engine for painterly rendering. Renders strokes as sequences of
+  blended dabs onto a tiled raster surface. All textures are purely
+  procedural — no bitmap dependencies.
+
+  Three entry points:
+
+  ```clj
+  ;; 1. Paint parameters on any path (implicit surface)
+  {:node/type :shape/path
+   :path/commands [[:move-to [50 100]] [:curve-to ...]]
+   :paint/brush :chalk
+   :paint/color [:color/rgb 80 60 40]
+   :paint/radius 12.0
+   :paint/pressure [[0.0 0.3] [0.5 1.0] [1.0 0.1]]}
+
+  ;; 2. Standalone paint surface with explicit stroke data
+  {:node/type :paint/surface
+   :paint/strokes
+   [{:paint/brush :ink
+     :paint/color [:color/rgb 0 0 0]
+     :paint/radius 5.0
+     :paint/points [[20 50 0.8 0 0 0] [180 50 0.6 0 0 0]]}]}
+
+  ;; 3. Group modifier for shared surface (multi-stroke interaction)
+  {:node/type :group
+   :paint/surface {:substrate/tooth 0.4}
+   :group/children [painted-path-nodes ...]}
+  ```
+
+- **Brush presets** — `:pencil`, `:marker`, `:airbrush`, `:chalk`,
+  `:ink`, `:oil`, `:watercolor`, `:pastel`. Override any parameter
+  with a full brush spec map.
+
+- **Procedural tip fields** — Ellipse, rounded rectangle, and line/nib
+  signed distance function evaluators with hardness-controlled falloff
+  and rotation support.
+
+- **Sensor dynamics** — Map pressure, speed, tilt, and stroke distance
+  to any brush parameter via interpolated curves.
+
+- **Procedural grain fields** — fBm, turbulence, ridge, fiber, weave,
+  and canvas grain types. Modulate paint deposition inside the tip area
+  for chalk, pastel, and canvas texture effects.
+
+- **Substrate interaction** — Paper tooth and absorbency fields that
+  modulate how much paint deposits at each pixel. Higher tooth causes
+  paint to skip surface valleys.
+
+- **Bristle multi-tip** — Configurable bristle count, spread, shear,
+  and per-bristle opacity/size variation for flat brushes, filberts,
+  fan brushes, and rake effects.
+
+- **Smudge and color pickup** — Persistent pickup color state with
+  smear and dull modes for oil-like color dragging.
+
+- **Wet media diffusion** — Tile-local Laplacian diffusion on wetness
+  planes with edge darkening for watercolor-style bloom effects.
+
+- **Blend modes** — Source-over (default), multiply, and erase blend
+  modes in premultiplied RGBA float space.
+
+- **Convenience constructors** — `painted-path`, `paint-surface`,
+  `paint-group`, and `stroke` helpers following the `eido.scene`
+  pattern of returning plain data maps.
+
+- **Generator composition** — Paint parameters propagate through
+  generators. Flow fields, scatter, symmetry, and decorators
+  automatically apply paint to their generated paths.
+
+- **SVG support** — Paint surfaces render as embedded base64 PNG
+  `<image>` elements in SVG output.
+
+### Fixes
+
+- Fix SVG output for procedural-image fills producing `rgb(,,)` —
+  now correctly embeds as a base64 PNG `<image>` element.
+
+### Breaking changes
+
+None. All existing scenes render identically. The `:paint/surface`
+node type and `:paint/brush` parameter are purely additive.
+
+---
+
 ## v1.0.0-beta6 — Constraint Solving & Robustness
 
 ### New features

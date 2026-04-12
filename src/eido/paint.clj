@@ -93,12 +93,15 @@
   ([surface stroke-desc substrate-spec]
   (let [brush-spec (resolve-brush (or (:stroke/brush stroke-desc)
                                       (:paint/brush stroke-desc)))
-        raw-color  (or (:stroke/color stroke-desc)
-                       (:paint/color stroke-desc)
+        raw-color  (or (:paint/color stroke-desc)
+                       (:stroke/color stroke-desc)
+                       (:style/fill stroke-desc)
                        [:color/rgb 0 0 0])
         resolved   (color/resolve-color raw-color)
-        radius     (double (get stroke-desc :stroke/radius
-                             (get stroke-desc :paint/radius 8.0)))
+        radius     (double (or (:paint/radius stroke-desc)
+                               (:stroke/radius stroke-desc)
+                               (get-in brush-spec [:brush/radius])
+                               8.0))
         tip-spec   (:brush/tip brush-spec)
         hardness   (get tip-spec :tip/hardness 0.7)
         aspect     (get tip-spec :tip/aspect 1.0)
@@ -107,7 +110,7 @@
         opacity    (get-in brush-spec [:brush/paint :paint/opacity] 0.5)
         spacing-px (brush-spacing-px brush-spec radius)
         ;; Get points — either explicit or from path commands
-        explicit   (or (:stroke/points stroke-desc) nil)
+        explicit   (or (:paint/points stroke-desc) (:stroke/points stroke-desc))
         path-cmds  (:path/commands stroke-desc)
         {:keys [points pressure]}
         (cond
@@ -173,6 +176,67 @@
   "Composites a painted surface to a BufferedImage."
   [surface]
   (surface/compose-to-image surface))
+
+;; --- convenience constructors ---
+;; Following the pattern of eido.scene: helpers that return plain maps.
+
+(defn painted-path
+  "Creates a path node with paint parameters.
+  points: [[x y] ...] — auto-smoothed via Catmull-Rom, or path commands.
+  opts: {:brush :ink, :color [...], :radius 8.0, :pressure [[t p] ...], :opacity 0.5}"
+  [points opts]
+  (let [cmds (if (and (seq points) (vector? (first points)) (number? (ffirst points)))
+               ;; [[x y] ...] — convert to smooth path commands
+               (let [pts (vec points)
+                     n   (count pts)]
+                 (if (<= n 1)
+                   (if (seq pts) [[:move-to (first pts)]] [])
+                   (into [[:move-to (first pts)]]
+                         (mapv (fn [p] [:line-to p]) (rest pts)))))
+               ;; Already path commands
+               points)]
+    (cond-> {:node/type     :shape/path
+             :path/commands cmds
+             :paint/brush   (or (:brush opts) :pencil)}
+      (:color opts)    (assoc :paint/color (:color opts))
+      (:radius opts)   (assoc :paint/radius (:radius opts))
+      (:pressure opts) (assoc :paint/pressure (:pressure opts))
+      (:opacity opts)  (assoc :node/opacity (:opacity opts))
+      (:seed opts)     (assoc :paint/seed (:seed opts)))))
+
+(defn paint-surface
+  "Creates a paint surface node.
+  strokes: vector of stroke descriptors.
+  opts: {:size [w h], :substrate {:substrate/tooth 0.4}, :children [nodes]}"
+  ([strokes] (paint-surface strokes {}))
+  ([strokes opts]
+   (cond-> {:node/type      :paint/surface
+            :paint/strokes  strokes}
+     (:size opts)      (assoc :paint/size (:size opts))
+     (:substrate opts) (assoc :paint/surface (:substrate opts))
+     (:children opts)  (assoc :paint/children (:children opts)))))
+
+(defn paint-group
+  "Creates a group with a shared paint surface.
+  children: painted path nodes or generators with paint params.
+  opts: {:substrate {:substrate/tooth 0.4}}"
+  ([children] (paint-group children {}))
+  ([children opts]
+   (cond-> {:node/type       :group
+            :paint/surface   (or (:substrate opts) {})
+            :group/children  (vec children)}
+     (:opacity opts) (assoc :node/opacity (:opacity opts)))))
+
+(defn stroke
+  "Creates a stroke descriptor for use in :paint/strokes.
+  points: [[x y pressure speed tilt-x tilt-y] ...]
+  opts: {:brush :chalk, :color [...], :radius 12.0, :seed 42}"
+  [points opts]
+  (cond-> {:paint/points points
+           :paint/brush  (or (:brush opts) :pencil)}
+    (:color opts)  (assoc :paint/color (:color opts))
+    (:radius opts) (assoc :paint/radius (:radius opts))
+    (:seed opts)   (assoc :paint/seed (:seed opts))))
 
 (comment
   (let [s (make-surface [400 200])
