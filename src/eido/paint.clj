@@ -86,8 +86,10 @@
   "Renders a single stroke onto a surface.
   stroke-desc: {:stroke/brush :stroke/color :stroke/points :stroke/seed}
     or path-based: {:paint/brush :paint/color :path/commands :paint/pressure}
-  Returns nil (mutates surface)."
-  [surface stroke-desc]
+  Returns nil (mutates surface).
+  substrate-spec: optional substrate from the surface config."
+  ([surface stroke-desc] (render-stroke! surface stroke-desc nil))
+  ([surface stroke-desc substrate-spec]
   (let [brush-spec (resolve-brush (or (:stroke/brush stroke-desc)
                                       (:paint/brush stroke-desc)))
         raw-color  (or (:stroke/color stroke-desc)
@@ -99,6 +101,7 @@
         tip-spec   (:brush/tip brush-spec)
         hardness   (get tip-spec :tip/hardness 0.7)
         aspect     (get tip-spec :tip/aspect 1.0)
+        grain-spec (:brush/grain brush-spec)
         opacity    (get-in brush-spec [:brush/paint :paint/opacity] 0.5)
         spacing-px (brush-spacing-px brush-spec radius)
         ;; Get points — either explicit or from path commands
@@ -125,14 +128,18 @@
                 :tip      tip-spec
                 :pressure pressure})]
     (doseq [d dabs]
-      (kernel/rasterize-dab! surface d))))
+      (kernel/rasterize-dab! surface
+        (cond-> d
+          grain-spec     (assoc :dab/grain grain-spec)
+          substrate-spec (assoc :dab/substrate substrate-spec)))))))
 
 (defn render-strokes!
   "Renders all strokes onto a surface. Returns the surface."
-  [surface strokes]
-  (doseq [s strokes]
-    (render-stroke! surface s))
-  surface)
+  ([surface strokes] (render-strokes! surface strokes nil))
+  ([surface strokes substrate-spec]
+   (doseq [s strokes]
+     (render-stroke! surface s substrate-spec))
+   surface))
 
 ;; --- surface creation and compositing ---
 

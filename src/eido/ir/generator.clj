@@ -202,7 +202,8 @@
             mk-surf (requiring-resolve 'eido.paint/make-surface)
             children (:paint/children gen-desc)
             size    (or (:paint/size gen-desc) [800 600])
-            surface (mk-surf size)]
+            surface (mk-surf size)
+            substrate-spec (:paint/surface gen-desc)]
         ;; Collect all paintable leaf nodes from the tree, applying
         ;; group transforms as offsets to path commands
         (letfn [(collect-painted [node offset]
@@ -230,7 +231,7 @@
                                                   cmd))
                                               cmds)))
                                     node)]
-                      (paint surface shifted))
+                      (paint surface shifted substrate-spec))
 
                     ;; Group — recurse with accumulated offset
                     (= :group (:node/type node))
@@ -252,7 +253,7 @@
         ;; Also handle explicit :paint/strokes on the descriptor
         (when-let [strokes (:paint/strokes gen-desc)]
           (doseq [s strokes]
-            (paint surface s)))
+            (paint surface s substrate-spec)))
         ;; Compose tiles to image and return as a rect op with procedural-image fill
         (let [img   (compose surface)
               [w h] size]

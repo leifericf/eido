@@ -5,6 +5,8 @@
   using premultiplied-alpha blending. Inner loops use mutable float
   arrays and primitive math for performance."
   (:require
+    [eido.paint.grain :as grain]
+    [eido.paint.substrate :as substrate]
     [eido.paint.surface :as surface]
     [eido.paint.tip :as tip]))
 
@@ -22,7 +24,9 @@
     :dab/hardness       — falloff sharpness [0..1]
     :dab/opacity        — dab opacity [0..1]
     :dab/color          — {:r 0-255 :g 0-255 :b 0-255 :a 0-1}
-    :dab/tip            — tip spec map (optional, uses defaults)"
+    :dab/tip            — tip spec map (optional, uses defaults)
+    :dab/grain          — grain spec map (optional, no grain if nil)
+    :dab/substrate      — substrate spec map (optional)"
   [surface dab]
   (let [cx       (double (:dab/cx dab))
         cy       (double (:dab/cy dab))
@@ -39,6 +43,8 @@
                      {:tip/shape    :ellipse
                       :tip/hardness (get dab :dab/hardness 0.7)
                       :tip/aspect   aspect})
+        grain-spec    (:dab/grain dab)
+        substrate-spec (:dab/substrate dab)
         ;; Bounding box — expand by aspect ratio for elliptical tips
         extent   (* radius (max 1.0 aspect))
         x0       (long (Math/floor (- cx extent)))
@@ -62,9 +68,19 @@
                   nx (* (- (+ (double px) 0.5) cx) inv-r)
                   ny (* (- (+ (double py) 0.5) cy) inv-r)
                   ;; Evaluate tip SDF for coverage
-                  coverage (tip/evaluate-tip tip-spec nx ny angle)]
-              (when (> coverage 0.0)
-                (let [alpha     (* coverage opacity ca)
+                  tip-cov (tip/evaluate-tip tip-spec nx ny angle)]
+              (when (> tip-cov 0.0)
+                (let [;; Apply grain and substrate modulation
+                      grain-val (if grain-spec
+                                  (grain/evaluate-grain grain-spec
+                                    (double (+ px 0.5)) (double (+ py 0.5)))
+                                  1.0)
+                      sub-val   (if substrate-spec
+                                  (substrate/evaluate-substrate substrate-spec
+                                    (double (+ px 0.5)) (double (+ py 0.5)))
+                                  1.0)
+                      coverage  (* tip-cov grain-val sub-val)
+                      alpha     (* coverage opacity ca)
                       ;; Premultiplied source
                       src-r     (* cr alpha)
                       src-g     (* cg alpha)
