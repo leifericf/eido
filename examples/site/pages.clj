@@ -2187,7 +2187,7 @@ CircleOp{...original-shape...}"]]
     :links [{:label "Plotter workflow" :href "../workflows/plotter/"}
             {:label "Path aesthetics" :href "#recipe-flow-path"}]}
    {:intent "I want to create painterly generative fields"
-    :links [{:label "Color workflow" :href "../workflows/color/"}
+    :links [{:label "Paint workflow" :href "../workflows/paint/"}
             {:label "Flow field recipe" :href "#recipe-flow-path"}]}
    {:intent "I want to build geometric grids and patterns"
     :links [{:label "Subdivision" :href "#subdivision"}
@@ -2929,6 +2929,130 @@ CircleOp{...original-shape...}"]]
 (palette/weighted-pick pal [0.4 0.3 0.2 0.1] {:seed 42})"]]
      [:p "The " [:code "vary"] " functions take seeds for deterministic results — same seed, same color assignment every time."]]}])
 
+(defn- workflow-paint-sections []
+  [{:id "paint-basics"
+    :title "First Painted Stroke"
+    :content
+    [:div
+     [:p "The paint engine renders brushstrokes as dab sequences onto a tiled raster surface. Everything is procedural — no bitmap textures."]
+     [:pre {:data-img "paint-02-ink-calligraphy.png"} [:code
+            "(require '[eido.core :as eido])
+
+;; A single painted path with pressure
+{:image/size [800 400]
+ :image/background [:color/rgb 252 250 242]
+ :image/nodes
+ [{:node/type :shape/path
+   :path/commands [[:move-to [60 200]]
+                   [:curve-to [200 80] [350 320] [740 160]]]
+   :paint/brush :ink
+   :paint/color [:color/rgb 15 10 5]
+   :paint/radius 9.0
+   :paint/pressure [[0.0 0.1] [0.3 0.9] [0.7 0.6] [1.0 0.05]]}]}"]]
+     [:p "Add " [:code ":paint/brush"] " to any path and it becomes a painted stroke. "
+      "The " [:code ":paint/pressure"] " curve maps stroke parameter t (0 = start, 1 = end) to pressure, which scales radius and opacity."]]}
+
+   {:id "paint-presets"
+    :title "Brush Presets"
+    :content
+    [:div
+     [:p "Built-in presets cover common media. Each is a full brush spec you can override:"]
+     [:pre [:code
+            ";; Use a preset directly
+:paint/brush :chalk
+
+;; Override specific parameters
+:paint/brush {:brush/type :brush/dab
+              :brush/tip {:tip/shape :ellipse
+                          :tip/hardness 0.5
+                          :tip/aspect 2.0}
+              :brush/grain {:grain/type :fiber
+                            :grain/scale 0.06
+                            :grain/contrast 0.5}
+              :brush/paint {:paint/opacity 0.12
+                            :paint/spacing 0.04}}"]]
+     [:p "Available presets: " [:code ":pencil"] ", " [:code ":marker"] ", " [:code ":airbrush"]
+      ", " [:code ":chalk"] ", " [:code ":ink"] ", " [:code ":oil"] ", "
+      [:code ":watercolor"] ", " [:code ":pastel"] "."]]}
+
+   {:id "paint-surfaces"
+    :title "Shared Surfaces"
+    :content
+    [:div
+     [:p "For multiple strokes on one canvas (e.g. layered watercolor), use a group with "
+      [:code ":paint/surface"] ":"]
+     [:pre {:data-img "paint-03-watercolor-wash.png"} [:code
+            "{:node/type :group
+ :paint/surface {:substrate/tooth 0.3}
+ :group/children
+ [{:node/type :shape/path
+   :path/commands [[:move-to [20 250]]
+                   [:curve-to [200 100] [400 350] [780 200]]]
+   :paint/brush :watercolor
+   :paint/color [:color/hsl 210 0.45 0.65]
+   :paint/radius 45.0}
+  ;; Ink detail on top
+  {:node/type :shape/path
+   :path/commands [[:move-to [120 220]]
+                   [:curve-to [300 150] [500 280] [680 180]]]
+   :paint/brush :ink
+   :paint/color [:color/rgb 25 30 50]
+   :paint/radius 2.5}]}"]]
+     [:p "Or use the standalone " [:code ":paint/surface"] " node with explicit point data for full control over pressure, speed, and tilt per point."]]}
+
+   {:id "paint-generators"
+    :title "Composing with Generators"
+    :content
+    [:div
+     [:p "Paint parameters flow through generators. Put a flow field inside a paint group and every streamline becomes a painted stroke:"]
+     [:pre {:data-img "paint-04-flow-ink.png"} [:code
+            "{:node/type :group
+ :paint/surface {:paint/size [700 700]}
+ :group/children
+ [{:node/type :flow-field
+   :flow/bounds [40 40 620 620]
+   :flow/opts {:density 18 :steps 50
+               :noise-scale 0.005 :seed 33}
+   :paint/brush :ink
+   :paint/color [:color/rgb 20 15 10]
+   :paint/radius 1.8}]}"]]
+     [:p "This works with any generator: " [:code ":scatter"] ", " [:code ":symmetry"] ", " [:code ":flow-field"] ", " [:code ":path/decorated"] ". "
+      "The paint parameters propagate from the generator node to all its generated paths."]]}
+
+   {:id "paint-texture"
+    :title "Grain and Substrate"
+    :content
+    [:div
+     [:p "Grain textures modulate deposition inside the brush tip. Substrate describes the paper/canvas surface. Both are procedural:"]
+     [:pre {:data-img "paint-05-pastel-landscape.png"} [:code
+            ";; Grain: breaks up the stroke with texture
+:brush/grain {:grain/type :fiber    ;; :fbm :ridge :weave :canvas
+              :grain/scale 0.06
+              :grain/contrast 0.5
+              :grain/stretch 4.0}
+
+;; Substrate: paper tooth blocks paint in valleys
+:paint/surface {:substrate/tooth 0.4
+                :substrate/scale 0.1}"]]
+     [:p "Available grain types: " [:code ":fbm"] " (general), " [:code ":fiber"]
+      " (directional), " [:code ":weave"] " (canvas), " [:code ":ridge"]
+      " (sharp), " [:code ":turbulence"] " (billowy), " [:code ":canvas"]
+      " (weave + fine noise)."]]}
+
+   {:id "paint-bristles"
+    :title "Bristle Brushes"
+    :content
+    [:div
+     [:p "Add " [:code ":brush/bristles"] " to create multi-tip brushes that show individual hair marks:"]
+     [:pre {:data-img "paint-06-bristle-flat.png"} [:code
+            ":brush/bristles {:bristle/count 9
+                 :bristle/spread 1.0
+                 :bristle/shear 0.15}"]]
+     [:p "Bristles are arranged perpendicular to the stroke direction. "
+      [:code ":bristle/spread"] " controls width, "
+      [:code ":bristle/shear"] " adds a fan effect. "
+      "Each bristle gets subtle opacity and size variation for a natural look."]]}])
+
 (def workflow-pages
   "Registry of all workflow guide pages."
   [{:slug "sketching"  :title "Sketching & Iteration"
@@ -2951,4 +3075,7 @@ CircleOp{...original-shape...}"]]
    :sections-fn workflow-3d-sections}
   {:slug "color"      :title "Color & Palette Development"
    :desc "Perceptual color, palette generation, analysis, image extraction, and application."
-   :sections-fn workflow-color-sections}])
+   :sections-fn workflow-color-sections}
+  {:slug "paint"      :title "Paint Engine"
+   :desc "Procedural brushwork, dab rendering, grain textures, bristle brushes, and generator composition."
+   :sections-fn workflow-paint-sections}])
