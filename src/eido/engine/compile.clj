@@ -253,26 +253,26 @@
   "Expands high-level nodes into primitive nodes.
   Text nodes become groups of path nodes. Other nodes pass through."
   [node]
-  (let [node (case (:node/type node)
-               :shape/text         (text/text-node->group node)
-               :shape/text-glyphs  (text/text-glyphs-node->group node)
-               :shape/text-on-path (text/text-on-path-node->group node)
-               :scatter            (expand-scatter node)
-               :voronoi            (expand-voronoi node)
-               :delaunay           (expand-delaunay node)
-               :lsystem            (expand-lsystem node)
-               :contour            (expand-contour node)
-               :flow-field         (expand-flow-field node)
-               :symmetry           (expand-symmetry node)
-               :path/decorated     (expand-path-decorated node)
-               :group              (expand-group node)
-               node)]
-    (if (= :shape/path (:node/type node))
-      (let [node (apply-distort-transforms node)]
-        (if (:stroke/profile node)
-          (expand-stroke-profile node)
-          node))
-      node)))
+  (let [expanded (case (:node/type node)
+                   :shape/text         (text/text-node->group node)
+                   :shape/text-glyphs  (text/text-glyphs-node->group node)
+                   :shape/text-on-path (text/text-on-path-node->group node)
+                   :scatter            (expand-scatter node)
+                   :voronoi            (expand-voronoi node)
+                   :delaunay           (expand-delaunay node)
+                   :lsystem            (expand-lsystem node)
+                   :contour            (expand-contour node)
+                   :flow-field         (expand-flow-field node)
+                   :symmetry           (expand-symmetry node)
+                   :path/decorated     (expand-path-decorated node)
+                   :group              (expand-group node)
+                   node)]
+    (if (= :shape/path (:node/type expanded))
+      (let [with-distort (apply-distort-transforms expanded)]
+        (if (:stroke/profile with-distort)
+          (expand-stroke-profile with-distort)
+          with-distort))
+      expanded)))
 
 ;; --- paint param propagation ---
 
@@ -523,73 +523,77 @@
 
     nil))
 
+(defn- node->geometry
+  "Extracts a geometry descriptor from a shape node. Returns nil for non-shapes."
+  [node]
+  (case (:node/type node)
+    :shape/rect
+    {:geometry/type       :rect
+     :rect/xy             (:rect/xy node)
+     :rect/size           (:rect/size node)
+     :rect/corner-radius  (:rect/corner-radius node)}
+
+    :shape/circle
+    {:geometry/type   :circle
+     :circle/center   (:circle/center node)
+     :circle/radius   (:circle/radius node)}
+
+    :shape/ellipse
+    {:geometry/type    :ellipse
+     :ellipse/center   (:ellipse/center node)
+     :ellipse/rx       (:ellipse/rx node)
+     :ellipse/ry       (:ellipse/ry node)}
+
+    :shape/arc
+    {:geometry/type :arc
+     :arc/center    (:arc/center node)
+     :arc/rx        (:arc/rx node)
+     :arc/ry        (:arc/ry node)
+     :arc/start     (:arc/start node)
+     :arc/extent    (:arc/extent node)
+     :arc/mode      (get node :arc/mode :open)}
+
+    :shape/line
+    {:geometry/type :line
+     :line/from     (:line/from node)
+     :line/to       (:line/to node)}
+
+    :shape/path
+    {:geometry/type  :path
+     :path/commands  (:path/commands node)
+     :path/fill-rule (:path/fill-rule node)}
+
+    nil))
+
+(defn- normalize-transforms
+  "Strips :transform/distort entries and normalizes transform keywords."
+  [raw-transforms]
+  (if (seq raw-transforms)
+    (mapv (fn [[k & args]]
+            (into [(keyword (name k))] args))
+          (remove #(= :transform/distort (first %))
+                  raw-transforms))
+    []))
+
 (defn- scene-node->draw-item
   "Converts a normalized scene node to a semantic IR draw item.
   Handles shapes, generators, and the mapping from scene-level keys."
   [node]
   (let [node-type (:node/type node)]
-    ;; Generator nodes
     (if-let [gen (and (generator-node-types node-type)
                       (node->generator node))]
       (cond-> {:item/generator gen}
         (:node/opacity node) (assoc :item/opacity (:node/opacity node)))
-      ;; Shape nodes
-      (let [geom (case node-type
-                   :shape/rect
-                   {:geometry/type       :rect
-                    :rect/xy             (:rect/xy node)
-                    :rect/size           (:rect/size node)
-                    :rect/corner-radius  (:rect/corner-radius node)}
-
-                   :shape/circle
-                   {:geometry/type   :circle
-                    :circle/center   (:circle/center node)
-                    :circle/radius   (:circle/radius node)}
-
-                   :shape/ellipse
-                   {:geometry/type    :ellipse
-                    :ellipse/center   (:ellipse/center node)
-                    :ellipse/rx       (:ellipse/rx node)
-                    :ellipse/ry       (:ellipse/ry node)}
-
-                   :shape/arc
-                   {:geometry/type :arc
-                    :arc/center    (:arc/center node)
-                    :arc/rx        (:arc/rx node)
-                    :arc/ry        (:arc/ry node)
-                    :arc/start     (:arc/start node)
-                    :arc/extent    (:arc/extent node)
-                    :arc/mode      (get node :arc/mode :open)}
-
-                   :shape/line
-                   {:geometry/type :line
-                    :line/from     (:line/from node)
-                    :line/to       (:line/to node)}
-
-                   :shape/path
-                   {:geometry/type  :path
-                    :path/commands  (:path/commands node)
-                    :path/fill-rule (:path/fill-rule node)}
-
-                   ;; Unknown leaf types → nil
-                   nil)
+      (let [geom       (node->geometry node)
             effects    (node->effects node)
-            raw-transforms (:node/transform node)
-            transforms (if (seq raw-transforms)
-                         (mapv (fn [[k & args]]
-                                 (into [(keyword (name k))] args))
-                               (remove #(= :transform/distort (first %))
-                                       raw-transforms))
-                         [])]
+            transforms (normalize-transforms (:node/transform node))]
         (if geom
-          ;; Shape node → semantic draw item
           (cond-> {:item/geometry geom}
             (:style/fill node)   (assoc :item/fill (node->fill-descriptor (:style/fill node)))
             (:style/stroke node) (assoc :item/stroke (:style/stroke node))
             (:node/opacity node) (assoc :item/opacity (:node/opacity node))
             (seq effects)        (assoc :item/effects effects)
             true                 (assoc :item/transforms transforms))
-          ;; Groups → convert to group item with children
           (if (= :group node-type)
             (let [children (keep scene-node->draw-item (:group/children node))
                   clip-node (:group/clip node)
@@ -606,7 +610,6 @@
                 (:style/fill node)      (assoc :item/fill (node->fill-descriptor (:style/fill node)))
                 (:style/stroke node)    (assoc :item/stroke (:style/stroke node))
                 transforms              (assoc :item/transforms transforms)))
-            ;; Unknown node type — throw
             (throw (ex-info (str "Unknown node type: " node-type)
                             {:node/type node-type}))))))))
 
