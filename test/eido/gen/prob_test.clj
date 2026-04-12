@@ -143,6 +143,10 @@
     (let [items [:a :b :c]]
       (is (some #{(prob/pick-weighted items [1 2 3] 42)} items)))))
 
+(deftest pick-weighted-empty-test
+  (testing "empty items returns nil, not IOOBE"
+    (is (nil? (prob/pick-weighted [] [] 42)))))
+
 ;; --- distribution spec sampling ---
 
 (deftest sample-uniform-test

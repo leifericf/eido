@@ -107,10 +107,12 @@
         (nth v (.nextInt rng n))))))
 
 (defn pick-weighted
-  "Picks one element from items using corresponding weights."
+  "Picks one element from items using corresponding weights.
+  Returns nil if items is empty."
   [items weights seed]
-  (let [idx (weighted-choice weights seed)]
-    (nth items idx)))
+  (when (seq items)
+    (let [idx (weighted-choice weights seed)]
+      (nth items idx))))
 
 ;; --- distribution spec sampling ---
 
