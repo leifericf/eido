@@ -44,22 +44,11 @@
     (System/arraycopy base 0 result 256 256)
     result))
 
-(def ^:private default-perm (make-perm 0))
+(def ^:private get-perm
+  "Returns a permutation table for the given seed. Memoized."
+  (memoize make-perm))
 
-(def ^:private perm-cache
-  "Cache of permutation tables by seed. Avoids regenerating the 512-entry
-  table on every noise call for the same seed."
-  (atom {0 default-perm}))
-
-(defn- get-perm
-  "Returns a permutation table for the given seed, caching results."
-  [seed]
-  (let [cache (swap! perm-cache
-                (fn [m]
-                  (if (contains? m seed)
-                    m
-                    (assoc m seed (make-perm seed)))))]
-    (get cache seed)))
+(def ^:private default-perm (get-perm 0))
 
 (defn- perm-at ^long [^ints perm ^long i]
   (aget perm (bit-and i 255)))
