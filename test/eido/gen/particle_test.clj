@@ -245,3 +245,10 @@
     (let [config (particle/with-position particle/fountain [0 0])]
       (is (empty? (vec (particle/simulate config 5 {:fps 0}))))
       (is (empty? (vec (particle/simulate config 5 {:fps -1})))))))
+
+(deftest empty-colors-palette-test
+  (testing "empty :particle/colors falls back to :particle/color curve"
+    (let [config (assoc particle/fire :particle/colors [])
+          frames (vec (particle/simulate config 3 {:fps 30}))]
+      (is (= 3 (count frames)))
+      (is (every? #(every? :style/fill %) frames)))))

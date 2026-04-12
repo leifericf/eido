@@ -264,7 +264,7 @@
         [px py] (project-pos (:pos particle) config)
         radius  (or (sample-curve (:particle/size config) lf) 4.0)
         opacity (or (sample-curve (:particle/opacity config) lf) 1.0)
-        fill    (if-let [palette (:particle/colors config)]
+        fill    (if-let [palette (seq (:particle/colors config))]
                   (nth palette (mod (:id particle) (count palette)))
                   (or (sample-curve (:particle/color config) lf)
                       [:color/rgb 255 255 255]))
