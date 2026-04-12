@@ -9,9 +9,7 @@
     [eido.gen.noise :as noise]
     [eido.gen.prob :as prob]))
 
-;; ============================================================
-;; Brush Presets & Basic Strokes
-;; ============================================================
+;; --- brush presets and basic strokes ---
 
 (defn ^{:example {:output "paint-brush-sampler.png"
                   :title  "Brush Sampler"
@@ -45,9 +43,7 @@
      [{:node/type :paint/surface :paint/size [w h]
        :paint/strokes (mapv (fn [[y brush color]] (mk y brush color (name brush))) rows)}]}))
 
-;; ============================================================
-;; Stroke Texture — Jitter & Grain
-;; ============================================================
+;; --- stroke texture: jitter and grain ---
 
 (defn ^{:example {:output "paint-jitter-comparison.png"
                   :title  "Jitter Comparison"
@@ -95,9 +91,7 @@
      [{:node/type :paint/surface :paint/size [w h]
        :paint/strokes (vec (map-indexed (fn [i t] (mk (+ 50 (* i 60)) t)) types))}]}))
 
-;; ============================================================
-;; Blend Modes & Impasto
-;; ============================================================
+;; --- blend modes and impasto ---
 
 (defn ^{:example {:output "paint-blend-modes.png"
                   :title  "Blend Modes"
@@ -142,9 +136,7 @@
        [{:paint/brush flat :paint/color [:color/rgb 180 60 30] :paint/radius 16.0 :paint/seed 1 :paint/points (pts 70 1)}
         {:paint/brush thick :paint/color [:color/rgb 180 60 30] :paint/radius 16.0 :paint/seed 2 :paint/points (pts 180 2)}]}]}))
 
-;; ============================================================
-;; Spatter & Wet Media
-;; ============================================================
+;; --- spatter and wet media ---
 
 (defn ^{:example {:output "paint-spatter-modes.png"
                   :title  "Spatter Modes"
@@ -193,9 +185,7 @@
      [{:node/type :paint/surface :paint/size [w h]
        :paint/strokes [(mk 60 0.0) (mk 155 0.3) (mk 250 0.7)]}]}))
 
-;; ============================================================
-;; Subtractive Color Mixing
-;; ============================================================
+;; --- subtractive color mixing ---
 
 (defn ^{:example {:output "paint-subtractive-mixing.png"
                   :title  "Subtractive Pigment Mixing"
@@ -328,9 +318,7 @@
               (pair 220 [:color/rgb 30 50 190]  [:color/rgb 230 210 35] 20)
               (pair 410 [:color/rgb 195 35 30]  [:color/rgb 230 210 35] 30)))}]}))
 
-;; ============================================================
-;; Generator Compositions — Paint + Generators
-;; ============================================================
+;; --- generator compositions ---
 
 (defn ^{:example {:output "paint-gen-charcoal-flow.png"
                   :title  "Charcoal Flow Field"

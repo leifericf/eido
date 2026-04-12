@@ -85,9 +85,11 @@
   values onto surface tiles. Directional lighting in `compose-to-image`
   creates highlight/shadow effect for visible paint thickness.
 
-- **Spatter, drip, and spray** — `:brush/spatter` emits secondary
-  particles alongside strokes when speed exceeds a threshold. Three
-  modes: `:scatter` (perpendicular), `:drip` (gravity), `:spray` (cone).
+- **Spatter and spray** — `:brush/spatter` emits secondary particles
+  alongside strokes when speed exceeds a threshold. Two modes:
+  `:scatter` (perpendicular to stroke), `:spray` (cone along stroke).
+  Particles inherit the parent brush's tip, grain, and blend mode.
+  Density, spread, and size scale with stroke pressure.
 
 - **Deform brushes** — New brush type `:brush/deform` with four modes:
   `:push` (displace along stroke), `:swirl` (rotate around center),
@@ -98,18 +100,41 @@
   in noise-field valleys for salt-crystal texture. `:wet/edge-sharpness`
   applies a power curve for controllable edge crispness.
 
-- **UX helpers for programmatic artists** —
+- **Subtractive pigment mixing** — New `:subtractive` blend mode
+  simulates how real paint colors mix: blue + yellow = green,
+  red + blue = purple. Uses geometric mean in reflectance space.
+  Wet color diffusion transfers color between adjacent wet pixels
+  during watercolor diffusion passes.
+
+- **Point generators** — Helpers for the most common stroke shapes:
+  - `circle-points`: circle/arc point sequences
+  - `wave-points`: sinusoidal paths
+  - `line-points`: straight lines
+  - `fill-rect`: auto-generate covering strokes for a rectangle
+  - `fill-ellipse`: auto-generate covering strokes for an ellipse
+  All follow the `[primary-arg opts]` convention.
+
+- **Pressure helpers** —
   - `auto-pressure`: derives pressure curves from path geometry
-    (`:taper`, `:curvature`, `:speed` modes)
-  - `auto-speed`: derives speed curves from segment lengths
-  - `dynamics-profile`: named presets (`:calligraphy`, `:expressive`,
-    `:steady`, `:feathered`, `:bold`)
+    (`:taper` and `:curvature` modes)
   - `stroke-from-path`: one-call stroke creation with auto-derived
-    pressure and optional dynamics profile
+    pressure from path commands
 
 - **Convenience constructors** — `painted-path`, `paint-surface`,
   `paint-group`, and `stroke` helpers following the `eido.scene`
   pattern of returning plain data maps.
+
+- **Default brush radii** — All 36 presets include a `:brush/radius`
+  default matching the real-world tool size (pencil 1.5px, ballpoint
+  0.8px, airbrush 25px, etc.). Artists can omit `:paint/radius` for
+  sensible defaults.
+
+- **Deterministic seeding** — Strokes without explicit `:paint/seed`
+  auto-derive a unique seed from their content via `hash`, so each
+  stroke gets distinct jitter without requiring manual seeds.
+
+- **Spec validation** — Full `clojure.spec` definitions for
+  `:paint/surface` node type, brush specs, all nested parameter maps.
 
 - **Generator composition** — Paint parameters propagate through
   generators. Flow fields, scatter, symmetry, and decorators
