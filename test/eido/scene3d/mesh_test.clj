@@ -90,3 +90,11 @@
                  :grid [3 1]
                  :height 1.0}))
         "single row produces no faces")))
+
+(deftest low-segment-clamp-test
+  (testing "cylinder-mesh clamps segments to minimum 3"
+    (is (= 5 (count (mesh/cylinder-mesh 5 10 {:segments 2}))))
+    (is (= 5 (count (mesh/cylinder-mesh 5 10 {:segments 1})))))
+  (testing "cone-mesh clamps segments to minimum 3"
+    (is (= 4 (count (mesh/cone-mesh 5 10 {:segments 2}))))
+    (is (= 4 (count (mesh/cone-mesh 5 10 {:segments 1}))))))

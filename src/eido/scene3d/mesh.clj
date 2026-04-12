@@ -62,7 +62,7 @@
   ([radius height opts]
    (let [r   (double radius)
          h   (double height)
-         seg (int (get opts :segments 16))
+         seg (max 3 (int (get opts :segments 16)))
          step (/ (* 2.0 Math/PI) seg)
          ;; Generate circle points
          circle-pts (mapv (fn [i]
@@ -157,7 +157,7 @@
   ([radius height opts]
    (let [r    (double radius)
          h    (double height)
-         seg  (int (get opts :segments 16))
+         seg  (max 3 (int (get opts :segments 16)))
          step (/ (* 2.0 Math/PI) seg)
          apex [0.0 h 0.0]
          base-pts (mapv (fn [i]
