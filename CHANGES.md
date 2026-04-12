@@ -1,5 +1,34 @@
 # Changes
 
+## Unreleased — Code Quality
+
+### Refactoring
+
+- **Eliminate global mutable caches** — Replaced `defonce atom` caches
+  with `memoize` in `eido.text/resolve-font`, `eido.gen.noise/get-perm`,
+  and `eido.engine.render/stroke-cache`. Removes hidden global state
+  from the functional core while preserving caching semantics.
+
+- **Remove atoms from deform-dab! inner loop** — The blur/sharpen
+  branch in `eido.paint.kernel/deform-dab!` created 5 atoms per pixel
+  and used `swap!` in a `doseq`. Replaced with pure `loop/recur`
+  accumulators via a new `box-average-3x3` helper. Extracted mode-specific
+  helpers (`deform-blur-sharpen!`, `deform-displacement!`) and named the
+  magic constants (`push-scale`, `swirl-scale`).
+
+- **Decompose render-stroke!** — The 184-line kitchen-sink function in
+  `eido.paint` is now a ~20-line coordinator delegating to:
+  `resolve-stroke-params` (pure), `render-deform-stroke!`,
+  `render-bristle-stroke!`, `render-single-tip-stroke!`, and
+  `emit-spatter!`.
+
+- **Decompose scene-node->draw-item** — Extracted `node->geometry` and
+  `normalize-transforms` from the 86-line god function in
+  `eido.engine.compile`. Cleaned up shadow rebinding in `expand-node`.
+
+- **Convert text-on-path loop to reduce** — Replaced manual `loop/recur`
+  with `transient` in `text-on-path-node->group` with idiomatic `reduce`.
+
 ## Unreleased — Paint Engine
 
 ### New features
