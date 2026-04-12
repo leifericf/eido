@@ -95,6 +95,50 @@
                (circle-sdf rx ry))]
     (hardness-falloff dist hardness)))
 
+;; --- bristle/multi-tip ---
+
+(defn bristle-offsets
+  "Computes bristle sub-tip offsets for a multi-tip brush.
+  Returns a vector of {:offset [dx dy] :opacity-scale f :size-scale f}
+  maps, one per bristle lane.
+
+  bristle-spec:
+    :bristle/count    — number of bristles (default 5)
+    :bristle/spread   — spread width relative to radius (default 0.6)
+    :bristle/shear    — shear amount for fan effect (default 0.0)
+    :bristle/randomize — per-bristle random offset (default 0.1)"
+  [bristle-spec ^double angle ^long seed]
+  (let [n        (long (get bristle-spec :bristle/count 5))
+        spread   (double (get bristle-spec :bristle/spread 0.6))
+        shear    (double (get bristle-spec :bristle/shear 0.0))
+        randomize (double (get bristle-spec :bristle/randomize 0.1))
+        cos-a    (Math/cos angle)
+        sin-a    (Math/sin angle)
+        ;; Bristles are arranged perpendicular to stroke direction
+        perp-x   (- sin-a)
+        perp-y   cos-a]
+    (mapv (fn [i]
+            (let [t     (if (> n 1) (/ (double i) (dec n)) 0.5)
+                  ;; Position along the perpendicular axis [-0.5, 0.5]
+                  pos   (- t 0.5)
+                  ;; Apply shear: offset along stroke direction
+                  shear-offset (* shear pos)
+                  ;; Pseudo-random jitter per bristle
+                  hash  (Math/abs (double (rem (* (+ seed i 7) 2654435761) 1000)))
+                  jx    (* randomize (- (/ hash 500.0) 1.0))
+                  jy    (* randomize (- (/ (rem (* hash 37) 1000) 500.0) 1.0))
+                  ;; Final offset
+                  dx    (+ (* perp-x pos spread) (* cos-a shear-offset) jx)
+                  dy    (+ (* perp-y pos spread) (* sin-a shear-offset) jy)
+                  ;; Opacity variation: edges slightly lighter
+                  edge-fade (- 1.0 (* 0.3 (Math/abs (* 2.0 pos))))
+                  ;; Size variation: edges slightly smaller
+                  size-fade (- 1.0 (* 0.2 (Math/abs (* 2.0 pos))))]
+              {:offset [dx dy]
+               :opacity-scale edge-fade
+               :size-scale    size-fade}))
+          (range n))))
+
 (comment
   ;; Test: circle tip at center
   (evaluate-tip {:tip/shape :circle :tip/hardness 0.7} 0.0 0.0 0.0)

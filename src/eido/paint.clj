@@ -14,7 +14,8 @@
     [eido.color :as color]
     [eido.paint.kernel :as kernel]
     [eido.paint.stroke :as stroke]
-    [eido.paint.surface :as surface]))
+    [eido.paint.surface :as surface]
+    [eido.paint.tip :as tip]))
 
 ;; --- brush presets ---
 
@@ -101,7 +102,8 @@
         tip-spec   (:brush/tip brush-spec)
         hardness   (get tip-spec :tip/hardness 0.7)
         aspect     (get tip-spec :tip/aspect 1.0)
-        grain-spec (:brush/grain brush-spec)
+        grain-spec    (:brush/grain brush-spec)
+        bristle-spec  (:brush/bristles brush-spec)
         opacity    (get-in brush-spec [:brush/paint :paint/opacity] 0.5)
         spacing-px (brush-spacing-px brush-spec radius)
         ;; Get points — either explicit or from path commands
@@ -127,11 +129,29 @@
                 :aspect   aspect
                 :tip      tip-spec
                 :pressure pressure})]
-    (doseq [d dabs]
-      (kernel/rasterize-dab! surface
-        (cond-> d
-          grain-spec     (assoc :dab/grain grain-spec)
-          substrate-spec (assoc :dab/substrate substrate-spec)))))))
+    (if bristle-spec
+      ;; Bristle mode: emit N sub-dabs per dab
+      (doseq [d dabs]
+        (let [offsets (tip/bristle-offsets bristle-spec
+                        (double (get d :dab/angle 0.0))
+                        (hash (get d :dab/cx 0.0)))
+              base-r  (double (:dab/radius d))]
+          (doseq [{:keys [offset opacity-scale size-scale]} offsets]
+            (let [[ox oy] offset
+                  sub-dab (cond-> (assoc d
+                                    :dab/cx (+ (:dab/cx d) (* ox base-r))
+                                    :dab/cy (+ (:dab/cy d) (* oy base-r))
+                                    :dab/radius (* base-r size-scale 0.4)
+                                    :dab/opacity (* (:dab/opacity d) opacity-scale))
+                            grain-spec     (assoc :dab/grain grain-spec)
+                            substrate-spec (assoc :dab/substrate substrate-spec))]
+              (kernel/rasterize-dab! surface sub-dab)))))
+      ;; Single-tip mode
+      (doseq [d dabs]
+        (kernel/rasterize-dab! surface
+          (cond-> d
+            grain-spec     (assoc :dab/grain grain-spec)
+            substrate-spec (assoc :dab/substrate substrate-spec))))))))
 
 (defn render-strokes!
   "Renders all strokes onto a surface. Returns the surface."

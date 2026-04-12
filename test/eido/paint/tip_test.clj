@@ -51,6 +51,26 @@
       ;; With rotation, the major axis is now vertical, so (0.9, 0) is along minor axis
       (is (< v-rotated v-no-rot) "rotated: less coverage along what is now minor axis"))))
 
+(deftest bristle-offsets-test
+  (testing "produces correct number of bristles"
+    (let [offsets (tip/bristle-offsets {:bristle/count 7} 0.0 42)]
+      (is (= 7 (count offsets)))))
+
+  (testing "each bristle has offset, opacity-scale, size-scale"
+    (let [offsets (tip/bristle-offsets {:bristle/count 3 :bristle/spread 0.5} 0.0 0)]
+      (doseq [o offsets]
+        (is (vector? (:offset o)))
+        (is (number? (:opacity-scale o)))
+        (is (number? (:size-scale o))))))
+
+  (testing "center bristle is near zero offset"
+    (let [offsets (tip/bristle-offsets {:bristle/count 3 :bristle/spread 0.5
+                                       :bristle/randomize 0.0}
+                                      0.0 0)
+          center (nth offsets 1)]
+      (let [[dx dy] (:offset center)]
+        (is (< (Math/abs dx) 0.1) "center x should be near zero")))))
+
 (deftest line-tip-test
   (testing "center of line has full coverage"
     (is (= 1.0 (tip/evaluate-tip {:tip/shape :line :tip/hardness 0.7 :tip/aspect 2.0}
