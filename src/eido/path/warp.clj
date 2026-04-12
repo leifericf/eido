@@ -73,7 +73,10 @@
     :twist   (fn [x y] (twist-warp x y spec))
     :fisheye (fn [x y] (fisheye-warp x y spec))
     :bulge   (fn [x y] (bulge-warp x y spec))
-    :bend    (fn [x y] (bend-warp x y spec))))
+    :bend    (fn [x y] (bend-warp x y spec))
+    (throw (ex-info "Unknown warp type"
+                    {:type (:type spec)
+                     :valid #{:wave :twist :fisheye :bulge :bend}}))))
 
 ;; --- command warping ---
 

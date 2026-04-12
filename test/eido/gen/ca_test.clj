@@ -18,6 +18,11 @@
           g2 (ca/ca-grid 10 10 :random 42)]
       (is (java.util.Arrays/equals ^booleans (:grid g1) ^booleans (:grid g2))))))
 
+(deftest ca-grid-unknown-init-test
+  (testing "nil or unknown init type throws ExceptionInfo"
+    (is (thrown? clojure.lang.ExceptionInfo (ca/ca-grid 5 5 nil 42)))
+    (is (thrown? clojure.lang.ExceptionInfo (ca/ca-grid 5 5 :invalid 42)))))
+
 (deftest ca-step-preserves-dimensions-test
   (testing "step preserves grid dimensions"
     (let [g  (ca/ca-grid 10 10 :random 42)

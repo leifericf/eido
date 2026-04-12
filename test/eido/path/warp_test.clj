@@ -43,3 +43,10 @@
           result (warp/warp-commands cmds {:type :fisheye :center [100 100]
                                            :strength 0.5 :radius 50})]
       (is (= 2 (count result))))))
+
+(deftest warp-unknown-type-test
+  (testing "nil or unknown warp type throws ExceptionInfo"
+    (is (thrown? clojure.lang.ExceptionInfo
+          (warp/warp-commands [[:move-to [0 0]]] {})))
+    (is (thrown? clojure.lang.ExceptionInfo
+          (warp/warp-commands [[:move-to [0 0]]] {:type :nonexistent})))))

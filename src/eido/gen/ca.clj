@@ -18,7 +18,9 @@
                 (dotimes [i n]
                   (aset grid i (< (.nextDouble rng) 0.3))))
       :empty  nil
-      :center (aset grid (+ (quot (int w) 2) (* (quot (int h) 2) (int w))) true))
+      :center (aset grid (+ (quot (int w) 2) (* (quot (int h) 2) (int w))) true)
+      (throw (ex-info "Unknown CA init type"
+                      {:init init :valid #{:random :empty :center}})))
     {:grid grid :w (int w) :h (int h)}))
 
 (defn- count-neighbors
