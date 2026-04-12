@@ -17,7 +17,9 @@
     [eido.paint.stroke :as stroke]
     [eido.paint.surface :as surface]
     [eido.paint.tip :as tip]
-    [eido.paint.wet :as wet]))
+    [eido.paint.wet :as wet])
+  (:import
+    [java.util Random]))
 
 ;; --- brush presets ---
 
@@ -65,7 +67,186 @@
               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.4 :tip/aspect 1.2}
               :brush/paint {:paint/opacity 0.1 :paint/flow 0.75 :paint/spacing 0.05}
               :brush/jitter {:jitter/position 0.15 :jitter/opacity 0.3
-                             :jitter/size 0.12 :jitter/angle 0.2}}})
+                             :jitter/size 0.12 :jitter/angle 0.2}}
+
+   ;; --- dry media ---
+
+   :graphite  {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.9 :tip/aspect 1.0}
+               :brush/paint {:paint/opacity 0.3 :paint/flow 0.85 :paint/spacing 0.03}
+               :brush/grain {:grain/type :fbm :grain/scale 0.05 :grain/contrast 0.2}}
+
+   :charcoal  {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.25 :tip/aspect 1.3}
+               :brush/paint {:paint/opacity 0.15 :paint/flow 0.7 :paint/spacing 0.05}
+               :brush/grain {:grain/type :turbulence :grain/scale 0.12 :grain/contrast 0.6}
+               :brush/jitter {:jitter/opacity 0.3 :jitter/size 0.15 :jitter/position 0.1}}
+
+   :conte     {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :rect :tip/hardness 0.5 :tip/aspect 2.0}
+               :brush/paint {:paint/opacity 0.12 :paint/flow 0.8 :paint/spacing 0.05}
+               :brush/grain {:grain/type :fiber :grain/scale 0.1 :grain/contrast 0.4
+                             :grain/stretch 3.0}
+               :brush/jitter {:jitter/opacity 0.2 :jitter/angle 0.1}}
+
+   :soft-pastel {:brush/type  :brush/dab
+                 :brush/tip   {:tip/shape :ellipse :tip/hardness 0.3 :tip/aspect 1.3}
+                 :brush/paint {:paint/opacity 0.08 :paint/flow 0.65 :paint/spacing 0.05}
+                 :brush/grain {:grain/type :canvas :grain/scale 0.06 :grain/contrast 0.3}
+                 :brush/jitter {:jitter/position 0.2 :jitter/opacity 0.35
+                                :jitter/size 0.15 :jitter/angle 0.25}}
+
+   :crayon    {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.55 :tip/aspect 1.1}
+               :brush/paint {:paint/opacity 0.2 :paint/flow 0.8 :paint/spacing 0.04}
+               :brush/grain {:grain/type :fbm :grain/scale 0.08 :grain/contrast 0.45}
+               :brush/jitter {:jitter/position 0.08 :jitter/opacity 0.15 :jitter/size 0.08}}
+
+   ;; --- ink and pen ---
+
+   :ballpoint {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :circle :tip/hardness 0.98}
+               :brush/paint {:paint/opacity 0.7 :paint/flow 0.95 :paint/spacing 0.02}}
+
+   :felt-tip  {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.85 :tip/aspect 1.3}
+               :brush/paint {:paint/opacity 0.6 :paint/flow 0.9 :paint/spacing 0.03}
+               :brush/grain {:grain/type :fiber :grain/scale 0.08 :grain/contrast 0.15}}
+
+   :fountain-pen {:brush/type  :brush/dab
+                  :brush/tip   {:tip/shape :line :tip/hardness 0.9 :tip/aspect 3.0}
+                  :brush/paint {:paint/opacity 0.65 :paint/flow 0.95 :paint/spacing 0.02}}
+
+   :brush-pen {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.75 :tip/aspect 1.8}
+               :brush/paint {:paint/opacity 0.6 :paint/flow 0.9 :paint/spacing 0.03}
+               :brush/jitter {:jitter/angle 0.08}}
+
+   :technical-pen {:brush/type  :brush/dab
+                   :brush/tip   {:tip/shape :circle :tip/hardness 0.99}
+                   :brush/paint {:paint/opacity 0.85 :paint/flow 1.0 :paint/spacing 0.015}}
+
+   ;; --- markers ---
+
+   :flat-marker {:brush/type  :brush/dab
+                 :brush/tip   {:tip/shape :rect :tip/hardness 0.92 :tip/aspect 2.5
+                               :tip/corner-radius 0.1}
+                 :brush/paint {:paint/opacity 0.35 :paint/flow 1.0 :paint/spacing 0.03
+                               :paint/blend :glazed}
+                 :brush/jitter {:jitter/angle 0.02}}
+
+   :chisel-marker {:brush/type  :brush/dab
+                   :brush/tip   {:tip/shape :rect :tip/hardness 0.9 :tip/aspect 3.0}
+                   :brush/paint {:paint/opacity 0.3 :paint/flow 1.0 :paint/spacing 0.03
+                                 :paint/blend :glazed}}
+
+   :highlighter {:brush/type  :brush/dab
+                 :brush/tip   {:tip/shape :rect :tip/hardness 0.85 :tip/aspect 4.0
+                               :tip/corner-radius 0.15}
+                 :brush/paint {:paint/opacity 0.15 :paint/flow 1.0 :paint/spacing 0.03
+                               :paint/blend :glazed}}
+
+   ;; --- wet paint ---
+
+   :gouache   {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.55 :tip/aspect 1.0}
+               :brush/paint {:paint/opacity 0.5 :paint/flow 0.85 :paint/spacing 0.05
+                             :paint/blend :opaque}
+               :brush/jitter {:jitter/opacity 0.1 :jitter/size 0.05}}
+
+   :acrylic-wash {:brush/type  :brush/dab
+                  :brush/tip   {:tip/shape :ellipse :tip/hardness 0.35 :tip/aspect 1.0}
+                  :brush/paint {:paint/opacity 0.08 :paint/flow 0.65 :paint/spacing 0.04}
+                  :brush/wet   {:wet/enabled true :wet/deposit 0.2
+                                :wet/diffusion 0.15 :wet/diffusion-steps 3
+                                :wet/edge-darken 0.1}
+                  :brush/jitter {:jitter/position 0.08 :jitter/opacity 0.15}}
+
+   ;; --- thick paint ---
+
+   :acrylic   {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.65 :tip/aspect 1.0}
+               :brush/paint {:paint/opacity 0.55 :paint/flow 0.9 :paint/spacing 0.05
+                             :paint/blend :opaque}
+               :brush/smudge {:smudge/mode :smear :smudge/amount 0.3 :smudge/length 0.5}
+               :brush/jitter {:jitter/position 0.06 :jitter/opacity 0.1 :jitter/size 0.06}}
+
+   :impasto   {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.5 :tip/aspect 1.2}
+               :brush/paint {:paint/opacity 0.7 :paint/flow 0.9 :paint/spacing 0.06
+                             :paint/blend :opaque}
+               :brush/impasto {:impasto/height 0.6}
+               :brush/smudge {:smudge/mode :smear :smudge/amount 0.5 :smudge/length 0.8}
+               :brush/jitter {:jitter/position 0.08 :jitter/opacity 0.12
+                              :jitter/size 0.1 :jitter/angle 0.05}}
+
+   :tempera   {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.6 :tip/aspect 1.0}
+               :brush/paint {:paint/opacity 0.45 :paint/flow 0.85 :paint/spacing 0.05}
+               :brush/jitter {:jitter/opacity 0.1 :jitter/size 0.05}}
+
+   ;; --- tools ---
+
+   :smudge-tool {:brush/type  :brush/dab
+                 :brush/tip   {:tip/shape :ellipse :tip/hardness 0.4}
+                 :brush/paint {:paint/opacity 0.0 :paint/flow 0.0 :paint/spacing 0.04}
+                 :brush/smudge {:smudge/mode :smear :smudge/amount 0.85
+                                :smudge/length 1.0}}
+
+   :palette-knife {:brush/type  :brush/dab
+                   :brush/tip   {:tip/shape :rect :tip/hardness 0.7 :tip/aspect 4.0}
+                   :brush/paint {:paint/opacity 0.15 :paint/flow 0.3 :paint/spacing 0.06}
+                   :brush/smudge {:smudge/mode :smear :smudge/amount 0.9
+                                  :smudge/length 0.95}
+                   :brush/impasto {:impasto/height 0.4}
+                   :brush/jitter {:jitter/angle 0.05 :jitter/opacity 0.1}}
+
+   :eraser    {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.6}
+               :brush/paint {:paint/opacity 0.8 :paint/flow 1.0 :paint/spacing 0.04
+                             :paint/blend :erase}}
+
+   :blender   {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.3}
+               :brush/paint {:paint/opacity 0.0 :paint/flow 0.0 :paint/spacing 0.04}
+               :brush/smudge {:smudge/mode :smear :smudge/amount 0.6
+                              :smudge/length 0.8}}
+
+   ;; --- effects ---
+
+   :spray-paint {:brush/type  :brush/dab
+                 :brush/tip   {:tip/shape :ellipse :tip/hardness 0.1 :tip/aspect 1.0}
+                 :brush/paint {:paint/opacity 0.04 :paint/flow 0.5 :paint/spacing 0.02}
+                 :brush/jitter {:jitter/position 0.4 :jitter/opacity 0.3
+                                :jitter/size 0.3}}
+
+   :splatter  {:brush/type  :brush/dab
+               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.6 :tip/aspect 1.0}
+               :brush/paint {:paint/opacity 0.4 :paint/flow 0.8 :paint/spacing 0.15}
+               :brush/jitter {:jitter/position 0.5 :jitter/opacity 0.4
+                              :jitter/size 0.5 :jitter/angle 0.5}}
+
+   ;; --- deform tools ---
+
+   :push      {:brush/type   :brush/deform
+               :brush/tip    {:tip/shape :ellipse :tip/hardness 0.5}
+               :brush/paint  {:paint/opacity 1.0 :paint/spacing 0.08}
+               :brush/deform {:deform/mode :push :deform/strength 0.6}}
+
+   :swirl     {:brush/type   :brush/deform
+               :brush/tip    {:tip/shape :ellipse :tip/hardness 0.4}
+               :brush/paint  {:paint/opacity 1.0 :paint/spacing 0.08}
+               :brush/deform {:deform/mode :swirl :deform/strength 0.5}}
+
+   :blur-tool {:brush/type   :brush/deform
+               :brush/tip    {:tip/shape :ellipse :tip/hardness 0.3}
+               :brush/paint  {:paint/opacity 1.0 :paint/spacing 0.06}
+               :brush/deform {:deform/mode :blur :deform/strength 0.6}}
+
+   :sharpen-tool {:brush/type   :brush/deform
+                  :brush/tip    {:tip/shape :ellipse :tip/hardness 0.4}
+                  :brush/paint  {:paint/opacity 1.0 :paint/spacing 0.06}
+                  :brush/deform {:deform/mode :sharpen :deform/strength 0.4}}})
 
 ;; --- brush resolution ---
 
@@ -191,37 +372,83 @@
                              (surface/deposit-height! surface
                                (long (:dab/cx d)) (long (:dab/cy d))
                                (* h (:dab/opacity d))))))]
-    (if bristle-spec
-      ;; Bristle mode: emit N sub-dabs per dab
-      (doseq [d dabs]
-        (let [d (apply-smudge d)
-              offsets (tip/bristle-offsets bristle-spec
-                        (double (get d :dab/angle 0.0))
-                        (hash (get d :dab/cx 0.0)))
-              base-r  (double (:dab/radius d))]
-          (doseq [{:keys [offset opacity-scale size-scale]} offsets]
-            (let [[ox oy] offset
-                  sub-dab (-> (assoc d
-                                :dab/cx (+ (:dab/cx d) (* ox base-r))
-                                :dab/cy (+ (:dab/cy d) (* oy base-r))
-                                :dab/radius (* base-r size-scale 0.4)
-                                :dab/opacity (* (:dab/opacity d) opacity-scale))
-                              apply-texture)]
-              (kernel/rasterize-dab! surface sub-dab)
-              (deposit-wet sub-dab)
-              (deposit-height sub-dab)))))
-      ;; Single-tip mode
-      (doseq [d dabs]
-        (let [d (-> d apply-smudge apply-texture)]
-          (kernel/rasterize-dab! surface d)
-          (deposit-wet d)
-          (deposit-height d))))
+    (if (= :brush/deform (:brush/type brush-spec))
+      ;; Deform mode: modify existing pixels
+      (let [deform-spec (:brush/deform brush-spec)]
+        (doseq [d dabs]
+          (kernel/deform-dab! surface
+            (assoc d :dab/deform deform-spec))))
+      ;; Regular paint mode
+      (if bristle-spec
+        ;; Bristle mode: emit N sub-dabs per dab
+        (doseq [d dabs]
+          (let [d (apply-smudge d)
+                offsets (tip/bristle-offsets bristle-spec
+                          (double (get d :dab/angle 0.0))
+                          (hash (get d :dab/cx 0.0)))
+                base-r  (double (:dab/radius d))]
+            (doseq [{:keys [offset opacity-scale size-scale]} offsets]
+              (let [[ox oy] offset
+                    sub-dab (-> (assoc d
+                                  :dab/cx (+ (:dab/cx d) (* ox base-r))
+                                  :dab/cy (+ (:dab/cy d) (* oy base-r))
+                                  :dab/radius (* base-r size-scale 0.4)
+                                  :dab/opacity (* (:dab/opacity d) opacity-scale))
+                                apply-texture)]
+                (kernel/rasterize-dab! surface sub-dab)
+                (deposit-wet sub-dab)
+                (deposit-height sub-dab)))))
+        ;; Single-tip mode
+        (doseq [d dabs]
+          (let [d (-> d apply-smudge apply-texture)]
+            (kernel/rasterize-dab! surface d)
+            (deposit-wet d)
+            (deposit-height d)))))
+    ;; Spatter: emit secondary particles for speed-driven effects
+    (when-let [spatter-spec (:brush/spatter brush-spec)]
+      (let [threshold (double (get spatter-spec :spatter/threshold 0.6))
+            density   (double (get spatter-spec :spatter/density 0.3))
+            spread    (double (get spatter-spec :spatter/spread 2.0))
+            [size-min size-max] (get spatter-spec :spatter/size [0.05 0.3])
+            [opa-min opa-max]   (get spatter-spec :spatter/opacity [0.2 0.8])
+            mode      (get spatter-spec :spatter/mode :scatter)]
+        (doseq [d dabs]
+          (let [speed (double (get d :dab/speed 0.0))]
+            (when (> speed threshold)
+              (let [intensity (* (- speed threshold) (/ 1.0 (- 1.0 threshold)))
+                    n         (int (Math/ceil (* density intensity 3.0)))
+                    ^Random rng (Random. (unchecked-add
+                                           stroke-seed
+                                           (long (* (:dab/cx d) 17.0))))]
+                (dotimes [_ n]
+                  (let [;; Direction based on mode
+                        base-angle (double (:dab/angle d))
+                        angle (case mode
+                                :scatter (+ base-angle (* (- (.nextDouble rng) 0.5) Math/PI))
+                                :drip    (+ (* Math/PI 0.5) (* (.nextGaussian rng) 0.2))
+                                :spray   (+ base-angle (* (.nextGaussian rng) 0.4))
+                                (+ base-angle (* (.nextGaussian rng) Math/PI)))
+                        dist  (* spread radius (.nextDouble rng))
+                        px    (+ (:dab/cx d) (* dist (Math/cos angle)))
+                        py    (+ (:dab/cy d) (* dist (Math/sin angle)))
+                        sz    (+ (double size-min)
+                                 (* (.nextDouble rng) (- (double size-max) (double size-min))))
+                        op    (+ (double opa-min)
+                                 (* (.nextDouble rng) (- (double opa-max) (double opa-min))))
+                        particle {:dab/cx px :dab/cy py
+                                  :dab/radius (* sz radius)
+                                  :dab/hardness 0.7
+                                  :dab/opacity op
+                                  :dab/aspect 1.0
+                                  :dab/angle 0.0
+                                  :dab/color (:dab/color d)}]
+                    (kernel/rasterize-dab! surface particle)))))))))
     ;; Post-stroke: run wet diffusion if configured
     (when (and wet-spec (:wet/enabled wet-spec true))
       (let [iterations (long (get wet-spec :wet/diffusion-steps 4))
             strength   (double (get wet-spec :wet/diffusion 0.2))
             darken     (double (get wet-spec :wet/edge-darken 0.15))]
-        (wet/apply-wet-pass! surface iterations strength darken))))))
+        (wet/apply-wet-pass! surface iterations strength darken wet-spec))))))
 
 (defn render-strokes!
   "Renders all strokes onto a surface. Returns the surface."

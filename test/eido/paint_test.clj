@@ -41,6 +41,39 @@
             a (bit-and (bit-shift-right argb 24) 0xFF)]
         (is (> a 0) "paint should be deposited along stroke")))))
 
+(deftest all-presets-resolve-test
+  (testing "every preset resolves to a valid brush spec"
+    (doseq [[k _] paint/presets]
+      (let [b (paint/resolve-brush k)]
+        (is (#{:brush/dab :brush/deform} (:brush/type b))
+            (str "preset " k " should have valid :brush/type"))
+        (is (some? (:brush/paint b))
+            (str "preset " k " should have :brush/paint")))))
+
+  (testing "preset count is at least 30"
+    (is (>= (count paint/presets) 30)
+        (str "expected 30+ presets, got " (count paint/presets)))))
+
+(deftest all-presets-render-test
+  (testing "every preset renders without error"
+    (doseq [[k _] paint/presets]
+      (let [s (paint/make-surface [100 100])]
+        ;; For deform presets, lay down paint first
+        (when (= :brush/deform (:brush/type (paint/resolve-brush k)))
+          (paint/render-stroke! s
+            {:stroke/brush :ink
+             :stroke/color [:color/rgb 100 50 25]
+             :stroke/radius 20.0
+             :stroke/points [[50 50 1.0 0 0 0]]}))
+        (paint/render-stroke! s
+          {:stroke/brush k
+           :stroke/color [:color/rgb 100 50 25]
+           :stroke/radius 8.0
+           :stroke/seed 42
+           :stroke/points [[20 50 0.8 0 0 0] [80 50 0.6 0 0 0]]})
+        (is (some? (paint/compose s))
+            (str "preset " k " should render without error"))))))
+
 (deftest render-strokes-test
   (testing "multiple strokes accumulate"
     (let [s (paint/make-surface [100 100])]

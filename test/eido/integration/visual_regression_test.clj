@@ -535,6 +535,21 @@
                        :paint/radius 8.0}]}])
     {:png-only true}]
 
+   ["paint-spatter"
+    (catalog-scene [{:node/type :shape/path
+                     :path/commands [[:move-to [10 50]] [:line-to [90 50]]]
+                     :paint/brush {:brush/type :brush/dab
+                                   :brush/tip {:tip/shape :ellipse :tip/hardness 0.7}
+                                   :brush/paint {:paint/opacity 0.5 :paint/spacing 0.05}
+                                   :brush/spatter {:spatter/threshold 0.2
+                                                   :spatter/density 0.4
+                                                   :spatter/spread 3.0
+                                                   :spatter/mode :scatter}}
+                     :paint/color [:color/rgb 180 30 30]
+                     :paint/radius 8.0
+                     :paint/seed 42}])
+    {:png-only true}]
+
    ["paint-impasto"
     (catalog-scene [{:node/type :shape/path
                      :path/commands [[:move-to [10 50]] [:line-to [90 50]]]

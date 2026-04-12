@@ -131,6 +131,195 @@
             (recur (unchecked-inc px))))
         (recur (unchecked-inc py))))))
 
+;; --- deform operations ---
+
+(defn deform-dab!
+  "Applies a deform operation on existing surface pixels within dab radius.
+  Does not deposit paint — moves, blends, or transforms existing content.
+
+  dab is a map with:
+    :dab/cx, :dab/cy — center position
+    :dab/radius — area of effect
+    :dab/angle — stroke direction (for push mode)
+    :dab/deform — {:deform/mode :push|:swirl|:blur|:sharpen
+                   :deform/strength 0.5}"
+  [surface dab]
+  (let [cx       (double (:dab/cx dab))
+        cy       (double (:dab/cy dab))
+        radius   (double (:dab/radius dab))
+        angle    (double (get dab :dab/angle 0.0))
+        deform   (:dab/deform dab)
+        mode     (get deform :deform/mode :push)
+        strength (double (get deform :deform/strength 0.5))
+        r2       (* radius radius)
+        x0       (long (Math/floor (- cx radius)))
+        y0       (long (Math/floor (- cy radius)))
+        x1       (long (Math/ceil (+ cx radius)))
+        y1       (long (Math/ceil (+ cy radius)))
+        sw       (long (:surface/width surface))
+        sh       (long (:surface/height surface))
+        x0       (max 0 x0)
+        y0       (max 0 y0)
+        x1       (min sw x1)
+        y1       (min sh y1)
+        ;; Read all pixels in region into a buffer first
+        w        (- x1 x0)
+        h        (- y1 y0)
+        buf-size (* w h 4)
+        ^floats buf (float-array buf-size)
+        ts       (long surface/tile-size)]
+    ;; Copy source pixels into buffer
+    (loop [py y0]
+      (when (< py y1)
+        (loop [px x0]
+          (when (< px x1)
+            (let [[r g b a] (surface/get-pixel surface px py)
+                  bi (* (+ (* (- py y0) w) (- px x0)) 4)]
+              (aset buf bi (float r))
+              (aset buf (+ bi 1) (float g))
+              (aset buf (+ bi 2) (float b))
+              (aset buf (+ bi 3) (float a)))
+            (recur (unchecked-inc px))))
+        (recur (unchecked-inc py))))
+    ;; Apply deform and write back
+    (loop [py y0]
+      (when (< py y1)
+        (loop [px x0]
+          (when (< px x1)
+            (let [dx (- (+ (double px) 0.5) cx)
+                  dy (- (+ (double py) 0.5) cy)
+                  dist2 (+ (* dx dx) (* dy dy))]
+              (when (< dist2 r2)
+                (let [falloff (- 1.0 (/ dist2 r2))
+                      ;; Source coordinates based on mode
+                      [sx sy]
+                      (case mode
+                        :push
+                        ;; Displace along stroke direction
+                        (let [push (* strength falloff radius 0.3)
+                              push-dx (* push (Math/cos angle))
+                              push-dy (* push (Math/sin angle))]
+                          [(- (double px) push-dx) (- (double py) push-dy)])
+
+                        :swirl
+                        ;; Rotate around center
+                        (let [swirl-angle (* strength falloff 0.5)
+                              cos-s (Math/cos swirl-angle)
+                              sin-s (Math/sin swirl-angle)
+                              rx (+ cx (* dx cos-s) (* (- dy) sin-s))
+                              ry (+ cy (* dx sin-s) (* dy cos-s))]
+                          [rx ry])
+
+                        :blur
+                        ;; Average of neighbors (sample center)
+                        [(double px) (double py)]
+
+                        :sharpen
+                        ;; Overshoot from blur (unsharp mask center)
+                        [(double px) (double py)]
+
+                        ;; Default: no change
+                        [(double px) (double py)])
+                      ;; Sample from buffer at source coords
+                      bx (- sx (double x0))
+                      by (- sy (double y0))]
+                  (if (or (= mode :blur) (= mode :sharpen))
+                    ;; Blur/sharpen: weighted neighbor average
+                    (let [lx (- px x0)
+                          ly (- py y0)
+                          ;; 3x3 box average
+                          sum-r (atom 0.0) sum-g (atom 0.0)
+                          sum-b (atom 0.0) sum-a (atom 0.0)
+                          cnt   (atom 0)]
+                      (doseq [oy [-1 0 1] ox [-1 0 1]]
+                        (let [nx (+ lx ox) ny (+ ly oy)]
+                          (when (and (>= nx 0) (< nx w) (>= ny 0) (< ny h))
+                            (let [bi (* (+ (* ny w) nx) 4)]
+                              (swap! sum-r + (aget buf bi))
+                              (swap! sum-g + (aget buf (+ bi 1)))
+                              (swap! sum-b + (aget buf (+ bi 2)))
+                              (swap! sum-a + (aget buf (+ bi 3)))
+                              (swap! cnt inc)))))
+                      (when (pos? @cnt)
+                        (let [n (double @cnt)
+                              avg-r (/ @sum-r n) avg-g (/ @sum-g n)
+                              avg-b (/ @sum-b n) avg-a (/ @sum-a n)
+                              ci (* (+ (* (- py y0) w) (- px x0)) 4)
+                              orig-r (double (aget buf ci))
+                              orig-g (double (aget buf (+ ci 1)))
+                              orig-b (double (aget buf (+ ci 2)))
+                              orig-a (double (aget buf (+ ci 3)))
+                              f (* strength falloff)
+                              [nr ng nb na]
+                              (if (= mode :blur)
+                                [(+ orig-r (* f (- avg-r orig-r)))
+                                 (+ orig-g (* f (- avg-g orig-g)))
+                                 (+ orig-b (* f (- avg-b orig-b)))
+                                 (+ orig-a (* f (- avg-a orig-a)))]
+                                ;; Sharpen: overshoot away from blur
+                                [(+ orig-r (* f (- orig-r avg-r)))
+                                 (+ orig-g (* f (- orig-g avg-g)))
+                                 (+ orig-b (* f (- orig-b avg-b)))
+                                 orig-a])
+                              tx (quot px ts)
+                              ty (quot py ts)
+                              ^floats tile (surface/get-tile! surface tx ty)
+                              tlx (rem px ts)
+                              tly (rem py ts)
+                              fi  (surface/pixel-idx tlx tly)]
+                          (aset tile fi (float (Math/max 0.0 nr)))
+                          (aset tile (unchecked-inc-int fi) (float (Math/max 0.0 ng)))
+                          (aset tile (unchecked-add-int fi 2) (float (Math/max 0.0 nb)))
+                          (aset tile (unchecked-add-int fi 3) (float (Math/max 0.0 na))))))
+                    ;; Push/swirl: bilinear sample from buffer
+                    (when (and (>= bx 0.0) (< bx (- w 1.0))
+                               (>= by 0.0) (< by (- h 1.0)))
+                      (let [ix (long (Math/floor bx))
+                            iy (long (Math/floor by))
+                            fx (- bx ix)
+                            fy (- by iy)
+                            ;; Four corners
+                            i00 (* (+ (* iy w) ix) 4)
+                            i10 (* (+ (* iy w) (inc ix)) 4)
+                            i01 (* (+ (* (inc iy) w) ix) 4)
+                            i11 (* (+ (* (inc iy) w) (inc ix)) 4)
+                            ;; Bilinear interpolation
+                            lerp (fn [^long off]
+                                   (let [v00 (double (aget buf (+ i00 off)))
+                                         v10 (double (aget buf (+ i10 off)))
+                                         v01 (double (aget buf (+ i01 off)))
+                                         v11 (double (aget buf (+ i11 off)))]
+                                     (+ (* v00 (- 1.0 fx) (- 1.0 fy))
+                                        (* v10 fx (- 1.0 fy))
+                                        (* v01 (- 1.0 fx) fy)
+                                        (* v11 fx fy))))
+                            sr (lerp 0) sg (lerp 1)
+                            sb (lerp 2) sa (lerp 3)
+                            ;; Mix with original based on falloff
+                            ci  (* (+ (* (- py y0) w) (- px x0)) 4)
+                            or' (double (aget buf ci))
+                            og  (double (aget buf (+ ci 1)))
+                            ob  (double (aget buf (+ ci 2)))
+                            oa  (double (aget buf (+ ci 3)))
+                            f   (* strength falloff)
+                            nr  (+ or' (* f (- sr or')))
+                            ng  (+ og (* f (- sg og)))
+                            nb  (+ ob (* f (- sb ob)))
+                            na  (+ oa (* f (- sa oa)))
+                            ;; Write to surface
+                            ttx (quot px ts)
+                            tty (quot py ts)
+                            ^floats tile (surface/get-tile! surface ttx tty)
+                            tlx (rem px ts)
+                            tly (rem py ts)
+                            fi  (surface/pixel-idx tlx tly)]
+                        (aset tile fi (float nr))
+                        (aset tile (unchecked-inc-int fi) (float ng))
+                        (aset tile (unchecked-add-int fi 2) (float nb))
+                        (aset tile (unchecked-add-int fi 3) (float na))))))))
+            (recur (unchecked-inc px))))
+        (recur (unchecked-inc py))))))
+
 (comment
   (require '[eido.paint.surface :as surface])
   (let [s (surface/create-surface 100 100)]

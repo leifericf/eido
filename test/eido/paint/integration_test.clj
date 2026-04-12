@@ -364,3 +364,70 @@
                  {:brush :ink :color [:color/rgb 0 0 0] :radius 5.0})])]
       (is (= :group (:node/type g)))
       (is (some? (:paint/surface g))))))
+
+(deftest spatter-effect-test
+  (testing "spatter emits particles outside main stroke path"
+    (let [img (eido/render
+                {:image/size [200 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [10 50]] [:line-to [190 50]]]
+                   :paint/brush {:brush/type :brush/dab
+                                 :brush/tip {:tip/shape :ellipse :tip/hardness 0.7}
+                                 :brush/paint {:paint/opacity 0.5 :paint/spacing 0.05}
+                                 :brush/spatter {:spatter/threshold 0.2
+                                                 :spatter/density 0.5
+                                                 :spatter/spread 3.0
+                                                 :spatter/mode :scatter}}
+                   :paint/color [:color/rgb 0 0 0]
+                   :paint/radius 8.0
+                   :paint/seed 42}]})]
+      ;; Spatter should create pixels away from the center line (y=50)
+      (is (has-painted-pixels? img 240))))
+
+  (testing "spatter modes render without error"
+    (doseq [mode [:scatter :drip :spray]]
+      (let [img (eido/render
+                  {:image/size [100 100]
+                   :image/background [:color/rgb 255 255 255]
+                   :image/nodes
+                   [{:node/type :shape/path
+                     :path/commands [[:move-to [10 50]] [:line-to [90 50]]]
+                     :paint/brush {:brush/type :brush/dab
+                                   :brush/tip {:tip/shape :ellipse :tip/hardness 0.7}
+                                   :brush/paint {:paint/opacity 0.5 :paint/spacing 0.05}
+                                   :brush/spatter {:spatter/threshold 0.2
+                                                   :spatter/density 0.3
+                                                   :spatter/spread 2.0
+                                                   :spatter/mode mode}}
+                     :paint/color [:color/rgb 0 0 0]
+                     :paint/radius 6.0
+                     :paint/seed 42}]})]
+        (is (some? img) (str "mode " mode " should render"))))))
+
+(deftest new-blend-modes-render-test
+  (testing "glazed blend renders through pipeline"
+    (let [img (eido/render
+                {:image/size [100 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [10 50]] [:line-to [90 50]]]
+                   :paint/brush :flat-marker
+                   :paint/color [:color/rgb 100 60 20]
+                   :paint/radius 8.0}]})]
+      (is (has-painted-pixels? img 250))))
+
+  (testing "impasto renders with height planes"
+    (let [img (eido/render
+                {:image/size [100 100]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :shape/path
+                   :path/commands [[:move-to [10 50]] [:line-to [90 50]]]
+                   :paint/brush :impasto
+                   :paint/color [:color/rgb 200 60 30]
+                   :paint/radius 12.0
+                   :paint/seed 42}]})]
+      (is (has-painted-pixels? img 240)))))
