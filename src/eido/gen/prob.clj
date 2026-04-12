@@ -275,7 +275,8 @@
     (mapv (fn [_]
             (let [src-idx (sample-cdf cdf (.nextDouble rng))
                   src (nth sources src-idx)]
-              (nth src (.nextInt rng (count src)))))
+              (when (pos? (count src))
+                (nth src (.nextInt rng (count src))))))
           (clojure.core/range n))))
 
 (comment

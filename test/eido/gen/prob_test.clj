@@ -217,7 +217,10 @@
     (let [src1 (prob/uniform 50 0.0 10.0 42)
           src2 (prob/uniform 50 90.0 100.0 99)]
       (is (= (prob/mixture [src1 src2] [1 1] 20 42)
-             (prob/mixture [src1 src2] [1 1] 20 42))))))
+             (prob/mixture [src1 src2] [1 1] 20 42)))))
+  (testing "empty source returns nil entries, not crash"
+    (let [result (prob/mixture [[] [1 2 3]] [1 1] 5 42)]
+      (is (= 5 (count result))))))
 
 ;; --- pareto distribution ---
 
