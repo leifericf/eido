@@ -67,3 +67,11 @@
                                      :deform/amount 0.5})]
       (is (= 6 (count m)))
       (is (every? :face/normal m)))))
+
+(deftest mirror-mesh-invalid-axis-test
+  (testing "missing axis throws ExceptionInfo"
+    (is (thrown? clojure.lang.ExceptionInfo
+          (xform/mirror-mesh cube {}))))
+  (testing "invalid axis throws ExceptionInfo"
+    (is (thrown? clojure.lang.ExceptionInfo
+          (xform/mirror-mesh cube {:mirror/axis :q})))))

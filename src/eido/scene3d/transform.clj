@@ -160,7 +160,10 @@
                                                        (case axis
                                                          :x [(- (double x)) y z]
                                                          :y [x (- (double y)) z]
-                                                         :z [x y (- (double z))]))
+                                                         :z [x y (- (double z))]
+                                                         (throw (ex-info "Invalid mirror axis"
+                                                                         {:axis axis
+                                                                          :valid #{:x :y :z}}))))
                                                      verts)
                                 ;; Reverse winding to fix normals
                                 reversed (vec (reverse mirrored-verts))
