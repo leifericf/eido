@@ -314,17 +314,11 @@
   (let [spacing-ratio (get-in brush [:brush/paint :paint/spacing] 0.06)]
     (max 1.0 (* (double spacing-ratio) radius 2.0))))
 
-(defn render-stroke!
-  "Renders a single stroke onto a surface.
-  stroke-desc: {:stroke/brush :stroke/color :stroke/points :stroke/seed}
-    or path-based: {:paint/brush :paint/color :path/commands :paint/pressure}
-  Returns nil (mutates surface).
-  substrate-spec: optional substrate from the surface config."
-  ([surface stroke-desc] (render-stroke! surface stroke-desc nil))
-  ([surface stroke-desc substrate-spec]
-  (let [brush-spec (resolve-brush (or (:stroke/brush stroke-desc)
-                                      (:paint/brush stroke-desc)))
-        raw-color  (or (:paint/color stroke-desc)
+(defn- resolve-stroke-params
+  "Resolves a stroke descriptor + brush spec into concrete rendering params.
+  Pure function — no side effects."
+  [stroke-desc brush-spec substrate-spec]
+  (let [raw-color  (or (:paint/color stroke-desc)
                        (:stroke/color stroke-desc)
                        (:style/fill stroke-desc)
                        [:color/rgb 0 0 0])
@@ -336,168 +330,200 @@
         tip-spec   (:brush/tip brush-spec)
         hardness   (get tip-spec :tip/hardness 0.7)
         aspect     (get tip-spec :tip/aspect 1.0)
-        grain-spec    (:brush/grain brush-spec)
-        bristle-spec  (:brush/bristles brush-spec)
-        smudge-spec   (:brush/smudge brush-spec)
-        wet-spec      (:brush/wet brush-spec)
-        impasto-spec  (:brush/impasto brush-spec)
-        jitter-spec   (:brush/jitter brush-spec)
-        ;; Derive seed from stroke content if not explicit, so each
-        ;; stroke gets unique jitter without requiring manual seeds
-        stroke-seed   (long (or (:paint/seed stroke-desc)
-                                (:stroke/seed stroke-desc)
-                                (hash stroke-desc)))
+        blend-mode (get-in brush-spec [:brush/paint :paint/blend] :source-over)
         opacity    (get-in brush-spec [:brush/paint :paint/opacity] 0.5)
         spacing-px (brush-spacing-px brush-spec radius)
-        ;; Get points — either explicit or from path commands
+        stroke-seed (long (or (:paint/seed stroke-desc)
+                               (:stroke/seed stroke-desc)
+                               (hash stroke-desc)))
         explicit   (or (:paint/points stroke-desc) (:stroke/points stroke-desc))
         path-cmds  (:path/commands stroke-desc)
         {:keys [points pressure]}
         (cond
-          explicit
-          (stroke/explicit-points->stroke-points explicit)
-
-          path-cmds
-          {:points   (stroke/path-commands->points path-cmds 0.5)
-           :pressure (or (:paint/pressure stroke-desc)
-                         (:stroke/pressure stroke-desc))}
-
-          :else
-          {:points [] :pressure nil})
+          explicit (stroke/explicit-points->stroke-points explicit)
+          path-cmds {:points   (stroke/path-commands->points path-cmds 0.5)
+                     :pressure (or (:paint/pressure stroke-desc)
+                                   (:stroke/pressure stroke-desc))}
+          :else {:points [] :pressure nil})
         dabs (stroke/resample-stroke points spacing-px
-               {:color    resolved
-                :radius   radius
-                :hardness hardness
-                :opacity  opacity
-                :aspect   aspect
-                :tip      tip-spec
-                :pressure pressure
-                :jitter   jitter-spec
-                :seed     stroke-seed})
-        ;; Initialize smudge state if brush has smudge config
-        smudge-state (when smudge-spec
-                       (smudge/make-smudge-state smudge-spec resolved))
-        ;; Helper: apply smudge color mixing to a dab
-        apply-smudge (fn [d]
-                       (if smudge-state
-                         (let [[mr mg mb] (smudge/update-smudge!
-                                            smudge-state surface
-                                            (long (:dab/cx d)) (long (:dab/cy d))
-                                            resolved)
-                               mixed-color {:r (Math/round (* mr 255.0))
-                                            :g (Math/round (* mg 255.0))
-                                            :b (Math/round (* mb 255.0))
-                                            :a (get (:dab/color d) :a 1.0)}]
-                           (assoc d :dab/color mixed-color))
-                         d))
-        blend-mode (get-in brush-spec [:brush/paint :paint/blend] :source-over)
-        ;; Helper: add grain/substrate/blend to a dab
-        apply-texture (fn [d]
-                        (cond-> d
-                          grain-spec                     (assoc :dab/grain grain-spec)
-                          substrate-spec                 (assoc :dab/substrate substrate-spec)
-                          (not= blend-mode :source-over) (assoc :dab/blend blend-mode)))
-        ;; Helper: deposit wetness if wet brush
-        deposit-wet (fn [d]
-                      (when (and wet-spec (:wet/enabled wet-spec true))
-                        (let [deposit (double (get wet-spec :wet/deposit 0.3))]
-                          (wet/deposit-wetness! surface
-                            (long (:dab/cx d)) (long (:dab/cy d))
-                            (* deposit (:dab/opacity d))))))
-        ;; Helper: deposit height if impasto brush
-        deposit-height (fn [d]
-                         (when impasto-spec
-                           (let [h (double (get impasto-spec :impasto/height 0.3))]
-                             (surface/deposit-height! surface
-                               (long (:dab/cx d)) (long (:dab/cy d))
-                               (* h (:dab/opacity d))))))]
-    (if (= :brush/deform (:brush/type brush-spec))
-      ;; Deform mode: modify existing pixels
-      (let [deform-spec (:brush/deform brush-spec)]
-        (doseq [d dabs]
-          (kernel/deform-dab! surface
-            (assoc d :dab/deform deform-spec))))
-      ;; Regular paint mode
-      (if bristle-spec
-        ;; Bristle mode: emit N sub-dabs per dab
-        (doseq [d dabs]
-          (let [d (apply-smudge d)
-                offsets (tip/bristle-offsets bristle-spec
-                          (double (get d :dab/angle 0.0))
-                          (hash (get d :dab/cx 0.0)))
-                base-r  (double (:dab/radius d))]
-            (doseq [{:keys [offset opacity-scale size-scale]} offsets]
-              (let [[ox oy] offset
-                    sub-dab (-> (assoc d
-                                  :dab/cx (+ (:dab/cx d) (* ox base-r))
-                                  :dab/cy (+ (:dab/cy d) (* oy base-r))
-                                  :dab/radius (* base-r size-scale 0.4)
-                                  :dab/opacity (* (:dab/opacity d) opacity-scale))
-                                apply-texture)]
-                (kernel/rasterize-dab! surface sub-dab)
-                (deposit-wet sub-dab)
-                (deposit-height sub-dab)))))
-        ;; Single-tip mode
-        (doseq [d dabs]
-          (let [d (-> d apply-smudge apply-texture)]
-            (kernel/rasterize-dab! surface d)
-            (deposit-wet d)
-            (deposit-height d)))))
-    ;; Spatter: emit secondary particles for speed-driven effects
-    (when-let [spatter-spec (:brush/spatter brush-spec)]
-      (let [threshold (double (get spatter-spec :spatter/threshold 0.6))
-            density   (double (get spatter-spec :spatter/density 0.3))
-            spread    (double (get spatter-spec :spatter/spread 2.0))
-            [size-min size-max] (get spatter-spec :spatter/size [0.05 0.3])
-            [opa-min opa-max]   (get spatter-spec :spatter/opacity [0.2 0.8])
-            mode      (get spatter-spec :spatter/mode :scatter)]
-        (doseq [d dabs]
-          (let [speed (double (get d :dab/speed 0.0))
-                ;; Scale spatter by dab opacity (tracks pressure)
-                dab-strength (double (:dab/opacity d))]
-            (when (> speed threshold)
-              (let [intensity (* (- speed threshold) (/ 1.0 (Math/max 0.01 (- 1.0 threshold))))
-                    ;; Fewer particles where stroke is thin/faint
-                    n         (int (Math/ceil (* density intensity dab-strength 3.0)))
-                    ^Random rng (Random. (unchecked-add
-                                           stroke-seed
-                                           (long (* (:dab/cx d) 17.0))))]
-                (dotimes [_ n]
-                  (let [base-angle (double (:dab/angle d))
-                        angle (case mode
-                                :scatter (+ base-angle (* (- (.nextDouble rng) 0.5) Math/PI))
-                                :spray   (+ base-angle (* (.nextGaussian rng) 0.4))
-                                (+ base-angle (* (- (.nextDouble rng) 0.5) Math/PI)))
-                        ;; Spread scales with dab radius (already pressure-scaled)
-                        ;; Squared distribution clusters near stroke
-                        dab-r (double (:dab/radius d))
-                        dist (* spread dab-r (.nextDouble rng) (.nextDouble rng))
-                        px    (+ (:dab/cx d) (* dist (Math/cos angle)))
-                        py    (+ (:dab/cy d) (* dist (Math/sin angle)))
-                        sz    (+ (double size-min)
-                                 (* (.nextDouble rng) (- (double size-max) (double size-min))))
-                        ;; Scale particle size to dab radius, min 1.5px
-                        pr    (Math/max 1.5 (* sz dab-r))
-                        op    (+ (double opa-min)
-                                 (* (.nextDouble rng) (- (double opa-max) (double opa-min))))
-                        particle (cond-> {:dab/cx px :dab/cy py
-                                          :dab/radius pr
-                                          :dab/hardness (get tip-spec :tip/hardness 0.3)
-                                          :dab/opacity op
-                                          :dab/aspect 1.0
-                                          :dab/angle (double (:dab/angle d))
-                                          :dab/tip tip-spec
-                                          :dab/color (:dab/color d)}
-                                   grain-spec                     (assoc :dab/grain grain-spec)
-                                   substrate-spec                 (assoc :dab/substrate substrate-spec)
-                                   (not= blend-mode :source-over) (assoc :dab/blend blend-mode))]
-                    (kernel/rasterize-dab! surface particle)))))))))
-    ;; Post-stroke: run wet diffusion if configured
-    (when (and wet-spec (:wet/enabled wet-spec true))
-      (let [iterations (long (get wet-spec :wet/diffusion-steps 4))
-            strength   (double (get wet-spec :wet/diffusion 0.2))
-            darken     (double (get wet-spec :wet/edge-darken 0.15))]
-        (wet/apply-wet-pass! surface iterations strength darken wet-spec))))))
+               {:color resolved :radius radius :hardness hardness
+                :opacity opacity :aspect aspect :tip tip-spec
+                :pressure pressure :jitter (:brush/jitter brush-spec)
+                :seed stroke-seed})]
+    {:brush-spec     brush-spec
+     :resolved-color resolved
+     :radius         radius
+     :tip-spec       tip-spec
+     :grain-spec     (:brush/grain brush-spec)
+     :bristle-spec   (:brush/bristles brush-spec)
+     :smudge-spec    (:brush/smudge brush-spec)
+     :wet-spec       (:brush/wet brush-spec)
+     :impasto-spec   (:brush/impasto brush-spec)
+     :blend-mode     blend-mode
+     :stroke-seed    stroke-seed
+     :substrate-spec substrate-spec
+     :dabs           dabs}))
+
+(defn- apply-texture
+  "Adds grain, substrate, and blend-mode to a dab."
+  [d grain-spec substrate-spec blend-mode]
+  (cond-> d
+    grain-spec                     (assoc :dab/grain grain-spec)
+    substrate-spec                 (assoc :dab/substrate substrate-spec)
+    (not= blend-mode :source-over) (assoc :dab/blend blend-mode)))
+
+(defn- deposit-effects!
+  "Deposits wet and impasto effects for a dab."
+  [surface d wet-spec impasto-spec]
+  (when (and wet-spec (:wet/enabled wet-spec true))
+    (let [deposit (double (get wet-spec :wet/deposit 0.3))]
+      (wet/deposit-wetness! surface
+        (long (:dab/cx d)) (long (:dab/cy d))
+        (* deposit (:dab/opacity d)))))
+  (when impasto-spec
+    (let [h (double (get impasto-spec :impasto/height 0.3))]
+      (surface/deposit-height! surface
+        (long (:dab/cx d)) (long (:dab/cy d))
+        (* h (:dab/opacity d))))))
+
+(defn- render-deform-stroke!
+  "Renders a deform stroke (push, swirl, blur, sharpen)."
+  [surface dabs deform-spec]
+  (doseq [d dabs]
+    (kernel/deform-dab! surface (assoc d :dab/deform deform-spec))))
+
+(defn- render-bristle-stroke!
+  "Renders a bristle stroke — emits N sub-dabs per dab position."
+  [surface dabs {:keys [bristle-spec smudge-spec grain-spec substrate-spec
+                        blend-mode wet-spec impasto-spec resolved-color]}
+   smudge-state]
+  (doseq [d dabs]
+    (let [d (if smudge-state
+              (let [[mr mg mb] (smudge/update-smudge!
+                                 smudge-state surface
+                                 (long (:dab/cx d)) (long (:dab/cy d))
+                                 resolved-color)
+                    mixed-color {:r (Math/round (* mr 255.0))
+                                 :g (Math/round (* mg 255.0))
+                                 :b (Math/round (* mb 255.0))
+                                 :a (get (:dab/color d) :a 1.0)}]
+                (assoc d :dab/color mixed-color))
+              d)
+          offsets (tip/bristle-offsets bristle-spec
+                    (double (get d :dab/angle 0.0))
+                    (hash (get d :dab/cx 0.0)))
+          base-r  (double (:dab/radius d))]
+      (doseq [{:keys [offset opacity-scale size-scale]} offsets]
+        (let [[ox oy] offset
+              sub-dab (-> (assoc d
+                            :dab/cx (+ (:dab/cx d) (* ox base-r))
+                            :dab/cy (+ (:dab/cy d) (* oy base-r))
+                            :dab/radius (* base-r size-scale 0.4)
+                            :dab/opacity (* (:dab/opacity d) opacity-scale))
+                          (apply-texture grain-spec substrate-spec blend-mode))]
+          (kernel/rasterize-dab! surface sub-dab)
+          (deposit-effects! surface sub-dab wet-spec impasto-spec))))))
+
+(defn- render-single-tip-stroke!
+  "Renders a single-tip stroke — one dab per position."
+  [surface dabs {:keys [smudge-spec grain-spec substrate-spec
+                        blend-mode wet-spec impasto-spec resolved-color]}
+   smudge-state]
+  (doseq [d dabs]
+    (let [d (if smudge-state
+              (let [[mr mg mb] (smudge/update-smudge!
+                                 smudge-state surface
+                                 (long (:dab/cx d)) (long (:dab/cy d))
+                                 resolved-color)
+                    mixed-color {:r (Math/round (* mr 255.0))
+                                 :g (Math/round (* mg 255.0))
+                                 :b (Math/round (* mb 255.0))
+                                 :a (get (:dab/color d) :a 1.0)}]
+                (assoc d :dab/color mixed-color))
+              d)
+          d (apply-texture d grain-spec substrate-spec blend-mode)]
+      (kernel/rasterize-dab! surface d)
+      (deposit-effects! surface d wet-spec impasto-spec))))
+
+(defn- emit-spatter!
+  "Emits secondary spatter particles for speed-driven effects."
+  [surface dabs spatter-spec {:keys [tip-spec grain-spec substrate-spec
+                                     blend-mode stroke-seed]}]
+  (let [threshold (double (get spatter-spec :spatter/threshold 0.6))
+        density   (double (get spatter-spec :spatter/density 0.3))
+        spread    (double (get spatter-spec :spatter/spread 2.0))
+        [size-min size-max] (get spatter-spec :spatter/size [0.05 0.3])
+        [opa-min opa-max]   (get spatter-spec :spatter/opacity [0.2 0.8])
+        mode      (get spatter-spec :spatter/mode :scatter)]
+    (doseq [d dabs]
+      (let [speed (double (get d :dab/speed 0.0))
+            dab-strength (double (:dab/opacity d))]
+        (when (> speed threshold)
+          (let [intensity (* (- speed threshold)
+                             (/ 1.0 (Math/max 0.01 (- 1.0 threshold))))
+                n         (int (Math/ceil (* density intensity dab-strength 3.0)))
+                ^java.util.Random rng
+                (java.util.Random. (unchecked-add
+                                     (long stroke-seed)
+                                     (long (* (:dab/cx d) 17.0))))]
+            (dotimes [_ n]
+              (let [base-angle (double (:dab/angle d))
+                    angle (case mode
+                            :scatter (+ base-angle
+                                        (* (- (.nextDouble rng) 0.5) Math/PI))
+                            :spray   (+ base-angle
+                                        (* (.nextGaussian rng) 0.4))
+                            (+ base-angle
+                               (* (- (.nextDouble rng) 0.5) Math/PI)))
+                    dab-r (double (:dab/radius d))
+                    dist (* spread dab-r (.nextDouble rng) (.nextDouble rng))
+                    px    (+ (:dab/cx d) (* dist (Math/cos angle)))
+                    py    (+ (:dab/cy d) (* dist (Math/sin angle)))
+                    sz    (+ (double size-min)
+                             (* (.nextDouble rng)
+                                (- (double size-max) (double size-min))))
+                    pr    (Math/max 1.5 (* sz dab-r))
+                    op    (+ (double opa-min)
+                             (* (.nextDouble rng)
+                                (- (double opa-max) (double opa-min))))
+                    particle (-> {:dab/cx px :dab/cy py
+                                  :dab/radius pr
+                                  :dab/hardness (get tip-spec :tip/hardness 0.3)
+                                  :dab/opacity op
+                                  :dab/aspect 1.0
+                                  :dab/angle (double (:dab/angle d))
+                                  :dab/tip tip-spec
+                                  :dab/color (:dab/color d)}
+                                 (apply-texture grain-spec substrate-spec
+                                   blend-mode))]
+                (kernel/rasterize-dab! surface particle)))))))))
+
+(defn render-stroke!
+  "Renders a single stroke onto a surface.
+  stroke-desc: {:stroke/brush :stroke/color :stroke/points :stroke/seed}
+    or path-based: {:paint/brush :paint/color :path/commands :paint/pressure}
+  Returns nil (mutates surface).
+  substrate-spec: optional substrate from the surface config."
+  ([surface stroke-desc] (render-stroke! surface stroke-desc nil))
+  ([surface stroke-desc substrate-spec]
+   (let [brush-spec (resolve-brush (or (:stroke/brush stroke-desc)
+                                       (:paint/brush stroke-desc)))
+         params (resolve-stroke-params stroke-desc brush-spec substrate-spec)
+         {:keys [dabs smudge-spec wet-spec resolved-color]} params
+         smudge-state (when smudge-spec
+                        (smudge/make-smudge-state smudge-spec resolved-color))]
+     (if (= :brush/deform (:brush/type brush-spec))
+       (render-deform-stroke! surface dabs (:brush/deform brush-spec))
+       (if (:bristle-spec params)
+         (render-bristle-stroke! surface dabs params smudge-state)
+         (render-single-tip-stroke! surface dabs params smudge-state)))
+     (when-let [spatter-spec (:brush/spatter brush-spec)]
+       (emit-spatter! surface dabs spatter-spec params))
+     (when (and wet-spec (:wet/enabled wet-spec true))
+       (let [iterations (long (get wet-spec :wet/diffusion-steps 4))
+             strength   (double (get wet-spec :wet/diffusion 0.2))
+             darken     (double (get wet-spec :wet/edge-darken 0.15))]
+         (wet/apply-wet-pass! surface iterations strength darken wet-spec))))))
 
 (defn render-strokes!
   "Renders all strokes onto a surface. Returns the surface."
