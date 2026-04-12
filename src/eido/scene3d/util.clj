@@ -87,14 +87,17 @@
 (defn ^:no-doc palette-color
   "Maps a [0,1] value to a color from a palette via linear interpolation."
   [palette t]
-  (let [t  (Math/max 0.0 (Math/min 1.0 (double t)))
-        n  (dec (count palette))
-        fi (* t n)
-        lo (int (Math/floor fi))
-        lo (min lo (dec n))
-        hi (min (inc lo) n)
-        f  (- fi lo)]
-    (lerp-color (nth palette lo) (nth palette hi) f)))
+  (case (count palette)
+    0 [:color/rgb 0 0 0]
+    1 (first palette)
+    (let [t  (Math/max 0.0 (Math/min 1.0 (double t)))
+          n  (dec (count palette))
+          fi (* t n)
+          lo (int (Math/floor fi))
+          lo (min lo (dec n))
+          hi (min (inc lo) n)
+          f  (- fi lo)]
+      (lerp-color (nth palette lo) (nth palette hi) f))))
 
 (defn ^:no-doc make-face-selector
   "Builds a predicate fn from a selector descriptor.

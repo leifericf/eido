@@ -59,3 +59,15 @@
       (is (= [:color/rgb 0 0 255]
              (:style/fill (:face/style (first m))))
           "+Z face should get last palette color (blue)"))))
+
+(deftest color-mesh-small-palette-test
+  (testing "1-color palette doesn't crash"
+    (let [m (surface/color-mesh cube {:color/type :axis-gradient
+                                       :color/axis :y
+                                       :color/palette [[:color/rgb 255 0 0]]})]
+      (is (= 6 (count m)))))
+  (testing "empty palette doesn't crash"
+    (let [m (surface/color-mesh cube {:color/type :axis-gradient
+                                       :color/axis :y
+                                       :color/palette []})]
+      (is (= 6 (count m))))))
