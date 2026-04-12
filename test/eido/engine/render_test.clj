@@ -87,6 +87,25 @@
       (is (< (Math/abs (- g 128)) 5)
           "blended green should be ~128"))))
 
+(deftest render-opacity-clamp-test
+  (testing "out-of-range opacity is clamped, not crash"
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 100 :h 100
+                         :fill {:r 255 :g 255 :b 255 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity -0.5}]}]
+      (is (instance? java.awt.image.BufferedImage (render/render ir))
+          "negative opacity should not crash"))
+    (let [ir {:ir/size [100 100]
+              :ir/background {:r 0 :g 0 :b 0 :a 1.0}
+              :ir/ops [{:op :rect :x 0 :y 0 :w 100 :h 100
+                         :fill {:r 255 :g 255 :b 255 :a 1.0}
+                         :stroke-color nil :stroke-width nil
+                         :opacity 2.0}]}]
+      (is (instance? java.awt.image.BufferedImage (render/render ir))
+          "opacity > 1 should not crash"))))
+
 (deftest render-order-test
   (testing "later nodes paint over earlier nodes"
     (let [ir {:ir/size [200 200]

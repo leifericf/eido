@@ -248,7 +248,7 @@
   (let [transforms (:transforms op)
         clip-op    (:clip op)
         has-state? (or (seq transforms) clip-op)
-        opacity    (double (:opacity op))]
+        opacity    (max 0.0 (min 1.0 (double (:opacity op))))]
     (when (not= opacity *prev-opacity*)
       (.setComposite g (AlphaComposite/getInstance
                          AlphaComposite/SRC_OVER
@@ -600,7 +600,7 @@
         (when clip (.setClip g (op->clip-shape clip)))
         (.setComposite g (AlphaComposite/getInstance
                            (get composite-rules composite AlphaComposite/SRC_OVER)
-                           (float opacity)))
+                           (float (max 0.0 (min 1.0 (double opacity))))))
         (.drawImage g buf 0 0 nil)
         (.setTransform g saved-transform)
         (.setClip g saved-clip)
