@@ -54,3 +54,20 @@
                      :style/fill [:color/rgb 0 0 255]}]}]}
           ir (compile/compile scene)]
       (is (= 6 (count (:ir/ops ir)))))))
+
+(deftest symmetry-nested-generator-empty-overrides-test
+  (testing "voronoi inside symmetry with empty overrides doesn't crash"
+    (let [scene {:image/size [400 200]
+                 :image/background [:color/rgb 255 255 255]
+                 :image/nodes
+                 [{:node/type :symmetry
+                   :symmetry/type :bilateral
+                   :symmetry/center [200 100]
+                   :group/children
+                   [{:node/type :voronoi
+                     :voronoi/points [[30 30] [80 50] [50 80]]
+                     :voronoi/bounds [0 0 200 200]
+                     :voronoi/overrides []
+                     :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}]}
+          ir (compile/compile scene)]
+      (is (pos? (count (:ir/ops ir)))))))

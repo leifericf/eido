@@ -109,7 +109,7 @@
   [items node overrides style-keys]
   (vec (map-indexed
          (fn [i item]
-           (let [ovr (when overrides
+           (let [ovr (when (seq overrides)
                        (nth overrides (mod i (count overrides))))]
              (reduce (fn [m k]
                        (cond-> m
