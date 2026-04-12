@@ -38,17 +38,20 @@
 (defn create-surface
   "Creates a paint surface of the given pixel dimensions.
   Returns a map with sparse tile storage and dirty tracking.
-  Tiles are allocated lazily on first write."
+  Tiles are allocated lazily on first write.
+  Wet planes are allocated on demand by the wet media module."
   [^long w ^long h]
   (let [cols (long (Math/ceil (/ (double w) tile-size)))
         rows (long (Math/ceil (/ (double h) tile-size)))
         n    (* cols rows)]
-    {:surface/width  w
-     :surface/height h
-     :surface/cols   cols
-     :surface/rows   rows
-     :surface/tiles  (object-array n)   ;; sparse: nil until touched
-     :surface/dirty  (boolean-array n)}))
+    {:surface/width         w
+     :surface/height        h
+     :surface/cols          cols
+     :surface/rows          rows
+     :surface/tiles         (object-array n)   ;; sparse: nil until touched
+     :surface/dirty         (boolean-array n)
+     :surface/wet-planes    (object-array n)
+     :surface/height-planes (object-array n)})) ;; impasto height data
 
 ;; --- tile access ---
 
@@ -72,6 +75,38 @@
   Does not allocate or mark dirty."
   ^floats [{:keys [^objects surface/tiles ^long surface/cols]} ^long tx ^long ty]
   (aget tiles (tile-index cols tx ty)))
+
+;; --- height plane access (for impasto) ---
+
+(defn ensure-height-plane!
+  "Ensures that a surface has a height plane allocated for the given tile.
+  Returns the height float-array (one float per pixel)."
+  ^floats [surface ^long tx ^long ty]
+  (let [ts   (long tile-size)
+        n    (* ts ts)
+        cols (long (:surface/cols surface))
+        idx  (+ tx (* ty cols))
+        ^objects planes (:surface/height-planes surface)
+        ^floats plane (aget planes idx)]
+    (if plane
+      plane
+      (let [new-plane (float-array n)]
+        (aset planes idx new-plane)
+        new-plane))))
+
+(defn deposit-height!
+  "Deposits height at surface coordinates (px, py).
+  height: height to add [0..1]."
+  [surface ^long px ^long py ^double height]
+  (let [ts  (long tile-size)
+        tx  (quot px ts)
+        ty  (quot py ts)
+        lx  (rem px ts)
+        ly  (rem py ts)
+        ^floats plane (ensure-height-plane! surface tx ty)
+        idx (+ (* ly ts) lx)
+        old (double (aget plane idx))]
+    (aset plane idx (float (Math/min 1.0 (+ old height))))))
 
 ;; --- pixel access (mainly for testing) ---
 
@@ -103,12 +138,34 @@
 (defn- clamp-byte ^long [^double v]
   (long (Math/max 0.0 (Math/min 255.0 v))))
 
+(defn- height-gradient
+  "Computes directional height gradient at (lx,ly) within a height tile.
+  Returns a lighting factor: >1.0 for highlights, <1.0 for shadows."
+  ^double [^floats height-plane ^long lx ^long ly ^long ts]
+  (let [idx (+ (* ly ts) lx)
+        h   (double (aget height-plane idx))
+        ;; Sample neighbors for gradient (light from upper-left)
+        h-right (if (< lx (dec ts))
+                  (double (aget height-plane (inc idx)))
+                  h)
+        h-down  (if (< ly (dec ts))
+                  (double (aget height-plane (+ idx ts)))
+                  h)
+        ;; Gradient: positive = facing light, negative = away
+        dx (- h h-right)
+        dy (- h h-down)
+        ;; Light direction: upper-left normalized
+        light-dot (+ (* dx 0.707) (* dy 0.707))]
+    (+ 1.0 (* light-dot 2.0))))
+
 (defn compose-to-image
   "Composites all allocated tiles into a BufferedImage.
-  Converts from premultiplied RGBA floats to 8-bit ARGB ints."
+  Converts from premultiplied RGBA floats to 8-bit ARGB ints.
+  Applies impasto directional lighting when height planes exist."
   ^BufferedImage [{:keys [^long surface/width ^long surface/height
                           ^long surface/cols ^long surface/rows
-                          ^objects surface/tiles]}]
+                          ^objects surface/tiles
+                          ^objects surface/height-planes]}]
   (let [img (BufferedImage. width height BufferedImage/TYPE_INT_ARGB)]
     (dotimes [ty rows]
       (dotimes [tx cols]
@@ -118,21 +175,26 @@
             (let [ox (* tx tile-size)
                   oy (* ty tile-size)
                   max-x (min tile-size (- width ox))
-                  max-y (min tile-size (- height oy))]
+                  max-y (min tile-size (- height oy))
+                  ^floats hplane (when height-planes (aget height-planes idx))]
               (dotimes [ly max-y]
                 (dotimes [lx max-x]
                   (let [fi (pixel-idx lx ly)
-                        pr (aget tile fi)
-                        pg (aget tile (unchecked-inc-int fi))
-                        pb (aget tile (unchecked-add-int fi 2))
-                        pa (aget tile (unchecked-add-int fi 3))]
+                        pr (double (aget tile fi))
+                        pg (double (aget tile (unchecked-inc-int fi)))
+                        pb (double (aget tile (unchecked-add-int fi 2)))
+                        pa (double (aget tile (unchecked-add-int fi 3)))]
                     ;; Un-premultiply for ARGB output
                     (when (> pa 0.0)
-                      (let [inv-a (/ 1.0 (double pa))
-                            r (clamp-byte (* (double pr) inv-a 255.0))
-                            g (clamp-byte (* (double pg) inv-a 255.0))
-                            b (clamp-byte (* (double pb) inv-a 255.0))
-                            a (clamp-byte (* (double pa) 255.0))
+                      (let [inv-a (/ 1.0 pa)
+                            ;; Apply impasto directional lighting
+                            light (if hplane
+                                    (height-gradient hplane lx ly tile-size)
+                                    1.0)
+                            r (clamp-byte (* pr inv-a light 255.0))
+                            g (clamp-byte (* pg inv-a light 255.0))
+                            b (clamp-byte (* pb inv-a light 255.0))
+                            a (clamp-byte (* pa 255.0))
                             argb (unchecked-int
                                    (bit-or (bit-shift-left a 24)
                                            (bit-shift-left r 16)

@@ -123,7 +123,39 @@
                      (not (Double/isNaN (:dab/opacity d)))))
               (or dabs [])))))
 
+(defspec jittered-dabs-stay-bounded 100
+  (prop/for-all [x0 gen-coord y0 gen-coord
+                 x1 gen-coord y1 gen-coord
+                 spacing gen-positive
+                 pos-jitter gen-unit
+                 opa-jitter gen-unit
+                 size-jitter gen-unit]
+    (let [dabs (stroke/resample-stroke [[x0 y0] [x1 y1]] spacing
+                {:color {:r 100 :g 50 :b 25 :a 1.0} :radius 5.0 :opacity 0.5
+                 :jitter {:jitter/position pos-jitter
+                          :jitter/opacity opa-jitter
+                          :jitter/size size-jitter}
+                 :seed 42})]
+      (every? (fn [d]
+                (and (> (:dab/radius d) 0.0)
+                     (> (:dab/opacity d) 0.0)
+                     (<= (:dab/opacity d) 1.0)
+                     (not (Double/isNaN (:dab/cx d)))
+                     (not (Double/isNaN (:dab/cy d)))
+                     (not (Double/isNaN (:dab/radius d)))
+                     (not (Double/isNaN (:dab/opacity d)))))
+              (or dabs [])))))
+
 ;; --- blend properties ---
+
+(defspec blend-glazed-never-exceeds-max 100
+  (prop/for-all [sr gen-unit sg gen-unit sb gen-unit sa gen-unit
+                 dr gen-unit dg gen-unit db gen-unit da gen-unit]
+    (let [[r g b a] (blend/blend :glazed [sr sg sb sa] [dr dg db da])]
+      (and (<= r (+ (max sr dr) 0.001))
+           (<= g (+ (max sg dg) 0.001))
+           (<= b (+ (max sb db) 0.001))
+           (<= a (+ (max sa da) 0.001))))))
 
 (defspec blend-source-over-no-nan 100
   (prop/for-all [sr gen-unit sg gen-unit sb gen-unit sa gen-unit

@@ -73,6 +73,48 @@
     (is (nil? (stroke/resample-stroke [[50 50] [50 50]] 5.0
                 {:color {:r 0 :g 0 :b 0 :a 1.0} :radius 5.0})))))
 
+(deftest jitter-produces-variation-test
+  (testing "jitter varies position, opacity, and size"
+    (let [base (stroke/resample-stroke [[0 0] [100 0]] 10.0
+                {:color {:r 200 :g 50 :b 30 :a 1.0} :radius 8.0 :opacity 0.5})
+          jittered (stroke/resample-stroke [[0 0] [100 0]] 10.0
+                    {:color {:r 200 :g 50 :b 30 :a 1.0} :radius 8.0 :opacity 0.5
+                     :jitter {:jitter/position 0.2 :jitter/opacity 0.3 :jitter/size 0.15}
+                     :seed 42})]
+      (is (= (count base) (count jittered)) "same number of dabs")
+      ;; Jittered Y coords should differ from 0.0
+      (is (some #(> (Math/abs (double (:dab/cy %))) 0.01) jittered)
+          "at least one dab should have Y offset from jitter")
+      ;; Opacities should vary
+      (let [ops (set (mapv :dab/opacity jittered))]
+        (is (> (count ops) 1) "opacity should vary between dabs"))
+      ;; Radii should vary
+      (let [rs (set (mapv :dab/radius jittered))]
+        (is (> (count rs) 1) "radius should vary between dabs"))))
+
+  (testing "jitter is deterministic with same seed"
+    (let [a (stroke/resample-stroke [[0 0] [100 0]] 10.0
+              {:color {:r 200 :g 50 :b 30 :a 1.0} :radius 8.0 :opacity 0.5
+               :jitter {:jitter/position 0.2} :seed 42})
+          b (stroke/resample-stroke [[0 0] [100 0]] 10.0
+              {:color {:r 200 :g 50 :b 30 :a 1.0} :radius 8.0 :opacity 0.5
+               :jitter {:jitter/position 0.2} :seed 42})]
+      (is (= (mapv :dab/cx a) (mapv :dab/cx b))
+          "same seed produces same jitter")))
+
+  (testing "no jitter when spec is nil"
+    (let [dabs (stroke/resample-stroke [[0 0] [100 0]] 10.0
+                {:color {:r 200 :g 50 :b 30 :a 1.0} :radius 8.0 :opacity 0.5})]
+      (is (every? #(= 0.0 (:dab/cy %)) dabs)
+          "no jitter without spec"))))
+
+(deftest dab-speed-estimate-test
+  (testing "dabs have :dab/speed field"
+    (let [dabs (stroke/resample-stroke [[0 0] [100 0]] 10.0
+                {:color {:r 0 :g 0 :b 0 :a 1.0} :radius 5.0})]
+      (is (every? #(contains? % :dab/speed) dabs))
+      (is (every? #(>= (double (:dab/speed %)) 0.0) dabs)))))
+
 (deftest path-commands-to-points-test
   (testing "flattens bezier to point sequence"
     (let [pts (stroke/path-commands->points

@@ -13,23 +13,19 @@
 ;; --- auxiliary tile planes ---
 
 (defn ensure-wet-planes!
-  "Ensures that a surface has wetness and pigment planes allocated
-  for the given tile. Returns the wetness float-array."
+  "Ensures that a surface has wetness plane allocated for the given tile.
+  Returns the wetness float-array."
   [surface ^long tx ^long ty]
   (let [ts   (long surface/tile-size)
         n    (* ts ts)
         cols (long (:surface/cols surface))
         idx  (+ tx (* ty cols))
-        ;; Store wet planes in a separate map on the surface
-        wet-planes (or (:surface/wet-planes surface)
-                       (let [m (object-array (* cols (long (:surface/rows surface))))]
-                         ;; Attach to surface — mutates the surface map
-                         m))
-        ^floats wet (aget ^objects wet-planes idx)]
+        ^objects wet-planes (:surface/wet-planes surface)
+        ^floats wet (aget wet-planes idx)]
     (if wet
       wet
       (let [new-wet (float-array n)]
-        (aset ^objects wet-planes idx new-wet)
+        (aset wet-planes idx new-wet)
         new-wet))))
 
 (defn deposit-wetness!

@@ -6,7 +6,9 @@
   Spacing is by arc length, not by raw input point indices."
   (:require
     [eido.color :as color]
-    [eido.text :as text]))
+    [eido.text :as text])
+  (:import
+    [java.util Random]))
 
 ;; --- path commands to points ---
 
@@ -64,6 +66,44 @@
                   (lerp-value (double v0) (double v1) seg-t))
                 (recur (inc i))))))))))
 
+;; --- per-dab jitter ---
+
+(defn- jitter-rng
+  "Creates a deterministic Random from stroke seed + dab index."
+  ^Random [^long seed ^long dab-idx]
+  (Random. (unchecked-add (unchecked-multiply seed 31) dab-idx)))
+
+(defn- apply-jitter
+  "Applies per-dab jitter to a dab map. jitter-spec is a map of
+  :jitter/position, :jitter/opacity, :jitter/size, :jitter/angle keys.
+  Returns the modified dab."
+  [dab jitter-spec ^long seed ^long dab-idx]
+  (if (nil? jitter-spec)
+    dab
+    (let [^Random rng (jitter-rng seed dab-idx)
+          pos-j   (double (get jitter-spec :jitter/position 0.0))
+          opa-j   (double (get jitter-spec :jitter/opacity 0.0))
+          size-j  (double (get jitter-spec :jitter/size 0.0))
+          angle-j (double (get jitter-spec :jitter/angle 0.0))
+          radius  (double (:dab/radius dab))]
+      (cond-> dab
+        (> pos-j 0.0)
+        (-> (update :dab/cx + (* pos-j radius (.nextGaussian rng) 0.5))
+            (update :dab/cy + (* pos-j radius (.nextGaussian rng) 0.5)))
+
+        (> opa-j 0.0)
+        (update :dab/opacity (fn [^double o]
+                               (Math/max 0.01 (Math/min 1.0
+                                 (+ o (* opa-j o (.nextGaussian rng) 0.5))))))
+
+        (> size-j 0.0)
+        (update :dab/radius (fn [^double r]
+                              (Math/max 0.5 (+ r (* size-j r (.nextGaussian rng) 0.5)))))
+
+        (> angle-j 0.0)
+        (update :dab/angle (fn [^double a]
+                             (+ a (* angle-j (.nextGaussian rng) 0.5))))))))
+
 (defn resample-stroke
   "Resamples a stroke into evenly-spaced dab positions along the path.
 
@@ -75,7 +115,8 @@
     :hardness — base hardness [0..1]
     :opacity  — base opacity [0..1]
     :pressure — [[t pressure] ...] curve, or nil for constant 1.0
-    :seed     — deterministic seed (currently unused, reserved)
+    :seed     — deterministic seed for jitter
+    :jitter   — jitter spec map (see apply-jitter)
 
   Returns a vector of dab maps suitable for kernel/rasterize-dab!."
   [points ^double spacing-px opts]
@@ -106,11 +147,14 @@
           base-aspect  (double (get opts :aspect 1.0))
           pressure-curve (:pressure opts)
           tip-spec     (:tip opts)
+          jitter-spec  (:jitter opts)
+          seed         (long (get opts :seed 0))
           c            (:color opts)]
       (when (> total-len 0.0)
         (loop [dist       0.0      ;; distance along path for next dab
                seg-idx    0        ;; current segment index
                seg-offset 0.0      ;; distance consumed within current segment
+               dab-idx    0        ;; monotonic dab counter for jitter seed
                dabs       (transient [])]
           (if (> dist total-len)
             (persistent! dabs)
@@ -119,7 +163,7 @@
               (if (and (> (- dist seg-offset) seg-len)
                        (< seg-idx (dec (count segments))))
                 ;; Move to next segment
-                (recur dist (inc seg-idx) (+ seg-offset seg-len) dabs)
+                (recur dist (inc seg-idx) (+ seg-offset seg-len) dab-idx dabs)
                 ;; Interpolate within this segment
                 (let [local-t (if (> seg-len 0.0)
                                 (/ (- dist seg-offset) seg-len)
@@ -135,21 +179,26 @@
                                             (- (double x1) (double x0)))
                       stroke-t (/ dist total-len)
                       pressure (curve-lookup pressure-curve stroke-t)
+                      ;; Per-dab speed estimate (segment-relative)
+                      speed    (if (> total-len 0.0) (/ seg-len total-len) 0.0)
                       r (* base-radius pressure)
-                      o (* base-opacity pressure)]
+                      o (* base-opacity pressure)
+                      raw-dab {:dab/cx       px
+                               :dab/cy       py
+                               :dab/radius   r
+                               :dab/hardness base-hard
+                               :dab/opacity  o
+                               :dab/aspect   base-aspect
+                               :dab/angle    seg-angle
+                               :dab/speed    speed
+                               :dab/tip      tip-spec
+                               :dab/color    c}
+                      dab (apply-jitter raw-dab jitter-spec seed dab-idx)]
                   (recur (+ dist spacing-px)
                          seg-idx
                          seg-offset
-                         (conj! dabs
-                           {:dab/cx       px
-                            :dab/cy       py
-                            :dab/radius   r
-                            :dab/hardness base-hard
-                            :dab/opacity  o
-                            :dab/aspect   base-aspect
-                            :dab/angle    seg-angle
-                            :dab/tip      tip-spec
-                            :dab/color    c})))))))))))
+                         (inc dab-idx)
+                         (conj! dabs dab)))))))))))
 
 ;; --- stroke points with explicit data ---
 
@@ -179,5 +228,9 @@
 (comment
   (resample-stroke [[0 0] [100 0]] 10.0
     {:color {:r 200 :g 50 :b 30 :a 1.0} :radius 8.0 :opacity 0.5})
+  (resample-stroke [[0 0] [100 0]] 10.0
+    {:color {:r 200 :g 50 :b 30 :a 1.0} :radius 8.0 :opacity 0.5
+     :jitter {:jitter/position 0.15 :jitter/opacity 0.2 :jitter/size 0.1}
+     :seed 42})
   (explicit-points->stroke-points
     [[100 100 0.8 0.0 0 0] [200 150 0.6 1.2 0 0] [350 120 0.3 0.8 0 0]]))

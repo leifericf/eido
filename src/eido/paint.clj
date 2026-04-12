@@ -13,9 +13,11 @@
   (:require
     [eido.color :as color]
     [eido.paint.kernel :as kernel]
+    [eido.paint.smudge :as smudge]
     [eido.paint.stroke :as stroke]
     [eido.paint.surface :as surface]
-    [eido.paint.tip :as tip]))
+    [eido.paint.tip :as tip]
+    [eido.paint.wet :as wet]))
 
 ;; --- brush presets ---
 
@@ -35,23 +37,35 @@
 
    :chalk    {:brush/type  :brush/dab
               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.5 :tip/aspect 1.0}
-              :brush/paint {:paint/opacity 0.12 :paint/flow 0.8 :paint/spacing 0.05}}
+              :brush/paint {:paint/opacity 0.12 :paint/flow 0.8 :paint/spacing 0.05}
+              :brush/jitter {:jitter/position 0.12 :jitter/opacity 0.25
+                             :jitter/size 0.1 :jitter/angle 0.15}}
 
    :ink      {:brush/type  :brush/dab
               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.8 :tip/aspect 1.0}
               :brush/paint {:paint/opacity 0.7 :paint/flow 1.0 :paint/spacing 0.04}}
 
-   :oil      {:brush/type  :brush/dab
-              :brush/tip   {:tip/shape :ellipse :tip/hardness 0.6 :tip/aspect 1.0}
-              :brush/paint {:paint/opacity 0.4 :paint/flow 0.85 :paint/spacing 0.06}}
+   :oil      {:brush/type   :brush/dab
+              :brush/tip    {:tip/shape :ellipse :tip/hardness 0.6 :tip/aspect 1.0}
+              :brush/paint  {:paint/opacity 0.4 :paint/flow 0.85 :paint/spacing 0.06}
+              :brush/smudge {:smudge/mode :smear :smudge/amount 0.45 :smudge/length 0.7}
+              :brush/jitter {:jitter/position 0.08 :jitter/opacity 0.15
+                             :jitter/size 0.08 :jitter/angle 0.05}}
 
    :watercolor {:brush/type  :brush/dab
                 :brush/tip   {:tip/shape :ellipse :tip/hardness 0.3 :tip/aspect 1.0}
-                :brush/paint {:paint/opacity 0.06 :paint/flow 0.6 :paint/spacing 0.04}}
+                :brush/paint {:paint/opacity 0.06 :paint/flow 0.6 :paint/spacing 0.04}
+                :brush/wet   {:wet/enabled true :wet/deposit 0.3
+                              :wet/diffusion 0.25 :wet/diffusion-steps 6
+                              :wet/edge-darken 0.2}
+                :brush/jitter {:jitter/position 0.1 :jitter/opacity 0.2
+                               :jitter/size 0.12}}
 
    :pastel   {:brush/type  :brush/dab
               :brush/tip   {:tip/shape :ellipse :tip/hardness 0.4 :tip/aspect 1.2}
-              :brush/paint {:paint/opacity 0.1 :paint/flow 0.75 :paint/spacing 0.05}}})
+              :brush/paint {:paint/opacity 0.1 :paint/flow 0.75 :paint/spacing 0.05}
+              :brush/jitter {:jitter/position 0.15 :jitter/opacity 0.3
+                             :jitter/size 0.12 :jitter/angle 0.2}}})
 
 ;; --- brush resolution ---
 
@@ -107,6 +121,12 @@
         aspect     (get tip-spec :tip/aspect 1.0)
         grain-spec    (:brush/grain brush-spec)
         bristle-spec  (:brush/bristles brush-spec)
+        smudge-spec   (:brush/smudge brush-spec)
+        wet-spec      (:brush/wet brush-spec)
+        impasto-spec  (:brush/impasto brush-spec)
+        jitter-spec   (:brush/jitter brush-spec)
+        stroke-seed   (long (or (:paint/seed stroke-desc)
+                                (:stroke/seed stroke-desc) 0))
         opacity    (get-in brush-spec [:brush/paint :paint/opacity] 0.5)
         spacing-px (brush-spacing-px brush-spec radius)
         ;; Get points — either explicit or from path commands
@@ -131,30 +151,77 @@
                 :opacity  opacity
                 :aspect   aspect
                 :tip      tip-spec
-                :pressure pressure})]
+                :pressure pressure
+                :jitter   jitter-spec
+                :seed     stroke-seed})
+        ;; Initialize smudge state if brush has smudge config
+        smudge-state (when smudge-spec
+                       (smudge/make-smudge-state smudge-spec resolved))
+        ;; Helper: apply smudge color mixing to a dab
+        apply-smudge (fn [d]
+                       (if smudge-state
+                         (let [[mr mg mb] (smudge/update-smudge!
+                                            smudge-state surface
+                                            (long (:dab/cx d)) (long (:dab/cy d))
+                                            resolved)
+                               mixed-color {:r (Math/round (* mr 255.0))
+                                            :g (Math/round (* mg 255.0))
+                                            :b (Math/round (* mb 255.0))
+                                            :a (get (:dab/color d) :a 1.0)}]
+                           (assoc d :dab/color mixed-color))
+                         d))
+        blend-mode (get-in brush-spec [:brush/paint :paint/blend] :source-over)
+        ;; Helper: add grain/substrate/blend to a dab
+        apply-texture (fn [d]
+                        (cond-> d
+                          grain-spec                     (assoc :dab/grain grain-spec)
+                          substrate-spec                 (assoc :dab/substrate substrate-spec)
+                          (not= blend-mode :source-over) (assoc :dab/blend blend-mode)))
+        ;; Helper: deposit wetness if wet brush
+        deposit-wet (fn [d]
+                      (when (and wet-spec (:wet/enabled wet-spec true))
+                        (let [deposit (double (get wet-spec :wet/deposit 0.3))]
+                          (wet/deposit-wetness! surface
+                            (long (:dab/cx d)) (long (:dab/cy d))
+                            (* deposit (:dab/opacity d))))))
+        ;; Helper: deposit height if impasto brush
+        deposit-height (fn [d]
+                         (when impasto-spec
+                           (let [h (double (get impasto-spec :impasto/height 0.3))]
+                             (surface/deposit-height! surface
+                               (long (:dab/cx d)) (long (:dab/cy d))
+                               (* h (:dab/opacity d))))))]
     (if bristle-spec
       ;; Bristle mode: emit N sub-dabs per dab
       (doseq [d dabs]
-        (let [offsets (tip/bristle-offsets bristle-spec
+        (let [d (apply-smudge d)
+              offsets (tip/bristle-offsets bristle-spec
                         (double (get d :dab/angle 0.0))
                         (hash (get d :dab/cx 0.0)))
               base-r  (double (:dab/radius d))]
           (doseq [{:keys [offset opacity-scale size-scale]} offsets]
             (let [[ox oy] offset
-                  sub-dab (cond-> (assoc d
-                                    :dab/cx (+ (:dab/cx d) (* ox base-r))
-                                    :dab/cy (+ (:dab/cy d) (* oy base-r))
-                                    :dab/radius (* base-r size-scale 0.4)
-                                    :dab/opacity (* (:dab/opacity d) opacity-scale))
-                            grain-spec     (assoc :dab/grain grain-spec)
-                            substrate-spec (assoc :dab/substrate substrate-spec))]
-              (kernel/rasterize-dab! surface sub-dab)))))
+                  sub-dab (-> (assoc d
+                                :dab/cx (+ (:dab/cx d) (* ox base-r))
+                                :dab/cy (+ (:dab/cy d) (* oy base-r))
+                                :dab/radius (* base-r size-scale 0.4)
+                                :dab/opacity (* (:dab/opacity d) opacity-scale))
+                              apply-texture)]
+              (kernel/rasterize-dab! surface sub-dab)
+              (deposit-wet sub-dab)
+              (deposit-height sub-dab)))))
       ;; Single-tip mode
       (doseq [d dabs]
-        (kernel/rasterize-dab! surface
-          (cond-> d
-            grain-spec     (assoc :dab/grain grain-spec)
-            substrate-spec (assoc :dab/substrate substrate-spec))))))))
+        (let [d (-> d apply-smudge apply-texture)]
+          (kernel/rasterize-dab! surface d)
+          (deposit-wet d)
+          (deposit-height d))))
+    ;; Post-stroke: run wet diffusion if configured
+    (when (and wet-spec (:wet/enabled wet-spec true))
+      (let [iterations (long (get wet-spec :wet/diffusion-steps 4))
+            strength   (double (get wet-spec :wet/diffusion 0.2))
+            darken     (double (get wet-spec :wet/edge-darken 0.15))]
+        (wet/apply-wet-pass! surface iterations strength darken))))))
 
 (defn render-strokes!
   "Renders all strokes onto a surface. Returns the surface."

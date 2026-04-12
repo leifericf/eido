@@ -39,6 +39,33 @@
         [(* dr scale) (* dg scale) (* db scale) remaining])
       [0.0 0.0 0.0 0.0])))
 
+(defn blend-glazed
+  "Glazed blend — uses max of source and destination per channel.
+  Prevents over-saturation within a single stroke while allowing
+  multiple strokes to layer. Characteristic of marker and ink wash."
+  [[^double sr ^double sg ^double sb ^double sa]
+   [^double dr ^double dg ^double db ^double da]]
+  [(Math/max sr dr)
+   (Math/max sg dg)
+   (Math/max sb db)
+   (Math/max sa da)])
+
+(defn blend-opaque
+  "Opaque blend — source replaces destination weighted by source alpha.
+  Creates strong coverage that obscures underlying paint."
+  [[^double sr ^double sg ^double sb ^double sa]
+   [^double dr ^double dg ^double db ^double da]]
+  (if (> sa 0.99)
+    ;; Fully opaque — just replace
+    [sr sg sb sa]
+    ;; Weighted replace with higher alpha contribution
+    (let [weight (Math/min 1.0 (* sa 1.5))
+          inv-w  (- 1.0 weight)]
+      [(+ (* sr weight) (* dr inv-w))
+       (+ (* sg weight) (* dg inv-w))
+       (+ (* sb weight) (* db inv-w))
+       (Math/min 1.0 (+ (* sa weight) (* da inv-w)))])))
+
 ;; --- dispatcher ---
 
 (defn blend
@@ -49,5 +76,7 @@
     :source-over (blend-source-over src dst)
     :multiply    (blend-multiply src dst)
     :erase       (blend-erase src dst)
+    :glazed      (blend-glazed src dst)
+    :opaque      (blend-opaque src dst)
     ;; Default: source-over
     (blend-source-over src dst)))

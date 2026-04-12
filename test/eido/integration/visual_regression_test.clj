@@ -504,6 +504,64 @@
                      :node/transform [[:transform/translate 0 40]]}])
     {:png-only true}]
 
+   ["paint-jittered-chalk"
+    (catalog-scene [{:node/type :shape/path
+                     :path/commands [[:move-to [10 50]] [:line-to [90 50]]]
+                     :paint/brush :chalk
+                     :paint/color [:color/rgb 60 40 30]
+                     :paint/radius 10.0
+                     :paint/seed 42}])
+    {:png-only true}]
+
+   ["paint-glazed-blend"
+    (catalog-scene [{:node/type :group
+                     :paint/surface {}
+                     :group/children
+                     [{:node/type :shape/path
+                       :path/commands [[:move-to [10 40]] [:line-to [90 40]]]
+                       :paint/brush {:brush/type :brush/dab
+                                     :brush/tip {:tip/shape :rect :tip/hardness 0.92 :tip/aspect 2.0}
+                                     :brush/paint {:paint/opacity 0.35 :paint/spacing 0.03
+                                                   :paint/blend :glazed}}
+                       :paint/color [:color/rgb 220 180 50]
+                       :paint/radius 8.0}
+                      {:node/type :shape/path
+                       :path/commands [[:move-to [10 60]] [:line-to [90 60]]]
+                       :paint/brush {:brush/type :brush/dab
+                                     :brush/tip {:tip/shape :rect :tip/hardness 0.92 :tip/aspect 2.0}
+                                     :brush/paint {:paint/opacity 0.35 :paint/spacing 0.03
+                                                   :paint/blend :glazed}}
+                       :paint/color [:color/rgb 50 180 220]
+                       :paint/radius 8.0}]}])
+    {:png-only true}]
+
+   ["paint-impasto"
+    (catalog-scene [{:node/type :shape/path
+                     :path/commands [[:move-to [10 50]] [:line-to [90 50]]]
+                     :paint/brush {:brush/type :brush/dab
+                                   :brush/tip {:tip/shape :ellipse :tip/hardness 0.6}
+                                   :brush/paint {:paint/opacity 0.7 :paint/spacing 0.06}
+                                   :brush/impasto {:impasto/height 0.6}
+                                   :brush/jitter {:jitter/position 0.08 :jitter/opacity 0.15}}
+                     :paint/color [:color/rgb 200 60 30]
+                     :paint/radius 15.0
+                     :paint/seed 42}])
+    {:png-only true}]
+
+   ["paint-local-grain"
+    (catalog-scene [{:node/type :shape/path
+                     :path/commands [[:move-to [10 50]] [:line-to [90 50]]]
+                     :paint/brush {:brush/type :brush/dab
+                                   :brush/tip {:tip/shape :ellipse :tip/hardness 0.5}
+                                   :brush/paint {:paint/opacity 0.15 :paint/spacing 0.05}
+                                   :brush/grain {:grain/type :fiber :grain/scale 0.15
+                                                 :grain/mode :local :grain/stretch 3.0}
+                                   :brush/jitter {:jitter/position 0.1 :jitter/opacity 0.2}}
+                     :paint/color [:color/rgb 80 50 30]
+                     :paint/radius 12.0
+                     :paint/seed 42}])
+    {:png-only true}]
+
    ["gradient-with-opacity"
     (catalog-scene [{:node/type :shape/rect
                      :rect/xy [0 0] :rect/size [100 100]

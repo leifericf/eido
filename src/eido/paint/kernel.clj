@@ -5,6 +5,7 @@
   using premultiplied-alpha blending. Inner loops use mutable float
   arrays and primitive math for performance."
   (:require
+    [eido.paint.blend :as blend]
     [eido.paint.grain :as grain]
     [eido.paint.substrate :as substrate]
     [eido.paint.surface :as surface]
@@ -45,6 +46,7 @@
                       :tip/aspect   aspect})
         grain-spec    (:dab/grain dab)
         substrate-spec (:dab/substrate dab)
+        blend-mode    (get dab :dab/blend :source-over)
         ;; Bounding box — expand by aspect ratio for elliptical tips
         extent   (* radius (max 1.0 aspect))
         x0       (long (Math/floor (- cx extent)))
@@ -72,8 +74,19 @@
               (when (> tip-cov 0.0)
                 (let [;; Apply grain and substrate modulation
                       grain-val (if grain-spec
-                                  (grain/evaluate-grain grain-spec
-                                    (double (+ px 0.5)) (double (+ py 0.5)))
+                                  (let [gmode (get grain-spec :grain/mode :world)]
+                                    (if (= gmode :local)
+                                      ;; Local mode: coordinates relative to dab center, rotated
+                                      (let [dx (- (+ (double px) 0.5) cx)
+                                            dy (- (+ (double py) 0.5) cy)
+                                            cos-a (Math/cos (- angle))
+                                            sin-a (Math/sin (- angle))
+                                            lx (+ (* dx cos-a) (* dy sin-a))
+                                            ly (+ (* (- dx) sin-a) (* dy cos-a))]
+                                        (grain/evaluate-grain grain-spec lx ly))
+                                      ;; World mode: surface coordinates
+                                      (grain/evaluate-grain grain-spec
+                                        (double (+ px 0.5)) (double (+ py 0.5)))))
                                   1.0)
                       sub-val   (if substrate-spec
                                   (substrate/evaluate-substrate substrate-spec
@@ -98,12 +111,19 @@
                       dst-g     (double (aget tile (unchecked-inc-int fi)))
                       dst-b     (double (aget tile (unchecked-add-int fi 2)))
                       dst-a     (double (aget tile (unchecked-add-int fi 3)))
-                      ;; Source-over: out = src + dst * (1 - src_a)
-                      inv-src-a (- 1.0 src-a)
-                      out-r     (+ src-r (* dst-r inv-src-a))
-                      out-g     (+ src-g (* dst-g inv-src-a))
-                      out-b     (+ src-b (* dst-b inv-src-a))
-                      out-a     (+ src-a (* dst-a inv-src-a))]
+                      ;; Blend source onto destination
+                      [out-r out-g out-b out-a]
+                      (if (= blend-mode :source-over)
+                        ;; Fast path: inline source-over (most common)
+                        (let [inv-src-a (- 1.0 src-a)]
+                          [(+ src-r (* dst-r inv-src-a))
+                           (+ src-g (* dst-g inv-src-a))
+                           (+ src-b (* dst-b inv-src-a))
+                           (+ src-a (* dst-a inv-src-a))])
+                        ;; Other modes via dispatcher
+                        (blend/blend blend-mode
+                          [src-r src-g src-b src-a]
+                          [dst-r dst-g dst-b dst-a]))]
                   (aset tile fi (float out-r))
                   (aset tile (unchecked-inc-int fi) (float out-g))
                   (aset tile (unchecked-add-int fi 2) (float out-b))
