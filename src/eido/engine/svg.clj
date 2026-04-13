@@ -281,13 +281,14 @@
                    :circle [(:op op) (:cx op) (:cy op) (:r op) (:stroke-color op)]
                    ;; For other types, use identity (no dedup)
                    [op]))]
-    (let [seen (volatile! #{})]
-      (filterv (fn [op]
-                 (let [k (op-key op)]
-                   (if (@seen k)
-                     false
-                     (do (vswap! seen conj k) true))))
-               ops))))
+    (:out (reduce (fn [{:keys [seen out] :as acc} op]
+                    (let [k (op-key op)]
+                      (if (contains? seen k)
+                        acc
+                        {:seen (conj seen k)
+                         :out  (conj out op)})))
+                  {:seen #{} :out []}
+                  ops))))
 
 (defn- op-start-point
   "Extracts the start point [x y] of an op for travel optimization."

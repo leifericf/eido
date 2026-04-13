@@ -157,18 +157,22 @@
          (<= max-y (+ (double by) (double bh))))))
 
 (defn- expand-with-choices [s rules choices]
-  (let [idx (volatile! 0)]
-    (apply str
-      (map (fn [c]
-             (let [key (str c)
-                   alts (get rules key)]
-               (if (and alts (vector? alts))
-                 (let [i @idx
-                       choice (get choices i 0)]
-                   (vswap! idx inc)
-                   (get alts (min choice (dec (count alts)))))
-                 (if alts (str alts) (str c)))))
-           s))))
+  (->> s
+       (reduce (fn [[out i] c]
+                 (let [key  (str c)
+                       alts (get rules key)]
+                   (cond
+                     (and alts (vector? alts))
+                     (let [choice (get choices i 0)]
+                       [(conj out (get alts (min choice (dec (count alts)))))
+                        (inc i)])
+                     alts
+                     [(conj out (str alts)) i]
+                     :else
+                     [(conj out (str c)) i])))
+               [[] 0])
+       first
+       (apply str)))
 
 (defn- count-sites [s rules]
   (count (filter #(and (contains? rules (str %))
