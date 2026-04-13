@@ -1,92 +1,6 @@
 # Changes
 
-## Unreleased — Code Quality
-
-### Refactoring
-
-- **Eliminate global mutable caches** — Replaced `defonce atom` caches
-  with `memoize` in `eido.text/resolve-font`, `eido.gen.noise/get-perm`,
-  and `eido.engine.render/stroke-cache`. Removes hidden global state
-  from the functional core while preserving caching semantics.
-
-- **Remove atoms from deform-dab! inner loop** — The blur/sharpen
-  branch in `eido.paint.kernel/deform-dab!` created 5 atoms per pixel
-  and used `swap!` in a `doseq`. Replaced with pure `loop/recur`
-  accumulators via a new `box-average-3x3` helper. Extracted mode-specific
-  helpers (`deform-blur-sharpen!`, `deform-displacement!`) and named the
-  magic constants (`push-scale`, `swirl-scale`).
-
-- **Decompose render-stroke!** — The 184-line kitchen-sink function in
-  `eido.paint` is now a ~20-line coordinator delegating to:
-  `resolve-stroke-params` (pure), `render-deform-stroke!`,
-  `render-bristle-stroke!`, `render-single-tip-stroke!`, and
-  `emit-spatter!`.
-
-- **Decompose scene-node->draw-item** — Extracted `node->geometry` and
-  `normalize-transforms` from the 86-line god function in
-  `eido.engine.compile`. Cleaned up shadow rebinding in `expand-node`.
-
-- **Convert text-on-path loop to reduce** — Replaced manual `loop/recur`
-  with `transient` in `text-on-path-node->group` with idiomatic `reduce`.
-
-- **Eliminate smudge-state atom** — `eido.paint.smudge` previously
-  returned an atom from `make-smudge-state` and mutated it with
-  `update-smudge!` as the renderer walked the dabs. Now
-  `init-smudge-state` returns a plain map and `advance-smudge` returns
-  `{:state :color}`; `render-bristle-stroke!`/`render-single-tip-stroke!`
-  thread the state through `reduce`. Also removed an unused `cnt` atom
-  inside `sample-surface-color`.
-
-- **Remove orphaned sensor module** — `eido.paint.sensor` shipped a
-  `compute-sensor-inputs` / `apply-dynamics` API that no brush spec or
-  pipeline stage ever consumed. The module and its tests have been
-  removed; the previously-advertised "Sensor dynamics" feature is
-  dropped from this changelog.
-
-- **Replace remaining local `volatile!` cells with reduce** — Two
-  leftover volatiles (`engine.svg/deduplicate-ops` and
-  `gen.lsystem/expand-with-choices`) are now idiomatic folds.
-  `src/` is now free of atoms, refs, agents, and volatile! — the
-  only remaining mutable references live in `dev/user.clj`.
-
-- **Tidy ns forms** — Alphabetized `:require` entries and dropped
-  tombstone comments in `eido.engine.compile` and `eido.ir.generator`.
-
-- **Audit and remove net-negative renderer optimizations** — Four
-  performance shims from earlier optimization rounds were benchmarked
-  against removal and found to pay nothing, or to actively slow the
-  renderer down. Each complected the code with state or type
-  machinery; all are gone:
-
-  - `*prev-opacity*` dynamic var in `eido.engine.render` tracked the
-    last opacity set on `Graphics2D` to skip redundant `setComposite`
-    calls. Benchmarked ~5% *slower* than just calling setComposite
-    every time — `AlphaComposite/getInstance` returns cached
-    singletons and the call is ~8 ns, cheaper than a dynamic-var
-    read + `set!`.
-
-  - `*buffer-pool*` dynamic var reused one offscreen `BufferedImage`
-    across compositing groups. Allocation profile showed BufferedImage
-    allocation is <0.1% of volume (Long boxing in `box-blur-pass`
-    dominates); removing the pool is within JVM-warmup noise.
-
-  - `create-basic-stroke` memoize and its `get-basic-stroke` wrapper.
-    `new BasicStroke(float,int,int)` escape-analyzes to ~0.5 ns; the
-    memoize hashmap lookup cost more than the constructor it was
-    eliding. Removing is ~7% faster on scenes with 100 unique widths.
-
-  - Concrete-op `defrecord`s in `eido.ir` (`RectOp`, `CircleOp`,
-    `ArcOp`, `LineOp`, `EllipseOp`, `PathOp`, `BufferOp`). Records
-    give ~10× faster keyword lookup at the microbench level, but in
-    real scenes Java2D rasterization dominates — the gain is 0–7%
-    on adversarial cases and 0% on stroked/realistic scenes.
-    Replaced with plain-map constructors of the same name; call
-    sites in `eido.ir.lower`/`effect`/`fill`/`generator` unchanged.
-
-  The `dev/bench.clj` historical notes were amended to record the
-  audit outcome alongside the original claims.
-
-## Unreleased — Paint Engine
+## v1.0.0-beta7 — Paint Engine
 
 ### New features
 
@@ -226,10 +140,139 @@
 - **SVG support** — Paint surfaces render as embedded base64 PNG
   `<image>` elements in SVG output.
 
-### Fixes
+### Enhancements
 
-- Fix SVG output for procedural-image fills producing `rgb(,,)` —
-  now correctly embeds as a base64 PNG `<image>` element.
+- **Single-arg `:transform/scale`** — `[:transform/scale s]` now treats
+  the single argument as uniform scaling on both axes. Previously
+  crashed with an NPE in both the raster renderer and SVG output
+  because the second axis was nil.
+
+### Bug fixes
+
+Continued the robustness sweep started in beta6, tightening edge-case
+behavior across generators, path, renderer, animation, and 3D mesh
+code:
+
+- `resample-stroke` — Two infinite-loop cases fixed: zero/negative
+  spacing and non-finite coordinates now terminate cleanly.
+- `make-surface` — Rejects zero or negative dimensions with a
+  descriptive `ex-info` instead of silently producing an invalid
+  surface.
+- Paint deposit / deform — Bounds-checked against out-of-surface dabs
+  to avoid array index exceptions at surface edges.
+- `rasterize-dab!` / `deform-dab!` — Guard against non-finite inputs
+  so a single bad dab cannot propagate NaN across the surface.
+- Deform output — Clamped before writeback to prevent float overflow
+  at high intensities.
+- Point generators — `n=1` no longer returns NaN coordinates.
+- `mixture` — Empty source vector returns `nil` instead of crashing.
+- `apply-style-overrides` — Empty overrides no longer divide by zero.
+- `particle` render — Empty `:colors` palette no longer divides by
+  zero; `simulate` with `fps=0` no longer throws Infinity.
+- `palette-color` — 0 or 1 colors no longer throws
+  `IndexOutOfBoundsException`.
+- `pick-weighted` / `weighted-pick` / `weighted-sample` — Empty
+  collection returns `nil` instead of crashing.
+- `decorate-path` — NPE / Infinity with invalid params fixed.
+- `resample` — Divide-by-zero fixed.
+- `dash-commands` — Missing `:dash` key no longer throws NPE.
+- `cylinder-mesh` / `cone-mesh` — `segments < 3` no longer throws NPE.
+- `mirror-mesh` — Missing or invalid axis no longer crashes.
+- Renderer — Opacity outside `[0, 1]` is clamped instead of throwing.
+- GIF / animated SVG — `fps=0` no longer produces divide-by-zero
+  or Infinity.
+- `hatch-lines` / `flow-field` — Zero params now return empty
+  sequences instead of degenerate output.
+- `fbm` / `turbulence` / `ridge` — Zero octaves no longer returns NaN.
+- Face selector — Defaults to `:all` when `:select/type` is omitted.
+- Cryptic `case` crashes — Replaced with descriptive `ex-info`
+  exceptions throughout.
+- SVG procedural-image fills — Previously produced malformed
+  `rgb(,,)`; now correctly embeds as a base64 PNG `<image>` element.
+
+### Refactoring
+
+- **Eliminate global mutable caches** — Replaced `defonce atom` caches
+  with `memoize` in `eido.text/resolve-font`, `eido.gen.noise/get-perm`,
+  and `eido.engine.render/stroke-cache`. Removes hidden global state
+  from the functional core while preserving caching semantics.
+
+- **Remove atoms from deform-dab! inner loop** — The blur/sharpen
+  branch in `eido.paint.kernel/deform-dab!` created 5 atoms per pixel
+  and used `swap!` in a `doseq`. Replaced with pure `loop/recur`
+  accumulators via a new `box-average-3x3` helper. Extracted mode-specific
+  helpers (`deform-blur-sharpen!`, `deform-displacement!`) and named the
+  magic constants (`push-scale`, `swirl-scale`).
+
+- **Decompose render-stroke!** — The 184-line kitchen-sink function in
+  `eido.paint` is now a ~20-line coordinator delegating to:
+  `resolve-stroke-params` (pure), `render-deform-stroke!`,
+  `render-bristle-stroke!`, `render-single-tip-stroke!`, and
+  `emit-spatter!`.
+
+- **Decompose scene-node->draw-item** — Extracted `node->geometry` and
+  `normalize-transforms` from the 86-line god function in
+  `eido.engine.compile`. Cleaned up shadow rebinding in `expand-node`.
+
+- **Convert text-on-path loop to reduce** — Replaced manual `loop/recur`
+  with `transient` in `text-on-path-node->group` with idiomatic `reduce`.
+
+- **Eliminate smudge-state atom** — `eido.paint.smudge` previously
+  returned an atom from `make-smudge-state` and mutated it with
+  `update-smudge!` as the renderer walked the dabs. Now
+  `init-smudge-state` returns a plain map and `advance-smudge` returns
+  `{:state :color}`; `render-bristle-stroke!`/`render-single-tip-stroke!`
+  thread the state through `reduce`. Also removed an unused `cnt` atom
+  inside `sample-surface-color`.
+
+- **Remove orphaned sensor module** — `eido.paint.sensor` shipped a
+  `compute-sensor-inputs` / `apply-dynamics` API that no brush spec or
+  pipeline stage ever consumed. The module and its tests have been
+  removed; the previously-advertised "Sensor dynamics" feature is
+  dropped from this changelog.
+
+- **Replace remaining local `volatile!` cells with reduce** — Two
+  leftover volatiles (`engine.svg/deduplicate-ops` and
+  `gen.lsystem/expand-with-choices`) are now idiomatic folds.
+  `src/` is now free of atoms, refs, agents, and volatile! — the
+  only remaining mutable references live in `dev/user.clj`.
+
+- **Tidy ns forms** — Alphabetized `:require` entries and dropped
+  tombstone comments in `eido.engine.compile` and `eido.ir.generator`.
+
+- **Audit and remove net-negative renderer optimizations** — Four
+  performance shims from earlier optimization rounds were benchmarked
+  against removal and found to pay nothing, or to actively slow the
+  renderer down. Each complected the code with state or type
+  machinery; all are gone:
+
+  - `*prev-opacity*` dynamic var in `eido.engine.render` tracked the
+    last opacity set on `Graphics2D` to skip redundant `setComposite`
+    calls. Benchmarked ~5% *slower* than just calling setComposite
+    every time — `AlphaComposite/getInstance` returns cached
+    singletons and the call is ~8 ns, cheaper than a dynamic-var
+    read + `set!`.
+
+  - `*buffer-pool*` dynamic var reused one offscreen `BufferedImage`
+    across compositing groups. Allocation profile showed BufferedImage
+    allocation is <0.1% of volume (Long boxing in `box-blur-pass`
+    dominates); removing the pool is within JVM-warmup noise.
+
+  - `create-basic-stroke` memoize and its `get-basic-stroke` wrapper.
+    `new BasicStroke(float,int,int)` escape-analyzes to ~0.5 ns; the
+    memoize hashmap lookup cost more than the constructor it was
+    eliding. Removing is ~7% faster on scenes with 100 unique widths.
+
+  - Concrete-op `defrecord`s in `eido.ir` (`RectOp`, `CircleOp`,
+    `ArcOp`, `LineOp`, `EllipseOp`, `PathOp`, `BufferOp`). Records
+    give ~10× faster keyword lookup at the microbench level, but in
+    real scenes Java2D rasterization dominates — the gain is 0–7%
+    on adversarial cases and 0% on stroked/realistic scenes.
+    Replaced with plain-map constructors of the same name; call
+    sites in `eido.ir.lower`/`effect`/`fill`/`generator` unchanged.
+
+  The `dev/bench.clj` historical notes were amended to record the
+  audit outcome alongside the original claims.
 
 ### Breaking changes
 
