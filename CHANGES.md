@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+_No changes yet._
+
+## v1.0.0-beta8 — Plotter & Fabrication Backends
+
 ### New features
 
 - **DXF R12 ASCII writer** (`eido.io.dxf`, provisional) — New
@@ -67,10 +71,11 @@
   geometry that wasn't part of the visible composition. Uses
   segment-by-segment analytic clipping (intersect each segment
   with the clip polygon's edges, classify intervals via
-  `Path2D.contains`) and supports arbitrary non-convex clip
-  paths. Open polylines that straddle the clip boundary split
-  into multiple sub-polylines; closed shapes that cross the clip
-  boundary become a sequence of arcs.
+  `Path2D.contains` with a four-corner sub-pixel offset so all
+  four edges are treated symmetrically) and supports arbitrary
+  non-convex clip paths. Open polylines that straddle the clip
+  boundary split into multiple sub-polylines; closed shapes that
+  cross the clip boundary become a sequence of arcs.
 - **Drop-warning report** — `extract-polylines`,
   `extract-grouped-polylines`, and the new public
   `summarize-drops` helper now report silently-dropped visual
