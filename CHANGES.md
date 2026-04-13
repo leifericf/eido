@@ -15,8 +15,10 @@
   R12 via `POLYLINE` / `VERTEX` / `SEQEND` entities with proper
   closed-flag (`70 1`) handling, units declared as millimeters
   (`$INSUNITS 4`), and travel optimization applied per layer.
-  `write-dxf` is a pure fn (string in, string out) — callers spit
-  to disk. Verifies cleanly in LibreCAD and QCAD.
+  Reachable through the main entry point:
+  `(eido.core/render scene {:output "art.dxf"})` writes a file and
+  `(eido.core/render scene {:format :dxf})` returns the string.
+  Verifies cleanly in LibreCAD and QCAD.
 - **GRBL G-code writer** (`eido.io.gcode`, provisional) — Second
   motion-stream backend for pen-on-CNC, laser cutters, and 2D
   CNC routers. Each stroke-color group becomes an `M0`
@@ -26,9 +28,11 @@
   `:z-up`. Y-axis is flipped relative to scene height so `(0, 0)`
   sits at bottom-left (CNC convention). Opts cover feed rate, Z
   heights, spindle power, laser vs spindle mode, scale, and the
-  standard curve/segment tolerances. Marlin dialect and advanced
-  features (bed leveling, tool-length offsets, G2/G3 arcs) are
-  out of scope.
+  standard curve/segment tolerances. Reachable through the main
+  entry point: `(eido.core/render scene {:output "art.gcode"})`
+  writes a file and `(eido.core/render scene {:format :gcode})`
+  returns the string. Marlin dialect and advanced features (bed
+  leveling, tool-length offsets, G2/G3 arcs) are out of scope.
 - **Grouped-polyline substrate** (`eido.io.polyline`, provisional)
   — Shared foundation for motion-stream backends.
   `extract-grouped-polylines` returns `{:groups [{:stroke

@@ -11,6 +11,8 @@
     [eido.engine.gif :as gif]
     [eido.engine.render :as render]
     [eido.engine.svg :as svg]
+    [eido.io.dxf :as dxf]
+    [eido.io.gcode :as gcode]
     [eido.io.polyline :as polyline]
     [eido.manifest :as manifest]
     [eido.validate :as validate])
@@ -243,18 +245,22 @@
 
 (defn render-to-file
   "Renders a scene and writes to file. Format detected from extension.
-  Supported formats: PNG, JPEG, GIF, BMP, TIFF, SVG.
+  Supported formats: PNG, JPEG, GIF, BMP, TIFF, SVG, DXF, G-code.
   Opts: :format, :quality (JPEG), :scale, :transparent-background,
         :dpi (PNG/TIFF), :tiff/compression (:lzw :deflate :none),
-        :emit-manifest? (write EDN sidecar for reproducibility)."
+        :emit-manifest? (write EDN sidecar for reproducibility).
+  DXF/G-code also accept :flatness, :segments, :optimize-travel, and
+  any writer-specific keys (see eido.io.dxf and eido.io.gcode)."
   ([scene path]
    (render-to-file scene path {}))
   ([scene path opts]
    (let [format      (or (:format opts) (detect-format path))
          dpi         (or (:dpi opts) (:image/dpi scene))
          render-opts (select-keys opts [:scale :transparent-background])]
-     (if (= format "svg")
-       (spit path (render-to-svg scene opts))
+     (case format
+       "svg"   (spit path (render-to-svg scene opts))
+       "dxf"   (spit path (dxf/write-dxf (validated-compile scene) opts))
+       "gcode" (spit path (gcode/write-gcode (validated-compile scene) opts))
        (let [img (render-image scene render-opts)]
          (case format
            "jpeg" (write-jpeg (ensure-rgb img) path
@@ -369,6 +375,8 @@
     (render scene)                         → BufferedImage
     (render scene {:output \"out.png\"})   → writes file, returns path
     (render scene {:format :svg})          → SVG string
+    (render scene {:format :dxf})          → DXF R12 string
+    (render scene {:format :gcode})        → GRBL G-code string
     (render scene {:format :polylines})    → {:polylines [...] :bounds [w h]}
 
   Animation (sequence of scenes):
@@ -415,10 +423,12 @@
              (do (spit output (polyline/polylines->edn data)) output)
              data))
 
-         output         (render-to-file input output
-                          (merge render-opts (when format {:format (name format)})))
-         (= :svg format) (render-to-svg input render-opts)
-         :else           (render-image input render-opts))))))
+         output            (render-to-file input output
+                             (merge render-opts (when format {:format (name format)})))
+         (= :svg format)   (render-to-svg input render-opts)
+         (= :dxf format)   (dxf/write-dxf (validated-compile input) render-opts)
+         (= :gcode format) (gcode/write-gcode (validated-compile input) render-opts)
+         :else             (render-image input render-opts))))))
 
 (comment
   (render {:image/size [800 600]
