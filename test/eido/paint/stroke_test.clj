@@ -71,6 +71,14 @@
 
   (testing "zero-length stroke returns empty"
     (is (nil? (stroke/resample-stroke [[50 50] [50 50]] 5.0
+                {:color {:r 0 :g 0 :b 0 :a 1.0} :radius 5.0}))))
+
+  (testing "Infinity coords do not cause infinite loop"
+    (is (nil? (stroke/resample-stroke [[##Inf 0] [100 0]] 5.0
+                {:color {:r 0 :g 0 :b 0 :a 1.0} :radius 5.0}))))
+
+  (testing "NaN coords do not cause infinite loop"
+    (is (nil? (stroke/resample-stroke [[##NaN 0] [100 0]] 5.0
                 {:color {:r 0 :g 0 :b 0 :a 1.0} :radius 5.0})))))
 
 (deftest jitter-produces-variation-test

@@ -152,7 +152,7 @@
           c            (:color opts)
           ;; Compute max segment length for speed normalization
           max-seg-len  (double (apply max 0.001 segments))]
-      (when (> total-len 0.0)
+      (when (and (> total-len 0.0) (Double/isFinite total-len))
         (loop [dist       0.0      ;; distance along path for next dab
                seg-idx    0        ;; current segment index
                seg-offset 0.0      ;; distance consumed within current segment
