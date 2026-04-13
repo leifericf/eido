@@ -9,7 +9,6 @@
     [eido.paint.tip :as tip]
     [eido.paint.grain :as grain]
     [eido.paint.substrate :as substrate]
-    [eido.paint.sensor :as sensor]
     [eido.paint.stroke :as stroke]
     [eido.paint.surface :as surface]
     [eido.paint.kernel :as kernel]
@@ -95,17 +94,6 @@
                  y gen-coord
                  tooth gen-unit]
     (let [v (substrate/evaluate-tooth {:substrate/tooth tooth :substrate/scale 0.1} x y)]
-      (and (>= v 0.0)
-           (<= v 1.0)
-           (not (Double/isNaN v))
-           (not (Double/isInfinite v))))))
-
-;; --- sensor properties ---
-
-(defspec curve-lookup-in-range 100
-  (prop/for-all [t (tc-gen/double* {:min -1.0 :max 2.0 :NaN? false :infinite? false})]
-    (let [curve [[0.0 0.2] [0.5 0.8] [1.0 0.4]]
-          v (sensor/curve-lookup curve t)]
       (and (>= v 0.0)
            (<= v 1.0)
            (not (Double/isNaN v))
