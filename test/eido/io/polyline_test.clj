@@ -286,6 +286,61 @@
   (testing "nil input yields empty result"
     (is (= [] (polyline/optimize-travel-polylines nil)))))
 
+;; --- transforms ---
+
+(deftest translate-bakes-into-polyline-test
+  (testing ":transform/translate moves polyline points"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [0 0] :rect/size [10 10]
+                    :node/transform [[:transform/translate 50 60]]
+                    :style/stroke {:color [:color/rgb 0 0 0] :width 1}}])
+          poly (first (:polylines (polyline/extract-polylines
+                                    (compile-scene scene))))]
+      (is (= [50.0 60.0] (first poly)))
+      (is (= [60.0 60.0] (second poly)))
+      (is (= [50.0 60.0] (last poly)) "closed rect still closes"))))
+
+(deftest transform-on-group-propagates-test
+  (testing "transforms on a group apply to child polylines"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :group
+                    :node/transform [[:transform/translate 30 40]]
+                    :group/children
+                    [{:node/type :shape/rect
+                      :rect/xy [0 0] :rect/size [10 10]
+                      :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}])
+          poly (first (:polylines (polyline/extract-polylines
+                                    (compile-scene scene))))]
+      (is (= [30.0 40.0] (first poly))))))
+
+(deftest scale-bakes-into-polyline-test
+  (testing ":transform/scale scales polyline points"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [0 0] :rect/size [10 10]
+                    :node/transform [[:transform/scale 2 3]]
+                    :style/stroke {:color [:color/rgb 0 0 0] :width 1}}])
+          poly (first (:polylines (polyline/extract-polylines
+                                    (compile-scene scene))))]
+      (is (= [0.0 0.0] (first poly)))
+      (is (= [20.0 0.0] (second poly)) "x scaled by 2")
+      (is (= [20.0 30.0] (nth poly 2)) "y scaled by 3"))))
+
+(deftest rotate-bakes-into-polyline-test
+  (testing ":transform/rotate rotates polyline points (radians)"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/line
+                    :line/from [0 0] :line/to [10 0]
+                    :node/transform [[:transform/rotate (/ Math/PI 2)]]
+                    :style/stroke {:color [:color/rgb 0 0 0] :width 1}}])
+          poly (first (:polylines (polyline/extract-polylines
+                                    (compile-scene scene))))
+          ;; cos(π/2) ≈ 0, sin(π/2) = 1 → (10, 0) → (~0, 10)
+          [x y] (second poly)]
+      (is (< (Math/abs (double x)) 1e-9))
+      (is (< (Math/abs (- (double y) 10.0)) 1e-9)))))
+
 ;; --- segments edge cases ---
 
 (deftest circle-with-degenerate-segments-test

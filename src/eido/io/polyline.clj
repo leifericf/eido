@@ -2,7 +2,9 @@
   "Extracts polyline data from compiled IR for CNC/plotter/laser export.
   Converts all geometry to sequences of [x y] points."
   (:require
-    [eido.text :as text]))
+    [eido.text :as text])
+  (:import
+    [java.awt.geom AffineTransform Point2D$Double]))
 
 ;; --- IR to scene command conversion ---
 
@@ -95,29 +97,71 @@
   [x y w h]
   [[x y] [(+ x w) y] [(+ x w) (+ y h)] [x (+ y h)] [x y]])
 
+;; --- affine transform baking ---
+;;
+;; IR ops carry a :transforms vector like [[:translate dx dy] [:rotate rad]
+;; [:scale sx sy] [:shear-x k] [:shear-y k]]. The raster renderer applies
+;; these to the Graphics2D context at draw time; for polyline export we
+;; need to bake them into the points themselves.
+
+(defn- ^AffineTransform transforms->affine
+  "Builds a single AffineTransform from an IR :transforms vector.
+  Nil or empty input returns the identity transform."
+  [transforms]
+  (let [at (AffineTransform.)]
+    (doseq [[t & args] transforms]
+      (case t
+        :translate (.translate at (double (first args)) (double (second args)))
+        :rotate    (.rotate    at (double (first args)))
+        :scale     (let [sx (double (first args))
+                         sy (double (or (second args) sx))]
+                     (.scale at sx sy))
+        :shear-x   (.shear at (double (first args)) 0.0)
+        :shear-y   (.shear at 0.0 (double (first args)))
+        nil))
+    at))
+
+(defn- transform-polyline
+  "Applies an AffineTransform to each point in a polyline."
+  [^AffineTransform at polyline]
+  (if (.isIdentity at)
+    polyline
+    (let [src (Point2D$Double.)
+          dst (Point2D$Double.)]
+      (mapv (fn [[x y]]
+              (.setLocation src (double x) (double y))
+              (.transform at src dst)
+              [(.getX dst) (.getY dst)])
+            polyline))))
+
 ;; --- op dispatch ---
 
 (defn- op->polylines
-  "Extracts polylines from a single IR op.
-  Returns a vector of polylines."
+  "Extracts polylines from a single IR op, baking the op's :transforms
+  into the output points. Returns a vector of polylines."
   [op flatness segments]
-  (case (:op op)
-    :path   (let [scene-cmds (ir-commands->scene-commands (:commands op))
-                  flat       (text/flatten-commands scene-cmds flatness)]
-              (commands->polylines flat))
-    :rect   (let [{:keys [x y w h]} op]
-              [(rect-polyline x y w h)])
-    :circle (let [{:keys [cx cy r]} op]
-              [(circle-polyline cx cy r segments)])
-    :ellipse (let [{:keys [cx cy rx ry]} op]
-               [(ellipse-polyline cx cy rx ry segments)])
-    :arc    (let [{:keys [cx cy rx ry start extent]} op]
-              [(arc-polyline cx cy rx ry start extent segments)])
-    :line   (let [{:keys [x1 y1 x2 y2]} op]
-              [[[x1 y1] [x2 y2]]])
-    :buffer (into [] (mapcat #(op->polylines % flatness segments)) (:ops op))
-    ;; Unknown op types produce no polylines
-    []))
+  (let [at    (transforms->affine (:transforms op))
+        polys (case (:op op)
+                :path   (let [scene-cmds (ir-commands->scene-commands (:commands op))
+                              flat       (text/flatten-commands scene-cmds flatness)]
+                          (commands->polylines flat))
+                :rect   (let [{:keys [x y w h]} op]
+                          [(rect-polyline x y w h)])
+                :circle (let [{:keys [cx cy r]} op]
+                          [(circle-polyline cx cy r segments)])
+                :ellipse (let [{:keys [cx cy rx ry]} op]
+                           [(ellipse-polyline cx cy rx ry segments)])
+                :arc    (let [{:keys [cx cy rx ry start extent]} op]
+                          [(arc-polyline cx cy rx ry start extent segments)])
+                :line   (let [{:keys [x1 y1 x2 y2]} op]
+                          [[[x1 y1] [x2 y2]]])
+                :buffer (into [] (mapcat #(op->polylines % flatness segments))
+                              (:ops op))
+                ;; Unknown op types produce no polylines
+                [])]
+    (if (.isIdentity at)
+      polys
+      (mapv #(transform-polyline at %) polys))))
 
 ;; --- public API ---
 
