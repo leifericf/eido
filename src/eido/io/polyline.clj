@@ -133,6 +133,107 @@
     {:polylines polys
      :bounds    (:ir/size ir)}))
 
+;; --- grouped extraction (for motion-stream backends) ---
+;;
+;; Unlike `extract-polylines`, which returns a flat vector, this returns
+;; polylines grouped by stroke color — the shape motion-stream backends
+;; (DXF layers, G-code tool changes, embroidery color changes) all need.
+;;
+;; Nil-stroke ops form a single {:stroke nil} group. Backends decide
+;; what to do with it (e.g., DXF puts them on a default layer;
+;; G-code may skip them).
+
+(defn- flatten-op-tree
+  "Recursively flattens :buffer ops so grouping sees leaf ops only."
+  [ops]
+  (into [] (mapcat (fn [op]
+                     (if (= :buffer (:op op))
+                       (flatten-op-tree (:ops op))
+                       [op])))
+        ops))
+
+(defn- group-ops-by-stroke
+  "Groups leaf ops by :stroke-color, preserving first-seen order.
+  Returns a vector of {:stroke <color-map-or-nil> :ops [...]}."
+  [ops]
+  (let [{:keys [order groups]}
+        (reduce (fn [{:keys [order groups]} op]
+                  (let [k (:stroke-color op)]
+                    {:order  (if (contains? groups k) order (conj order k))
+                     :groups (update groups k (fnil conj []) op)}))
+                {:order [] :groups {}}
+                ops)]
+    (mapv (fn [k] {:stroke k :ops (get groups k)}) order)))
+
+(defn ^{:stability :provisional} extract-grouped-polylines
+  "Extracts polylines from compiled IR, grouped by stroke color.
+
+  Returns {:groups   [{:stroke <color-map-or-nil>
+                       :polylines [[[x y] ...] ...]} ...]
+           :bounds   [w h]}.
+
+  Stroke colors are resolved maps like {:r R :g G :b B :a A}, or nil
+  for ops without a stroke. Groups appear in the order their stroke
+  color was first seen. Leaf ops inside :buffer containers are
+  flattened before grouping.
+
+  Options:
+    :flatness — curve subdivision tolerance (default 0.5)
+    :segments — number of segments for circle/ellipse/arc (default 64)"
+  [ir opts]
+  (let [flatness (get opts :flatness 0.5)
+        segments (get opts :segments 64)
+        ops      (flatten-op-tree (:ir/ops ir))
+        groups   (group-ops-by-stroke ops)]
+    {:groups (mapv (fn [{:keys [stroke ops]}]
+                     {:stroke    stroke
+                      :polylines (into []
+                                       (mapcat #(op->polylines % flatness
+                                                               segments))
+                                       ops)})
+                   groups)
+     :bounds (:ir/size ir)}))
+
+;; --- travel optimization ---
+
+(defn- distance-sq
+  ^double [[^double x1 ^double y1] [^double x2 ^double y2]]
+  (let [dx (- x2 x1) dy (- y2 y1)]
+    (+ (* dx dx) (* dy dy))))
+
+(defn ^{:stability :provisional} optimize-travel-polylines
+  "Reorders polylines to minimize pen-up travel between them.
+  Greedy nearest-neighbor starting from [0 0], picking the polyline
+  whose first point is closest to the current position each step.
+
+  Input and output are both vectors of polylines:
+  [[[x y] ...] ...]."
+  [polylines]
+  (if (<= (count polylines) 1)
+    (vec polylines)
+    (let [n       (count polylines)
+          starts  (mapv first polylines)
+          visited (boolean-array n)]
+      (loop [result    (transient [])
+             pos       [0.0 0.0]
+             remaining n]
+        (if (zero? remaining)
+          (persistent! result)
+          (let [[best-idx _]
+                (reduce (fn [[bi bd :as best] i]
+                          (if (aget visited i)
+                            best
+                            (let [pt (nth starts i)
+                                  d  (if pt (distance-sq pos pt)
+                                       Double/MAX_VALUE)]
+                              (if (< d bd) [i d] best))))
+                        [-1 Double/MAX_VALUE]
+                        (range n))]
+            (aset visited best-idx true)
+            (recur (conj! result (nth polylines best-idx))
+                   (or (nth starts best-idx) pos)
+                   (dec remaining))))))))
+
 (defn polylines->edn
   "Serializes polyline data to an EDN string."
   [data]
