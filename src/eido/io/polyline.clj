@@ -55,30 +55,33 @@
 (defn- circle-polyline
   "Approximates a circle as a regular polygon."
   [cx cy r segments]
-  (let [step (/ (* 2.0 Math/PI) segments)
-        pts  (mapv (fn [i]
-                     (let [a (* i step)]
-                       [(+ cx (* r (Math/cos a)))
-                        (+ cy (* r (Math/sin a)))]))
-                   (range segments))]
+  (let [segments (max 3 (long segments))
+        step     (/ (* 2.0 Math/PI) segments)
+        pts      (mapv (fn [i]
+                         (let [a (* i step)]
+                           [(+ cx (* r (Math/cos a)))
+                            (+ cy (* r (Math/sin a)))]))
+                       (range segments))]
     ;; Close: repeat first point
     (conj pts (first pts))))
 
 (defn- ellipse-polyline
   "Approximates an ellipse as a polygon."
   [cx cy rx ry segments]
-  (let [step (/ (* 2.0 Math/PI) segments)
-        pts  (mapv (fn [i]
-                     (let [a (* i step)]
-                       [(+ cx (* rx (Math/cos a)))
-                        (+ cy (* ry (Math/sin a)))]))
-                   (range segments))]
+  (let [segments (max 3 (long segments))
+        step     (/ (* 2.0 Math/PI) segments)
+        pts      (mapv (fn [i]
+                         (let [a (* i step)]
+                           [(+ cx (* rx (Math/cos a)))
+                            (+ cy (* ry (Math/sin a)))]))
+                       (range segments))]
     (conj pts (first pts))))
 
 (defn- arc-polyline
   "Approximates an arc as a polyline."
   [cx cy rx ry start extent segments]
-  (let [start-rad (Math/toRadians start)
+  (let [segments  (max 1 (long segments))
+        start-rad (Math/toRadians start)
         ext-rad   (Math/toRadians extent)
         step      (/ ext-rad segments)]
     (mapv (fn [i]
@@ -208,33 +211,35 @@
   Greedy nearest-neighbor starting from [0 0], picking the polyline
   whose first point is closest to the current position each step.
 
+  Polylines with no first point (empty/nil) are dropped, since they
+  produce no motion and can't anchor the nearest-neighbor search.
+
   Input and output are both vectors of polylines:
   [[[x y] ...] ...]."
   [polylines]
-  (if (<= (count polylines) 1)
-    (vec polylines)
-    (let [n       (count polylines)
-          starts  (mapv first polylines)
-          visited (boolean-array n)]
-      (loop [result    (transient [])
-             pos       [0.0 0.0]
-             remaining n]
-        (if (zero? remaining)
-          (persistent! result)
-          (let [[best-idx _]
-                (reduce (fn [[bi bd :as best] i]
-                          (if (aget visited i)
-                            best
-                            (let [pt (nth starts i)
-                                  d  (if pt (distance-sq pos pt)
-                                       Double/MAX_VALUE)]
-                              (if (< d bd) [i d] best))))
-                        [-1 Double/MAX_VALUE]
-                        (range n))]
-            (aset visited best-idx true)
-            (recur (conj! result (nth polylines best-idx))
-                   (or (nth starts best-idx) pos)
-                   (dec remaining))))))))
+  (let [polylines (filterv (comp some? first) polylines)]
+    (if (<= (count polylines) 1)
+      (vec polylines)
+      (let [n       (count polylines)
+            starts  (mapv first polylines)
+            visited (boolean-array n)]
+        (loop [result    (transient [])
+               pos       [0.0 0.0]
+               remaining n]
+          (if (zero? remaining)
+            (persistent! result)
+            (let [[best-idx _]
+                  (reduce (fn [[_ bd :as best] i]
+                            (if (aget visited i)
+                              best
+                              (let [d (distance-sq pos (nth starts i))]
+                                (if (< d bd) [i d] best))))
+                          [-1 Double/MAX_VALUE]
+                          (range n))]
+              (aset visited best-idx true)
+              (recur (conj! result (nth polylines best-idx))
+                     (nth starts best-idx)
+                     (dec remaining)))))))))
 
 (defn polylines->edn
   "Serializes polyline data to an EDN string."

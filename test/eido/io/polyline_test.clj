@@ -272,3 +272,44 @@
           result (polyline/optimize-travel-polylines polys)]
       (is (= (count polys) (count result)))
       (is (= (set polys) (set result))))))
+
+(deftest optimize-travel-drops-empty-polylines-test
+  (testing "polylines with no first point are dropped, no crash"
+    (is (= [] (polyline/optimize-travel-polylines [[]])))
+    (is (= [] (polyline/optimize-travel-polylines [[] [] []])))
+    (let [result (polyline/optimize-travel-polylines
+                   [[[0 0] [1 1]] [] [[5 5] [6 6]]])]
+      (is (= 2 (count result)) "empty polylines filtered out")
+      (is (= [0 0] (first (first result))) "NN starts from origin"))))
+
+(deftest optimize-travel-handles-nil-test
+  (testing "nil input yields empty result"
+    (is (= [] (polyline/optimize-travel-polylines nil)))))
+
+;; --- segments edge cases ---
+
+(deftest circle-with-degenerate-segments-test
+  (testing "segments <= 2 is coerced to a minimum (3) rather than crashing"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/circle
+                    :circle/center [200 200]
+                    :circle/radius 50}])]
+      (doseq [s [0 1 2 -3]]
+        (let [result (polyline/extract-polylines (compile-scene scene)
+                       {:segments s})
+              poly   (first (:polylines result))]
+          (is (some? poly) (str ":segments " s " still produces a polyline"))
+          (is (>= (count poly) 4) "at least triangle + closing point")
+          (is (every? some? poly) "no nil points"))))))
+
+(deftest ellipse-with-degenerate-segments-test
+  (testing "ellipse coerces segments to minimum"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/ellipse
+                    :ellipse/center [200 200]
+                    :ellipse/rx 80
+                    :ellipse/ry 40}])
+          result (polyline/extract-polylines (compile-scene scene)
+                   {:segments 0})
+          poly   (first (:polylines result))]
+      (is (every? some? poly) "no nil points"))))
