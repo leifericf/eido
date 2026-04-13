@@ -542,30 +542,11 @@
 
 (set! *unchecked-math* false)
 
-(def ^:private ^:dynamic *buffer-pool*
-  "Reusable offscreen buffer for compositing groups. Avoids repeated
-  BufferedImage allocation for shadow/glow effects."
-  nil)
-
-(defn- acquire-buffer
-  "Returns a cleared BufferedImage of the given size, reusing from pool if possible."
-  ^BufferedImage [w h]
-  (let [w (int w) h (int h)]
-    (if-let [^BufferedImage buf *buffer-pool*]
-      (when (and (== (.getWidth buf) w) (== (.getHeight buf) h))
-        (let [^Graphics2D g (.createGraphics buf)]
-          (.setComposite g AlphaComposite/Clear)
-          (.fillRect g 0 0 w h)
-          (.dispose g))
-        buf)
-      (BufferedImage. w h BufferedImage/TYPE_INT_ARGB))))
-
 (defn- render-buffer-op
   "Renders a compositing group: children to off-screen buffer, then onto g."
   [^Graphics2D g ^BufferedImage dst-img [w h]
    {:keys [composite filter opacity ops transforms clip]}]
-  (let [buf (or (acquire-buffer w h)
-                (BufferedImage. (int w) (int h) BufferedImage/TYPE_INT_ARGB))
+  (let [buf (BufferedImage. (int w) (int h) BufferedImage/TYPE_INT_ARGB)
         bg  (.createGraphics buf)]
     (.setRenderingHints bg (.getRenderingHints g))
     (doseq [child-op ops]
@@ -587,10 +568,7 @@
                            (float (max 0.0 (min 1.0 (double opacity))))))
         (.drawImage g buf 0 0 nil)
         (.setTransform g saved-transform)
-        (.setClip g saved-clip)
-        ;; Return buffer to pool for reuse
-        (when (nil? *buffer-pool*)
-          (set! *buffer-pool* buf))))))
+        (.setClip g saved-clip)))))
 
 (defn- render-ir-op
   "Dispatches rendering of a single IR op (leaf or buffer)."
@@ -623,10 +601,9 @@
                           AlphaComposite/SRC_OVER 1.0))
        (.setColor g (->awt-color (:ir/background ir)))
        (.fillRect g 0 0 w h))
-     ;; Render ops in order, with buffer pool
-     (binding [*buffer-pool* nil]
-       (doseq [op (:ir/ops ir)]
-         (render-ir-op g img [w h] op)))
+     ;; Render ops in order
+     (doseq [op (:ir/ops ir)]
+       (render-ir-op g img [w h] op))
      (.dispose g)
      img)))
 
