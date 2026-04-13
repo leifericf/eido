@@ -29,6 +29,29 @@
 - **Convert text-on-path loop to reduce** — Replaced manual `loop/recur`
   with `transient` in `text-on-path-node->group` with idiomatic `reduce`.
 
+- **Eliminate smudge-state atom** — `eido.paint.smudge` previously
+  returned an atom from `make-smudge-state` and mutated it with
+  `update-smudge!` as the renderer walked the dabs. Now
+  `init-smudge-state` returns a plain map and `advance-smudge` returns
+  `{:state :color}`; `render-bristle-stroke!`/`render-single-tip-stroke!`
+  thread the state through `reduce`. Also removed an unused `cnt` atom
+  inside `sample-surface-color`.
+
+- **Remove orphaned sensor module** — `eido.paint.sensor` shipped a
+  `compute-sensor-inputs` / `apply-dynamics` API that no brush spec or
+  pipeline stage ever consumed. The module and its tests have been
+  removed; the previously-advertised "Sensor dynamics" feature is
+  dropped from this changelog.
+
+- **Replace remaining local `volatile!` cells with reduce** — Two
+  leftover volatiles (`engine.svg/deduplicate-ops` and
+  `gen.lsystem/expand-with-choices`) are now idiomatic folds.
+  `src/` is now free of atoms, refs, agents, and volatile! — the
+  only remaining mutable references live in `dev/user.clj`.
+
+- **Tidy ns forms** — Alphabetized `:require` entries and dropped
+  tombstone comments in `eido.engine.compile` and `eido.ir.generator`.
+
 ## Unreleased — Paint Engine
 
 ### New features
