@@ -348,14 +348,16 @@
         x1       (min sw (long (Math/ceil (+ cx radius))))
         y1       (min sh (long (Math/ceil (+ cy radius))))
         w        (- x1 x0)
-        h        (- y1 y0)
-        ^floats buf (float-array (* w h 4))]
-    (copy-region-to-buffer! surface buf x0 y0 x1 y1 w)
-    (if (#{:blur :sharpen} mode)
-      (deform-blur-sharpen! surface buf mode strength
-        x0 y0 x1 y1 w h cx cy r2)
-      (deform-displacement! surface buf mode strength angle
-        x0 y0 x1 y1 w h cx cy r2 radius))))
+        h        (- y1 y0)]
+    ;; Skip entirely if the dab region is outside the surface bounds.
+    (when (and (pos? w) (pos? h))
+      (let [^floats buf (float-array (* w h 4))]
+        (copy-region-to-buffer! surface buf x0 y0 x1 y1 w)
+        (if (#{:blur :sharpen} mode)
+          (deform-blur-sharpen! surface buf mode strength
+            x0 y0 x1 y1 w h cx cy r2)
+          (deform-displacement! surface buf mode strength angle
+            x0 y0 x1 y1 w h cx cy r2 radius))))))
 
 (comment
   (require '[eido.paint.surface :as surface])

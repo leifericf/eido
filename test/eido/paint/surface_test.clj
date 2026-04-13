@@ -47,6 +47,17 @@
         (is (< (Math/abs (- b 0.1)) 0.001))
         (is (< (Math/abs (- a 0.8)) 0.001))))))
 
+(deftest deposit-height-bounds-test
+  (testing "deposit-height! silently skips pixels outside the surface"
+    (let [s (surface/create-surface 100 100)]
+      (surface/deposit-height! s -1 50 0.5)
+      (surface/deposit-height! s 50 -1 0.5)
+      (surface/deposit-height! s 100 50 0.5)
+      (surface/deposit-height! s 50 100 0.5)
+      (is true "out-of-bounds deposits should be silently skipped")
+      (surface/deposit-height! s 50 50 0.3)
+      (is true "in-bounds deposit works after out-of-bounds attempts"))))
+
 (deftest compose-to-image-test
   (testing "produces BufferedImage of correct size"
     (let [s   (surface/create-surface 200 150)

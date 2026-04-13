@@ -96,17 +96,20 @@
 
 (defn deposit-height!
   "Deposits height at surface coordinates (px, py).
-  height: height to add [0..1]."
+  height: height to add [0..1]. Silently skips pixels outside bounds."
   [surface ^long px ^long py ^double height]
-  (let [ts  (long tile-size)
-        tx  (quot px ts)
-        ty  (quot py ts)
-        lx  (rem px ts)
-        ly  (rem py ts)
-        ^floats plane (ensure-height-plane! surface tx ty)
-        idx (+ (* ly ts) lx)
-        old (double (aget plane idx))]
-    (aset plane idx (float (Math/min 1.0 (+ old height))))))
+  (let [sw (long (:surface/width surface))
+        sh (long (:surface/height surface))]
+    (when (and (>= px 0) (< px sw) (>= py 0) (< py sh))
+      (let [ts  (long tile-size)
+            tx  (quot px ts)
+            ty  (quot py ts)
+            lx  (rem px ts)
+            ly  (rem py ts)
+            ^floats plane (ensure-height-plane! surface tx ty)
+            idx (+ (* ly ts) lx)
+            old (double (aget plane idx))]
+        (aset plane idx (float (Math/min 1.0 (+ old height))))))))
 
 ;; --- pixel access (mainly for testing) ---
 

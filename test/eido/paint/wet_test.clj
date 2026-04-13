@@ -1,6 +1,7 @@
 (ns eido.paint.wet-test
   (:require
     [clojure.test :refer [deftest is testing]]
+    [eido.paint.surface :as surface]
     [eido.paint.wet :as wet]))
 
 (deftest diffuse-tile-test
@@ -28,6 +29,19 @@
       (doseq [i (range (* ts ts))]
         (is (>= (aget wet i) 0.0))
         (is (<= (aget wet i) 1.0))))))
+
+(deftest deposit-wetness-bounds-test
+  (testing "deposit-wetness! silently skips pixels outside the surface"
+    (let [s (surface/create-surface 100 100)]
+      (wet/deposit-wetness! s -1 50 0.5)
+      (wet/deposit-wetness! s 50 -1 0.5)
+      (wet/deposit-wetness! s 100 50 0.5)
+      (wet/deposit-wetness! s 50 100 0.5)
+      (wet/deposit-wetness! s -500 -500 0.5)
+      (is true "out-of-bounds deposits should be silently skipped")
+      ;; In-bounds still works.
+      (wet/deposit-wetness! s 50 50 0.3)
+      (is true "in-bounds deposit works after out-of-bounds attempts"))))
 
 (deftest diffusion-conserves-test
   (testing "total wetness is approximately conserved"

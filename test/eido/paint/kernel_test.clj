@@ -70,6 +70,19 @@
           (is (<= r 1.0) (str mode " red channel <= 1.0"))
           (is (>= a 0.0) (str mode " alpha non-negative")))))))
 
+(deftest deform-dab-entirely-outside-test
+  (testing "deform dab entirely outside the surface does not throw NegativeArraySizeException"
+    (let [s (surface/create-surface 100 100)]
+      ;; cx far-left of the canvas — x0 clamps to 0 but x1 clamps to -1000,
+      ;; which used to produce a negative-width buffer.
+      (kernel/deform-dab! s {:dab/cx -2000.0 :dab/cy 50.0 :dab/radius 10.0
+                             :dab/deform {:deform/mode :push :deform/strength 0.5}})
+      (kernel/deform-dab! s {:dab/cx 50.0 :dab/cy -2000.0 :dab/radius 10.0
+                             :dab/deform {:deform/mode :blur :deform/strength 0.5}})
+      (kernel/deform-dab! s {:dab/cx 5000.0 :dab/cy 5000.0 :dab/radius 20.0
+                             :dab/deform {:deform/mode :swirl :deform/strength 0.5}})
+      (is true "out-of-bounds deform dabs should be silently skipped"))))
+
 (deftest deform-dab-sharpen-overflow-test
   (testing "repeated sharpen does not overflow float range"
     (let [s (surface/create-surface 100 100)]

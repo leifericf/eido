@@ -30,17 +30,20 @@
 
 (defn deposit-wetness!
   "Deposits wetness at surface coordinates (px, py).
-  amount: wetness to add [0..1]."
+  amount: wetness to add [0..1]. Silently skips pixels outside bounds."
   [surface ^long px ^long py ^double amount]
-  (let [ts  (long surface/tile-size)
-        tx  (quot px ts)
-        ty  (quot py ts)
-        lx  (rem px ts)
-        ly  (rem py ts)
-        ^floats wet (ensure-wet-planes! surface tx ty)
-        idx (+ (* ly ts) lx)
-        old (double (aget wet idx))]
-    (aset wet idx (float (Math/min 1.0 (+ old amount))))))
+  (let [sw (long (:surface/width surface))
+        sh (long (:surface/height surface))]
+    (when (and (>= px 0) (< px sw) (>= py 0) (< py sh))
+      (let [ts  (long surface/tile-size)
+            tx  (quot px ts)
+            ty  (quot py ts)
+            lx  (rem px ts)
+            ly  (rem py ts)
+            ^floats wet (ensure-wet-planes! surface tx ty)
+            idx (+ (* ly ts) lx)
+            old (double (aget wet idx))]
+        (aset wet idx (float (Math/min 1.0 (+ old amount))))))))
 
 ;; --- diffusion ---
 
