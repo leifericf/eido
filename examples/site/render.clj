@@ -885,18 +885,13 @@
         :style/fill    [:color/name "crimson"]}]}
 
      "docs-wf-plotter-strokes.png"
-     (let [flow-paths (flow/flow-field [0 0 400 300]
-                        {:resolution 15 :step-size 3 :num-steps 40
-                         :noise-fn (fn [x y] (noise/fbm x y {:octaves 3 :scale 0.005 :seed 7}))
-                         :seed 7})]
+     (let [paths (flow/flow-field [0 0 400 300]
+                   {:density 15 :steps 40 :noise-scale 0.005 :seed 7})]
        {:image/size [400 300]
         :image/background [:color/rgb 245 243 238]
         :image/nodes
-        (mapv (fn [cmds]
-                {:node/type     :shape/path
-                 :path/commands cmds
-                 :style/stroke  {:color [:color/rgb 30 30 30] :width 0.8}})
-              (:paths flow-paths))})
+        (mapv #(assoc % :style/stroke {:color [:color/rgb 30 30 30] :width 0.8})
+              paths)})
 
      "docs-wf-print-paper.png"
      (let [paper (scene/paper :a4)]
