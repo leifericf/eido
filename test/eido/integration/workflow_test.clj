@@ -296,3 +296,65 @@
           (is (= 5 (count files)))))
       (finally
         (delete-dir! dir)))))
+
+(def ^:private two-color-stroke-scene
+  {:image/size [200 200]
+   :image/background [:color/rgb 255 255 255]
+   :image/nodes
+   [{:node/type :shape/rect
+     :rect/xy [10 10] :rect/size [80 80]
+     :style/stroke {:color [:color/rgb 255 0 0] :width 1}}
+    {:node/type :shape/circle
+     :circle/center [140 140] :circle/radius 30
+     :style/stroke {:color [:color/rgb 0 0 255] :width 1}}]})
+
+(deftest dxf-export-test
+  (testing ":format :dxf returns a DXF R12 string"
+    (let [out (eido/render two-color-stroke-scene {:format :dxf})]
+      (is (string? out))
+      (is (str/includes? out "AC1009") "R12 header")
+      (is (str/includes? out "POLYLINE"))
+      (is (str/ends-with? out "EOF\n"))
+      (is (str/includes? out "pen-255-0-0"))
+      (is (str/includes? out "pen-0-0-255"))))
+  (testing ":output \"…dxf\" writes a DXF file"
+    (let [path (tmp-path ".dxf")]
+      (try
+        (eido/render two-color-stroke-scene {:output path})
+        (let [content (slurp path)]
+          (is (str/includes? content "AC1009"))
+          (is (str/includes? content "POLYLINE"))
+          (is (str/ends-with? content "EOF\n")))
+        (finally
+          (io/delete-file path true)))))
+  (testing "writer options (:scale, :optimize-travel) flow through render"
+    (let [out (eido/render two-color-stroke-scene
+                {:format :dxf :scale 2.0 :optimize-travel false})]
+      (is (str/includes? out "20.000000")
+          "10 * scale 2.0 = 20 appears as a vertex coordinate"))))
+
+(deftest gcode-export-test
+  (testing ":format :gcode returns a GRBL G-code string"
+    (let [out (eido/render two-color-stroke-scene {:format :gcode})]
+      (is (string? out))
+      (is (str/includes? out "G21") "millimetres header")
+      (is (str/includes? out "G90") "absolute mode")
+      (is (str/includes? out "M3 S1000") "spindle on by default")
+      (is (str/includes? out "pen-rgb-255-0-0"))
+      (is (str/includes? out "pen-rgb-0-0-255"))
+      (is (str/ends-with? out "G0 X0 Y0 ; park\n"))))
+  (testing ":output \"…gcode\" writes a G-code file"
+    (let [path (tmp-path ".gcode")]
+      (try
+        (eido/render two-color-stroke-scene {:output path})
+        (let [content (slurp path)]
+          (is (str/includes? content "G21"))
+          (is (str/includes? content "M0"))
+          (is (str/ends-with? content "G0 X0 Y0 ; park\n")))
+        (finally
+          (io/delete-file path true)))))
+  (testing "writer options (:feed, :laser-mode) flow through render"
+    (let [m4 (eido/render two-color-stroke-scene
+               {:format :gcode :laser-mode true :feed 500})]
+      (is (str/includes? m4 "M4 S1000") "laser-mode swaps M3 → M4")
+      (is (str/includes? m4 "F500")     ":feed reaches the writer"))))
