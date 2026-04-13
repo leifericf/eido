@@ -153,7 +153,15 @@
 
   (testing "throws descriptive error on empty map"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"size"
-          (paint/make-surface {})))))
+          (paint/make-surface {}))))
+
+  (testing "throws descriptive error on 0 or negative dimensions"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"positive"
+          (paint/make-surface [0 100])))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"positive"
+          (paint/make-surface [100 0])))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"positive"
+          (paint/make-surface [-10 100])))))
 
 (deftest point-generator-degenerate-n-test
   (testing "circle-points with n=1 returns single center point, not NaN"

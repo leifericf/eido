@@ -547,6 +547,9 @@
     (when-not (and (number? w) (number? h))
       (throw (ex-info "make-surface requires a [w h] size vector or a config map with :paint/size or :size"
                       {:config config})))
+    (when-not (and (pos? w) (pos? h))
+      (throw (ex-info "make-surface requires positive width and height"
+                      {:width w :height h :config config})))
     (surface/create-surface (long w) (long h))))
 
 (defn compose
