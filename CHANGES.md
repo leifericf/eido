@@ -1,5 +1,45 @@
 # Changes
 
+## Unreleased
+
+### Bug fixes
+
+- **Paint pipeline now handles `:shape/line`** — The paint renderer
+  requires `:path/commands`; `:shape/line` nodes carry `:line/from`
+  and `:line/to` instead. A line with `:paint/brush` silently rendered
+  as blank because `render-stroke!` couldn't resample it. Lines are
+  now converted to single-segment paths in `collect-painted` just
+  before paint dispatch. This fixes `:delaunay` (which expands to
+  line nodes) under a paint surface.
+
+### Website
+
+- Fix eight published 404 previews under Guide → Paint and the Paint
+  workflow page — referenced images were never registered in
+  `docs-scenes`.
+- Fix the published `docs-wf-3d-sphere.png` rendering as solid dark
+  grey — the scene was calling `s3d/perspective` with
+  `:fov`/`:near`/`:far`/`:width`/`:height` keys the projection has
+  never accepted.
+- Fix the published `docs-wf-plotter-strokes.png` rendering as solid
+  white — the scene passed removed option keys to `flow-field` and
+  then unwrapped `(:paths …)` from a value that was already a vector
+  of path nodes.
+- Fix gallery "Delaunay Ink Web" rendering as solid white (same
+  line-paint bug listed under Bug fixes above).
+- Boost gallery "Pastel Voronoi" contrast so the cell pattern is
+  actually visible on the toned substrate.
+- Strip `^{:example …}` reader metadata from the gallery "View
+  source" pane so readers can copy/paste examples into a REPL
+  without first deleting internal build bookkeeping.
+- Render every workflow code example that describes a complete
+  scene — primitives lineup, chained mesh transforms, noise-painted
+  sphere, hatched NPR sphere, animation basics GIF, palette
+  generation/manipulation swatches, and an editions contact sheet.
+- Correct two stale API snippets in the workflow docs (3D camera
+  section and Palette Manipulation section) so a copy/paste into
+  a REPL actually compiles.
+
 ## v1.0.0-beta7 — Paint Engine
 
 ### New features
