@@ -731,3 +731,12 @@
   (testing "animation without :fps throws"
     (is (thrown? clojure.lang.ExceptionInfo
           (eido/render simple-frames {:output "/tmp/test.gif"})))))
+
+(deftest unified-render-raster-format-without-output-test
+  (testing ":format for a raster target without :output throws"
+    (is (thrown? clojure.lang.ExceptionInfo
+          (eido/render sample-scene {:format :png})))
+    (is (thrown? clojure.lang.ExceptionInfo
+          (eido/render sample-scene {:format :jpeg})))
+    (is (thrown? clojure.lang.ExceptionInfo
+          (eido/render sample-scene {:format :tiff})))))

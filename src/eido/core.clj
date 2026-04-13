@@ -428,6 +428,12 @@
          (= :svg format)   (render-to-svg input render-opts)
          (= :dxf format)   (dxf/write-dxf (validated-compile input) render-opts)
          (= :gcode format) (gcode/write-gcode (validated-compile input) render-opts)
+         format            (throw (ex-info
+                                    (str "Format " format " has no in-memory "
+                                         "representation; pass :output for a "
+                                         "file, or omit :format to get a "
+                                         "BufferedImage.")
+                                    {:format format}))
          :else             (render-image input render-opts))))))
 
 (comment
