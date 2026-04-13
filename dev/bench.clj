@@ -279,12 +279,20 @@
   ;; thermal                           18          19    noise
   ;;
   ;; The JIT already optimizes keyword access on records similarly to maps
-  ;; after warmup. Records primarily help cold-start and GC pressure.
-  ;; BasicStroke caching reduces per-op overhead. (The "opacity tracking"
-  ;; dynamic var once credited here was later benchmarked as net-negative
-  ;; — Clojure dynamic-var read + set! costs more than the ~8ns
-  ;; .setComposite(AlphaComposite/getInstance ...) call it was skipping —
-  ;; and was removed.)
+  ;; after warmup — the R4 claim "records help cold-start and GC pressure"
+  ;; was not borne out in real scenes, so concrete-op records were later
+  ;; replaced with plain-map constructors.
+  ;;
+  ;; Three "optimizations" credited here were later benchmarked as
+  ;; net-negative and removed:
+  ;;   - *prev-opacity* opacity-tracking dynamic var
+  ;;   - *buffer-pool* BufferedImage reuse dynamic var
+  ;;   - create-basic-stroke memoize cache
+  ;; In each case the bookkeeping cost (dynamic-var read + set!, or
+  ;; memoize hashmap lookup) exceeded the cost of the AWT call it was
+  ;; eliding (AlphaComposite.getInstance ~8ns, new BasicStroke ~0.5ns
+  ;; after JIT escape analysis).
+  ;;
   ;; :perf alias (clojure -M:perf) provides JVM tuning for batch renders.
   ;;
   ;; === Optional validation skip (:eido/validate false) ===
