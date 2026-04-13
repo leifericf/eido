@@ -76,11 +76,10 @@ See the **[full documentation](https://eido.leifericf.com/docs/)** for shapes, t
 
 The **[gallery](https://eido.leifericf.com/gallery/)** showcases examples across several categories — 2D scenes, 3D scenes, mixed 2D/3D, particles, typography, and artistic expression — each with source code.
 
-All examples live in `examples/gallery/` as pure functions. Build the gallery locally:
-
-```sh
-clj -X:gallery   # renders all examples + generates site into _site/
-```
+The gallery scenes and the site that renders them live in their own
+repository: **[leifericf/eido-site](https://github.com/leifericf/eido-site)**.
+That repo depends on a tagged release of this library and rebuilds
+on every push.
 
 ## Running Tests
 

@@ -14,6 +14,17 @@
 
 ### Website
 
+- **Website moved to its own repository** —
+  [leifericf/eido-site](https://github.com/leifericf/eido-site).
+  The site renderer, page content, gallery scenes, and GitHub Pages
+  workflow no longer live in this repo. `eido.leifericf.com` now
+  serves from the new repo against tagged releases of the library.
+  The library's CI and dependency footprint are back to library-only
+  (just `org.clojure/clojure` + `org.clojure/core.logic`); `hiccup`
+  and `garden` are out of the resolved tree, and `:gallery` is gone
+  from `deps.edn`. The `examples/site/`, `examples/gallery/`,
+  `dev/gallery.clj`, `.github/workflows/gallery.yml`, and
+  `resources/teapot.obj` paths are removed.
 - Fix eight published 404 previews under Guide → Paint and the Paint
   workflow page — referenced images were never registered in
   `docs-scenes`.

@@ -55,30 +55,6 @@ An optional, embedded database for versioning and querying scenes over time. Eid
 
 ## Outreach and tooling
 
-### Dedicated website (separate repo)
-
-Move the marketing/docs site out of this repo and GitHub Pages into a
-purpose-built static site in its own repository.
-
-**Why:**
-- The current site is assembled by `examples/site/render.clj` and
-  served from GitHub Pages — practical during early beta, but coupled
-  to the library's build and CI cycle.
-- A separate site repo lets the visual design, navigation, and content
-  strategy iterate on their own schedule without triggering library
-  CI or version bumps.
-- The site could host richer content than static HTML allows —
-  searchable API reference, live scene playground, MDX-style long-form
-  articles — without bloating the library repo.
-
-**Design constraints:**
-- The library remains the source of truth for API docs and code
-  examples; the site pulls from tagged library releases rather than
-  tracking `main`.
-- A small build hook in the library can continue to emit a machine-
-  readable snapshot (docs scenes, gallery manifests, API index) that
-  the site consumes.
-
 ### Visual editor for non-programmers (separate project)
 
 A standalone GUI application that lets artists who don't write
