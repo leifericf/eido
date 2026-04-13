@@ -56,8 +56,13 @@
 
 (defn- tool-change-lines [stroke]
   (let [label (if stroke
-                (format "rgb-%d-%d-%d"
-                        (:r stroke) (:g stroke) (:b stroke))
+                (let [a (double (:a stroke 1.0))]
+                  (if (< a 1.0)
+                    (format "rgb-%d-%d-%d-a%d"
+                            (:r stroke) (:g stroke) (:b stroke)
+                            (int (Math/round (* 100.0 a))))
+                    (format "rgb-%d-%d-%d"
+                            (:r stroke) (:g stroke) (:b stroke))))
                 "none")]
     ["M5 ; end of previous group"
      (str "M0 ; tool change: pen-" label)]))

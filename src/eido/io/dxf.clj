@@ -53,10 +53,21 @@
 
 (defn- color->layer-name
   "Converts a stroke color map to a DXF layer name.
-  {:r R :g G :b B :a _} → 'pen-R-G-B'; nil → 'pen-none'."
+  Opaque strokes → 'pen-R-G-B'; semi-transparent → 'pen-R-G-B-aNN'
+  (alpha as 0-99 percent); nil → 'pen-none'.
+
+  The alpha suffix is required for uniqueness: DXF R12 does not
+  support per-layer transparency, so same-RGB strokes with
+  different alpha values need distinct layer names to avoid
+  colliding table entries."
   [stroke]
   (if stroke
-    (format "pen-%d-%d-%d" (:r stroke) (:g stroke) (:b stroke))
+    (let [a (double (:a stroke 1.0))]
+      (if (< a 1.0)
+        (format "pen-%d-%d-%d-a%d"
+                (:r stroke) (:g stroke) (:b stroke)
+                (int (Math/round (* 100.0 a))))
+        (format "pen-%d-%d-%d" (:r stroke) (:g stroke) (:b stroke))))
     "pen-none"))
 
 (defn- stroke->aci

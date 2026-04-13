@@ -92,6 +92,28 @@
       (is (and hdr tbl ents eof))
       (is (< hdr tbl ents eof)))))
 
+(deftest alpha-disambiguates-layer-names-test
+  (testing "same RGB with different alpha produces unique layer names"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [10 10] :rect/size [20 20]
+                    :style/stroke {:color [:color/rgba 255 0 0 1.0] :width 1}}
+                   {:node/type :shape/rect
+                    :rect/xy [50 50] :rect/size [20 20]
+                    :style/stroke {:color [:color/rgba 255 0 0 0.5] :width 1}}])
+          ir    (compile/compile scene)
+          out   (dxf/write-dxf ir {})
+          ;; Isolate the TABLES/LAYER section so geometry references don't
+          ;; pollute the count.
+          tables (second (re-find
+                           #"(?s)SECTION\n2\nTABLES\n(.*?)ENDSEC" out))]
+      (is (str/includes? out "pen-255-0-0-a50")
+          "semi-transparent adds -a<percent> suffix")
+      (is (= 1 (count-substring tables "\npen-255-0-0\n"))
+          "exactly one bare-RGB layer entry")
+      (is (= 1 (count-substring tables "\npen-255-0-0-a50\n"))
+          "exactly one alpha-suffixed layer entry"))))
+
 (deftest scale-opt-test
   (testing ":scale multiplies coordinates"
     (let [scene (assoc base-scene :image/nodes

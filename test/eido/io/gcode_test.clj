@@ -84,6 +84,23 @@
       (is (str/includes? out-m4 "M4 S1000"))
       (is (not (str/includes? out-m4 "M3 S"))))))
 
+(deftest alpha-disambiguates-tool-labels-test
+  (testing "same RGB with different alpha gets distinct tool-change labels"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [10 10] :rect/size [20 20]
+                    :style/stroke {:color [:color/rgba 0 0 0 1.0] :width 1}}
+                   {:node/type :shape/rect
+                    :rect/xy [100 100] :rect/size [20 20]
+                    :style/stroke {:color [:color/rgba 0 0 0 0.5] :width 1}}])
+          ir    (compile/compile scene)
+          out   (gcode/write-gcode ir {})]
+      (is (str/includes? out "pen-rgb-0-0-0\n"))
+      (is (str/includes? out "pen-rgb-0-0-0-a50")
+          "semi-transparent gets -a<percent> suffix")
+      (is (= 2 (count-substring out "M0"))
+          "two distinct tool changes for two alpha groups"))))
+
 (deftest optimize-travel-preserves-move-count-test
   (testing "travel optimization preserves XY drawing move count"
     (let [scene (assoc base-scene :image/nodes
