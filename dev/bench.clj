@@ -280,7 +280,11 @@
   ;;
   ;; The JIT already optimizes keyword access on records similarly to maps
   ;; after warmup. Records primarily help cold-start and GC pressure.
-  ;; BasicStroke caching and opacity tracking reduce per-op overhead.
+  ;; BasicStroke caching reduces per-op overhead. (The "opacity tracking"
+  ;; dynamic var once credited here was later benchmarked as net-negative
+  ;; — Clojure dynamic-var read + set! costs more than the ~8ns
+  ;; .setComposite(AlphaComposite/getInstance ...) call it was skipping —
+  ;; and was removed.)
   ;; :perf alias (clojure -M:perf) provides JVM tuning for batch renders.
   ;;
   ;; === Optional validation skip (:eido/validate false) ===
