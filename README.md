@@ -1,9 +1,17 @@
 # Eido
 
-**Eido — describe what you see**
+**An end-to-end Clojure toolkit for generative artists — from REPL sketch to screen, print, and plotter.**
 
-Eido is a declarative, data-driven image language for Clojure.
-Describe what you see as plain data — not drawing instructions.
+Eido is a declarative, data-first library for generative art. You
+describe images as plain data — maps, vectors, keywords — and render
+the same scene to whatever medium you're working in: raster PNG,
+animated GIF or SVG, archival TIFF for print, or stroke-only SVG for
+pen plotters and CNC.
+
+Eido is an art tool, not a charting library — it was designed around
+the practice of generative artists, plotter artists, and edition
+makers. Data visualization is possible, but a dedicated charting
+library will serve you better there.
 
 <p align="center">
   <img src="https://eido.leifericf.com/images/galaxy.gif" width="200" alt="Particle galaxy" />

@@ -2326,12 +2326,19 @@ CircleOp{...original-shape...}"]]
     :title "What Eido Is"
     :content
     [:div
-     [:p "Eido is a " [:strong "declarative, data-first Clojure library"] " for computational and generative art. You describe images as plain data — maps, vectors, keywords — and Eido renders them."]
+     [:p "Eido is a " [:strong "declarative, data-first Clojure library for generative art"] ". You describe images as plain data — maps, vectors, keywords — and Eido renders them to the medium you're working in."]
+     [:p "It's an " [:strong "end-to-end toolkit"] " for the full arc of a generative art practice — from REPL sketching to finished output. One library covers:"]
+     [:ul
+      [:li [:strong "Screen"] " — raster PNG, animated GIF, and animated SVG for digital editions and screens."]
+      [:li [:strong "Print"] " — real-world units, paper presets, DPI control, and archival TIFF for giclée and fine-art printing."]
+      [:li [:strong "Fabrication"] " — stroke-only SVG with pen layers, deduplication, and travel optimization for pen plotters, and polyline export for CNC mills and laser cutters."]
+      [:li [:strong "Editions"] " — deterministic seed-driven series with parameter specs, trait manifests, and contact sheets."]]
+     [:p "The design commitments that keep the toolkit small:"]
      [:ul
       [:li [:strong "A library, not a framework."] " Every function takes data and returns data. You bring your own workflow, editor, and REPL."]
       [:li [:strong "Zero production dependencies."] " Just Clojure and the standard library. Nothing to install, nothing to break."]
-      [:li [:strong "REPL-driven."] " The primary development loop is edit → evaluate → inspect → adjust. No compile step, no build tool."]
-      [:li [:strong "Designed for"] " screen output, print production, plotter art, long-form edition series, and exploratory generative work."]]]}
+      [:li [:strong "REPL-driven."] " The primary development loop is edit → evaluate → inspect → adjust. No compile step, no build tool."]]
+     [:p [:strong "Eido is an art tool."] " It was designed around the practice of generative artists — plotter artists, edition makers, creative coders — not around the needs of data visualization, dashboards, or scientific charting. Data-viz work is possible with the same primitives, but the API, gallery, defaults, and documentation all pull toward artmaking. If your primary goal is communicating data, reach for a dedicated charting library instead (see " [:a {:href "#alternatives"} "When to Use Something Else"] ")."]]}
 
    {:id "practical-limits"
     :title "Practical Limits"
