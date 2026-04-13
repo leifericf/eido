@@ -52,6 +52,40 @@
 - **Tidy ns forms** — Alphabetized `:require` entries and dropped
   tombstone comments in `eido.engine.compile` and `eido.ir.generator`.
 
+- **Audit and remove net-negative renderer optimizations** — Four
+  performance shims from earlier optimization rounds were benchmarked
+  against removal and found to pay nothing, or to actively slow the
+  renderer down. Each complected the code with state or type
+  machinery; all are gone:
+
+  - `*prev-opacity*` dynamic var in `eido.engine.render` tracked the
+    last opacity set on `Graphics2D` to skip redundant `setComposite`
+    calls. Benchmarked ~5% *slower* than just calling setComposite
+    every time — `AlphaComposite/getInstance` returns cached
+    singletons and the call is ~8 ns, cheaper than a dynamic-var
+    read + `set!`.
+
+  - `*buffer-pool*` dynamic var reused one offscreen `BufferedImage`
+    across compositing groups. Allocation profile showed BufferedImage
+    allocation is <0.1% of volume (Long boxing in `box-blur-pass`
+    dominates); removing the pool is within JVM-warmup noise.
+
+  - `create-basic-stroke` memoize and its `get-basic-stroke` wrapper.
+    `new BasicStroke(float,int,int)` escape-analyzes to ~0.5 ns; the
+    memoize hashmap lookup cost more than the constructor it was
+    eliding. Removing is ~7% faster on scenes with 100 unique widths.
+
+  - Concrete-op `defrecord`s in `eido.ir` (`RectOp`, `CircleOp`,
+    `ArcOp`, `LineOp`, `EllipseOp`, `PathOp`, `BufferOp`). Records
+    give ~10× faster keyword lookup at the microbench level, but in
+    real scenes Java2D rasterization dominates — the gain is 0–7%
+    on adversarial cases and 0% on stroked/realistic scenes.
+    Replaced with plain-map constructors of the same name; call
+    sites in `eido.ir.lower`/`effect`/`fill`/`generator` unchanged.
+
+  The `dev/bench.clj` historical notes were amended to record the
+  audit outcome alongside the original claims.
+
 ## Unreleased — Paint Engine
 
 ### New features
