@@ -137,6 +137,46 @@
       (is (= [:color/rgb 60 40 30] (:paint/color desc)))
       (is (= 12 (:paint/radius desc))))))
 
+(deftest make-surface-edge-cases-test
+  (testing "accepts size vector"
+    (is (some? (paint/make-surface [100 100]))))
+
+  (testing "accepts :paint/size in config map"
+    (is (some? (paint/make-surface {:paint/size [100 100]}))))
+
+  (testing "accepts :size in config map (user-facing key from paint-surface)"
+    (is (some? (paint/make-surface {:size [100 100]}))))
+
+  (testing "throws descriptive error on nil"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"size"
+          (paint/make-surface nil))))
+
+  (testing "throws descriptive error on empty map"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"size"
+          (paint/make-surface {})))))
+
+(deftest point-generator-degenerate-n-test
+  (testing "circle-points with n=1 returns single center point, not NaN"
+    (let [pts (paint/circle-points [50 50] {:n 1 :radius 10})]
+      (is (= 1 (count pts)))
+      (is (every? #(Double/isFinite %) (take 2 (first pts))))))
+
+  (testing "line-points with n=1 returns single from point, not NaN"
+    (let [pts (paint/line-points [7 8] {:n 1 :to [100 200]})]
+      (is (= 1 (count pts)))
+      (is (= [7.0 8.0] [(nth (first pts) 0) (nth (first pts) 1)]))))
+
+  (testing "wave-points with n=1 returns single from point, not NaN"
+    (let [pts (paint/wave-points [3 4] {:n 1 :to [100 200]})]
+      (is (= 1 (count pts)))
+      (is (every? #(Double/isFinite %) (take 2 (first pts))))))
+
+  (testing "n=0 and negative n return empty"
+    (is (= [] (paint/circle-points [0 0] {:n 0})))
+    (is (= [] (paint/line-points [0 0] {:n 0})))
+    (is (= [] (paint/wave-points [0 0] {:n 0})))
+    (is (= [] (paint/line-points [0 0] {:n -5})))))
+
 (deftest render-strokes-test
   (testing "multiple strokes accumulate"
     (let [s (paint/make-surface [100 100])]

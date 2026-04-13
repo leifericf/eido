@@ -536,9 +536,17 @@
 ;; --- surface creation and compositing ---
 
 (defn make-surface
-  "Creates a paint surface from a surface config or size vector."
+  "Creates a paint surface from a surface config or size vector.
+  Accepts [w h], {:paint/size [w h]}, or {:size [w h]}."
   [config]
-  (let [[w h] (or (:paint/size config) config)]
+  (let [size (cond
+               (map? config)    (or (:paint/size config) (:size config))
+               (sequential? config) config
+               :else nil)
+        [w h] (when (and (sequential? size) (= 2 (count size))) size)]
+    (when-not (and (number? w) (number? h))
+      (throw (ex-info "make-surface requires a [w h] size vector or a config map with :paint/size or :size"
+                      {:config config})))
     (surface/create-surface (long w) (long h))))
 
 (defn compose
@@ -622,13 +630,15 @@
          start-a (double (get opts :start 0.0))
          end-a   (double (get opts :end (* 2.0 Math/PI)))
          p       (double (get opts :pressure 0.8))]
-     (mapv (fn [i]
-             (let [t (/ (double i) (double (dec n)))
-                   a (+ start-a (* t (- end-a start-a)))]
-               [(+ (double cx) (* radius (Math/cos a)))
-                (+ (double cy) (* radius (Math/sin a)))
-                p 0 0 0]))
-           (range n)))))
+     (if (< n 2)
+       (if (= n 1) [[(double cx) (double cy) p 0 0 0]] [])
+       (mapv (fn [i]
+               (let [t (/ (double i) (double (dec n)))
+                     a (+ start-a (* t (- end-a start-a)))]
+                 [(+ (double cx) (* radius (Math/cos a)))
+                  (+ (double cy) (* radius (Math/sin a)))
+                  p 0 0 0]))
+             (range n))))))
 
 (defn wave-points
   "Generates stroke points along a wavy line.
@@ -648,13 +658,15 @@
          len   (Math/sqrt (+ (* dx dx) (* dy dy)))
          nx    (if (> len 0) (/ (- dy) len) 0.0)
          ny    (if (> len 0) (/ dx len) 0.0)]
-     (mapv (fn [i]
-             (let [t (/ (double i) (double (dec n)))
-                   wave (* amp (Math/sin (* t (double n) freq)))]
-               [(+ (double x0) (* t dx) (* wave nx))
-                (+ (double y0) (* t dy) (* wave ny))
-                p 0 0 0]))
-           (range n)))))
+     (if (< n 2)
+       (if (= n 1) [[(double x0) (double y0) p 0 0 0]] [])
+       (mapv (fn [i]
+               (let [t (/ (double i) (double (dec n)))
+                     wave (* amp (Math/sin (* t (double n) freq)))]
+                 [(+ (double x0) (* t dx) (* wave nx))
+                  (+ (double y0) (* t dy) (* wave ny))
+                  p 0 0 0]))
+             (range n))))))
 
 (defn line-points
   "Generates stroke points along a straight line.
@@ -667,12 +679,14 @@
          [x1 y1] (get opts :to [(+ (double x0) 100) (double y0)])
          n (long (get opts :n 15))
          p (double (get opts :pressure 0.8))]
-     (mapv (fn [i]
-             (let [t (/ (double i) (double (dec n)))]
-               [(+ (double x0) (* t (- (double x1) (double x0))))
-                (+ (double y0) (* t (- (double y1) (double y0))))
-                p 0 0 0]))
-           (range n)))))
+     (if (< n 2)
+       (if (= n 1) [[(double x0) (double y0) p 0 0 0]] [])
+       (mapv (fn [i]
+               (let [t (/ (double i) (double (dec n)))]
+                 [(+ (double x0) (* t (- (double x1) (double x0))))
+                  (+ (double y0) (* t (- (double y1) (double y0))))
+                  p 0 0 0]))
+             (range n))))))
 
 ;; --- area fill helpers ---
 
