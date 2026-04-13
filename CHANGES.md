@@ -76,9 +76,6 @@
   signed distance function evaluators with hardness-controlled falloff
   and rotation support.
 
-- **Sensor dynamics** — Map pressure, speed, tilt, and stroke distance
-  to any brush parameter via interpolated curves.
-
 - **Procedural grain fields** — fBm, turbulence, ridge, fiber, weave,
   and canvas grain types. Modulate paint deposition inside the tip area
   for chalk, pastel, and canvas texture effects.
