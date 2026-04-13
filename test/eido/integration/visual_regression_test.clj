@@ -653,3 +653,14 @@
               g2 (eido/render (entry-scene entry) {:format :gcode})]
           (is (= g1 g2)
               (str (entry-name entry) " G-code should be deterministic")))))))
+
+;; --- HPGL catalog determinism ---
+
+(deftest visual-catalog-hpgl-determinism-test
+  (testing "every catalog scene produces identical HPGL on consecutive runs"
+    (doseq [entry feature-catalog]
+      (testing (entry-name entry)
+        (let [h1 (eido/render (entry-scene entry) {:format :hpgl})
+              h2 (eido/render (entry-scene entry) {:format :hpgl})]
+          (is (= h1 h2)
+              (str (entry-name entry) " HPGL should be deterministic")))))))
