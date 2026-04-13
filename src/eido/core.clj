@@ -281,7 +281,12 @@
           :output-path path
           :render-opts opts
           :seed        (:seed opts)
-          :params      (:params opts)}))
+          :params      (:params opts)
+          ;; Motion-stream formats silently drop fills/effects; surface
+          ;; the loss in the sidecar so downstream tooling can flag it.
+          :dropped     (when (#{"dxf" "gcode"} format)
+                         (polyline/summarize-drops
+                           (validated-compile scene)))}))
      path)))
 
 (defn render-from-manifest

@@ -261,6 +261,43 @@
               :image/nodes []}]
             {:format :polylines :fps 30})))))
 
+(deftest emit-manifest-records-drops-for-motion-formats-test
+  (testing "DXF/G-code manifests include :dropped when fills are present"
+    (doseq [ext ["dxf" "gcode"]]
+      (let [scene  {:image/size [100 100]
+                    :image/background [:color/rgb 255 255 255]
+                    :image/nodes
+                    [{:node/type :shape/circle
+                      :circle/center [50 50] :circle/radius 20
+                      :style/fill {:color [:color/rgb 200 0 0]}
+                      :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}
+            tmp    (str (File/createTempFile "eido-drops" (str "." ext)))
+            mpath  (str (subs tmp 0 (- (count tmp) (count ext) 1)) ".edn")]
+        (eido/render scene {:output tmp :emit-manifest? true})
+        (let [m (clojure.edn/read-string (slurp mpath))]
+          (is (= {:fills 1} (:dropped m))
+              (str ext " manifest reports the dropped fill")))
+        (.delete (File. ^String tmp))
+        (.delete (File. ^String mpath))))))
+
+(deftest emit-manifest-omits-drops-when-clean-test
+  (testing "stroke-only DXF/G-code manifests omit :dropped"
+    (doseq [ext ["dxf" "gcode"]]
+      (let [scene  {:image/size [100 100]
+                    :image/background [:color/rgb 255 255 255]
+                    :image/nodes
+                    [{:node/type :shape/circle
+                      :circle/center [50 50] :circle/radius 20
+                      :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}
+            tmp    (str (File/createTempFile "eido-clean" (str "." ext)))
+            mpath  (str (subs tmp 0 (- (count tmp) (count ext) 1)) ".edn")]
+        (eido/render scene {:output tmp :emit-manifest? true})
+        (let [m (clojure.edn/read-string (slurp mpath))]
+          (is (not (contains? m :dropped))
+              (str ext " manifest has no :dropped when nothing dropped")))
+        (.delete (File. ^String tmp))
+        (.delete (File. ^String mpath))))))
+
 (deftest render-motion-formats-animation-throws-test
   (testing ":dxf and :gcode reject animation input"
     (let [frames [{:image/size [100 100]

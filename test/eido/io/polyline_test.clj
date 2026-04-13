@@ -356,6 +356,47 @@
       (is (< (Math/abs (double x)) 1e-9))
       (is (< (Math/abs (- (double y) 10.0)) 1e-9)))))
 
+;; --- drop reporting ---
+
+(deftest dropped-absent-for-stroke-only-test
+  (testing "stroke-only scene produces no :dropped key"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [10 10] :rect/size [50 50]
+                    :style/stroke {:color [:color/rgb 0 0 0] :width 1}}])
+          result (polyline/extract-polylines (compile-scene scene))]
+      (is (not (contains? result :dropped))))))
+
+(deftest dropped-counts-fills-test
+  (testing "fills are counted in :dropped"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [10 10] :rect/size [50 50]
+                    :style/fill {:color [:color/rgb 200 0 0]}}
+                   {:node/type :shape/circle
+                    :circle/center [200 200] :circle/radius 30
+                    :style/fill {:color [:color/rgb 0 200 0]}}])
+          result (polyline/extract-polylines (compile-scene scene))]
+      (is (= {:fills 2} (:dropped result))))))
+
+(deftest dropped-also-on-grouped-test
+  (testing "extract-grouped-polylines reports drops the same way"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [10 10] :rect/size [50 50]
+                    :style/fill {:color [:color/rgb 200 0 0]}}])
+          result (polyline/extract-grouped-polylines (compile-scene scene))]
+      (is (= {:fills 1} (:dropped result))))))
+
+(deftest summarize-drops-public-helper-test
+  (testing "summarize-drops is a usable standalone helper"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/circle
+                    :circle/center [200 200] :circle/radius 30
+                    :style/fill {:color [:color/rgb 200 0 0]}}])
+          ir (compile-scene scene)]
+      (is (= {:fills 1} (polyline/summarize-drops ir))))))
+
 ;; --- clipping ---
 
 (deftest clip-line-through-rect-test

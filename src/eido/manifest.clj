@@ -49,20 +49,24 @@
     :output-path — path to the rendered file (required)
     :render-opts — the opts map passed to render (optional)
     :seed        — the seed used, if any (optional)
-    :params      — the params map, if any (optional)"
-  [{:keys [scene output-path render-opts seed params]}]
+    :params      — the params map, if any (optional)
+    :dropped     — drop-summary map for motion-stream exports
+                   (optional; only included when non-empty)"
+  [{:keys [scene output-path render-opts seed params dropped]}]
   (let [path (manifest-path output-path)]
     (spit path
       (pr-str
-        {:eido/manifest-version 1
-         :eido/version          (eido-version)
-         :project/sha           (git-sha)
-         :timestamp             (str (Instant/now))
-         :scene                 scene
-         :render-opts           (apply dissoc render-opts manifest-internal-keys)
-         :output-paths          [output-path]
-         :seed                  seed
-         :params                params}))
+        (cond-> {:eido/manifest-version 1
+                 :eido/version          (eido-version)
+                 :project/sha           (git-sha)
+                 :timestamp             (str (Instant/now))
+                 :scene                 scene
+                 :render-opts           (apply dissoc render-opts
+                                               manifest-internal-keys)
+                 :output-paths          [output-path]
+                 :seed                  seed
+                 :params                params}
+          (seq dropped) (assoc :dropped dropped))))
     path))
 
 (defn read-manifest

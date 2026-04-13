@@ -306,11 +306,62 @@
       (apply-clip polys op flatness segments)
       polys)))
 
+;; --- drop reporting ---
+;;
+;; Polyline extraction silently discards everything that can't be
+;; expressed as a stroke path: fills (solid, gradient, pattern, hatch,
+;; stipple) and graphics-only effects. Artists composing scenes that
+;; look correct on screen can end up with plotter output missing
+;; whole categories of visual information without any signal that
+;; something is gone. `count-drops` walks the IR ops and reports
+;; counts so the surrounding tooling (manifests, REPL workflows) can
+;; surface the loss.
+;;
+;; We only report what we can actually detect from leaf ops. Things
+;; that decompose into multiple ops at compile time (effects that
+;; bake into a :buffer of strokes; gradients lowered to ops) won't
+;; appear here individually — but the resulting fills/strokes will,
+;; so the count still flags scenes that used those features.
+
+(defn- walk-leaf-ops
+  "Flattens :buffer trees and returns the leaf ops as a vector."
+  [ops]
+  (into [] (mapcat (fn [op]
+                     (if (= :buffer (:op op))
+                       (walk-leaf-ops (:ops op))
+                       [op])))
+        ops))
+
+(defn- count-drops
+  "Walks IR ops counting silently-dropped visual features. Returns a
+  map with non-zero counts only (so a stroke-only scene gets `{}`)."
+  [ops]
+  (let [leaves (walk-leaf-ops ops)
+        fills  (count (filter :fill leaves))]
+    (cond-> {}
+      (pos? fills) (assoc :fills fills))))
+
+(defn ^{:stability :provisional} summarize-drops
+  "Returns a map of silently-dropped visual features for a compiled IR.
+  Counts what the polyline pipeline can't represent — fills (solid,
+  gradient, pattern, hatch, stipple) — so callers can warn or log
+  when an export would lose visible information.
+
+  Returns `{}` when nothing is dropped."
+  [ir]
+  (count-drops (:ir/ops ir)))
+
 ;; --- public API ---
 
 (defn extract-polylines
   "Extracts all polyline data from compiled IR.
-  Returns {:polylines [[[x1 y1] [x2 y2] ...] ...] :bounds [w h]}.
+  Returns {:polylines [[[x1 y1] [x2 y2] ...] ...] :bounds [w h]
+           :dropped   {:fills N ...} (only when non-empty)}.
+
+  The optional `:dropped` map summarizes visual features (fills,
+  gradients, patterns, hatch, stipple, effects) that the polyline
+  pipeline cannot represent — a scene that looks filled on screen
+  exports as outlines only, and `:dropped` flags how much got lost.
 
   Options:
     :flatness — curve subdivision tolerance (default 0.5)
@@ -320,9 +371,11 @@
    (let [flatness (get opts :flatness 0.5)
          segments (get opts :segments 64)
          ops      (:ir/ops ir)
-         polys    (into [] (mapcat #(op->polylines % flatness segments)) ops)]
-     {:polylines polys
-      :bounds    (:ir/size ir)})))
+         polys    (into [] (mapcat #(op->polylines % flatness segments)) ops)
+         drops    (count-drops ops)]
+     (cond-> {:polylines polys
+              :bounds    (:ir/size ir)}
+       (seq drops) (assoc :dropped drops)))))
 
 ;; --- grouped extraction (for motion-stream backends) ---
 ;;
@@ -376,15 +429,17 @@
    (let [flatness (get opts :flatness 0.5)
          segments (get opts :segments 64)
          ops      (flatten-op-tree (:ir/ops ir))
-         groups   (group-ops-by-stroke ops)]
-     {:groups (mapv (fn [{:keys [stroke ops]}]
-                      {:stroke    stroke
-                       :polylines (into []
-                                        (mapcat #(op->polylines % flatness
-                                                                segments))
-                                        ops)})
-                    groups)
-      :bounds (:ir/size ir)})))
+         groups   (group-ops-by-stroke ops)
+         drops    (count-drops (:ir/ops ir))]
+     (cond-> {:groups (mapv (fn [{:keys [stroke ops]}]
+                              {:stroke    stroke
+                               :polylines (into []
+                                                (mapcat #(op->polylines
+                                                           % flatness segments))
+                                                ops)})
+                            groups)
+              :bounds (:ir/size ir)}
+       (seq drops) (assoc :dropped drops)))))
 
 ;; --- travel optimization ---
 
