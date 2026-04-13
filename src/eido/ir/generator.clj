@@ -250,16 +250,26 @@
                                           (transform-point mat p)])
                     :close cmd
                     cmd))
+                (line->path [node]
+                  (let [{:keys [line/from line/to]} node]
+                    (-> node
+                        (assoc :node/type :shape/path
+                               :path/commands [[:move-to from]
+                                               [:line-to to]])
+                        (dissoc :line/from :line/to))))
                 (collect-painted [node mat]
                   (cond
                     ;; Leaf with paint params — render it
                     (and (#{:shape/path :shape/line} (:node/type node))
                          (:paint/brush node))
-                    (let [shifted (if (and (not (mat-identity? mat))
-                                          (:path/commands node))
-                                   (update node :path/commands
+                    (let [as-path (if (= :shape/line (:node/type node))
+                                    (line->path node)
+                                    node)
+                          shifted (if (and (not (mat-identity? mat))
+                                          (:path/commands as-path))
+                                   (update as-path :path/commands
                                      #(mapv (partial transform-cmd mat) %))
-                                   node)
+                                   as-path)
                           with-color (if (and default-color
                                              (not (:paint/color shifted))
                                              (not (:stroke/color shifted))
