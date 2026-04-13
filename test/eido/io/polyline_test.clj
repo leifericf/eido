@@ -356,6 +356,121 @@
       (is (< (Math/abs (double x)) 1e-9))
       (is (< (Math/abs (- (double y) 10.0)) 1e-9)))))
 
+;; --- clipping ---
+
+(deftest clip-line-through-rect-test
+  (testing "horizontal line clipped by narrow vertical rect"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :group
+                    :group/clip {:node/type :shape/rect
+                                 :rect/xy [40 0] :rect/size [20 400]}
+                    :group/children
+                    [{:node/type :shape/line
+                      :line/from [0 50] :line/to [400 50]
+                      :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}])
+          polys (:polylines (polyline/extract-polylines (compile-scene scene)))]
+      (is (= 1 (count polys)) "single line clipped to inside band")
+      (let [[[x1 _] [x2 _]] (first polys)]
+        (is (< (Math/abs (- (double x1) 40.0)) 1e-6))
+        (is (< (Math/abs (- (double x2) 60.0)) 1e-6))))))
+
+(deftest clip-line-entirely-inside-test
+  (testing "line entirely inside the clip is preserved"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :group
+                    :group/clip {:node/type :shape/rect
+                                 :rect/xy [10 10] :rect/size [380 380]}
+                    :group/children
+                    [{:node/type :shape/line
+                      :line/from [40 50] :line/to [60 50]
+                      :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}])
+          polys (:polylines (polyline/extract-polylines (compile-scene scene)))]
+      (is (= 1 (count polys)))
+      (is (= [[40.0 50.0] [60.0 50.0]] (first polys))))))
+
+(deftest clip-line-entirely-outside-test
+  (testing "line entirely outside the clip is dropped"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :group
+                    :group/clip {:node/type :shape/rect
+                                 :rect/xy [200 200] :rect/size [50 50]}
+                    :group/children
+                    [{:node/type :shape/line
+                      :line/from [10 10] :line/to [40 40]
+                      :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}])
+          polys (:polylines (polyline/extract-polylines (compile-scene scene)))]
+      (is (= 0 (count polys))))))
+
+(deftest clip-by-circle-test
+  (testing "rect outline clipped by smaller circle is empty (outline outside)"
+    ;; A 50×50 rect's outline at (10,10)-(60,60) clipped by a circle
+    ;; centered at (35,35) radius 5 — the circle is inside the rect's
+    ;; interior, so the outline never enters it.
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :group
+                    :group/clip {:node/type :shape/circle
+                                 :circle/center [35 35] :circle/radius 5}
+                    :group/children
+                    [{:node/type :shape/rect
+                      :rect/xy [10 10] :rect/size [50 50]
+                      :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}])
+          polys (:polylines (polyline/extract-polylines (compile-scene scene)))]
+      (is (= 0 (count polys))))))
+
+(deftest clip-circle-through-rect-test
+  (testing "circle outline crossing a narrow band produces multiple arcs"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :group
+                    :group/clip {:node/type :shape/rect
+                                 :rect/xy [0 190] :rect/size [400 20]}
+                    :group/children
+                    [{:node/type :shape/circle
+                      :circle/center [200 200] :circle/radius 100
+                      :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}])
+          polys (:polylines (polyline/extract-polylines (compile-scene scene)))]
+      ;; A closed circle through a band cuts into ≥ 2 arcs.
+      (is (>= (count polys) 2)))))
+
+(deftest clip-by-arbitrary-path-test
+  (testing "diagonal line clipped by diamond-shaped path"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :group
+                    :group/clip {:node/type :shape/path
+                                 :path/commands [[:move-to [200 100]]
+                                                 [:line-to [300 200]]
+                                                 [:line-to [200 300]]
+                                                 [:line-to [100 200]]
+                                                 [:close]]}
+                    :group/children
+                    [{:node/type :shape/line
+                      :line/from [50 200] :line/to [350 200]
+                      :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}])
+          polys (:polylines (polyline/extract-polylines (compile-scene scene)))]
+      (is (= 1 (count polys)))
+      (let [[[x1 _] [x2 _]] (first polys)]
+        (is (< (Math/abs (- (double x1) 100.0)) 1.0))
+        (is (< (Math/abs (- (double x2) 300.0)) 1.0))))))
+
+(deftest clip-respects-group-transforms-test
+  (testing "transforms on a clipped group apply to clip and geometry alike"
+    ;; Clip is a 20-wide rect at (40, 0); contents is a horizontal line
+    ;; through y=50. Translating the entire group by (100, 0) should
+    ;; move both — the visible portion ends up at x=140..160.
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :group
+                    :node/transform [[:transform/translate 100 0]]
+                    :group/clip {:node/type :shape/rect
+                                 :rect/xy [40 0] :rect/size [20 400]}
+                    :group/children
+                    [{:node/type :shape/line
+                      :line/from [0 50] :line/to [400 50]
+                      :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}])
+          polys (:polylines (polyline/extract-polylines (compile-scene scene)))]
+      (is (= 1 (count polys)))
+      (let [[[x1 _] [x2 _]] (first polys)]
+        (is (< (Math/abs (- (double x1) 140.0)) 1e-6))
+        (is (< (Math/abs (- (double x2) 160.0)) 1e-6))))))
+
 ;; --- segments edge cases ---
 
 (deftest circle-with-degenerate-segments-test

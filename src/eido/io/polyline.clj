@@ -4,7 +4,7 @@
   (:require
     [eido.text :as text])
   (:import
-    [java.awt.geom AffineTransform Point2D$Double]))
+    [java.awt.geom AffineTransform Path2D$Double Point2D$Double]))
 
 ;; --- IR to scene command conversion ---
 
@@ -134,43 +134,177 @@
               [(.getX dst) (.getY dst)])
             polyline))))
 
+;; --- polyline clipping ---
+;;
+;; IR ops can carry a :clip key holding another op (the clip mask).
+;; Raster rendering passes both through Graphics2D's clip stack so
+;; geometry outside the clip is never drawn. For polyline export we
+;; have to bake the clip into the points: split each polyline at
+;; the clip boundary and keep only the inside portions.
+;;
+;; The implementation is segment-by-segment analytic clipping: find
+;; t-values where the segment crosses any clip-polygon edge, then
+;; classify each [t_i, t_{i+1}] interval by midpoint inside/outside
+;; (via Path2D.contains which handles non-convex clips correctly).
+
+(defn- ^Path2D$Double polygon->path2d
+  "Builds a closed Path2D from a polygon's points."
+  [polygon]
+  (let [p (Path2D$Double.)]
+    (when-let [[x0 y0] (first polygon)]
+      (.moveTo p (double x0) (double y0))
+      (doseq [[x y] (rest polygon)]
+        (.lineTo p (double x) (double y)))
+      (.closePath p))
+    p))
+
+(defn- segment-edge-t
+  "Returns t in (0,1) where segment [P0,P1] crosses edge [Q0,Q1],
+  or nil if the segments don't cross in that range."
+  [[x0 y0] [x1 y1] [a0 b0] [a1 b1]]
+  (let [d1x (- (double x1) (double x0))
+        d1y (- (double y1) (double y0))
+        d2x (- (double a1) (double a0))
+        d2y (- (double b1) (double b0))
+        det (- (* d1x d2y) (* d1y d2x))]
+    (when-not (zero? det)
+      (let [dx (- (double a0) (double x0))
+            dy (- (double b0) (double y0))
+            t  (/ (- (* dx d2y) (* dy d2x)) det)
+            s  (/ (- (* dx d1y) (* dy d1x)) det)]
+        (when (and (< 0.0 t) (< t 1.0) (<= 0.0 s) (<= s 1.0))
+          t)))))
+
+(defn- inside-portions
+  "Returns sub-segments of [P0,P1] that lie inside the clip polygon,
+  as a vector of [[start end] ...] point pairs (in segment order)."
+  [P0 P1 polygon ^Path2D$Double poly-shape]
+  (let [edges (partition 2 1 polygon)
+        ts    (->> edges
+                   (keep (fn [[Q0 Q1]] (segment-edge-t P0 P1 Q0 Q1)))
+                   (concat [0.0 1.0])
+                   distinct
+                   sort
+                   vec)
+        lerp  (fn [t]
+                [(+ (double (first P0))
+                    (* t (- (double (first P1)) (double (first P0)))))
+                 (+ (double (second P0))
+                    (* t (- (double (second P1)) (double (second P0)))))])]
+    (vec
+      (keep (fn [[t1 t2]]
+              (when (> (- t2 t1) 1e-12)
+                (let [[mx my] (lerp (* 0.5 (+ t1 t2)))]
+                  (when (.contains poly-shape (double mx) (double my))
+                    [(lerp t1) (lerp t2)]))))
+            (partition 2 1 ts)))))
+
+(defn- nearly-equal?
+  [[x1 y1] [x2 y2]]
+  (and (< (Math/abs (- (double x1) (double x2))) 1e-9)
+       (< (Math/abs (- (double y1) (double y2))) 1e-9)))
+
+(defn- clip-polyline-by-polygon
+  "Clips a polyline against a closed polygon. Returns a vector of
+  sub-polylines (in input order) that lie inside the polygon. Each
+  sub-polyline has at least two points; degenerate empty polylines
+  are dropped."
+  [polyline polygon]
+  (cond
+    (< (count polyline) 2) []
+    (< (count polygon) 3)  [polyline]
+    :else
+    (let [poly-shape (polygon->path2d polygon)]
+      (loop [pts     (rest polyline)
+             prev    (first polyline)
+             current []
+             result  []]
+        (if (empty? pts)
+          (cond-> result (>= (count current) 2) (conj current))
+          (let [P1   (first pts)
+                subs (inside-portions prev P1 polygon poly-shape)
+                [new-current new-result]
+                (reduce (fn [[cur res] [start end]]
+                          (cond
+                            (empty? cur)
+                            [[start end] res]
+                            (nearly-equal? (peek cur) start)
+                            [(conj cur end) res]
+                            :else
+                            [[start end] (cond-> res
+                                           (>= (count cur) 2) (conj cur))]))
+                        [current result]
+                        subs)]
+            (recur (rest pts) P1 new-current new-result)))))))
+
 ;; --- op dispatch ---
+
+(declare op->polylines)
+
+(defn- op-geometry->polylines
+  "Extracts polylines for an op's geometry, applying the op's own
+  :transforms but ignoring :clip and :opacity gates. Building block
+  for both top-level extraction (op->polylines) and clip-polygon
+  extraction."
+  [op flatness segments]
+  (let [at    (transforms->affine (:transforms op))
+        polys (case (:op op)
+                :path    (let [scene-cmds (ir-commands->scene-commands
+                                            (:commands op))
+                               flat (text/flatten-commands
+                                      scene-cmds flatness)]
+                           (commands->polylines flat))
+                :rect    (let [{:keys [x y w h]} op]
+                           [(rect-polyline x y w h)])
+                :circle  (let [{:keys [cx cy r]} op]
+                           [(circle-polyline cx cy r segments)])
+                :ellipse (let [{:keys [cx cy rx ry]} op]
+                           [(ellipse-polyline cx cy rx ry segments)])
+                :arc     (let [{:keys [cx cy rx ry start extent]} op]
+                           [(arc-polyline cx cy rx ry start extent segments)])
+                :line    (let [{:keys [x1 y1 x2 y2]} op]
+                           [[[x1 y1] [x2 y2]]])
+                :buffer  (into [] (mapcat #(op->polylines % flatness segments))
+                               (:ops op))
+                ;; Unknown op types produce no polylines
+                [])]
+    (if (.isIdentity at)
+      polys
+      (mapv #(transform-polyline at %) polys))))
+
+(defn- apply-clip
+  "Clips polys against parent-op's :clip geometry. The clip op is
+  extracted in the parent's transformed space (parent transforms
+  are applied to the clip polygon as well as the geometry, since
+  raster rendering applies the parent transform to both)."
+  [polys parent-op flatness segments]
+  (let [clip-op   (:clip parent-op)
+        parent-at (transforms->affine (:transforms parent-op))
+        clip-raw  (op-geometry->polylines clip-op flatness segments)
+        clip-polys (if (.isIdentity parent-at)
+                     clip-raw
+                     (mapv #(transform-polyline parent-at %) clip-raw))
+        clip-polygon (first clip-polys)]
+    (if (and clip-polygon (>= (count clip-polygon) 3))
+      (vec (mapcat #(clip-polyline-by-polygon % clip-polygon) polys))
+      polys)))
 
 (defn- op->polylines
   "Extracts polylines from a single IR op, baking the op's :transforms
-  into the output points. Returns a vector of polylines.
+  into the output points and clipping against any :clip geometry.
+  Returns a vector of polylines.
 
   Ops with :opacity 0 are skipped, matching the raster renderer which
   draws nothing at zero alpha. This avoids wasting pen travel on
   shapes the artist has deliberately hidden."
   [op flatness segments]
-  (let [at    (transforms->affine (:transforms op))
-        polys (if (and (contains? op :opacity)
+  (let [polys (if (and (contains? op :opacity)
                        (zero? (double (:opacity op))))
                 []
-                (case (:op op)
-                  :path    (let [scene-cmds (ir-commands->scene-commands
-                                              (:commands op))
-                                 flat (text/flatten-commands
-                                        scene-cmds flatness)]
-                             (commands->polylines flat))
-                  :rect    (let [{:keys [x y w h]} op]
-                             [(rect-polyline x y w h)])
-                  :circle  (let [{:keys [cx cy r]} op]
-                             [(circle-polyline cx cy r segments)])
-                  :ellipse (let [{:keys [cx cy rx ry]} op]
-                             [(ellipse-polyline cx cy rx ry segments)])
-                  :arc     (let [{:keys [cx cy rx ry start extent]} op]
-                             [(arc-polyline cx cy rx ry start extent segments)])
-                  :line    (let [{:keys [x1 y1 x2 y2]} op]
-                             [[[x1 y1] [x2 y2]]])
-                  :buffer  (into [] (mapcat #(op->polylines % flatness segments))
-                                 (:ops op))
-                  ;; Unknown op types produce no polylines
-                  []))]
-    (if (.isIdentity at)
-      polys
-      (mapv #(transform-polyline at %) polys))))
+                (op-geometry->polylines op flatness segments))]
+    (if (:clip op)
+      (apply-clip polys op flatness segments)
+      polys)))
 
 ;; --- public API ---
 
