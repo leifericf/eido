@@ -937,14 +937,12 @@
               [:color/rgb 150 50 40]]))}
 
      "docs-wf-3d-sphere.png"
-     (let [proj (s3d/perspective {:fov 60 :near 0.1 :far 100
-                                  :width 400 :height 400})
-           cam  (s3d/orbit proj [0 0 0]
-                  {:radius 4 :yaw 0.6 :pitch -0.3})
+     (let [proj (s3d/perspective {:scale 120 :origin [200 200]
+                                  :yaw 0.6 :pitch -0.3 :distance 5})
            light {:light/direction [1 1 0.5]
                   :light/ambient 0.2
                   :light/intensity 0.8}
-           result (s3d/sphere cam [0 0 0]
+           result (s3d/sphere proj [0 0 0]
                     {:radius 1.5
                      :style {:style/fill [:color/rgb 100 150 255]
                              :style/stroke {:color [:color/rgb 40 60 120]
