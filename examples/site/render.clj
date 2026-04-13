@@ -1114,6 +1114,200 @@
         :paint/radius 22.0
         :paint/pressure [[0.0 0.4] [0.5 1.0] [1.0 0.4]]}]}
 
+     ;; --- Workflow animation ---
+
+     "docs-wf-animation-basics.gif"
+     {:frames
+      (anim/frames 30
+        (fn [t]
+          {:image/size [300 300]
+           :image/background [:color/rgb 30 30 40]
+           :image/nodes
+           [{:node/type     :shape/circle
+             :circle/center [150 150]
+             :circle/radius (+ 20 (* 110 t))
+             :style/fill    [:color/hsl (* 360 t) 0.8 0.5]}]}))
+      :fps 20}
+
+     ;; --- Workflow 3D ---
+
+     "docs-wf-3d-primitives.png"
+     ;; Four primitive meshes side by side — sphere, cube, cylinder,
+     ;; torus — with the same lighting and material so readers can see
+     ;; the shape variety rather than stylistic differences.
+     (let [light {:light/direction [1 1 0.5] :light/ambient 0.25
+                  :light/intensity 0.8}
+           style {:style/fill [:color/rgb 180 190 220]
+                  :style/stroke {:color [:color/rgb 60 70 100]
+                                 :width 0.4}}
+           proj-at (fn [cx]
+                     (s3d/perspective {:scale 65 :origin [cx 150]
+                                       :yaw 0.5 :pitch -0.25 :distance 6}))]
+       {:image/size [900 300]
+        :image/background [:color/rgb 240 238 232]
+        :image/nodes
+        [(s3d/sphere (proj-at 110) [0 0 0]
+                     {:radius 1.3 :style style :light light
+                      :segments 24 :rings 16})
+         (s3d/cube (proj-at 340) [0 0 0]
+                   {:size 2.2 :style style :light light})
+         (s3d/cylinder (proj-at 570) [0 0 0]
+                       {:radius 0.8 :height 2.2 :style style
+                        :light light :segments 24})
+         (s3d/torus (proj-at 800) [0 0 0]
+                    {:major-radius 1.1 :minor-radius 0.4
+                     :style style :light light
+                     :ring-segments 24 :tube-segments 12})]})
+
+     "docs-wf-3d-transforms.png"
+     ;; Show chained transforms — rotate, non-uniform scale, and a
+     ;; twist deformation — producing a stretched, twisted shape.
+     (let [proj (s3d/perspective {:scale 150 :origin [200 200]
+                                  :yaw 0.4 :pitch -0.2 :distance 6})
+           light {:light/direction [1 1 0.5] :light/ambient 0.25
+                  :light/intensity 0.8}
+           m (-> (s3d/sphere-mesh 1.2 {:segments 24 :rings 16})
+                 (s3d/rotate-mesh :y 0.3)
+                 (s3d/scale-mesh [1.0 1.5 1.0])
+                 (s3d/deform-mesh {:deform/type :twist
+                                   :deform/axis :y
+                                   :deform/amount 0.9}))]
+       {:image/size [400 400]
+        :image/background [:color/rgb 240 238 232]
+        :image/nodes
+        [(s3d/render-mesh proj m
+           {:style {:style/fill [:color/rgb 120 180 150]
+                    :style/stroke {:color [:color/rgb 40 80 60]
+                                   :width 0.4}}
+            :light light})]})
+
+     "docs-wf-3d-texture.png"
+     ;; Noise-painted sphere via paint-mesh + render-mesh. Demonstrates
+     ;; UV-projected procedural color against a neutral backdrop.
+     (let [proj (s3d/perspective {:scale 150 :origin [200 200]
+                                  :yaw 0.4 :pitch -0.25 :distance 6})
+           light {:light/direction [1 1 0.5] :light/ambient 0.3
+                  :light/intensity 0.7}
+           noise-field (requiring-resolve 'eido.ir.field/noise-field)
+           m (-> (s3d/sphere-mesh 1.4 {:segments 32 :rings 20})
+                 (s3d/subdivide {:iterations 1})
+                 (s3d/paint-mesh
+                   {:color/type :field
+                    :color/field (noise-field :scale 2.5 :variant :fbm
+                                              :seed 19)
+                    :color/palette [[:color/rgb 200 80 60]
+                                    [:color/rgb 220 180 100]
+                                    [:color/rgb 90 140 180]
+                                    [:color/rgb 60 90 150]]}))]
+       {:image/size [400 400]
+        :image/background [:color/rgb 240 238 232]
+        :image/nodes
+        [(s3d/render-mesh proj m
+           {:light light :shading :smooth})]})
+
+     "docs-wf-3d-npr.png"
+     ;; Hatch-stroked sphere — lit faces get sparse hatching, shadowed
+     ;; faces get dense hatching. Produces a plotter-friendly drawing.
+     (let [proj (s3d/perspective {:scale 140 :origin [200 200]
+                                  :yaw 0.4 :pitch -0.25 :distance 6})
+           m (s3d/sphere-mesh 1.4 {:segments 16 :rings 10})]
+       {:image/size [400 400]
+        :image/background [:color/rgb 248 246 240]
+        :image/nodes
+        [(s3d/render-mesh proj m
+           {:style {:render/mode :hatch
+                    :style/fill [:color/rgb 250 247 238]
+                    :hatch/angle 45 :hatch/spacing 3
+                    :hatch/color [:color/rgb 40 30 20]
+                    :hatch/stroke-width 0.5}
+            :light {:light/direction [1 2 1]
+                    :light/ambient 0.2
+                    :light/intensity 0.8}
+            :cull-back false})]})
+
+     ;; --- Workflow color ---
+
+     "docs-wf-palette-generation.png"
+     ;; Show three color-theory palettes derived from a common base
+     ;; hue: complementary pair, analogous (5), triadic (3).
+     {:image/size [480 220]
+      :image/background [:color/rgb 245 243 238]
+      :image/nodes
+      (let [base [:color/oklch 0.65 0.15 30]
+            comp-pal [base (palette/complementary base)]
+            ana-pal  (palette/analogous base 5)
+            tri-pal  (palette/triadic base)
+            swatch   (fn [pal row]
+                       (vec (map-indexed
+                              (fn [i c]
+                                {:node/type :shape/rect
+                                 :rect/xy [(+ 20 (* i 60)) (+ 20 (* row 60))]
+                                 :rect/size [52 52]
+                                 :rect/corner-radius 4
+                                 :style/fill c})
+                              pal)))]
+        (vec (concat (swatch comp-pal 0)
+                     (swatch ana-pal 1)
+                     (swatch tri-pal 2))))}
+
+     "docs-wf-palette-manipulation.png"
+     ;; Original palette vs warmer / cooler / muted variants stacked.
+     {:image/size [480 220]
+      :image/background [:color/rgb 245 243 238]
+      :image/nodes
+      (let [base (:sunset palette/palettes)
+            rows [base
+                  (palette/warmer base 12)
+                  (palette/cooler base 12)
+                  (palette/muted base 0.4)]
+            swatch (fn [pal row]
+                     (vec (map-indexed
+                            (fn [i c]
+                              {:node/type :shape/rect
+                               :rect/xy [(+ 20 (* i 72)) (+ 10 (* row 50))]
+                               :rect/size [64 40]
+                               :rect/corner-radius 4
+                               :style/fill c})
+                            (take 6 pal))))]
+        (vec (mapcat (fn [row pal] (swatch pal row))
+                     (range) rows)))}
+
+     ;; --- Workflow editions ---
+
+     "docs-wf-editions-contact.png"
+     ;; Miniature contact sheet — 10 seeded variations of one algorithm
+     ;; so readers see what "export-edition-package" produces.
+     (let [tile-w 90 tile-h 90 cols 5 rows 2 pad 8
+           w (+ pad (* cols (+ tile-w pad)))
+           h (+ pad (* rows (+ tile-h pad)))
+           tile (fn [seed ox oy]
+                  (let [rng (prob/make-rng seed)
+                        n   (+ 6 (long (* 6 (.nextDouble rng))))
+                        hue (* 360 (.nextDouble rng))
+                        tile-bg [:color/hsl hue 0.25 0.92]
+                        fg      [:color/hsl (mod (+ hue 20) 360) 0.55 0.35]]
+                    (into [{:node/type :shape/rect
+                            :rect/xy [ox oy]
+                            :rect/size [tile-w tile-h]
+                            :rect/corner-radius 3
+                            :style/fill tile-bg}]
+                          (for [_ (range n)]
+                            {:node/type :shape/circle
+                             :circle/center [(+ ox 6 (* (- tile-w 12) (.nextDouble rng)))
+                                             (+ oy 6 (* (- tile-h 12) (.nextDouble rng)))]
+                             :circle/radius (+ 2 (* 10 (.nextDouble rng)))
+                             :style/fill fg
+                             :node/opacity 0.7}))))]
+       {:image/size [w h]
+        :image/background [:color/rgb 250 248 242]
+        :image/nodes
+        (vec (apply concat
+               (for [r (range rows) c (range cols)
+                     :let [seed (+ 42 (* r cols) c)
+                           ox (+ pad (* c (+ tile-w pad)))
+                           oy (+ pad (* r (+ tile-h pad)))]]
+                 (tile seed ox oy))))})
+
      }))
 
 (defn render-docs-examples!

@@ -2535,7 +2535,7 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:p "For a full archival package — images, manifests, and a contact sheet in one call — use " [:code "export-edition-package"] ":"]
-     [:pre [:code
+     [:pre {:data-img "docs-wf-editions-contact.png"} [:code
             "(series/export-edition-package
   {:spec        spec
    :master-seed 42
@@ -2749,7 +2749,7 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:p "An animation is a sequence of scenes — one map per frame. No timeline, no keyframes, no mutation:"]
-     [:pre [:code
+     [:pre {:data-img "docs-wf-animation-basics.gif"} [:code
             "(require '[eido.animate :as anim])
 
 (def frames
@@ -2846,7 +2846,7 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:p "3D scenes start with mesh primitives — pure data maps describing vertices and faces:"]
-     [:pre [:code
+     [:pre {:data-img "docs-wf-3d-primitives.png"} [:code
             "(require '[eido.scene3d :as s3d])
 
 ;; Primitive constructors
@@ -2867,7 +2867,7 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:p "All transforms are pure functions — mesh in, mesh out:"]
-     [:pre [:code
+     [:pre {:data-img "docs-wf-3d-transforms.png"} [:code
             "(-> (s3d/sphere-mesh 1.0)
     (s3d/translate [2 0 0])
     (s3d/rotate-y 0.5)
@@ -2881,11 +2881,13 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:pre [:code
-            ";; Perspective projection
-(def proj (s3d/perspective {:fov 60 :near 0.1 :far 100
-                            :width 800 :height 600}))
+            ";; Perspective projection — :scale is pixels-per-unit,
+;; :origin is the image center, :distance sets the camera setback.
+(def proj (s3d/perspective
+            {:scale 120 :origin [400 300] :distance 5}))
 
-;; Position the camera
+;; Orbit around a target — replaces proj's yaw/pitch so the camera
+;; looks at the target from the given spherical angle.
 (def cam (s3d/orbit proj [0 0 0]
            {:radius 5 :yaw 0.3 :pitch -0.2}))"]]
      [:p "The projection transforms 3D coordinates to 2D screen space. " [:code "orbit"] " positions the camera looking at a target point."]]}
@@ -2912,7 +2914,7 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:p "The 2D↔3D bridge lets you use noise, palettes, and fields as surface textures:"]
-     [:pre [:code
+     [:pre {:data-img "docs-wf-3d-texture.png"} [:code
             ";; UV-mapped noise texture
 (s3d/paint-mesh mesh
   (fn [u v face-normal]
@@ -2925,7 +2927,7 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:p "Apply 2D hatching and stippling to 3D faces, with density driven by lighting:"]
-     [:pre [:code
+     [:pre {:data-img "docs-wf-3d-npr.png"} [:code
             ";; Hatch lines whose density follows the light direction
 (s3d/render-mesh mesh cam
   {:style :hatch
@@ -2957,7 +2959,7 @@ CircleOp{...original-shape...}"]]
     :title "Palette Generation"
     :content
     [:div
-     [:pre [:code
+     [:pre {:data-img "docs-wf-palette-generation.png"} [:code
             "(require '[eido.color.palette :as palette])
 
 ;; Built-in palettes
@@ -2978,16 +2980,17 @@ CircleOp{...original-shape...}"]]
     :content
     [:div
      [:p "Transform entire palettes while preserving relationships:"]
-     [:pre [:code
-            ";; Temperature and saturation
-(palette/warmer pal)
-(palette/cooler pal)
-(palette/muted pal)
-(palette/vivid pal)
+     [:pre {:data-img "docs-wf-palette-manipulation.png"} [:code
+            ";; Temperature and saturation — rotate hue in degrees,
+;; desaturate/saturate in 0–1
+(palette/warmer pal 12)
+(palette/cooler pal 12)
+(palette/muted pal 0.4)
+(palette/vivid pal 0.4)
 
 ;; Lightness
-(palette/darker pal)
-(palette/lighter pal)
+(palette/darker pal 0.1)
+(palette/lighter pal 0.1)
 
 ;; General adjustment
 (palette/adjust pal {:lightness 0.1 :chroma -0.05})"]]]}
