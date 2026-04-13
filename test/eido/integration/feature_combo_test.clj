@@ -4,7 +4,8 @@
   the output is a valid image of the expected dimensions."
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.core :as eido])
+    [eido.core :as eido]
+    [eido.gen :as gen])
   (:import
     [java.awt.image BufferedImage]))
 
@@ -207,8 +208,8 @@
 
 (deftest circle-pack-nodes-with-clip-test
   (testing "circle-pack results clipped to shape"
-    (let [circles (eido.gen/circle-pack [10 10 180 180] {:seed 42 :max-circles 20})
-          nodes   (eido.gen/pack->nodes circles {:fill {:color [:color/rgb 200 50 50]}})
+    (let [circles (gen/circle-pack [10 10 180 180] {:seed 42 :max-circles 20})
+          nodes   (gen/pack->nodes circles {:fill {:color [:color/rgb 200 50 50]}})
           img     (eido/render
                     (scene [{:node/type :group
                              :group/clip {:node/type :shape/circle
