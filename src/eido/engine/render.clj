@@ -96,29 +96,18 @@
    :round BasicStroke/JOIN_ROUND
    :bevel BasicStroke/JOIN_BEVEL})
 
-(def ^:private create-basic-stroke
-  "Creates and caches a BasicStroke for the given [width cap join]. Memoized."
-  (memoize (fn ^BasicStroke [w cap join]
-             (BasicStroke. w cap join))))
-
-(defn- get-basic-stroke
-  "Returns a BasicStroke for the given params. Non-dash strokes are memoized."
-  ^BasicStroke [w cap join dash]
-  (if dash
-    ;; Dashed strokes not cached (float-array identity varies)
-    (BasicStroke. w cap join (float 10.0) (float-array dash) (float 0.0))
-    (create-basic-stroke w cap join)))
-
 (defn- apply-stroke [^Graphics2D g shape {:keys [stroke-color stroke-width
                                                   stroke-cap stroke-join
                                                   stroke-dash]}]
   (when stroke-color
     (.setColor g (->awt-color stroke-color))
-    (.setStroke g (get-basic-stroke
-                    (float (or stroke-width 1))
-                    (int (get cap-map stroke-cap BasicStroke/CAP_SQUARE))
-                    (int (get join-map stroke-join BasicStroke/JOIN_MITER))
-                    stroke-dash))
+    (let [w   (float (or stroke-width 1))
+          cap (int (get cap-map stroke-cap BasicStroke/CAP_SQUARE))
+          join (int (get join-map stroke-join BasicStroke/JOIN_MITER))]
+      (.setStroke g (if stroke-dash
+                      (BasicStroke. w cap join
+                        (float 10.0) (float-array stroke-dash) (float 0.0))
+                      (BasicStroke. w cap join))))
     (.draw g shape)))
 
 (def ^:private arc-mode-map
