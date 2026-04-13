@@ -327,6 +327,21 @@
       (is (= [20.0 0.0] (second poly)) "x scaled by 2")
       (is (= [20.0 30.0] (nth poly 2)) "y scaled by 3"))))
 
+(deftest opacity-zero-skipped-test
+  (testing "shapes with :node/opacity 0 are excluded from polylines"
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :shape/rect
+                    :rect/xy [10 10] :rect/size [30 30]
+                    :node/opacity 0
+                    :style/stroke {:color [:color/rgb 0 0 0] :width 1}}
+                   {:node/type :shape/rect
+                    :rect/xy [50 50] :rect/size [30 30]
+                    :node/opacity 1
+                    :style/stroke {:color [:color/rgb 0 0 0] :width 1}}])
+          result (polyline/extract-polylines (compile-scene scene))]
+      (is (= 1 (count (:polylines result)))
+          "only the opaque rect produces a polyline"))))
+
 (deftest rotate-bakes-into-polyline-test
   (testing ":transform/rotate rotates polyline points (radians)"
     (let [scene (assoc base-scene :image/nodes

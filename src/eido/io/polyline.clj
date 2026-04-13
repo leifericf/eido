@@ -138,27 +138,36 @@
 
 (defn- op->polylines
   "Extracts polylines from a single IR op, baking the op's :transforms
-  into the output points. Returns a vector of polylines."
+  into the output points. Returns a vector of polylines.
+
+  Ops with :opacity 0 are skipped, matching the raster renderer which
+  draws nothing at zero alpha. This avoids wasting pen travel on
+  shapes the artist has deliberately hidden."
   [op flatness segments]
   (let [at    (transforms->affine (:transforms op))
-        polys (case (:op op)
-                :path   (let [scene-cmds (ir-commands->scene-commands (:commands op))
-                              flat       (text/flatten-commands scene-cmds flatness)]
-                          (commands->polylines flat))
-                :rect   (let [{:keys [x y w h]} op]
-                          [(rect-polyline x y w h)])
-                :circle (let [{:keys [cx cy r]} op]
-                          [(circle-polyline cx cy r segments)])
-                :ellipse (let [{:keys [cx cy rx ry]} op]
-                           [(ellipse-polyline cx cy rx ry segments)])
-                :arc    (let [{:keys [cx cy rx ry start extent]} op]
-                          [(arc-polyline cx cy rx ry start extent segments)])
-                :line   (let [{:keys [x1 y1 x2 y2]} op]
-                          [[[x1 y1] [x2 y2]]])
-                :buffer (into [] (mapcat #(op->polylines % flatness segments))
-                              (:ops op))
-                ;; Unknown op types produce no polylines
-                [])]
+        polys (if (and (contains? op :opacity)
+                       (zero? (double (:opacity op))))
+                []
+                (case (:op op)
+                  :path    (let [scene-cmds (ir-commands->scene-commands
+                                              (:commands op))
+                                 flat (text/flatten-commands
+                                        scene-cmds flatness)]
+                             (commands->polylines flat))
+                  :rect    (let [{:keys [x y w h]} op]
+                             [(rect-polyline x y w h)])
+                  :circle  (let [{:keys [cx cy r]} op]
+                             [(circle-polyline cx cy r segments)])
+                  :ellipse (let [{:keys [cx cy rx ry]} op]
+                             [(ellipse-polyline cx cy rx ry segments)])
+                  :arc     (let [{:keys [cx cy rx ry start extent]} op]
+                             [(arc-polyline cx cy rx ry start extent segments)])
+                  :line    (let [{:keys [x1 y1 x2 y2]} op]
+                             [[[x1 y1] [x2 y2]]])
+                  :buffer  (into [] (mapcat #(op->polylines % flatness segments))
+                                 (:ops op))
+                  ;; Unknown op types produce no polylines
+                  []))]
     (if (.isIdentity at)
       polys
       (mapv #(transform-polyline at %) polys))))
