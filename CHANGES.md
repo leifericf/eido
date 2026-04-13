@@ -47,6 +47,16 @@
 
 ### Bug fixes
 
+- **`render` now errors on a raster `:format` without `:output`** —
+  `(eido.core/render scene {:format :png})` and the same for `:jpeg`,
+  `:tiff`, `:bmp` previously fell through to the BufferedImage branch
+  and silently dropped the format key. Raster formats have no useful
+  in-memory representation distinct from a `BufferedImage`, so we
+  still don't return one — but the call now throws an `ex-info`
+  pointing the user at `:output` for a file or at omitting `:format`
+  for the BufferedImage. Vector/text formats (`:svg`, `:dxf`,
+  `:gcode`, `:polylines`) are unchanged; they have natural in-memory
+  return values.
 - **Paint pipeline now handles `:shape/line`** — The paint renderer
   requires `:path/commands`; `:shape/line` nodes carry `:line/from`
   and `:line/to` instead. A line with `:paint/brush` silently rendered
