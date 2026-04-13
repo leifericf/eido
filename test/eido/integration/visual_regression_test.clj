@@ -624,3 +624,32 @@
               svg2 (str (eido/render (entry-scene entry) {:format :svg}))]
           (is (= svg1 svg2)
               (str (entry-name entry) " SVG should be deterministic")))))))
+
+;; --- DXF catalog determinism ---
+;;
+;; DXF and G-code only carry stroked geometry through to their output;
+;; fill-only ops collapse to an empty pen-none layer (still
+;; deterministic) and op types the polyline extractor doesn't know
+;; (text glyphs, raster effects, procedural fills, gradients) emit no
+;; entities. Determinism is the only assertion either way, so every
+;; catalog entry is exercised.
+
+(deftest visual-catalog-dxf-determinism-test
+  (testing "every catalog scene produces identical DXF on consecutive runs"
+    (doseq [entry feature-catalog]
+      (testing (entry-name entry)
+        (let [dxf1 (eido/render (entry-scene entry) {:format :dxf})
+              dxf2 (eido/render (entry-scene entry) {:format :dxf})]
+          (is (= dxf1 dxf2)
+              (str (entry-name entry) " DXF should be deterministic")))))))
+
+;; --- G-code catalog determinism ---
+
+(deftest visual-catalog-gcode-determinism-test
+  (testing "every catalog scene produces identical G-code on consecutive runs"
+    (doseq [entry feature-catalog]
+      (testing (entry-name entry)
+        (let [g1 (eido/render (entry-scene entry) {:format :gcode})
+              g2 (eido/render (entry-scene entry) {:format :gcode})]
+          (is (= g1 g2)
+              (str (entry-name entry) " G-code should be deterministic")))))))
