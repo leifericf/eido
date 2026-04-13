@@ -233,10 +233,6 @@
                        sy (double (or (second args) sx))]
                    (.scale g sx sy)))))
 
-(def ^:private ^:dynamic *prev-opacity*
-  "Tracks the last opacity set on the Graphics2D to skip redundant calls."
-  -1.0)
-
 (defn- render-single-op
   "Renders a single leaf IR op onto g with transforms, clip, and opacity."
   [^Graphics2D g op]
@@ -244,11 +240,9 @@
         clip-op    (:clip op)
         has-state? (or (seq transforms) clip-op)
         opacity    (max 0.0 (min 1.0 (double (:opacity op))))]
-    (when (not= opacity *prev-opacity*)
-      (.setComposite g (AlphaComposite/getInstance
-                         AlphaComposite/SRC_OVER
-                         (float opacity)))
-      (set! *prev-opacity* opacity))
+    (.setComposite g (AlphaComposite/getInstance
+                       AlphaComposite/SRC_OVER
+                       (float opacity)))
     (if has-state?
       (let [saved-transform (.getTransform g)
             saved-clip      (.getClip g)]
@@ -574,13 +568,8 @@
                 (BufferedImage. (int w) (int h) BufferedImage/TYPE_INT_ARGB))
         bg  (.createGraphics buf)]
     (.setRenderingHints bg (.getRenderingHints g))
-    ;; Reset opacity tracking for the buffer's Graphics2D context
-    (let [saved-prev-opacity *prev-opacity*]
-      (set! *prev-opacity* -1.0)
-      (doseq [child-op ops]
-        (render-ir-op bg buf [w h] child-op))
-      ;; Restore and invalidate so outer context re-sets its composite
-      (set! *prev-opacity* -1.0))
+    (doseq [child-op ops]
+      (render-ir-op bg buf [w h] child-op))
     (.dispose bg)
     ;; Apply filter to buffer before compositing
     (when filter
@@ -634,9 +623,8 @@
                           AlphaComposite/SRC_OVER 1.0))
        (.setColor g (->awt-color (:ir/background ir)))
        (.fillRect g 0 0 w h))
-     ;; Render ops in order, with buffer pool and opacity tracking
-     (binding [*buffer-pool* nil
-               *prev-opacity* -1.0]
+     ;; Render ops in order, with buffer pool
+     (binding [*buffer-pool* nil]
        (doseq [op (:ir/ops ir)]
          (render-ir-op g img [w h] op)))
      (.dispose g)
