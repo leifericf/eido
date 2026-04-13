@@ -160,11 +160,36 @@
 
 ;; --- Source code extraction ---
 
+(defn- strip-example-metadata
+  "Strips `^{:example {...}}` reader metadata from a source-fn string so
+  the gallery's View source displays code a user can paste into a REPL
+  as-is. The `:example` map is internal bookkeeping for the site build;
+  readers don't need to see it. Uses brace balancing rather than regex
+  because the metadata map can contain nested collections."
+  [src]
+  (if-let [start (str/index-of src "^{:example")]
+    (let [open (str/index-of src "{" start)
+          n (count src)
+          end (loop [i (inc open) depth 1]
+                (cond
+                  (zero? depth)    (dec i)
+                  (>= i n)         n
+                  (= \{ (.charAt src i)) (recur (inc i) (inc depth))
+                  (= \} (.charAt src i)) (recur (inc i) (dec depth))
+                  :else            (recur (inc i) depth)))
+          after (loop [i (inc end)]
+                  (if (and (< i n) (Character/isWhitespace (.charAt src i)))
+                    (recur (inc i)) i))]
+      (str (subs src 0 start) (subs src after)))
+    src))
+
 (defn example-source
-  "Returns the source code string for an example var."
+  "Returns the source code string for an example var, with the internal
+  `^{:example ...}` metadata stripped so users can copy/paste into a REPL."
   [{:keys [var]}]
-  (repl/source-fn (symbol (str (namespace (symbol var)))
-                          (str (name (symbol var))))))
+  (some-> (repl/source-fn (symbol (str (namespace (symbol var)))
+                                  (str (name (symbol var)))))
+          strip-example-metadata))
 
 ;; --- Docs preview rendering ---
 
