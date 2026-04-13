@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+### New features
+
+- **DXF R12 ASCII writer** (`eido.io.dxf`, provisional) — New
+  motion-stream backend for CAD and fabrication workflows. Opens
+  Eido to laser cutters, CNC routers, vinyl cutters, plasma
+  tables, waterjets, and any other tool that accepts DXF
+  interchange. Each unique stroke color becomes a DXF `LAYER`
+  named `pen-<r>-<g>-<b>` (or `pen-none` for fill-only ops);
+  colors are mapped to the AutoCAD Color Index (ACI) via
+  nearest-neighbor against the fixed 9-color named palette. Emits
+  R12 via `POLYLINE` / `VERTEX` / `SEQEND` entities with proper
+  closed-flag (`70 1`) handling, units declared as millimeters
+  (`$INSUNITS 4`), and travel optimization applied per layer.
+  `write-dxf` is a pure fn (string in, string out) — callers spit
+  to disk. Verifies cleanly in LibreCAD and QCAD.
+- **GRBL G-code writer** (`eido.io.gcode`, provisional) — Second
+  motion-stream backend for pen-on-CNC, laser cutters, and 2D
+  CNC routers. Each stroke-color group becomes an `M0`
+  operator-pause tool change plus `M3`/`M4` spindle/laser on;
+  polylines emit `G0` rapids to start points, `G1` plunges to
+  `:z-down`, `G1` draws at `:feed`, and `G1` retracts to
+  `:z-up`. Y-axis is flipped relative to scene height so `(0, 0)`
+  sits at bottom-left (CNC convention). Opts cover feed rate, Z
+  heights, spindle power, laser vs spindle mode, scale, and the
+  standard curve/segment tolerances. Marlin dialect and advanced
+  features (bed leveling, tool-length offsets, G2/G3 arcs) are
+  out of scope.
+- **Grouped-polyline substrate** (`eido.io.polyline`, provisional)
+  — Shared foundation for motion-stream backends.
+  `extract-grouped-polylines` returns `{:groups [{:stroke
+  <rgb-or-nil> :polylines [...]} ...] :bounds [w h]}`, grouping
+  polylines by stroke color in first-seen order and flattening
+  `:buffer` ops to leaves. `optimize-travel-polylines` reorders a
+  vector of polylines via greedy nearest-neighbor from origin to
+  minimize pen-up travel. The existing `extract-polylines` is
+  unchanged; the SVG render path keeps its internal op-level
+  grouping and optimization untouched, so plotter behavior is
+  preserved.
+
 ### Bug fixes
 
 - **Paint pipeline now handles `:shape/line`** — The paint renderer

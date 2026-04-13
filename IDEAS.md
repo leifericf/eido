@@ -136,9 +136,15 @@ scene or the renderer changed — slow and wasteful.
 
 Eido's core produces polylines (and meshes, via OBJ). Each output
 format is essentially a serializer on top of that IR. Current
-backends: SVG, plotter, polyline, OBJ. This section surveys
-potential new export targets, organized by effort and audience
+backends: SVG, plotter, polyline, OBJ, DXF, G-code. This section
+surveys further export targets, organized by effort and audience
 captured.
+
+The shared motion-stream substrate —
+`eido.io.polyline/extract-grouped-polylines` and
+`optimize-travel-polylines` — is in place and ready to be consumed
+by new backends; no further IR refactor is needed for any tier-1
+or tier-2 target below.
 
 ### Prioritization framework
 
@@ -155,152 +161,18 @@ Five axes to score each target:
 5. **Openness** — is the format documented, reverse-engineered, or
    open-spec? Safe to target long-term?
 
-Two meta-questions dominate the ranking regardless of the table:
+One meta-question dominates the ranking regardless of the table:
 
 - **Who are we trying to attract next?** Existing
   plotter/fabrication users → tier 1. A new craft community → pick
   one tier 2 or tier 4 target and go deep. Each new audience is a
   distinct docs/gallery/example effort, not just code.
-- **Is the plotter backend well-factored enough to cheaply add
-  siblings?** Partly. The concrete IR is clean and already feeds a
-  non-rendering backend (polyline extraction). But a small,
-  bounded refactor at the polyline layer gates every motion-stream
-  backend; see tier 0 below.
-
-### Tier 0 — polyline-layer refactor (prerequisite)
-
-Not a new backend; a substrate change that every motion-stream
-backend (DXF, G-code, embroidery, laser G-code) will depend on.
-
-**Current state (audited 2026-04-13):**
-
-The concrete IR (`eido.ir` — `->RectOp`, `->CircleOp`, `->PathOp`,
-`->BufferOp`, etc.) is plain data and format-neutral. Pipeline is:
-
-    scene map → semantic IR → eido.ir.lower → concrete ops → backend
-
-`eido.io.polyline/extract-polylines` already walks `:ir/ops` and
-dispatches per-op, proving the IR can feed non-rendering backends.
-
-Three responsibilities, however, are stranded inside the SVG
-render path where motion-stream backends cannot reach them:
-
-1. **Travel optimization** lives in `render-to-svg` via the
-   `:optimize-travel` option. It is a polyline-graph problem, not
-   an SVG-specific concern.
-2. **Per-pen grouping** is passed as `:group-by-stroke` to
-   `render-to-svg`; `eido.io.plotter/split-svg-groups` then
-   recovers the grouping by parsing `<g id="pen-...">` tags out of
-   the rendered SVG text. Grouping is not a first-class
-   polyline-layer concept.
-3. **Stroke color is discarded** by `extract-polylines` — the
-   return is bare `[[x y] ...]` vectors with no color/pen/layer
-   tag. Fine for a single-tool plotter; useless for DXF layers,
-   G-code tool changes, or embroidery color changes.
-
-Consequence: `eido.io.plotter` is an SVG post-processor, not a
-peer serializer. New motion-stream backends must not extend that
-pattern — they should sit next to `polyline.clj`, consuming the
-concrete IR directly.
-
-**Scope of the refactor:**
-
-1. Enrich `eido.io.polyline/extract-polylines` to return
-
-   ```clojure
-   {:groups [{:stroke <color>
-              :polylines [[[x y] ...] ...]} ...]
-    :bounds [w h]}
-   ```
-
-   preserving stroke color and any pen/layer tag from each op's
-   style fields.
-2. Lift travel optimization to a pure function over polyline
-   groups in its own namespace (e.g. `eido.io.travel`, or kept
-   inside `eido.io.polyline`). Both SVG and new backends call it.
-3. Leave `eido.io.plotter` and the SVG renderer untouched —
-   existing behavior keeps working. New backends bypass them.
-
-**Effort:** Small. `polyline.clj` is ~156 lines today; the
-grouping change touches ~20 of them plus new code for travel
-optimization.
-
-**Value:** Gates DXF, G-code, and embroidery simultaneously.
-Without this, each new backend either duplicates grouping and
-optimization logic or becomes an SVG post-processor — debt that
-compounds with each serializer added.
-
-**Suggested first customer after the refactor:** DXF. Simpler than
-G-code, doesn't need the stitch subdivision embroidery requires,
-and exercises color/layer preservation (the whole point of the
-refactor).
 
 ### Tier 1 — quick wins (serializer-only)
 
-Cheap, universal, strictly expand utility for existing users.
-**All three depend on tier 0 (except STL, which rides the OBJ
-path and is independent).**
-
-#### DXF export
-
-**Concept:** Universal CAD interchange format. Accepted by laser
-cutters, waterjets, vinyl cutters, plasma tables, CNC routers, and
-practically every fabrication shop.
-
-**Value:** Arguably the single highest-leverage "one format, many
-machines" target. Opens Eido to any fabrication workflow that
-accepts DXF (nearly all of them).
-
-**Effort:** Low (after tier 0). Text-based format, well-documented,
-existing Clojure/Java libraries available. Consumes the grouped
-polyline output.
-
-**Implementation notes:**
-- Target DXF R12 ASCII — simplest spec, universally accepted, pure
-  text. Newer versions add features (truecolor, splines) but R12 is
-  the "safe" baseline.
-- Entities needed: `LWPOLYLINE` for polyline runs, optionally
-  `LINE` for single segments. Closed polylines get the closed flag.
-- Map each stroke-color group from tier 0 to a DXF `LAYER` with an
-  AutoCAD Color Index (ACI) number. DXF 2004+ adds 24-bit truecolor
-  via extended group codes if needed.
-- Units: DXF carries unit metadata (`$INSUNITS` header var). Default
-  to millimeters to match plotter conventions.
-- No library dependency required — DXF R12 encoder is ~100 lines of
-  pure Clojure over the grouped polyline data.
-
-#### G-code export (GRBL/Marlin flavors)
-
-**Concept:** Direct G-code emission for pen-on-CNC, laser cutters,
-foam cutters, and 2D CNC routers.
-
-**Value:** Fills the obvious gap next to the plotter backend.
-Unlocks lasers and 2D CNC for existing users without a round-trip
-through DXF and a vendor slicer.
-
-**Effort:** Low (after tier 0). Structurally similar to the plotter
-backend — polylines + pen-up/down become G0 (rapid) / G1 (feed),
-plus Z-axis and optional spindle/laser control.
-
-**Design note:** GRBL and Marlin dialects differ. Target GRBL first
-(desktop lasers, hobbyist CNC); add Marlin later if demanded.
-
-**Implementation notes:**
-- Header: `G21` (mm), `G90` (absolute coords), `G17` (XY plane).
-  Footer: `M5` (spindle/laser off), `G0 X0 Y0` (park).
-- Each stroke-color group becomes a tool-change sequence: `M5`,
-  optional operator pause (`M0`) with a tool-change message,
-  `M3 S<power>` to re-enable.
-- Polyline start: `G0 Z<up>` → `G0 X<x0> Y<y0>` → `G1 Z<down> F<z-feed>`
-  → tool on → `G1 X.. Y.. F<feed>`. Polyline end: tool off,
-  `G0 Z<up>`.
-- Y-axis flip: Eido's coordinate system likely has Y-down (SVG
-  convention). Most CNC/laser setups are Y-up. Flip Y = bounds-height
-  at serialization time.
-- Configurable per-job: feed rate, Z-up/Z-down heights, spindle/laser
-  power. Keep as opts; don't hardcode.
-- Laser mode (`M4` dynamic power vs `M3` constant) is a GRBL config
-  toggle; expose as an option.
+Cheap, universal, strictly expand utility for existing users. DXF
+(universal CAD interchange) and GRBL G-code (lasers, 2D CNC) are
+already shipped on the substrate. STL is the remaining candidate.
 
 #### STL / 3MF export
 
@@ -363,8 +235,8 @@ optimization plotter people already solve.
 Small scope. Everything past that is incremental.
 
 **Implementation notes:**
-- Depends on tier 0 (color groups are load-bearing for
-  `COLOR_CHANGE` commands).
+- Builds directly on the shipped grouped-polyline substrate
+  (color groups are load-bearing for `COLOR_CHANGE` commands).
 - DST is a binary format: 512-byte ASCII header + sequence of
   3-byte stitch records. Header fields include stitch count,
   color-change count, and design extents.
@@ -514,8 +386,6 @@ on the others is better):
 
 | Target                | Effort | Overlap | Leverage | Novelty | Open |
 |-----------------------|--------|---------|----------|---------|------|
-| DXF                   | L      | H       | H        | M       | H    |
-| G-code (GRBL)         | L      | H       | H        | M       | H    |
 | STL / 3MF             | L      | M       | H        | L       | H    |
 | Riso separations      | M      | H       | M        | H       | H    |
 | Embroidery DST/PES    | M      | M       | H        | H       | H    |
