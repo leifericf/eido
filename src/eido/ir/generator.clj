@@ -18,13 +18,12 @@
     [eido.gen.noise :as noise]
     [eido.gen.particle :as particle]
     [eido.gen.scatter :as scatter]
+    [eido.gen.vary :as vary]
     [eido.gen.voronoi :as voronoi]
     [eido.ir :as ir]
     [eido.ir.lower :as lower]
     [eido.ir.vary :as ir-vary]
-    [eido.path.decorate :as decorator]
-    [eido.gen.vary :as vary]))
-  ;; NOTE: no dependency on eido.engine.compile — generator lowering is self-sufficient
+    [eido.path.decorate :as decorator]))
 
 ;; --- generator constructors ---
 
