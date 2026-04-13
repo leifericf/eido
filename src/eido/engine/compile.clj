@@ -324,7 +324,7 @@
     (cond
       ;; Generator node types — preserve for semantic lowering (except L-systems)
       ;; For standalone :paint/surface, also expand any children and merge paint/size
-      (and (= :paint/surface node-type))
+      (= :paint/surface node-type)
       (let [children    (:paint/children node)
             flat        (if (seq children)
                           (flatten-paint-children children)
@@ -342,10 +342,7 @@
       (expand-node node)
 
       ;; Hatch and stipple fills — preserve as-is
-      (hatch-fill? fill)
-      node
-
-      (stipple-fill? fill)
+      (or (hatch-fill? fill) (stipple-fill? fill))
       node
 
       ;; Symmetry — expand children with normalize-node
