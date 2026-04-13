@@ -414,15 +414,15 @@
   gen-pastel-voronoi []
   (let [rng (prob/make-rng 42)
         pts (mapv (fn [_] [(+ 30 (* 540 (.nextDouble rng))) (+ 30 (* 540 (.nextDouble rng)))]) (range 30))]
-    {:image/size [600 600] :image/background [:color/rgb 160 148 130]
+    {:image/size [600 600] :image/background [:color/rgb 90 78 62]
      :image/nodes
      [{:node/type :group
        :paint/surface {:paint/size [600 600] :substrate/tooth 0.35}
        :group/children
        [{:node/type :voronoi
          :voronoi/points pts :voronoi/bounds [0 0 600 600]
-         :paint/brush :soft-pastel :paint/color [:color/rgb 220 210 185]
-         :paint/radius 4.0 :paint/pressure [[0.0 0.3] [0.5 0.8] [1.0 0.3]]}]}]}))
+         :paint/brush :soft-pastel :paint/color [:color/rgb 245 230 200]
+         :paint/radius 7.0 :paint/pressure [[0.0 0.5] [0.5 1.0] [1.0 0.5]]}]}]}))
 
 (defn ^{:example {:output "paint-gen-delaunay-web.png"
                   :title  "Delaunay Ink Web"
