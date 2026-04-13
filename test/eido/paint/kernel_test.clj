@@ -96,3 +96,37 @@
       (let [[r g b a] (surface/get-pixel s 50 50)]
         (is (every? #(<= 0.0 % 1.0) [r g b a])
             "all channels must stay in [0,1] range")))))
+
+(deftest rasterize-dab-non-finite-test
+  (testing "non-finite center/radius/aspect are silently skipped"
+    (let [s (surface/create-surface 50 50)
+          ;; Paint a control pixel first so we can verify the surface is
+          ;; still usable after the bad dabs
+          _ (kernel/rasterize-dab! s {:dab/cx 25.0 :dab/cy 25.0 :dab/radius 3.0
+                                      :dab/hardness 0.9 :dab/opacity 1.0
+                                      :dab/color {:r 255 :g 0 :b 0 :a 1.0}})
+          [_ _ _ a-control] (surface/get-pixel s 25 25)]
+      (doseq [bad [{:dab/cx ##Inf  :dab/cy 10.0   :dab/radius 5.0}
+                   {:dab/cx 10.0   :dab/cy ##Inf  :dab/radius 5.0}
+                   {:dab/cx 10.0   :dab/cy 10.0   :dab/radius ##Inf}
+                   {:dab/cx 10.0   :dab/cy 10.0   :dab/radius ##-Inf}
+                   {:dab/cx ##NaN  :dab/cy 10.0   :dab/radius 5.0}
+                   {:dab/cx 10.0   :dab/cy 10.0   :dab/radius ##NaN}
+                   {:dab/cx 10.0   :dab/cy 10.0   :dab/radius 5.0 :dab/aspect ##Inf}]]
+        (kernel/rasterize-dab! s (merge {:dab/hardness 0.7 :dab/opacity 1.0
+                                         :dab/color {:r 100 :g 100 :b 100 :a 1.0}}
+                                        bad)))
+      (let [[_ _ _ a-after] (surface/get-pixel s 25 25)]
+        (is (= a-control a-after)
+            "control pixel unchanged — non-finite dabs were no-ops")))))
+
+(deftest deform-dab-non-finite-test
+  (testing "non-finite deform center/radius are silently skipped"
+    (let [s (surface/create-surface 50 50)]
+      (doseq [bad [{:dab/cx ##Inf :dab/cy 10.0  :dab/radius 5.0}
+                   {:dab/cx 10.0  :dab/cy ##NaN :dab/radius 5.0}
+                   {:dab/cx 10.0  :dab/cy 10.0  :dab/radius ##Inf}]]
+        (kernel/deform-dab! s (merge {:dab/deform {:deform/mode :push
+                                                    :deform/strength 0.5}}
+                                     bad)))
+      (is true "non-finite deform dabs should be silently skipped"))))

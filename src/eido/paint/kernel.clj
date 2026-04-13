@@ -46,90 +46,96 @@
                       :tip/aspect   aspect})
         grain-spec    (:dab/grain dab)
         substrate-spec (:dab/substrate dab)
-        blend-mode    (get dab :dab/blend :source-over)
-        ;; Bounding box — expand by aspect ratio for elliptical tips
-        extent   (* radius (max 1.0 aspect))
-        x0       (long (Math/floor (- cx extent)))
-        y0       (long (Math/floor (- cy extent)))
-        x1       (long (Math/ceil (+ cx extent)))
-        y1       (long (Math/ceil (+ cy extent)))
-        ;; Clamp to surface bounds
-        sw       (long (:surface/width surface))
-        sh       (long (:surface/height surface))
-        x0       (max 0 x0)
-        y0       (max 0 y0)
-        x1       (min sw x1)
-        y1       (min sh y1)
-        inv-r    (if (> radius 0.0) (/ 1.0 radius) 0.0)
-        ts       (long surface/tile-size)]
-    (loop [py y0]
-      (when (< py y1)
-        (loop [px x0]
-          (when (< px x1)
-            (let [;; Offset from dab center, normalized by radius
-                  nx (* (- (+ (double px) 0.5) cx) inv-r)
-                  ny (* (- (+ (double py) 0.5) cy) inv-r)
-                  ;; Evaluate tip SDF for coverage
-                  tip-cov (tip/evaluate-tip tip-spec nx ny angle)]
-              (when (> tip-cov 0.0)
-                (let [;; Apply grain and substrate modulation
-                      grain-val (if grain-spec
-                                  (let [gmode (get grain-spec :grain/mode :world)]
-                                    (if (= gmode :local)
-                                      ;; Local mode: coordinates relative to dab center, rotated
-                                      (let [dx (- (+ (double px) 0.5) cx)
-                                            dy (- (+ (double py) 0.5) cy)
-                                            cos-a (Math/cos (- angle))
-                                            sin-a (Math/sin (- angle))
-                                            lx (+ (* dx cos-a) (* dy sin-a))
-                                            ly (+ (* (- dx) sin-a) (* dy cos-a))]
-                                        (grain/evaluate-grain grain-spec lx ly))
-                                      ;; World mode: surface coordinates
-                                      (grain/evaluate-grain grain-spec
-                                        (double (+ px 0.5)) (double (+ py 0.5)))))
-                                  1.0)
-                      sub-val   (if substrate-spec
-                                  (substrate/evaluate-substrate substrate-spec
-                                    (double (+ px 0.5)) (double (+ py 0.5)))
-                                  1.0)
-                      coverage  (* tip-cov grain-val sub-val)
-                      alpha     (* coverage opacity ca)
-                      ;; Premultiplied source
-                      src-r     (* cr alpha)
-                      src-g     (* cg alpha)
-                      src-b     (* cb alpha)
-                      src-a     alpha
-                      ;; Get the tile
-                      tx        (quot px ts)
-                      ty        (quot py ts)
-                      ^floats tile (surface/get-tile! surface tx ty)
-                      lx        (rem px ts)
-                      ly        (rem py ts)
-                      fi        (surface/pixel-idx lx ly)
-                      ;; Existing premultiplied values
-                      dst-r     (double (aget tile fi))
-                      dst-g     (double (aget tile (unchecked-inc-int fi)))
-                      dst-b     (double (aget tile (unchecked-add-int fi 2)))
-                      dst-a     (double (aget tile (unchecked-add-int fi 3)))
-                      ;; Blend source onto destination
-                      [out-r out-g out-b out-a]
-                      (if (= blend-mode :source-over)
-                        ;; Fast path: inline source-over (most common)
-                        (let [inv-src-a (- 1.0 src-a)]
-                          [(+ src-r (* dst-r inv-src-a))
-                           (+ src-g (* dst-g inv-src-a))
-                           (+ src-b (* dst-b inv-src-a))
-                           (+ src-a (* dst-a inv-src-a))])
-                        ;; Other modes via dispatcher
-                        (blend/blend blend-mode
-                          [src-r src-g src-b src-a]
-                          [dst-r dst-g dst-b dst-a]))]
-                  (aset tile fi (float out-r))
-                  (aset tile (unchecked-inc-int fi) (float out-g))
-                  (aset tile (unchecked-add-int fi 2) (float out-b))
-                  (aset tile (unchecked-add-int fi 3) (float out-a)))))
-            (recur (unchecked-inc px))))
-        (recur (unchecked-inc py))))))
+        blend-mode    (get dab :dab/blend :source-over)]
+    ;; Non-finite center or radius would cast to out-of-range long below.
+    ;; Skip the dab entirely — matches the out-of-bounds no-op pattern.
+    (when (and (Double/isFinite cx)
+               (Double/isFinite cy)
+               (Double/isFinite radius)
+               (Double/isFinite aspect))
+      (let [;; Bounding box — expand by aspect ratio for elliptical tips
+            extent   (* radius (max 1.0 aspect))
+            x0       (long (Math/floor (- cx extent)))
+            y0       (long (Math/floor (- cy extent)))
+            x1       (long (Math/ceil (+ cx extent)))
+            y1       (long (Math/ceil (+ cy extent)))
+            ;; Clamp to surface bounds
+            sw       (long (:surface/width surface))
+            sh       (long (:surface/height surface))
+            x0       (max 0 x0)
+            y0       (max 0 y0)
+            x1       (min sw x1)
+            y1       (min sh y1)
+            inv-r    (if (> radius 0.0) (/ 1.0 radius) 0.0)
+            ts       (long surface/tile-size)]
+        (loop [py y0]
+          (when (< py y1)
+            (loop [px x0]
+              (when (< px x1)
+                (let [;; Offset from dab center, normalized by radius
+                      nx (* (- (+ (double px) 0.5) cx) inv-r)
+                      ny (* (- (+ (double py) 0.5) cy) inv-r)
+                      ;; Evaluate tip SDF for coverage
+                      tip-cov (tip/evaluate-tip tip-spec nx ny angle)]
+                  (when (> tip-cov 0.0)
+                    (let [;; Apply grain and substrate modulation
+                          grain-val (if grain-spec
+                                      (let [gmode (get grain-spec :grain/mode :world)]
+                                        (if (= gmode :local)
+                                          ;; Local mode: coordinates relative to dab center, rotated
+                                          (let [dx (- (+ (double px) 0.5) cx)
+                                                dy (- (+ (double py) 0.5) cy)
+                                                cos-a (Math/cos (- angle))
+                                                sin-a (Math/sin (- angle))
+                                                lx (+ (* dx cos-a) (* dy sin-a))
+                                                ly (+ (* (- dx) sin-a) (* dy cos-a))]
+                                            (grain/evaluate-grain grain-spec lx ly))
+                                          ;; World mode: surface coordinates
+                                          (grain/evaluate-grain grain-spec
+                                            (double (+ px 0.5)) (double (+ py 0.5)))))
+                                      1.0)
+                          sub-val   (if substrate-spec
+                                      (substrate/evaluate-substrate substrate-spec
+                                        (double (+ px 0.5)) (double (+ py 0.5)))
+                                      1.0)
+                          coverage  (* tip-cov grain-val sub-val)
+                          alpha     (* coverage opacity ca)
+                          ;; Premultiplied source
+                          src-r     (* cr alpha)
+                          src-g     (* cg alpha)
+                          src-b     (* cb alpha)
+                          src-a     alpha
+                          ;; Get the tile
+                          tx        (quot px ts)
+                          ty        (quot py ts)
+                          ^floats tile (surface/get-tile! surface tx ty)
+                          lx        (rem px ts)
+                          ly        (rem py ts)
+                          fi        (surface/pixel-idx lx ly)
+                          ;; Existing premultiplied values
+                          dst-r     (double (aget tile fi))
+                          dst-g     (double (aget tile (unchecked-inc-int fi)))
+                          dst-b     (double (aget tile (unchecked-add-int fi 2)))
+                          dst-a     (double (aget tile (unchecked-add-int fi 3)))
+                          ;; Blend source onto destination
+                          [out-r out-g out-b out-a]
+                          (if (= blend-mode :source-over)
+                            ;; Fast path: inline source-over (most common)
+                            (let [inv-src-a (- 1.0 src-a)]
+                              [(+ src-r (* dst-r inv-src-a))
+                               (+ src-g (* dst-g inv-src-a))
+                               (+ src-b (* dst-b inv-src-a))
+                               (+ src-a (* dst-a inv-src-a))])
+                            ;; Other modes via dispatcher
+                            (blend/blend blend-mode
+                              [src-r src-g src-b src-a]
+                              [dst-r dst-g dst-b dst-a]))]
+                      (aset tile fi (float out-r))
+                      (aset tile (unchecked-inc-int fi) (float out-g))
+                      (aset tile (unchecked-add-int fi 2) (float out-b))
+                      (aset tile (unchecked-add-int fi 3) (float out-a)))))
+                (recur (unchecked-inc px))))
+            (recur (unchecked-inc py))))))))
 
 ;; --- deform operations ---
 
@@ -339,25 +345,29 @@
         angle    (double (get dab :dab/angle 0.0))
         deform   (:dab/deform dab)
         mode     (get deform :deform/mode :push)
-        strength (double (get deform :deform/strength 0.5))
-        r2       (* radius radius)
-        sw       (long (:surface/width surface))
-        sh       (long (:surface/height surface))
-        x0       (max 0 (long (Math/floor (- cx radius))))
-        y0       (max 0 (long (Math/floor (- cy radius))))
-        x1       (min sw (long (Math/ceil (+ cx radius))))
-        y1       (min sh (long (Math/ceil (+ cy radius))))
-        w        (- x1 x0)
-        h        (- y1 y0)]
-    ;; Skip entirely if the dab region is outside the surface bounds.
-    (when (and (pos? w) (pos? h))
-      (let [^floats buf (float-array (* w h 4))]
-        (copy-region-to-buffer! surface buf x0 y0 x1 y1 w)
-        (if (#{:blur :sharpen} mode)
-          (deform-blur-sharpen! surface buf mode strength
-            x0 y0 x1 y1 w h cx cy r2)
-          (deform-displacement! surface buf mode strength angle
-            x0 y0 x1 y1 w h cx cy r2 radius))))))
+        strength (double (get deform :deform/strength 0.5))]
+    ;; Non-finite center or radius would cast to out-of-range long below.
+    (when (and (Double/isFinite cx)
+               (Double/isFinite cy)
+               (Double/isFinite radius))
+      (let [r2       (* radius radius)
+            sw       (long (:surface/width surface))
+            sh       (long (:surface/height surface))
+            x0       (max 0 (long (Math/floor (- cx radius))))
+            y0       (max 0 (long (Math/floor (- cy radius))))
+            x1       (min sw (long (Math/ceil (+ cx radius))))
+            y1       (min sh (long (Math/ceil (+ cy radius))))
+            w        (- x1 x0)
+            h        (- y1 y0)]
+        ;; Skip entirely if the dab region is outside the surface bounds.
+        (when (and (pos? w) (pos? h))
+          (let [^floats buf (float-array (* w h 4))]
+            (copy-region-to-buffer! surface buf x0 y0 x1 y1 w)
+            (if (#{:blur :sharpen} mode)
+              (deform-blur-sharpen! surface buf mode strength
+                x0 y0 x1 y1 w h cx cy r2)
+              (deform-displacement! surface buf mode strength angle
+                x0 y0 x1 y1 w h cx cy r2 radius))))))))
 
 (comment
   (require '[eido.paint.surface :as surface])
