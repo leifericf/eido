@@ -261,6 +261,21 @@
               :image/nodes []}]
             {:format :polylines :fps 30})))))
 
+(deftest render-motion-formats-animation-throws-test
+  (testing ":dxf and :gcode reject animation input"
+    (let [frames [{:image/size [100 100]
+                   :image/background [:color/rgb 0 0 0]
+                   :image/nodes []}
+                  {:image/size [100 100]
+                   :image/background [:color/rgb 0 0 0]
+                   :image/nodes []}]]
+      (is (thrown-with-msg?
+            clojure.lang.ExceptionInfo #"does not support animations"
+            (eido/render frames {:format :dxf :fps 30})))
+      (is (thrown-with-msg?
+            clojure.lang.ExceptionInfo #"does not support animations"
+            (eido/render frames {:format :gcode :fps 30}))))))
+
 (deftest render-to-file-tiff-format-override-test
   (testing ":format tiff overrides extension"
     (let [path (str (File/createTempFile "eido-test" ".png"))]

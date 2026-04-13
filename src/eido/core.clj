@@ -397,8 +397,10 @@
    (let [output (:output opts)
          format (:format opts)
          render-opts (dissoc opts :output :fps :loop :format :prefix)]
-     (when (and (animation? input) (= :polylines format))
-       (throw (ex-info "Polyline export does not support animations"
+     (when (and (animation? input)
+                (contains? #{:polylines :dxf :gcode} format))
+       (throw (ex-info (str (name format)
+                            " export does not support animations")
                        {:format format})))
      (if (animation? input)
        (let [fps (or (:fps opts)
