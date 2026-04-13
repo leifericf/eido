@@ -13,6 +13,7 @@
     [eido.engine.svg :as svg]
     [eido.io.dxf :as dxf]
     [eido.io.gcode :as gcode]
+    [eido.io.hpgl :as hpgl]
     [eido.io.polyline :as polyline]
     [eido.manifest :as manifest]
     [eido.validate :as validate])
@@ -245,12 +246,13 @@
 
 (defn render-to-file
   "Renders a scene and writes to file. Format detected from extension.
-  Supported formats: PNG, JPEG, GIF, BMP, TIFF, SVG, DXF, G-code.
+  Supported formats: PNG, JPEG, GIF, BMP, TIFF, SVG, DXF, G-code, HPGL.
   Opts: :format, :quality (JPEG), :scale, :transparent-background,
         :dpi (PNG/TIFF), :tiff/compression (:lzw :deflate :none),
         :emit-manifest? (write EDN sidecar for reproducibility).
-  DXF/G-code also accept :flatness, :segments, :optimize-travel, and
-  any writer-specific keys (see eido.io.dxf and eido.io.gcode)."
+  DXF/G-code/HPGL also accept :flatness, :segments, :optimize-travel,
+  and any writer-specific keys (see eido.io.dxf, eido.io.gcode,
+  eido.io.hpgl)."
   ([scene path]
    (render-to-file scene path {}))
   ([scene path opts]
@@ -261,6 +263,7 @@
        "svg"   (spit path (render-to-svg scene opts))
        "dxf"   (spit path (dxf/write-dxf (validated-compile scene) opts))
        "gcode" (spit path (gcode/write-gcode (validated-compile scene) opts))
+       "hpgl"  (spit path (hpgl/write-hpgl (validated-compile scene) opts))
        (let [img (render-image scene render-opts)]
          (case format
            "jpeg" (write-jpeg (ensure-rgb img) path
@@ -284,7 +287,7 @@
           :params      (:params opts)
           ;; Motion-stream formats silently drop fills/effects; surface
           ;; the loss in the sidecar so downstream tooling can flag it.
-          :dropped     (when (#{"dxf" "gcode"} format)
+          :dropped     (when (#{"dxf" "gcode" "hpgl"} format)
                          (polyline/summarize-drops
                            (validated-compile scene)))}))
      path)))
@@ -382,6 +385,7 @@
     (render scene {:format :svg})          → SVG string
     (render scene {:format :dxf})          → DXF R12 string
     (render scene {:format :gcode})        → GRBL G-code string
+    (render scene {:format :hpgl})         → HPGL plotter string
     (render scene {:format :polylines})    → {:polylines [...] :bounds [w h]}
 
   Animation (sequence of scenes):
@@ -403,7 +407,7 @@
          format (:format opts)
          render-opts (dissoc opts :output :fps :loop :format :prefix)]
      (when (and (animation? input)
-                (contains? #{:polylines :dxf :gcode} format))
+                (contains? #{:polylines :dxf :gcode :hpgl} format))
        (throw (ex-info (str (name format)
                             " export does not support animations")
                        {:format format})))
@@ -435,6 +439,7 @@
          (= :svg format)   (render-to-svg input render-opts)
          (= :dxf format)   (dxf/write-dxf (validated-compile input) render-opts)
          (= :gcode format) (gcode/write-gcode (validated-compile input) render-opts)
+         (= :hpgl format)  (hpgl/write-hpgl (validated-compile input) render-opts)
          format            (throw (ex-info
                                     (str "Format " format " has no in-memory "
                                          "representation; pass :output for a "

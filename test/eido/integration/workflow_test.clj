@@ -358,3 +358,30 @@
                {:format :gcode :laser-mode true :feed 500})]
       (is (str/includes? m4 "M4 S1000") "laser-mode swaps M3 → M4")
       (is (str/includes? m4 "F500")     ":feed reaches the writer"))))
+
+(deftest hpgl-export-test
+  (testing ":format :hpgl returns an HPGL string"
+    (let [out (eido/render two-color-stroke-scene {:format :hpgl})]
+      (is (string? out))
+      (is (str/includes? out "IN;")  "initialize plotter")
+      (is (str/includes? out "PA;")  "absolute coordinates")
+      (is (str/includes? out "SP1;") "first pen selected")
+      (is (str/includes? out "SP2;") "second pen selected")
+      (is (re-find #"PU\d+,\d+;PD" out)
+          "pen-up move into pen-down draw")
+      (is (str/ends-with? out "SP0;\n") "deselects pen at end")))
+  (testing ":output \"…hpgl\" writes an HPGL file"
+    (let [path (tmp-path ".hpgl")]
+      (try
+        (eido/render two-color-stroke-scene {:output path})
+        (let [content (slurp path)]
+          (is (str/includes? content "IN;"))
+          (is (str/includes? content "SP1;"))
+          (is (str/ends-with? content "SP0;\n")))
+        (finally
+          (io/delete-file path true)))))
+  (testing "writer options (:scale, :optimize-travel) flow through render"
+    (let [out (eido/render two-color-stroke-scene
+                {:format :hpgl :scale 1 :optimize-travel false})]
+      ;; rect at x=10..90 with scale 1 → 10..90 in plotter units
+      (is (str/includes? out "PU10,") "scale 1 keeps raw coords"))))
