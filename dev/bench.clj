@@ -278,21 +278,6 @@
   ;; sumi-e-bamboo                     16          16      0%
   ;; thermal                           18          19    noise
   ;;
-  ;; The JIT already optimizes keyword access on records similarly to maps
-  ;; after warmup — the R4 claim "records help cold-start and GC pressure"
-  ;; was not borne out in real scenes, so concrete-op records were later
-  ;; replaced with plain-map constructors.
-  ;;
-  ;; Three "optimizations" credited here were later benchmarked as
-  ;; net-negative and removed:
-  ;;   - *prev-opacity* opacity-tracking dynamic var
-  ;;   - *buffer-pool* BufferedImage reuse dynamic var
-  ;;   - create-basic-stroke memoize cache
-  ;; In each case the bookkeeping cost (dynamic-var read + set!, or
-  ;; memoize hashmap lookup) exceeded the cost of the AWT call it was
-  ;; eliding (AlphaComposite.getInstance ~8ns, new BasicStroke ~0.5ns
-  ;; after JIT escape analysis).
-  ;;
   ;; :perf alias (clojure -M:perf) provides JVM tuning for batch renders.
   ;;
   ;; === Optional validation skip (:eido/validate false) ===
@@ -308,4 +293,75 @@
   ;;   utah-teapot              43 ms  (was 125, 2.9x faster)
   ;;
   ;; Default behavior unchanged — validation runs unless explicitly opted out.
+  ;;
+  ;; ======================================================================
+  ;; AUDIT (2026-04-13) — which of the above actually paid off?
+  ;; ======================================================================
+  ;;
+  ;; Every claim in R1–R4 was re-benchmarked (interleaved ON/OFF trials,
+  ;; fresh-JVM runs, and clj-async-profiler CPU + allocation profiles).
+  ;; Four "optimizations" turned out to be net-negative or noise once
+  ;; measured in isolation, and were removed:
+  ;;
+  ;;   - *prev-opacity* dynamic var (R4) — tracked Graphics2D opacity to
+  ;;     skip redundant setComposite calls. Removing it was ~5% FASTER
+  ;;     on opaque-1000. AlphaComposite/getInstance(SRC_OVER,x) returns
+  ;;     cached singletons and setComposite is ~8ns; Clojure dynamic-var
+  ;;     read + set! costs more than the call it was eliding.
+  ;;
+  ;;   - *buffer-pool* dynamic var (R4) — reused one BufferedImage across
+  ;;     compositing groups. Allocation profile showed BufferedImage is
+  ;;     <0.1% of allocation volume (Long boxing in box-blur-pass is 99%).
+  ;;     Removal is within JVM-warmup noise.
+  ;;
+  ;;   - create-basic-stroke memoize (R4) — cached BasicStroke instances
+  ;;     by [w cap join]. Microbench shows `new BasicStroke(w,cap,join)`
+  ;;     at 0.5ns after JIT escape analysis. Memoize hashmap lookup +
+  ;;     boxed-key comparison cost more than the constructor, and forced
+  ;;     a get-basic-stroke wrapper to route dashed strokes around the
+  ;;     cache. Removal is ~7% faster on 100-unique-widths scenes.
+  ;;
+  ;;   - Concrete-op defrecords (R4) — RectOp/CircleOp/ArcOp/LineOp/
+  ;;     EllipseOp/PathOp/BufferOp. Record keyword access is ~10× faster
+  ;;     than map access at the microbench level (1.1ns vs 10.7ns) but
+  ;;     Java2D rasterization dominates real renders — gain is 0–7% on
+  ;;     adversarial opaque scenes, 0% on stroked/realistic scenes.
+  ;;     Replaced with plain-map constructors of the same name.
+  ;;
+  ;; Optimizations re-validated as genuinely paying off and kept:
+  ;;
+  ;;   - get-perm memoize in gen.noise — 15× speedup (1.5μs → 0.1μs);
+  ;;     called per noise fn invocation, small bounded cache per seed.
+  ;;
+  ;;   - resolve-font memoize in text — 5× for family fonts, 1000× for
+  ;;     file-loaded fonts (Font/createFont from InputStream is ms-level).
+  ;;
+  ;;   - pattern->paint memoize in engine.render — avoids re-rasterizing
+  ;;     pattern tiles. Bounded cache; expensive miss path.
+  ;;
+  ;;   - Manual fmt loop in engine.svg — 1.5× faster than the regex
+  ;;     equivalent (272ns vs 408ns per call), self-contained 13-line fn.
+  ;;
+  ;;   - Conditional save/restore in render-single-op — skips
+  ;;     .getTransform/.getClip/.setTransform/.setClip (4 AWT calls +
+  ;;     2 AffineTransform allocations) for the common no-state op.
+  ;;     Cost: a one-line `(or (seq transforms) clip-op)` check.
+  ;;
+  ;;   - Multimethod → case in compile-node/render-op — `case` is
+  ;;     factually faster and more idiomatic for closed op sets.
+  ;;
+  ;;   - Array-based noise/CA/paint kernels, ArrayList in Poisson disk
+  ;;     — algorithmically required for tight numerics or O(1) random
+  ;;     removal; scoped to individual pure functions.
+  ;;
+  ;; === The common failure pattern ===
+  ;;
+  ;; Each removed optimization eliminated a 0.5–8 ns JVM-level call
+  ;; (already optimized by JIT escape analysis or singleton caching)
+  ;; at the cost of bookkeeping (ThreadLocal lookup + set!, memoize
+  ;; hash, or record-class dispatch) in the same ballpark or higher.
+  ;; Real CPU profiles show per-op cost is dominated by Java2D Marlin
+  ;; (30–60%) and Clojure runtime (Var.getRawRoot, keyword maps) — any
+  ;; claim of the form "X reduces per-op overhead" should be suspect
+  ;; unless the profile shows it appearing.
   )
