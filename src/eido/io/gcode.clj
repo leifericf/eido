@@ -130,22 +130,23 @@
   Coordinate system: Y is flipped relative to scene height so that
   (0,0) is bottom-left (CNC convention) rather than top-left (SVG
   convention)."
-  [ir opts]
-  (let [opts      (merge defaults opts)
-        grouped   (polyline/extract-grouped-polylines
-                    ir (select-keys opts [:flatness :segments]))
-        [_ h]     (:bounds grouped)
-        opts      (assoc opts :bounds-h h)
-        groups    (if (:optimize-travel opts)
-                    (mapv #(update % :polylines
-                                   polyline/optimize-travel-polylines)
-                          (:groups grouped))
-                    (:groups grouped))]
-    (str (str/join "\n"
-           (concat (header-lines opts)
-                   (mapcat #(group-lines opts %) groups)
-                   (footer-lines)))
-         "\n")))
+  ([ir] (write-gcode ir {}))
+  ([ir opts]
+   (let [opts      (merge defaults opts)
+         grouped   (polyline/extract-grouped-polylines
+                     ir (select-keys opts [:flatness :segments]))
+         [_ h]     (:bounds grouped)
+         opts      (assoc opts :bounds-h h)
+         groups    (if (:optimize-travel opts)
+                     (mapv #(update % :polylines
+                                    polyline/optimize-travel-polylines)
+                           (:groups grouped))
+                     (:groups grouped))]
+     (str (str/join "\n"
+            (concat (header-lines opts)
+                    (mapcat #(group-lines opts %) groups)
+                    (footer-lines)))
+          "\n"))))
 
 (comment
   (require '[eido.engine.compile :as c])

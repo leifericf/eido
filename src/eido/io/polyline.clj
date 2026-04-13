@@ -125,13 +125,14 @@
   Options:
     :flatness — curve subdivision tolerance (default 0.5)
     :segments — number of segments for circle/ellipse/arc approximation (default 64)"
-  [ir opts]
-  (let [flatness (get opts :flatness 0.5)
-        segments (get opts :segments 64)
-        ops      (:ir/ops ir)
-        polys    (into [] (mapcat #(op->polylines % flatness segments)) ops)]
-    {:polylines polys
-     :bounds    (:ir/size ir)}))
+  ([ir] (extract-polylines ir {}))
+  ([ir opts]
+   (let [flatness (get opts :flatness 0.5)
+         segments (get opts :segments 64)
+         ops      (:ir/ops ir)
+         polys    (into [] (mapcat #(op->polylines % flatness segments)) ops)]
+     {:polylines polys
+      :bounds    (:ir/size ir)})))
 
 ;; --- grouped extraction (for motion-stream backends) ---
 ;;
@@ -180,19 +181,20 @@
   Options:
     :flatness — curve subdivision tolerance (default 0.5)
     :segments — number of segments for circle/ellipse/arc (default 64)"
-  [ir opts]
-  (let [flatness (get opts :flatness 0.5)
-        segments (get opts :segments 64)
-        ops      (flatten-op-tree (:ir/ops ir))
-        groups   (group-ops-by-stroke ops)]
-    {:groups (mapv (fn [{:keys [stroke ops]}]
-                     {:stroke    stroke
-                      :polylines (into []
-                                       (mapcat #(op->polylines % flatness
-                                                               segments))
-                                       ops)})
-                   groups)
-     :bounds (:ir/size ir)}))
+  ([ir] (extract-grouped-polylines ir {}))
+  ([ir opts]
+   (let [flatness (get opts :flatness 0.5)
+         segments (get opts :segments 64)
+         ops      (flatten-op-tree (:ir/ops ir))
+         groups   (group-ops-by-stroke ops)]
+     {:groups (mapv (fn [{:keys [stroke ops]}]
+                      {:stroke    stroke
+                       :polylines (into []
+                                        (mapcat #(op->polylines % flatness
+                                                                segments))
+                                        ops)})
+                    groups)
+      :bounds (:ir/size ir)})))
 
 ;; --- travel optimization ---
 

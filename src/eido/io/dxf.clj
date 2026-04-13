@@ -152,28 +152,29 @@
     :scale           — coordinate multiplier applied to every
                        x/y (default 1.0). Useful when scene units
                        differ from millimeters."
-  [ir opts]
-  (let [flatness  (get opts :flatness 0.5)
-        segments  (get opts :segments 64)
-        optimize? (get opts :optimize-travel true)
-        scale     (get opts :scale 1.0)
-        grouped   (polyline/extract-grouped-polylines
-                    ir {:flatness flatness :segments segments})
-        groups    (if optimize?
-                    (mapv #(update % :polylines
-                                   polyline/optimize-travel-polylines)
-                          (:groups grouped))
-                    (:groups grouped))
-        entries   (mapv (fn [{:keys [stroke]}]
-                          {:name (color->layer-name stroke)
-                           :aci  (stroke->aci stroke)})
-                        groups)]
-    (str (str/join "\n"
-           (concat (header-lines)
-                   (tables-lines entries)
-                   (entities-lines groups entries scale)
-                   ["0" "EOF"]))
-         "\n")))
+  ([ir] (write-dxf ir {}))
+  ([ir opts]
+   (let [flatness  (get opts :flatness 0.5)
+         segments  (get opts :segments 64)
+         optimize? (get opts :optimize-travel true)
+         scale     (get opts :scale 1.0)
+         grouped   (polyline/extract-grouped-polylines
+                     ir {:flatness flatness :segments segments})
+         groups    (if optimize?
+                     (mapv #(update % :polylines
+                                    polyline/optimize-travel-polylines)
+                           (:groups grouped))
+                     (:groups grouped))
+         entries   (mapv (fn [{:keys [stroke]}]
+                           {:name (color->layer-name stroke)
+                            :aci  (stroke->aci stroke)})
+                         groups)]
+     (str (str/join "\n"
+            (concat (header-lines)
+                    (tables-lines entries)
+                    (entities-lines groups entries scale)
+                    ["0" "EOF"]))
+          "\n"))))
 
 (comment
   (require '[eido.engine.compile :as c])
