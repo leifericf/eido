@@ -100,7 +100,6 @@
 
 (def ^:private defaults
   {:feed            1000
-   :travel-feed     3000
    :z-up            5
    :z-down          0
    :spindle-power   1000
@@ -119,7 +118,6 @@
 
   Options (defaults shown):
     :feed 1000             — cutting feed rate, mm/min
-    :travel-feed 3000      — reserved for future rapid-rate emission
     :z-up 5                — safe retract height, mm
     :z-down 0              — engage height, mm
     :spindle-power 1000    — S value on M3/M4 (0-1000 typical)
