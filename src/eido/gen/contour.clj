@@ -174,26 +174,25 @@
         res         (get opts :resolution 5)]
     (if-not (and (pos? bw) (pos? bh) (pos? res))
       []
-      (let [
-        noise-scale (get opts :noise-scale 0.01)
-        seed        (get opts :seed 0)
-        thresholds  (get opts :thresholds [0.0])
-        cols        (int (Math/ceil (/ (double bw) res)))
-        rows        (int (Math/ceil (/ (double bh) res)))
-        grid        (sample-grid noise-fn cols rows bx by res noise-scale seed)]
-    (into []
-          (mapcat
-            (fn [threshold]
-              (let [segments (march-threshold grid cols rows res threshold bx by)
-                    chains   (connect-segments segments)]
-                (keep (fn [chain]
-                        (when (>= (count chain) 2)
-                          {:node/type     :shape/path
-                           :path/commands (into [[:move-to (first chain)]]
-                                                (mapv (fn [p] [:line-to p])
-                                                      (rest chain)))}))
-                      chains))))
-          thresholds)))))
+      (let [noise-scale (get opts :noise-scale 0.01)
+            seed        (get opts :seed 0)
+            thresholds  (get opts :thresholds [0.0])
+            cols        (int (Math/ceil (/ (double bw) res)))
+            rows        (int (Math/ceil (/ (double bh) res)))
+            grid        (sample-grid noise-fn cols rows bx by res noise-scale seed)]
+        (into []
+              (mapcat
+                (fn [threshold]
+                  (let [segments (march-threshold grid cols rows res threshold bx by)
+                        chains   (connect-segments segments)]
+                    (keep (fn [chain]
+                            (when (>= (count chain) 2)
+                              {:node/type     :shape/path
+                               :path/commands (into [[:move-to (first chain)]]
+                                                    (mapv (fn [p] [:line-to p])
+                                                          (rest chain)))}))
+                          chains))))
+              thresholds)))))
 
 (comment
   (contour-lines noise/perlin2d [0 0 200 200]
