@@ -4,6 +4,10 @@
 
 ;; --- Poisson disk sampling ---
 
+(def ^:private ^:const max-candidates-per-point
+  "Bridson's `k`: max rejection attempts per active point before retiring it."
+  30)
+
 (defn- make-grid-ctx
   "Creates a Poisson disk grid context map."
   [bx by bw bh cell-size]
@@ -74,7 +78,7 @@
             cell-size   (/ min-dist (Math/sqrt 2.0))
             ctx         (make-grid-ctx bx by bw bh cell-size)
             ^objects grid (:grid ctx)
-            k           30
+            k           max-candidates-per-point
             bx          (double bx)
             by          (double by)
             bw          (double bw)
