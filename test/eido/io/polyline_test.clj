@@ -492,6 +492,23 @@
         (is (< (Math/abs (- (double x1) 100.0)) 1.0))
         (is (< (Math/abs (- (double x2) 300.0)) 1.0))))))
 
+(deftest clip-coincident-with-geometry-test
+  (testing "geometry whose edges sit exactly on the clip boundary survives intact"
+    ;; Path2D.contains follows the AWT half-open convention (top/left
+    ;; included, right/bottom excluded), which would otherwise drop the
+    ;; right and bottom edges of a rect clipped by an identical rect.
+    (let [scene (assoc base-scene :image/nodes
+                  [{:node/type :group
+                    :group/clip {:node/type :shape/rect
+                                 :rect/xy [50 60] :rect/size [80 90]}
+                    :group/children
+                    [{:node/type :shape/rect
+                      :rect/xy [50 60] :rect/size [80 90]
+                      :style/stroke {:color [:color/rgb 0 0 0] :width 1}}]}])
+          polys (:polylines (polyline/extract-polylines (compile-scene scene)))]
+      (is (= 1 (count polys)))
+      (is (= 5 (count (first polys))) "all four corners + closing point"))))
+
 (deftest clip-respects-group-transforms-test
   (testing "transforms on a clipped group apply to clip and geometry alike"
     ;; Clip is a 20-wide rect at (40, 0); contents is a horizontal line

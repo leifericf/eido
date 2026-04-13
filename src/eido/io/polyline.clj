@@ -175,6 +175,23 @@
         (when (and (< 0.0 t) (< t 1.0) (<= 0.0 s) (<= s 1.0))
           t)))))
 
+(defn- inside?
+  "Boundary-tolerant point-in-polygon test.
+  Path2D.contains follows the AWT convention of including top/left
+  edges and excluding right/bottom — which causes segments that
+  coincide with the right or bottom of the clip polygon to be
+  dropped entirely. Sample four 1e-9 offsets around the point and
+  treat as inside if any corner is strictly inside; that way an
+  on-boundary midpoint is classified the same regardless of which
+  edge it lies on."
+  [^Path2D$Double poly-shape ^double x ^double y]
+  (let [eps 1e-9]
+    (or (.contains poly-shape x y)
+        (.contains poly-shape (+ x eps) (+ y eps))
+        (.contains poly-shape (+ x eps) (- y eps))
+        (.contains poly-shape (- x eps) (+ y eps))
+        (.contains poly-shape (- x eps) (- y eps)))))
+
 (defn- inside-portions
   "Returns sub-segments of [P0,P1] that lie inside the clip polygon,
   as a vector of [[start end] ...] point pairs (in segment order)."
@@ -195,7 +212,7 @@
       (keep (fn [[t1 t2]]
               (when (> (- t2 t1) 1e-12)
                 (let [[mx my] (lerp (* 0.5 (+ t1 t2)))]
-                  (when (.contains poly-shape (double mx) (double my))
+                  (when (inside? poly-shape (double mx) (double my))
                     [(lerp t1) (lerp t2)]))))
             (partition 2 1 ts)))))
 
