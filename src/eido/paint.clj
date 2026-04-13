@@ -392,58 +392,65 @@
   (doseq [d dabs]
     (kernel/deform-dab! surface (assoc d :dab/deform deform-spec))))
 
+(defn- apply-smudge
+  "Returns [updated-dab next-smudge-state]. If smudge is nil, returns
+  [d nil] unchanged."
+  [d smudge surface resolved-color]
+  (if smudge
+    (let [{:keys [state color]} (smudge/advance-smudge
+                                  smudge surface
+                                  (long (:dab/cx d)) (long (:dab/cy d))
+                                  resolved-color)
+          [mr mg mb]  color
+          mixed-color {:r (Math/round (* mr 255.0))
+                       :g (Math/round (* mg 255.0))
+                       :b (Math/round (* mb 255.0))
+                       :a (get (:dab/color d) :a 1.0)}]
+      [(assoc d :dab/color mixed-color) state])
+    [d nil]))
+
 (defn- render-bristle-stroke!
   "Renders a bristle stroke — emits N sub-dabs per dab position."
-  [surface dabs {:keys [bristle-spec smudge-spec grain-spec substrate-spec
+  [surface dabs {:keys [bristle-spec grain-spec substrate-spec
                         blend-mode wet-spec impasto-spec resolved-color]}
-   smudge-state]
-  (doseq [d dabs]
-    (let [d (if smudge-state
-              (let [[mr mg mb] (smudge/update-smudge!
-                                 smudge-state surface
-                                 (long (:dab/cx d)) (long (:dab/cy d))
-                                 resolved-color)
-                    mixed-color {:r (Math/round (* mr 255.0))
-                                 :g (Math/round (* mg 255.0))
-                                 :b (Math/round (* mb 255.0))
-                                 :a (get (:dab/color d) :a 1.0)}]
-                (assoc d :dab/color mixed-color))
-              d)
-          offsets (tip/bristle-offsets bristle-spec
-                    (double (get d :dab/angle 0.0))
-                    (hash (get d :dab/cx 0.0)))
-          base-r  (double (:dab/radius d))]
-      (doseq [{:keys [offset opacity-scale size-scale]} offsets]
-        (let [[ox oy] offset
-              sub-dab (-> (assoc d
-                            :dab/cx (+ (:dab/cx d) (* ox base-r))
-                            :dab/cy (+ (:dab/cy d) (* oy base-r))
-                            :dab/radius (* base-r size-scale 0.4)
-                            :dab/opacity (* (:dab/opacity d) opacity-scale))
-                          (apply-texture grain-spec substrate-spec blend-mode))]
-          (kernel/rasterize-dab! surface sub-dab)
-          (deposit-effects! surface sub-dab wet-spec impasto-spec))))))
+   initial-smudge]
+  (reduce
+    (fn [smudge d]
+      (let [[d smudge'] (apply-smudge d smudge surface resolved-color)
+            offsets (tip/bristle-offsets bristle-spec
+                      (double (get d :dab/angle 0.0))
+                      (hash (get d :dab/cx 0.0)))
+            base-r  (double (:dab/radius d))]
+        (doseq [{:keys [offset opacity-scale size-scale]} offsets]
+          (let [[ox oy] offset
+                sub-dab (-> (assoc d
+                              :dab/cx (+ (:dab/cx d) (* ox base-r))
+                              :dab/cy (+ (:dab/cy d) (* oy base-r))
+                              :dab/radius (* base-r size-scale 0.4)
+                              :dab/opacity (* (:dab/opacity d) opacity-scale))
+                            (apply-texture grain-spec substrate-spec blend-mode))]
+            (kernel/rasterize-dab! surface sub-dab)
+            (deposit-effects! surface sub-dab wet-spec impasto-spec)))
+        smudge'))
+    initial-smudge
+    dabs)
+  nil)
 
 (defn- render-single-tip-stroke!
   "Renders a single-tip stroke — one dab per position."
-  [surface dabs {:keys [smudge-spec grain-spec substrate-spec
+  [surface dabs {:keys [grain-spec substrate-spec
                         blend-mode wet-spec impasto-spec resolved-color]}
-   smudge-state]
-  (doseq [d dabs]
-    (let [d (if smudge-state
-              (let [[mr mg mb] (smudge/update-smudge!
-                                 smudge-state surface
-                                 (long (:dab/cx d)) (long (:dab/cy d))
-                                 resolved-color)
-                    mixed-color {:r (Math/round (* mr 255.0))
-                                 :g (Math/round (* mg 255.0))
-                                 :b (Math/round (* mb 255.0))
-                                 :a (get (:dab/color d) :a 1.0)}]
-                (assoc d :dab/color mixed-color))
-              d)
-          d (apply-texture d grain-spec substrate-spec blend-mode)]
-      (kernel/rasterize-dab! surface d)
-      (deposit-effects! surface d wet-spec impasto-spec))))
+   initial-smudge]
+  (reduce
+    (fn [smudge d]
+      (let [[d smudge'] (apply-smudge d smudge surface resolved-color)
+            d (apply-texture d grain-spec substrate-spec blend-mode)]
+        (kernel/rasterize-dab! surface d)
+        (deposit-effects! surface d wet-spec impasto-spec)
+        smudge'))
+    initial-smudge
+    dabs)
+  nil)
 
 (defn- emit-spatter!
   "Emits secondary spatter particles for speed-driven effects."
@@ -510,13 +517,14 @@
                                        (:paint/brush stroke-desc)))
          params (resolve-stroke-params stroke-desc brush-spec substrate-spec)
          {:keys [dabs smudge-spec wet-spec resolved-color]} params
-         smudge-state (when smudge-spec
-                        (smudge/make-smudge-state smudge-spec resolved-color))]
+         initial-smudge (when smudge-spec
+                          (smudge/init-smudge-state
+                            smudge-spec resolved-color))]
      (if (= :brush/deform (:brush/type brush-spec))
        (render-deform-stroke! surface dabs (:brush/deform brush-spec))
        (if (:bristle-spec params)
-         (render-bristle-stroke! surface dabs params smudge-state)
-         (render-single-tip-stroke! surface dabs params smudge-state)))
+         (render-bristle-stroke! surface dabs params initial-smudge)
+         (render-single-tip-stroke! surface dabs params initial-smudge)))
      (when-let [spatter-spec (:brush/spatter brush-spec)]
        (emit-spatter! surface dabs spatter-spec params))
      (when (and wet-spec (:wet/enabled wet-spec true))
