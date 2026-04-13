@@ -5,7 +5,9 @@
     [eido.gen.contour :as contour]
     [eido.gen.flow :as flow]
     [eido.gen.lsystem :as lsystem]
+    [eido.gen.noise :as noise]
     [eido.gen.scatter :as scatter]
+    [eido.gen.vary :as vary]
     [eido.gen.voronoi :as voronoi]
     [eido.ir :as ir]
     [eido.path.decorate :as decorator]
@@ -13,12 +15,7 @@
     [eido.path.stroke :as stroke]
     [eido.path.warp :as warp]
     [eido.text :as text]
-    [eido.validate :as validate]
-    [eido.gen.vary :as vary]))
-
-;; Legacy compile-tree, compile-node, compile-style, and related helpers
-;; have been removed. The compilation pipeline now routes through
-;; compile-semantic → ir.lower/lower. See eido.ir.lower for lowering.
+    [eido.validate :as validate]))
 
 (defn- apply-distort-transforms
   "Applies :transform/distort entries to a path node's commands,
@@ -66,14 +63,6 @@
   "Returns true if a fill spec is a stipple fill."
   [fill]
   (and (map? fill) (= :stipple (:fill/type fill))))
-
-;; pattern-fill?, shape-bounds, expand-hatch-fill, expand-stipple-fill,
-;; make-shadow-node, make-glow-node have been removed.
-;; Hatch/stipple fills are now handled by eido.ir.fill.
-;; Shadow/glow effects are now handled by eido.ir.effect.
-
-;; expand-effects removed — effects are now handled by eido.ir.effect
-;; via scene-node->draw-item's effect extraction.
 
 ;; --- node expansion helpers ---
 
@@ -162,10 +151,10 @@
 
 (defn- expand-contour [node]
   (let [noise-fn (case (get node :contour/fn :perlin)
-                   :perlin eido.gen.noise/perlin2d
+                   :perlin noise/perlin2d
                    :fbm    (fn [x y opts]
-                             (eido.gen.noise/fbm
-                               eido.gen.noise/perlin2d x y
+                             (noise/fbm
+                               noise/perlin2d x y
                                (merge opts (:contour/opts node)))))
         paths (contour/contour-lines noise-fn (:contour/bounds node)
                 (or (:contour/opts node) {}))
