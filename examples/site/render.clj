@@ -974,6 +974,146 @@
         :image/background [:color/rgb 30 30 40]
         :image/nodes (if (sequential? result) (vec result) [result])})
 
+     ;; --- Guide /paint/ section previews ---
+
+     "paint-chalk-sketch.png"
+     {:image/size [600 400]
+      :image/background [:color/rgb 252 250 242]
+      :image/nodes
+      [{:node/type :paint/surface
+        :paint/size [600 400]
+        :paint/strokes
+        [{:paint/brush  :chalk
+          :paint/color  [:color/rgb 80 60 40]
+          :paint/radius 12.0
+          :paint/points [[50 100 0.8 0 0 0]
+                         [300 60 1.0 1.0 0 0]
+                         [550 100 0.3 0.5 0 0]]}]}]}
+
+     "paint-layered-strokes.png"
+     {:image/size [600 200]
+      :image/background [:color/rgb 252 250 242]
+      :image/nodes
+      [{:node/type :shape/path
+        :path/commands [[:move-to [50 100]]
+                        [:curve-to [150 30] [350 170] [550 100]]]
+        :paint/brush :chalk
+        :paint/color [:color/rgb 80 60 40]
+        :paint/radius 12.0
+        :paint/pressure [[0.0 0.3] [0.5 1.0] [1.0 0.1]]}]}
+
+     "paint-ink-flow.png"
+     {:image/size [600 600]
+      :image/background [:color/rgb 252 250 242]
+      :image/nodes
+      [{:node/type :group
+        :paint/surface {:paint/size [600 600]}
+        :group/children
+        [{:node/type :flow-field
+          :flow/bounds [30 30 540 540]
+          :flow/opts {:density 20 :steps 40 :seed 77}
+          :paint/brush :ink
+          :paint/color [:color/rgb 15 12 8]
+          :paint/radius 2.0}]}]}
+
+     ;; --- Paint workflow previews ---
+
+     "paint-02-ink-calligraphy.png"
+     {:image/size [800 400]
+      :image/background [:color/rgb 252 250 242]
+      :image/nodes
+      [{:node/type :shape/path
+        :path/commands [[:move-to [60 200]]
+                        [:curve-to [200 80] [350 320] [740 160]]]
+        :paint/brush :ink
+        :paint/color [:color/rgb 15 10 5]
+        :paint/radius 9.0
+        :paint/pressure [[0.0 0.1] [0.3 0.9] [0.7 0.6] [1.0 0.05]]}]}
+
+     "paint-03-watercolor-wash.png"
+     {:image/size [800 400]
+      :image/background [:color/rgb 252 250 242]
+      :image/nodes
+      [{:node/type :group
+        :paint/surface {:paint/size [800 400] :substrate/tooth 0.3}
+        :group/children
+        [{:node/type :shape/path
+          :path/commands [[:move-to [20 250]]
+                          [:curve-to [200 100] [400 350] [780 200]]]
+          :paint/brush :watercolor
+          :paint/color [:color/hsl 210 0.45 0.65]
+          :paint/radius 45.0}
+         {:node/type :shape/path
+          :path/commands [[:move-to [120 220]]
+                          [:curve-to [300 150] [500 280] [680 180]]]
+          :paint/brush :ink
+          :paint/color [:color/rgb 25 30 50]
+          :paint/radius 2.5}]}]}
+
+     "paint-04-flow-ink.png"
+     {:image/size [700 700]
+      :image/background [:color/rgb 252 250 242]
+      :image/nodes
+      [{:node/type :group
+        :paint/surface {:paint/size [700 700]}
+        :group/children
+        [{:node/type :flow-field
+          :flow/bounds [40 40 620 620]
+          :flow/opts {:density 18 :steps 50
+                      :noise-scale 0.005 :seed 33}
+          :paint/brush :ink
+          :paint/color [:color/rgb 20 15 10]
+          :paint/radius 1.8}]}]}
+
+     "paint-05-pastel-landscape.png"
+     ;; Showcase grain + substrate: horizontal pastel sweeps of warm
+     ;; colors on a canvas with tooth so the strokes skip into valleys.
+     {:image/size [700 400]
+      :image/background [:color/rgb 238 230 215]
+      :image/nodes
+      [{:node/type :group
+        :paint/surface {:paint/size [700 400]
+                        :substrate/tooth 0.45
+                        :substrate/scale 0.08}
+        :group/children
+        (mapv (fn [i]
+                (let [y (+ 80 (* i 52))
+                      colors [[200 110 60] [220 155 80] [230 190 120]
+                              [150 130 170] [90 100 140]]]
+                  {:node/type :shape/path
+                   :path/commands [[:move-to [40 y]]
+                                   [:curve-to [200 (- y 12)]
+                                              [500 (+ y 18)]
+                                              [660 (- y 6)]]]
+                   :paint/brush :pastel
+                   :paint/color (into [:color/rgb] (nth colors i))
+                   :paint/radius 26.0
+                   :paint/pressure [[0.0 0.3] [0.5 1.0] [1.0 0.3]]}))
+              (range 5))}]}
+
+     "paint-06-bristle-flat.png"
+     ;; Showcase bristle multi-tip: a single broad arc with a flat
+     ;; bristle brush so individual hair marks are legible.
+     {:image/size [700 280]
+      :image/background [:color/rgb 244 238 226]
+      :image/nodes
+      [{:node/type :shape/path
+        :path/commands [[:move-to [40 180]]
+                        [:curve-to [200 60] [500 260] [660 120]]]
+        :paint/brush {:brush/type :brush/dab
+                      :brush/tip {:tip/shape :ellipse
+                                  :tip/hardness 0.6
+                                  :tip/aspect 1.3}
+                      :brush/paint {:paint/opacity 0.55
+                                    :paint/spacing 0.04
+                                    :paint/flow 0.9}
+                      :brush/bristles {:bristle/count 9
+                                       :bristle/spread 1.0
+                                       :bristle/shear 0.15}}
+        :paint/color [:color/rgb 140 60 55]
+        :paint/radius 22.0
+        :paint/pressure [[0.0 0.4] [0.5 1.0] [1.0 0.4]]}]}
+
      }))
 
 (defn render-docs-examples!
