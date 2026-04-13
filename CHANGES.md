@@ -44,6 +44,44 @@
   unchanged; the SVG render path keeps its internal op-level
   grouping and optimization untouched, so plotter behavior is
   preserved.
+- **HPGL writer** (`eido.io.hpgl`, provisional) — Third
+  motion-stream backend, for vintage and current pen plotters
+  (HP DraftPro, DesignJet, Roland DXY/PNC, AxiDraw-shim
+  controllers). Plain ASCII `IN;PA;SP n;PU x,y;PD x,y,...;`
+  command stream that some artists prefer over G-code
+  post-processing. Each unique stroke color becomes a sequential
+  `SP` pen change (1-indexed in first-seen order); polylines emit
+  `PU` to the start point then a single `PD` with all subsequent
+  points. Y-axis is flipped relative to scene height to match the
+  HPGL bottom-left origin. Default `:scale 40` matches the
+  40-unit-per-mm resolution of classic HP plotters; pass
+  `:scale 1` for raw scene units. Reachable through the main
+  entry point: `(eido.core/render scene {:output "art.hpgl"})`
+  writes a file and `(eido.core/render scene {:format :hpgl})`
+  returns the string.
+- **Polyline clipping against `:group/clip`** — The polyline
+  pipeline now clips each polyline against the parent group's
+  `:clip` geometry, matching what the raster renderer draws.
+  Previously a 200×200 rect clipped to a small circle exported
+  its full outline regardless, costing pen ink and travel on
+  geometry that wasn't part of the visible composition. Uses
+  segment-by-segment analytic clipping (intersect each segment
+  with the clip polygon's edges, classify intervals via
+  `Path2D.contains`) and supports arbitrary non-convex clip
+  paths. Open polylines that straddle the clip boundary split
+  into multiple sub-polylines; closed shapes that cross the clip
+  boundary become a sequence of arcs.
+- **Drop-warning report** — `extract-polylines`,
+  `extract-grouped-polylines`, and the new public
+  `summarize-drops` helper now report silently-dropped visual
+  features as `{:dropped {:fills N ...}}` (omitted when
+  nothing's dropped). Polyline extraction can't represent fills,
+  gradients, patterns, hatch, stipple, or graphics-only effects
+  — so a scene that looks filled on screen exports as outlines
+  only. The DXF/G-code/HPGL manifests written via
+  `:emit-manifest? true` include the `:dropped` map, giving
+  reproducibility tooling a chance to flag scenes whose plotter
+  output diverged from the visible composition.
 
 ### Bug fixes
 
@@ -64,6 +102,36 @@
   now converted to single-segment paths in `collect-painted` just
   before paint dispatch. This fixes `:delaunay` (which expands to
   line nodes) under a paint surface.
+- **Polyline extraction applies IR `:transforms`** — A shape with
+  `:node/transform` (or inside a transformed group) was exporting
+  to DXF/G-code/HPGL at its untransformed coordinates because the
+  extractor ignored the `:transforms` key on each op. Translate,
+  rotate, scale, and shear are now baked into the polyline points
+  via `AffineTransform`, so motion-stream output matches the
+  raster renderer pixel-for-pixel.
+- **Polyline extraction skips `:opacity 0` ops** — The raster
+  renderer draws nothing at zero alpha; the polyline extractor
+  was still emitting a polyline, which would have wasted plotter
+  travel on shapes the artist had deliberately hidden.
+- **Animations rejected for `:dxf`, `:gcode`, and `:hpgl`** —
+  Passing a sequence of scenes with a motion-stream `:format`
+  previously fell through the animation branch and silently
+  returned a vector of `BufferedImage`s. Now throws an `ex-info`
+  with `"<format> export does not support animations"`,
+  generalizing the existing `:polylines` guard.
+- **DXF layer / G-code tool labels now disambiguate by alpha** —
+  Two stroke-color groups with the same RGB but different alpha
+  (e.g. opaque and half-transparent red) collided on identical
+  layer names (invalid DXF) and identical M0 tool-change comments
+  (operator-confusing). Layer/label names now append an
+  `-a<percent>` suffix when alpha < 1.0; opaque colors keep the
+  existing `pen-R-G-B` / `rgb-R-G-B` naming.
+- **Polyline substrate guarded against degenerate input** —
+  `optimize-travel-polylines` no longer crashes with
+  `ArrayIndexOutOfBoundsException` when fed polylines with no
+  first point (empty/nil); circle, ellipse, and arc helpers
+  coerce `:segments` to a sensible minimum so `:segments 0`
+  no longer cascades into an NPE in the DXF/G-code formatters.
 
 ### Website
 

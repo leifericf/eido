@@ -136,15 +136,133 @@ scene or the renderer changed — slow and wasteful.
 
 Eido's core produces polylines (and meshes, via OBJ). Each output
 format is essentially a serializer on top of that IR. Current
-backends: SVG, plotter, polyline, OBJ, DXF, G-code. This section
-surveys further export targets, organized by effort and audience
-captured.
+backends: SVG, plotter, polyline, OBJ, DXF, G-code, HPGL. This
+section surveys further export targets, organized by effort and
+audience captured.
 
 The shared motion-stream substrate —
 `eido.io.polyline/extract-grouped-polylines` and
 `optimize-travel-polylines` — is in place and ready to be consumed
 by new backends; no further IR refactor is needed for any tier-1
-or tier-2 target below.
+or tier-2 target below. The substrate also clips polylines against
+`:group/clip` geometry and surfaces dropped fills via
+`summarize-drops`, so plotter output matches the visible
+composition and the loss is auditable in the manifest sidecar.
+
+### Substrate enhancements
+
+Improvements to the polyline extractor itself — they expand what
+*every* motion-stream backend (DXF, G-code, HPGL, polyline EDN,
+future embroidery/Lottie/etc.) can faithfully represent.
+
+#### Polyline merging at shared endpoints
+
+**Concept:** Two polylines whose endpoints coincide (within an
+epsilon) can be concatenated into one longer polyline, eliminating
+a pen-up/pen-down pair. Common after path operations or generative
+algorithms that emit segment-at-a-time output (contour lines,
+hatch fills, mesh wireframes).
+
+**Effort:** Low to medium. Build an endpoint hash, greedy-merge
+until no more merges possible. Reverse one polyline when needed to
+align endpoints. Should run before travel optimization since merged
+polylines change the candidate set.
+
+**Value:** Reduces pen-up time on plotter output and stitch-jump
+count on embroidery output. Especially impactful on hatch fills
+and contour-line scenes (currently each segment is its own
+polyline). No correctness change.
+
+#### Smarter travel optimization
+
+**Concept:** Current `optimize-travel-polylines` is greedy
+nearest-neighbor — fast but typically ~25% worse than optimal on
+TSP-shaped problems. 2-opt local search is a small extension
+(swap pairs of polyline orderings, accept if total travel
+shrinks) that closes most of that gap, and OR-opt or simulated
+annealing can do better on larger inputs.
+
+**Effort:** Low (2-opt) to medium (full SA). Polyline reversal
+is also a free degree of freedom — for two-endpoint polylines
+either end can be the start, doubling the search space cheaply.
+
+**Value:** Direct plotter time savings, especially on dense
+designs (hundreds of polylines). Embroidery jump-minimization
+benefits identically.
+
+**Why hold off:** Greedy-NN is "good enough" for tens of
+polylines. Revisit when users hit hour-long plot times or when
+the hatch/contour density used in catalog scenes grows.
+
+#### All-positive coordinate normalization
+
+**Concept:** Many CNC controllers (and some plotters) reject
+negative coordinates or have soft limits at the bed origin.
+Geometry placed near `[0 0]` in scene space, after Y-flip and
+scale, can still emit negative X — and a shape that extends past
+the canvas edge produces negative coords directly.
+
+Add an optional `:translate-to-positive` flag (default off for
+backward compat) that computes the bounding box of all emitted
+points and shifts everything so the minimum is `[0 0]`.
+
+**Effort:** Low. Single bbox pass plus a translate before
+emission.
+
+**Value:** "It just works" on stricter controllers without the
+user having to compute and apply a manual offset.
+
+### Backend refinements
+
+Improvements to *existing* shipped backends (DXF R12, GRBL G-code).
+Each preserves the current default behavior and adds an opt-in mode
+or option.
+
+#### Higher-fidelity DXF: native CIRCLE/ARC/ELLIPSE + truecolor
+
+**Concept:** R12 ASCII (current target) requires polyline
+approximation for circles, arcs, and ellipses, and limits color
+to the 8-entry ACI palette. R2000+ supports native `CIRCLE`,
+`ARC`, `ELLIPSE` entities and truecolor via group code 420.
+
+For artists exporting curves to laser/router workflows, native
+arcs cut more smoothly (no polygonal stair-stepping) and are
+smaller files. Truecolor preserves stroke colors exactly instead
+of nearest-neighbor mapping.
+
+**Effort:** Medium. R2000+ has a mandatory `CLASSES` section and
+more required header variables than R12; not a one-line version
+bump. Worth doing as a separate `:dxf-version :r2000` opt rather
+than replacing R12.
+
+**Why hold off:** R12 is the most universally readable DXF
+flavor and "works everywhere"; R2000+ adds fidelity at the cost
+of compatibility with legacy CAD tools. Track until a user wants
+either truecolor or native curves.
+
+#### G-code: dialect option + G2/G3 arcs
+
+**Concept:** Current writer emits GRBL only. Marlin (3D-printer
+firmware sometimes used for pen plotting) and LinuxCNC have
+slightly different conventions for spindle/laser commands and
+tool-change semantics. A `:dialect` option (`:grbl :marlin
+:linuxcnc`) would let users target their controller without
+post-processing.
+
+Separately, GRBL itself supports `G2`/`G3` (clockwise/CCW arc
+moves), which would let circles and arcs traverse natively
+instead of as polygon approximations — same fidelity benefit as
+DXF native arcs, plus smoother motion on the controller.
+
+**Effort:** Medium. Dialect is a thin per-feature dispatch.
+G2/G3 needs arc-aware extraction (probably a sibling of
+`extract-grouped-polylines` that preserves arc primitives — and
+the substrate change ripples to any other backend that wants
+native arcs).
+
+**Why hold off:** GRBL covers most desktop CNC and laser users;
+Marlin/LinuxCNC are minority asks. Add when a specific user
+hits the gap.
 
 ### Prioritization framework
 
@@ -171,8 +289,9 @@ One meta-question dominates the ranking regardless of the table:
 ### Tier 1 — quick wins (serializer-only)
 
 Cheap, universal, strictly expand utility for existing users. DXF
-(universal CAD interchange) and GRBL G-code (lasers, 2D CNC) are
-already shipped on the substrate. STL is the remaining candidate.
+(universal CAD interchange), GRBL G-code (lasers, 2D CNC), and
+HPGL (vintage pen plotters) are already shipped on the substrate.
+STL is the remaining candidate.
 
 #### STL / 3MF export
 
