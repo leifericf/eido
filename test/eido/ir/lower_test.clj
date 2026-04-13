@@ -49,8 +49,8 @@
         ops  (#'lower/lower-item item)]
     (testing "produces one op"
       (is (= 1 (count ops))))
-    (testing "op is a RectOp"
-      (is (instance? eido.ir.RectOp (first ops))))
+    (testing "op is a rect op"
+      (is (= :rect (:op (first ops)))))
     (testing "position correct"
       (let [op (first ops)]
         (is (= 10 (:x op)))
@@ -62,9 +62,9 @@
   (let [item (make-item :circle {:circle/center [50 50]
                                  :circle/radius 25})
         ops  (#'lower/lower-item item)]
-    (testing "produces one CircleOp"
+    (testing "produces one circle op"
       (is (= 1 (count ops)))
-      (is (instance? eido.ir.CircleOp (first ops))))
+      (is (= :circle (:op (first ops)))))
     (testing "center and radius correct"
       (let [op (first ops)]
         (is (= 50 (:cx op)))
@@ -76,13 +76,13 @@
                                   :ellipse/rx 40 :ellipse/ry 20})
         ops  (#'lower/lower-item item)]
     (is (= 1 (count ops)))
-    (is (instance? eido.ir.EllipseOp (first ops)))))
+    (is (= :ellipse (:op (first ops))))))
 
 (deftest lower-line-item-test
   (let [item (make-item :line {:line/from [0 0] :line/to [100 100]})
         ops  (#'lower/lower-item item)]
     (is (= 1 (count ops)))
-    (is (instance? eido.ir.LineOp (first ops)))))
+    (is (= :line (:op (first ops))))))
 
 (deftest lower-path-item-test
   (let [item (make-item :path {:path/commands [[:move-to [0 0]]
@@ -90,7 +90,7 @@
                                                [:close]]})
         ops  (#'lower/lower-item item)]
     (is (= 1 (count ops)))
-    (is (instance? eido.ir.PathOp (first ops)))))
+    (is (= :path (:op (first ops))))))
 
 (deftest lower-arc-item-test
   (let [item (make-item :arc {:arc/center [50 50]
@@ -98,7 +98,7 @@
                               :arc/start 0 :arc/extent 180})
         ops  (#'lower/lower-item item)]
     (is (= 1 (count ops)))
-    (is (instance? eido.ir.ArcOp (first ops)))))
+    (is (= :arc (:op (first ops))))))
 
 ;; --- group items ---
 
@@ -133,5 +133,5 @@
       (is (:ir/background result)))
     (testing "one op for one item"
       (is (= 1 (count (:ir/ops result)))))
-    (testing "op is a RectOp"
-      (is (instance? eido.ir.RectOp (first (:ir/ops result)))))))
+    (testing "op is a rect op"
+      (is (= :rect (:op (first (:ir/ops result))))))))

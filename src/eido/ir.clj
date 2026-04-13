@@ -10,43 +10,76 @@
   The pipeline flows: scene map → semantic IR → lower → concrete ops → render.
   See eido.ir.lower for the lowering step.")
 
-;; --- concrete op records ---
+;; --- concrete op constructors ---
 ;;
-;; Records provide O(1) field access vs keyword lookup on maps.
-;; They implement IPersistentMap, so existing destructuring and
-;; keyword access in render.clj and svg.clj work unchanged.
+;; Concrete ops are plain persistent maps with well-known keys.
+;; The ->XxxOp constructors capture the field list for each op type
+;; so callers don't have to spell out the keys every time.
 
-(defrecord RectOp    [op x y w h corner-radius
-                      fill stroke-color stroke-width opacity
-                      stroke-cap stroke-join stroke-dash
-                      transforms clip])
+(defn ->RectOp
+  [op x y w h corner-radius
+   fill stroke-color stroke-width opacity
+   stroke-cap stroke-join stroke-dash
+   transforms clip]
+  {:op op :x x :y y :w w :h h :corner-radius corner-radius
+   :fill fill :stroke-color stroke-color :stroke-width stroke-width :opacity opacity
+   :stroke-cap stroke-cap :stroke-join stroke-join :stroke-dash stroke-dash
+   :transforms transforms :clip clip})
 
-(defrecord CircleOp  [op cx cy r
-                      fill stroke-color stroke-width opacity
-                      stroke-cap stroke-join stroke-dash
-                      transforms clip])
+(defn ->CircleOp
+  [op cx cy r
+   fill stroke-color stroke-width opacity
+   stroke-cap stroke-join stroke-dash
+   transforms clip]
+  {:op op :cx cx :cy cy :r r
+   :fill fill :stroke-color stroke-color :stroke-width stroke-width :opacity opacity
+   :stroke-cap stroke-cap :stroke-join stroke-join :stroke-dash stroke-dash
+   :transforms transforms :clip clip})
 
-(defrecord ArcOp     [op cx cy rx ry start extent mode
-                      fill stroke-color stroke-width opacity
-                      stroke-cap stroke-join stroke-dash
-                      transforms clip])
+(defn ->ArcOp
+  [op cx cy rx ry start extent mode
+   fill stroke-color stroke-width opacity
+   stroke-cap stroke-join stroke-dash
+   transforms clip]
+  {:op op :cx cx :cy cy :rx rx :ry ry :start start :extent extent :mode mode
+   :fill fill :stroke-color stroke-color :stroke-width stroke-width :opacity opacity
+   :stroke-cap stroke-cap :stroke-join stroke-join :stroke-dash stroke-dash
+   :transforms transforms :clip clip})
 
-(defrecord LineOp    [op x1 y1 x2 y2
-                      fill stroke-color stroke-width opacity
-                      stroke-cap stroke-join stroke-dash
-                      transforms clip])
+(defn ->LineOp
+  [op x1 y1 x2 y2
+   fill stroke-color stroke-width opacity
+   stroke-cap stroke-join stroke-dash
+   transforms clip]
+  {:op op :x1 x1 :y1 y1 :x2 x2 :y2 y2
+   :fill fill :stroke-color stroke-color :stroke-width stroke-width :opacity opacity
+   :stroke-cap stroke-cap :stroke-join stroke-join :stroke-dash stroke-dash
+   :transforms transforms :clip clip})
 
-(defrecord EllipseOp [op cx cy rx ry
-                      fill stroke-color stroke-width opacity
-                      stroke-cap stroke-join stroke-dash
-                      transforms clip])
+(defn ->EllipseOp
+  [op cx cy rx ry
+   fill stroke-color stroke-width opacity
+   stroke-cap stroke-join stroke-dash
+   transforms clip]
+  {:op op :cx cx :cy cy :rx rx :ry ry
+   :fill fill :stroke-color stroke-color :stroke-width stroke-width :opacity opacity
+   :stroke-cap stroke-cap :stroke-join stroke-join :stroke-dash stroke-dash
+   :transforms transforms :clip clip})
 
-(defrecord PathOp    [op commands fill-rule
-                      fill stroke-color stroke-width opacity
-                      stroke-cap stroke-join stroke-dash
-                      transforms clip])
+(defn ->PathOp
+  [op commands fill-rule
+   fill stroke-color stroke-width opacity
+   stroke-cap stroke-join stroke-dash
+   transforms clip]
+  {:op op :commands commands :fill-rule fill-rule
+   :fill fill :stroke-color stroke-color :stroke-width stroke-width :opacity opacity
+   :stroke-cap stroke-cap :stroke-join stroke-join :stroke-dash stroke-dash
+   :transforms transforms :clip clip})
 
-(defrecord BufferOp  [op composite filter opacity transforms clip ops])
+(defn ->BufferOp
+  [op composite filter opacity transforms clip ops]
+  {:op op :composite composite :filter filter :opacity opacity
+   :transforms transforms :clip clip :ops ops})
 
 ;; --- semantic IR ---
 ;;
