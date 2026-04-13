@@ -308,6 +308,17 @@
     :center (- (/ width 2.0))
     :right  (- width)))
 
+(defn- with-group-attrs
+  "Copies pass-through group-level attributes
+  (:node/opacity, :node/transform, :group/composite, :group/filter)
+  from `source` onto `group`."
+  [group source]
+  (cond-> group
+    (:node/opacity source)    (assoc :node/opacity (:node/opacity source))
+    (:node/transform source)  (assoc :node/transform (:node/transform source))
+    (:group/composite source) (assoc :group/composite (:group/composite source))
+    (:group/filter source)    (assoc :group/filter (:group/filter source))))
+
 (defn text-node->group
   "Expands a :shape/text node into a :group with a single :shape/path child."
   [node]
@@ -321,13 +332,11 @@
                            :path/fill-rule :even-odd}]}
         (cond->
           (:style/fill node)   (assoc-in [:group/children 0 :style/fill] (:style/fill node))
-          (:style/stroke node) (assoc-in [:group/children 0 :style/stroke] (:style/stroke node))
-          (:node/opacity node) (assoc :node/opacity (:node/opacity node))
-          true (assoc :node/transform
-                 (into (or (:node/transform node) [])
-                       [[:transform/translate (+ ox ax) oy]]))
-          (:group/composite node) (assoc :group/composite (:group/composite node))
-          (:group/filter node)    (assoc :group/filter (:group/filter node))))))
+          (:style/stroke node) (assoc-in [:group/children 0 :style/stroke] (:style/stroke node)))
+        (with-group-attrs node)
+        (assoc :node/transform
+               (into (or (:node/transform node) [])
+                     [[:transform/translate (+ ox ax) oy]])))))
 
 (defn text-glyphs-node->group
   "Expands a :shape/text-glyphs node into a :group with one :shape/path per glyph."
@@ -358,12 +367,9 @@
                            (update :node/transform into (:node/transform ovr)))))
                      (range)
                      glyph-data)]
-    (cond-> {:node/type :group
-             :group/children children}
-      (:node/opacity node)      (assoc :node/opacity (:node/opacity node))
-      (:node/transform node)    (assoc :node/transform (:node/transform node))
-      (:group/composite node)   (assoc :group/composite (:group/composite node))
-      (:group/filter node)      (assoc :group/filter (:group/filter node)))))
+    (-> {:node/type :group
+         :group/children children}
+        (with-group-attrs node))))
 
 (defn- glyph-advances
   "Pre-computes advance width for each glyph from position data.
@@ -416,12 +422,9 @@
                 {:dist next-dist :result result})))
           {:dist (double offset) :result []}
           (map-indexed vector glyph-data))]
-    (cond-> {:node/type      :group
-             :group/children result}
-      (:node/opacity node)    (assoc :node/opacity (:node/opacity node))
-      (:node/transform node)  (assoc :node/transform (:node/transform node))
-      (:group/composite node) (assoc :group/composite (:group/composite node))
-      (:group/filter node)    (assoc :group/filter (:group/filter node)))))
+    (-> {:node/type      :group
+         :group/children result}
+        (with-group-attrs node))))
 
 (comment
   ;; Explore available fonts
