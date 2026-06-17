@@ -90,3 +90,32 @@
       :media-type  (String. ^bytes (slice framed media-off media-len) "UTF-8")
       :diagnostics (String. ^bytes (slice framed diag-off diag-len) "UTF-8")
       :bytes       (slice framed pay-off (- (alength ^bytes framed) pay-off))})))
+
+(defn scene->graph
+  "Wrap a Clojo canvas scene in a minimal render-to-output graph: a
+  `:canvas/render` node feeding an `:image/write` sink. The in-memory core
+  captures the sink's bytes, writing no file; the path only fixes the output
+  format (PNG by extension)."
+  [scene]
+  {:clojo/version 1
+   :graph/id      :eido
+   :graph/nodes   {:art {:op/id        :canvas/render
+                         :canvas/scene scene}
+                   :out {:op/id       :image/write
+                         :graph/input :art
+                         :asset/path  "out.png"}}
+   :graph/output  :out})
+
+(defn graph->edn
+  "Print a graph as EDN for the Clojo reader. Namespace-map syntax
+  (`#:image{...}`) is disabled: Clojo's reader takes fully-qualified keys."
+  [graph]
+  (binding [*print-namespace-maps* false]
+    (pr-str graph)))
+
+(defn render-scene
+  "Render a Clojo canvas scene to its encoded artifact through the native
+  backend. Returns the same map as `render-edn`."
+  ([scene] (render-scene scene "."))
+  ([scene base-dir]
+   (render-edn (graph->edn (scene->graph scene)) base-dir)))
