@@ -142,6 +142,30 @@
         :grain [:effect/grain {:amount (or (nth args 0 nil) 30)}]
         nil))))
 
+;; ---- arcs ------------------------------------------------------------------
+
+(defn- r3 [x] (/ (Math/round (* (double x) 1000.0)) 1000.0))
+
+(defn- arc->path
+  "Sample an elliptical arc into Clojo path commands. Clojo has no arc
+  primitive, so an Eido :shape/arc lowers to a :shape/path. Matches Java2D
+  Arc2D: angles in degrees, the point at angle a is
+  (cx + rx·cos a, cy − ry·sin a). :open leaves the arc unclosed (a fill
+  chords it, as Java2D does), :chord closes it, :pie lines to the centre
+  and closes."
+  [cx cy rx ry start extent mode]
+  (let [n (max 8 (int (/ (Math/abs (double extent)) 3.0)))
+        pt (fn [i] (let [a (Math/toRadians (+ start (* extent (/ (double i) n))))]
+                     [(r3 (+ cx (* rx (Math/cos a))))
+                      (r3 (- cy (* ry (Math/sin a))))]))
+        [x0 y0] (pt 0)
+        cmds (into [[:move x0 y0]]
+                   (for [i (range 1 (inc n))] (into [:line] (pt i))))]
+    (case mode
+      :pie   (conj cmds [:line (r3 cx) (r3 cy)] [:close])
+      :chord (conj cmds [:close])
+      cmds)))
+
 ;; ---- core postwalk translation ---------------------------------------------
 
 (defn xlate
@@ -254,6 +278,15 @@
     (and (map? x) (= :shape/ellipse (:node/type x)) (contains? x :ellipse/rx))
     (-> x (assoc :ellipse/radii [(:ellipse/rx x) (:ellipse/ry x)])
         (dissoc :ellipse/rx :ellipse/ry))
+
+    (and (map? x) (= :shape/arc (:node/type x)) (contains? x :arc/center))
+    (let [[cx cy] (:arc/center x)]
+      (-> x
+          (dissoc :arc/center :arc/rx :arc/ry :arc/start :arc/extent :arc/mode)
+          (assoc :node/type :shape/path
+                 :path/commands (arc->path cx cy (:arc/rx x) (:arc/ry x)
+                                           (:arc/start x) (:arc/extent x)
+                                           (get x :arc/mode :open)))))
 
     (map? x)
     (cond-> x

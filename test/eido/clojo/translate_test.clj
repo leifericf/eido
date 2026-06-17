@@ -39,6 +39,28 @@
     (is (= {:node/type :shape/ellipse :ellipse/radii [3 4]}
            (t/xlate {:node/type :shape/ellipse :ellipse/rx 3 :ellipse/ry 4})))))
 
+(deftest arc-lowers-to-a-path
+  (testing "a :shape/arc samples into a :shape/path; Clojo has no arc primitive"
+    (let [r (t/xlate {:node/type :shape/arc
+                      :arc/center [200 200] :arc/rx 80 :arc/ry 80
+                      :arc/start 0 :arc/extent 270 :arc/mode :pie
+                      :style/fill [:color/rgb 255 200 50]})
+          cmds (:path/commands r)]
+      (is (= :shape/path (:node/type r)))
+      (is (nil? (:arc/center r)))
+      ;; style passes through untouched (real flow translates it first)
+      (is (= [:color/rgb 255 200 50] (:style/fill r)))
+      ;; angle 0 starts at (cx+rx, cy)
+      (is (= [:move 280.0 200.0] (first cmds)))
+      ;; :pie lines to the centre then closes
+      (is (= [:line 200.0 200.0] (last (butlast cmds))))
+      (is (= [:close] (last cmds))))
+    (testing ":open leaves the arc unclosed (fill chords it, like Java2D)"
+      (let [r (t/xlate {:node/type :shape/arc :arc/center [0 0]
+                        :arc/rx 10 :arc/ry 10 :arc/start 0 :arc/extent 90})]
+        (is (= :shape/path (:node/type r)))
+        (is (not= [:close] (last (:path/commands r))))))))
+
 (deftest semantic-fills-become-tagged-vectors
   (let [hatch (t/xlate {:fill/type :hatch :hatch/angle 30 :hatch/spacing 8})]
     (is (= :fill/hatch (first hatch)))
