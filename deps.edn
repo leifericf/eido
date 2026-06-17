@@ -24,4 +24,13 @@
                       org.clojure/test.check {:mvn/version "1.1.1"}}
          :jvm-opts ["--enable-native-access=ALL-UNNAMED"]
          :main-opts ["-m" "cognitect.test-runner"]
-         :exec-fn cognitect.test-runner.api/test}}}
+         :exec-fn cognitect.test-runner.api/test}
+  ;; Integration tests drive the native Clojo backend. They live on their
+  ;; own path so the default lane never loads them: they need a zig
+  ;; toolchain and a sibling clojo checkout. Run with `clojure -M:integration`.
+  :integration {:extra-paths ["test-integration"]
+                :extra-deps {io.github.cognitect-labs/test-runner
+                             {:git/tag "v0.5.1" :git/sha "dfb30dd"}
+                             org.clojure/test.check {:mvn/version "1.1.1"}}
+                :jvm-opts ["--enable-native-access=ALL-UNNAMED"]
+                :main-opts ["-m" "cognitect.test-runner" "-d" "test-integration"]}}}

@@ -25,6 +25,9 @@ classes/
 .nrepl-port
 .lein-repl-history
 
+# clj-zig native build cache and artifacts
+.clj-zig/
+
 # Site build output
 _site/
 
