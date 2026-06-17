@@ -17,14 +17,25 @@
     [java.nio ByteBuffer ByteOrder]
     [java.util Arrays]))
 
-(defn- clojo-module-root
-  "Absolute path to clojo's module root: CLOJO_MODULE_ROOT, or the sibling
-  checkout beside this repository."
+;; The Clojo grammar is frozen, so the module is pinned by commit: the pin is
+;; the reproducible identity a consumer reuses to resolve the baked library
+;; with no zig and no Clojo source (clj-zig ADR 36). A local checkout supplies
+;; the compile source for dev and bake; it is absent on a consumer. Bump the
+;; sha deliberately when targeting a newer frozen Clojo.
+(def ^:private clojo-sha "cf33e8c63c7a1fd010b07449701eb98091c60d8e")
+
+(defn- clojo-checkout
+  "Absolute path to a local clojo module root for compilation: from
+  CLOJO_MODULE_ROOT, or a sibling checkout when present. nil on a consumer
+  that resolves the baked library instead of compiling."
   []
   (or (System/getenv "CLOJO_MODULE_ROOT")
-      (.getAbsolutePath (io/file ".." "clojo" "src" "root.zig"))))
+      (let [sibling (io/file ".." "clojo" "src" "root.zig")]
+        (when (.exists sibling) (.getAbsolutePath sibling)))))
 
-(zig-deps {:zig/modules {"clojo" {:path (clojo-module-root)}}})
+(zig-deps {:zig/modules
+           {"clojo" (cond-> {:git/sha clojo-sha :root "src/root.zig"}
+                      (clojo-checkout) (assoc :path (clojo-checkout)))}})
 
 ;; The boundary packs clojo.render's result into one owned slice:
 ;; [status:u8][width:u32][height:u32][media-len:u32][diag-len:u32]

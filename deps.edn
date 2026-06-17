@@ -33,4 +33,11 @@
                              {:git/tag "v0.5.1" :git/sha "dfb30dd"}
                              org.clojure/test.check {:mvn/version "1.1.1"}}
                 :jvm-opts ["--enable-native-access=ALL-UNNAMED"]
-                :main-opts ["-m" "cognitect.test-runner" "-d" "test-integration"]}}}
+                :main-opts ["-m" "cognitect.test-runner" "-d" "test-integration"]}
+  ;; Cross-compile the native Clojo boundary for every target into resources,
+  ;; so the published jar renders with no zig toolchain (clj-zig ADR 36).
+  ;; Needs a local clojo checkout (sibling or CLOJO_MODULE_ROOT). For a quick
+  ;; host-only build: clojure -X:bake :targets :host
+  :bake {:jvm-opts ["--enable-native-access=ALL-UNNAMED"]
+         :exec-fn clj-zig.bake/bake!
+         :exec-args {:ns eido.clojo :out "resources"}}}}

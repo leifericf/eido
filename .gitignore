@@ -28,6 +28,9 @@ classes/
 # clj-zig native build cache and artifacts
 .clj-zig/
 
+# Baked native boundary libraries (generated at release time)
+resources/clj-zig/
+
 # Site build output
 _site/
 
