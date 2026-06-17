@@ -4,23 +4,19 @@
   (:import
     [java.awt Dimension]
     [java.awt.image BufferedImage]
-    [java.io File]
+    [java.io ByteArrayInputStream File]
+    [javax.imageio ImageIO]
     [javax.swing ImageIcon JFrame JLabel SwingUtilities]))
 
 (defonce ^:private frame (atom nil))
 
-(defonce ^:private validated? (atom false))
-
 (defn show
-  "Renders a scene and displays it in a reusable window.
-  Call repeatedly to update the display. Validates the first render;
-  skips validation on subsequent calls for faster iteration."
+  "Renders a scene through the native backend and displays it in a
+  reusable window. Call repeatedly to update the display."
   [scene]
-  (let [^BufferedImage img (if @validated?
-                             (binding [eido/*validate* false]
-                               (eido/render scene))
-                             (do (reset! validated? true)
-                                 (eido/render scene)))
+  (let [result             (eido/render scene)
+        ^BufferedImage img (ImageIO/read
+                             (ByteArrayInputStream. ^bytes (:bytes result)))
         w (.getWidth img)
         h (.getHeight img)]
     (SwingUtilities/invokeAndWait
