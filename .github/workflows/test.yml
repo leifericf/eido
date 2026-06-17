@@ -2,9 +2,9 @@ name: Tests
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, clojo-backend]
   push:
-    branches: [main]
+    branches: [main, clojo-backend]
     paths: ['src/**', 'test/**']
 
 jobs:
@@ -12,6 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
 
       - uses: DeLaGuardo/setup-clojure@13
         with:

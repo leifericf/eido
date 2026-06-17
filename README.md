@@ -55,7 +55,9 @@ See the **[Getting Started guide](https://eido.leifericf.com/guide/)** on the we
 
 ## Quick Start
 
-Requires Clojure 1.12+ and Java 11+.
+Requires Clojure 1.12+ and Java 22+ (the native rendering backend uses
+the finalized Foreign Function and Memory API). Run with
+`--enable-native-access=ALL-UNNAMED`.
 
 ```clojure
 (require '[eido.core :as eido])
