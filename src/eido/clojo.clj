@@ -12,7 +12,8 @@
   compiled boundary for every platform and needs no zig toolchain."
   (:require
     [clojure.java.io :as io]
-    [clj-zig.core :refer [defnz zig-deps]])
+    [clj-zig.core :refer [defnz zig-deps]]
+    [eido.clojo.translate :as translate])
   (:import
     [java.nio ByteBuffer ByteOrder]
     [java.util Arrays]))
@@ -124,9 +125,33 @@
   (binding [*print-namespace-maps* false]
     (pr-str graph)))
 
+(defn paint->graph
+  "Wrap a Clojo paint program in a `:paint/render` to `:image/write` graph."
+  [program]
+  {:clojo/version 1
+   :graph/id      :eido
+   :graph/nodes   {:art {:op/id         :paint/render
+                         :paint/program program}
+                   :out {:op/id       :image/write
+                         :graph/input :art
+                         :asset/path  "out.png"}}
+   :graph/output  :out})
+
 (defn render-scene
   "Render a Clojo canvas scene to its encoded artifact through the native
   backend. Returns the same map as `render-edn`."
   ([scene] (render-scene scene "."))
   ([scene base-dir]
    (render-edn (graph->edn (scene->graph scene)) base-dir)))
+
+(defn render-eido
+  "Translate an Eido scene to Clojo grammar and render it through the native
+  backend. A paint surface renders as a paint program, any other scene as a
+  canvas. Returns the same map as `render-edn`."
+  ([scene] (render-eido scene "."))
+  ([scene base-dir]
+   (let [{:keys [kind] :as t} (translate/translate scene)
+         graph (case kind
+                 :canvas (scene->graph (:scene t))
+                 :paint  (paint->graph (:program t)))]
+     (render-edn (graph->edn graph) base-dir))))

@@ -8,16 +8,15 @@
   (:import
     [java.io File]))
 
-;; A scene in Clojo's frozen canvas grammar (0..1 colour channels). Eido-grammar
-;; scenes target this through the Phase 4 re-spell; here we drive the backend
-;; directly with a scene the native renderer already accepts.
+;; An ordinary Eido scene (0..255 colour channels). The :clojo renderer
+;; translates it to Clojo grammar (Phase 4) before rendering.
 (def ^:private clojo-scene
   {:image/size       [16 16]
    :image/background [:color/rgb 0 0 0]
    :image/nodes      [{:node/type     :shape/circle
                        :circle/center [8 8]
                        :circle/radius 5
-                       :style/fill    [:color/rgb 1 1 1]}]})
+                       :style/fill    [:color/rgb 255 255 255]}]})
 
 (deftest clojo-renderer-returns-encoded-bytes
   (let [r (eido/render clojo-scene {:renderer :clojo})]

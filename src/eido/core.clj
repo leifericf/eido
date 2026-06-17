@@ -378,15 +378,16 @@
                           {:output output}))))
 
 (defn- render-via-clojo
-  "Renders a single Clojo-grammar scene through the native backend. Resolves
-  eido.clojo lazily, so the default build neither loads it nor needs a zig
-  toolchain. Returns the result map, or writes :output and returns its path."
+  "Renders a single Eido scene through the native Clojo backend, translating
+  it to Clojo grammar first. Resolves eido.clojo lazily, so the default build
+  neither loads it nor needs a zig toolchain. Returns the result map, or
+  writes :output and returns its path."
   [input opts]
   (when (animation? input)
     (throw (ex-info "the clojo renderer does not support animations yet"
                     {:renderer :clojo})))
-  (let [render-scene (requiring-resolve 'eido.clojo/render-scene)
-        result       (render-scene input (or (:base-dir opts) "."))]
+  (let [render-eido (requiring-resolve 'eido.clojo/render-eido)
+        result      (render-eido input (or (:base-dir opts) "."))]
     (when (not= :ok (:status result))
       (throw (ex-info "clojo render failed"
                       (select-keys result [:status :diagnostics]))))
@@ -419,9 +420,9 @@
                :loop (GIF, default true), :prefix (frame sequence).
 
   Backend: :renderer defaults to the Java2D engine. :renderer :clojo routes a
-  single scene through the native Clojo backend, returning a result map
-  {:status :width :height :media-type :diagnostics :bytes}, or writing :output
-  and returning its path. The scene must be in Clojo's grammar.
+  single Eido scene through the native Clojo backend (translating it to Clojo
+  grammar), returning a result map {:status :width :height :media-type
+  :diagnostics :bytes}, or writing :output and returning its path.
 
   Validation: scenes are validated before compilation by default. Bind
   *validate* to false for faster REPL iteration, or set :eido/validate
