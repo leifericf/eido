@@ -16,6 +16,8 @@
     [eido.clojo.translate :as translate])
   (:import
     [java.nio ByteBuffer ByteOrder]
+    [java.nio.file Files]
+    [java.nio.file.attribute FileAttribute]
     [java.util Arrays]))
 
 ;; The Clojo grammar is frozen, so the module is pinned by commit: the pin is
@@ -155,3 +157,37 @@
                  :canvas (scene->graph (:scene t))
                  :paint  (paint->graph (:program t)))]
      (render-edn (graph->edn graph) base-dir))))
+
+(defn render-animation
+  "Render an Eido animation — a sequence of frame scenes — to an animated GIF
+  through the native backend. Each frame renders to a PNG, then Clojo's
+  `gif/encode` assembles them (the host-rendered animation path). Returns the
+  same map as `render-edn`, with an image/gif artifact."
+  ([frames] (render-animation frames {}))
+  ([frames {:keys [fps base-dir] :or {fps 12 base-dir "."}}]
+   (let [dir (.toFile (Files/createTempDirectory "eido-clojo-anim"
+                                                 (make-array FileAttribute 0)))]
+     (try
+       (let [paths (vec (map-indexed
+                          (fn [i frame]
+                            (let [res (render-eido frame base-dir)]
+                              (when (not= :ok (:status res))
+                                (throw (ex-info "clojo frame render failed"
+                                                {:frame i :status (:status res)
+                                                 :diagnostics (:diagnostics res)})))
+                              (let [p (.getPath (io/file dir (format "frame-%05d.png" i)))]
+                                (with-open [o (io/output-stream p)]
+                                  (.write o ^bytes (:bytes res)))
+                                p)))
+                          frames))
+             graph {:clojo/version 1
+                    :graph/id      :eido-anim
+                    :graph/nodes   {:out {:op/id      :gif/encode
+                                          :gif/fps    fps
+                                          :gif/frames paths
+                                          :asset/path "anim.gif"}}
+                    :graph/output  :out}]
+         (render-edn (graph->edn graph) base-dir))
+       (finally
+         (doseq [f (.listFiles dir)] (.delete ^java.io.File f))
+         (.delete dir))))))

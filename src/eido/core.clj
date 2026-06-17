@@ -378,16 +378,17 @@
                           {:output output}))))
 
 (defn- render-via-clojo
-  "Renders a single Eido scene through the native Clojo backend, translating
-  it to Clojo grammar first. Resolves eido.clojo lazily, so the default build
-  neither loads it nor needs a zig toolchain. Returns the result map, or
-  writes :output and returns its path."
+  "Renders an Eido scene or animation through the native Clojo backend,
+  translating it to Clojo grammar first. A sequence of frames renders to an
+  animated GIF. Resolves eido.clojo lazily, so the default build neither loads
+  it nor needs a zig toolchain. Returns the result map, or writes :output and
+  returns its path."
   [input opts]
-  (when (animation? input)
-    (throw (ex-info "the clojo renderer does not support animations yet"
-                    {:renderer :clojo})))
-  (let [render-eido (requiring-resolve 'eido.clojo/render-eido)
-        result      (render-eido input (or (:base-dir opts) "."))]
+  (let [base-dir (or (:base-dir opts) ".")
+        result   (if (animation? input)
+                   ((requiring-resolve 'eido.clojo/render-animation)
+                    input {:fps (or (:fps opts) 12) :base-dir base-dir})
+                   ((requiring-resolve 'eido.clojo/render-eido) input base-dir))]
     (when (not= :ok (:status result))
       (throw (ex-info "clojo render failed"
                       (select-keys result [:status :diagnostics]))))

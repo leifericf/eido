@@ -36,10 +36,15 @@
           (.read in sig)
           (is (= [-119 80 78 71] (mapv int sig))))))))
 
-(deftest clojo-renderer-rejects-animations
-  (testing "an animation through the clojo renderer is a clear error, not a crash"
-    (is (thrown? clojure.lang.ExceptionInfo
-                 (eido/render [clojo-scene clojo-scene] {:renderer :clojo :fps 12})))))
+(deftest clojo-renderer-renders-animations-to-gif
+  (testing "a sequence of frames renders to an animated GIF"
+    (let [r (eido/render [clojo-scene clojo-scene clojo-scene]
+                         {:renderer :clojo :fps 12})]
+      (is (= :ok (:status r)))
+      (is (= "image/gif" (:media-type r)))
+      (is (bytes? (:bytes r)))
+      (testing "the bytes open with the GIF signature"
+        (is (= [71 73 70 56] (mapv int (take 4 (:bytes r)))))))))
 
 (deftest default-renderer-is-unchanged
   (testing "without :renderer, a normal eido scene still renders via Java2D"
