@@ -1,15 +1,15 @@
 (ns eido.clojo-backend-test
-  "The :clojo renderer behind eido.core/render's backend switch. Tagged
-  ^:integration — it drives the native backend, so it needs a zig toolchain,
-  a sibling clojo checkout, and JDK 22+."
+  "eido.core/render through the native Clojo backend. Tagged ^:integration —
+  it drives the backend, so it needs a zig toolchain, a sibling clojo
+  checkout, and JDK 22+."
   (:require
     [clojure.test :refer [deftest is testing]]
     [eido.core :as eido])
   (:import
     [java.io File]))
 
-;; An ordinary Eido scene (0..255 colour channels). The :clojo renderer
-;; translates it to Clojo grammar (Phase 4) before rendering.
+;; An ordinary Eido scene (0..255 colour channels). render translates it to
+;; Clojo grammar before rendering through the native backend.
 (def ^:private clojo-scene
   {:image/size       [16 16]
    :image/background [:color/rgb 0 0 0]
@@ -19,7 +19,7 @@
                        :style/fill    [:color/rgb 255 255 255]}]})
 
 (deftest clojo-renderer-returns-encoded-bytes
-  (let [r (eido/render clojo-scene {:renderer :clojo})]
+  (let [r (eido/render clojo-scene)]
     (is (= :ok (:status r)))
     (is (= "image/png" (:media-type r)))
     (is (bytes? (:bytes r)))
@@ -28,7 +28,7 @@
 (deftest clojo-renderer-writes-a-file-with-output
   (let [out (File/createTempFile "eido-clojo" ".png")]
     (.deleteOnExit out)
-    (let [ret (eido/render clojo-scene {:renderer :clojo :output (.getPath out)})]
+    (let [ret (eido/render clojo-scene {:output (.getPath out)})]
       (is (= (.getPath out) ret))
       (is (pos? (.length out)))
       (with-open [in (java.io.FileInputStream. out)]
@@ -38,20 +38,9 @@
 
 (deftest clojo-renderer-renders-animations-to-gif
   (testing "a sequence of frames renders to an animated GIF"
-    (let [r (eido/render [clojo-scene clojo-scene clojo-scene]
-                         {:renderer :clojo :fps 12})]
+    (let [r (eido/render [clojo-scene clojo-scene clojo-scene] {:fps 12})]
       (is (= :ok (:status r)))
       (is (= "image/gif" (:media-type r)))
       (is (bytes? (:bytes r)))
       (testing "the bytes open with the GIF signature"
         (is (= [71 73 70 56] (mapv int (take 4 (:bytes r)))))))))
-
-(deftest default-renderer-is-unchanged
-  (testing "without :renderer, a normal eido scene still renders via Java2D"
-    (let [img (eido/render {:image/size       [8 8]
-                            :image/background [:color/rgb 0 0 0]
-                            :image/nodes      [{:node/type     :shape/circle
-                                                :circle/center [4 4]
-                                                :circle/radius 3
-                                                :style/fill    [:color/rgb 255 0 0]}]})]
-      (is (instance? java.awt.image.BufferedImage img)))))

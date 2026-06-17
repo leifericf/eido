@@ -1,10 +1,7 @@
 (ns eido.scene-test
   (:require
     [clojure.test :refer [deftest is testing]]
-    [eido.core :as eido]
-    [eido.scene :as scene])
-  (:import
-    [java.awt.image BufferedImage]))
+    [eido.scene :as scene]))
 
 ;; --- grid tests ---
 
@@ -201,33 +198,6 @@
       (is (approx= 50.0 (nth dists 1) 0.01))
       (is (approx= 100.0 (nth dists 2) 0.01))
       (is (approx= 50.0 (nth dists 3) 0.01)))))
-
-;; --- integration: scene helpers → render ---
-
-(defn- pixel-rgb
-  [^BufferedImage img x y]
-  (let [argb (.getRGB img x y)]
-    [(bit-and (bit-shift-right argb 16) 0xFF)
-     (bit-and (bit-shift-right argb 8) 0xFF)
-     (bit-and argb 0xFF)]))
-
-(deftest grid-render-integration-test
-  (testing "grid output renders as a scene"
-    (let [nodes (scene/grid 2 2
-                  (fn [c r]
-                    {:node/type :shape/rect
-                     :rect/xy [(* c 50) (* r 50)]
-                     :rect/size [40 40]
-                     :style/fill {:color [:color/rgb 255 0 0]}}))
-          scene {:image/size [200 200]
-                 :image/background [:color/rgb 255 255 255]
-                 :image/nodes nodes}
-          img (eido/render scene)]
-      (is (instance? BufferedImage img))
-      (is (= [255 0 0] (pixel-rgb img 20 20))
-          "first cell rect should be red")
-      (is (= [255 255 255] (pixel-rgb img 45 45))
-          "gap between cells should be background"))))
 
 ;; --- convenience helper tests ---
 

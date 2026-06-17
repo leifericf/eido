@@ -150,10 +150,8 @@
 (import-fn series/edition-seed)
 (import-fn series/series-params)
 (import-fn series/series-range)
-(import-fn series/seed-grid)
-(import-fn series/param-grid)
-(import-fn series/render-editions)
-(import-fn series/export-edition-package)
+(import-fn series/derive-traits)
+(import-fn series/trait-summary)
 (import-fn series/load-seeds)
 (import-fn series/save-seed!)
 
