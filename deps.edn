@@ -3,7 +3,7 @@
         org.clojure/core.logic {:mvn/version "1.1.0"}
         ;; The native rendering backend. Sibling checkout in dev; a
         ;; published coordinate replaces :local/root for release.
-        com.leifericf/clj-zig  {:local/root "../zigar"}}
+        com.leifericf/clj-zig  {:local/root "../clj-zig"}}
  :aliases
  {:dev {:extra-paths ["dev" "test"]
         :extra-deps {nrepl/nrepl {:mvn/version "1.3.0"}
