@@ -25,7 +25,7 @@
 ;; with no zig and no Clojo source (clj-zig ADR 36). A local checkout supplies
 ;; the compile source for dev and bake; it is absent on a consumer. Bump the
 ;; sha deliberately when targeting a newer frozen Clojo.
-(def ^:private clojo-sha "cf33e8c63c7a1fd010b07449701eb98091c60d8e")
+(def ^:private clojo-sha "773e8af8e82f22303f512eafead99e63f2e46ba4")
 
 (defn- clojo-checkout
   "Absolute path to a local clojo module root for compilation: from
@@ -158,36 +158,84 @@
                  :paint  (paint->graph (:program t)))]
      (render-edn (graph->edn graph) base-dir))))
 
+(defn- render-animation-framewise
+  "Render each frame to a PNG, then assemble them with `gif/encode` (the
+  host-rendered path). Only one frame is resident at a time during rendering,
+  so this stays memory-bounded for large animations, and it carries paint
+  surfaces (which the batched canvas path cannot). The proven default."
+  [frames fps base-dir]
+  (let [dir (.toFile (Files/createTempDirectory "eido-clojo-anim"
+                                                (make-array FileAttribute 0)))]
+    (try
+      (let [paths (vec (map-indexed
+                         (fn [i frame]
+                           (let [res (render-eido frame base-dir)]
+                             (when (not= :ok (:status res))
+                               (throw (ex-info "clojo frame render failed"
+                                               {:frame i :status (:status res)
+                                                :diagnostics (:diagnostics res)})))
+                             (let [p (.getPath (io/file dir (format "frame-%05d.png" i)))]
+                               (with-open [o (io/output-stream p)]
+                                 (.write o ^bytes (:bytes res)))
+                               p)))
+                         frames))
+            graph {:clojo/version 1
+                   :graph/id      :eido-anim
+                   :graph/nodes   {:out {:op/id      :gif/encode
+                                         :gif/fps    fps
+                                         :gif/frames paths
+                                         :asset/path "anim.gif"}}
+                   :graph/output  :out}]
+        (render-edn (graph->edn graph) base-dir))
+      (finally
+        (doseq [f (.listFiles dir)] (.delete ^java.io.File f))
+        (.delete dir)))))
+
+(defn- canvas-scenes
+  "Translate every frame to a Clojo canvas scene, returning the vector of
+  scenes, or nil if any frame is not a canvas (e.g. a paint surface) — which
+  the batched `anim/sequence` path cannot carry."
+  [frames]
+  (reduce (fn [acc frame]
+            (let [{:keys [kind scene]} (translate/translate frame)]
+              (if (= :canvas kind) (conj acc scene) (reduced nil))))
+          [] frames))
+
+;; The batched path carries every frame's scene in one graph and holds all
+;; frames resident to encode the GIF, so a large or complex animation peaks far
+;; higher than rendering one frame at a time. These caps are deliberately
+;; conservative: batch only short, modest animations, where the win (one call,
+;; no temp files) is safe; everything larger renders frame by frame. The frame
+;; count bounds scene-form complexity (trails, particles), the pixel volume the
+;; resident frames.
+(def ^:private batch-max-frames 32)
+(def ^:private batch-max-pixels 8000000)
+
+(defn- fits-batch?
+  "True when the animation is small enough to batch safely."
+  [frames scenes]
+  (let [n     (count scenes)
+        [w h] (:image/size (first frames) [0 0])]
+    (and (<= n batch-max-frames)
+         (<= (* (long n) (long w) (long h)) batch-max-pixels))))
+
 (defn render-animation
   "Render an Eido animation — a sequence of frame scenes — to an animated GIF
-  through the native backend. Each frame renders to a PNG, then Clojo's
-  `gif/encode` assembles them (the host-rendered animation path). Returns the
-  same map as `render-edn`, with an image/gif artifact."
+  through the native backend. A short, modest animation renders in one batched
+  call (`anim/sequence`: no temp files, no per-frame round-trip); a larger or
+  more complex animation, or one whose frames are paint surfaces, falls back to
+  a memory-bounded per-frame path. Returns the same map as `render-edn`, with an
+  image/gif artifact."
   ([frames] (render-animation frames {}))
   ([frames {:keys [fps base-dir] :or {fps 12 base-dir "."}}]
-   (let [dir (.toFile (Files/createTempDirectory "eido-clojo-anim"
-                                                 (make-array FileAttribute 0)))]
-     (try
-       (let [paths (vec (map-indexed
-                          (fn [i frame]
-                            (let [res (render-eido frame base-dir)]
-                              (when (not= :ok (:status res))
-                                (throw (ex-info "clojo frame render failed"
-                                                {:frame i :status (:status res)
-                                                 :diagnostics (:diagnostics res)})))
-                              (let [p (.getPath (io/file dir (format "frame-%05d.png" i)))]
-                                (with-open [o (io/output-stream p)]
-                                  (.write o ^bytes (:bytes res)))
-                                p)))
-                          frames))
-             graph {:clojo/version 1
-                    :graph/id      :eido-anim
-                    :graph/nodes   {:out {:op/id      :gif/encode
-                                          :gif/fps    fps
-                                          :gif/frames paths
-                                          :asset/path "anim.gif"}}
-                    :graph/output  :out}]
-         (render-edn (graph->edn graph) base-dir))
-       (finally
-         (doseq [f (.listFiles dir)] (.delete ^java.io.File f))
-         (.delete dir))))))
+   (let [scenes (canvas-scenes frames)]
+     (if (and scenes (fits-batch? frames scenes))
+       (render-edn (graph->edn {:clojo/version 1
+                                :graph/id      :eido-anim
+                                :graph/nodes   {:out {:op/id       :anim/sequence
+                                                      :anim/fps    fps
+                                                      :anim/scenes scenes
+                                                      :asset/path  "anim.gif"}}
+                                :graph/output  :out})
+                   base-dir)
+       (render-animation-framewise frames fps base-dir)))))
