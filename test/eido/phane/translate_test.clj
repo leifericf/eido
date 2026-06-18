@@ -1,10 +1,10 @@
-(ns eido.clojo.translate-test
-  "The Eido-to-Clojo grammar translation. Pure, so it runs in the default lane
+(ns eido.phane.translate-test
+  "The Eido-to-Phane grammar translation. Pure, so it runs in the default lane
   with no zig toolchain."
   (:require
     [clojure.test :refer [deftest is testing]]
     [clojure.walk :as walk]
-    [eido.clojo.translate :as t]))
+    [eido.phane.translate :as t]))
 
 (defn- x [v] (walk/postwalk t/xlate v))
 
@@ -24,7 +24,7 @@
          (t/xlate [:curve-to [1.0 2.0] [3.0 4.0] [5.0 6.0]]))))
 
 (deftest transforms-keep-affine-and-convert-rotation
-  (testing "rotate radians become Clojo degrees, kept only affine ops"
+  (testing "rotate radians become Phane degrees, kept only affine ops"
     (let [node (t/xlate {:node/type :group
                          :node/transform [[:transform/rotate (/ Math/PI 2)]
                                           [:transform/translate 5 6]
@@ -40,7 +40,7 @@
            (t/xlate {:node/type :shape/ellipse :ellipse/rx 3 :ellipse/ry 4})))))
 
 (deftest arc-lowers-to-a-path
-  (testing "a :shape/arc samples into a :shape/path; Clojo has no arc primitive"
+  (testing "a :shape/arc samples into a :shape/path; Phane has no arc primitive"
     (let [r (t/xlate {:node/type :shape/arc
                       :arc/center [200 200] :arc/rx 80 :arc/ry 80
                       :arc/start 0 :arc/extent 270 :arc/mode :pie
@@ -76,7 +76,7 @@
     (is (= :gradient/linear (first g)))
     (is (= [0 0] (:from (second g))))))
 
-(deftest symmetry-takes-its-clojo-node-type
+(deftest symmetry-takes-its-phane-node-type
   (let [r (x {:node/type :symmetry :symmetry/type :radial :symmetry/n 6
               :symmetry/center [5 5] :group/children []})]
     (is (= :item/symmetry (:node/type r)))

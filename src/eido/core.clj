@@ -1,9 +1,9 @@
 (ns eido.core
   "Rendering and authoring entry point for Eido.
 
-  Eido describes scenes as plain data; the native Clojo backend renders them.
-  `render` translates a scene (or animation) to Clojo's grammar and renders it
-  through the bridge in `eido.clojo`, returning the encoded artifact bytes or
+  Eido describes scenes as plain data; the native Phane backend renders them.
+  `render` translates a scene (or animation) to Phane's grammar and renders it
+  through the bridge in `eido.phane`, returning the encoded artifact bytes or
   writing them to :output. Authoring lives in eido.scene, eido.gen.*,
   eido.path.*, eido.animate, eido.color, and eido.scene3d."
   (:require
@@ -26,7 +26,7 @@
   (and (sequential? input) (not (map? input))))
 
 (defn render
-  "Render a scene or animation through the native Clojo backend.
+  "Render a scene or animation through the native Phane backend.
 
     (render scene)                              → {:status :width :height
                                                    :media-type :diagnostics :bytes}
@@ -34,18 +34,18 @@
     (render frames {:output \"a.gif\" :fps 30})   → writes an animated GIF
 
   A sequence of scenes renders to an animated GIF (:fps, default 12). :base-dir
-  resolves asset paths (default \".\"). The scene is translated to Clojo's frozen
-  grammar first (see eido.clojo.translate). eido.clojo is resolved lazily, so
+  resolves asset paths (default \".\"). The scene is translated to Phane's frozen
+  grammar first (see eido.phane.translate). eido.phane is resolved lazily, so
   pure authoring needs neither the bridge nor a zig toolchain."
   ([input] (render input {}))
   ([input opts]
    (let [base-dir (or (:base-dir opts) ".")
          result   (if (animation? input)
-                    ((requiring-resolve 'eido.clojo/render-animation)
+                    ((requiring-resolve 'eido.phane/render-animation)
                      input {:fps (or (:fps opts) 12) :base-dir base-dir})
-                    ((requiring-resolve 'eido.clojo/render-eido) input base-dir))]
+                    ((requiring-resolve 'eido.phane/render-eido) input base-dir))]
      (when (not= :ok (:status result))
-       (throw (ex-info "clojo render failed"
+       (throw (ex-info "phane render failed"
                        (select-keys result [:status :diagnostics]))))
      (if-let [output (:output opts)]
        (do (with-open [o (io/output-stream output)]

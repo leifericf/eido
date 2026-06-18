@@ -1,8 +1,8 @@
-(ns eido.clojo-bake-test
-  "Baking the native Clojo boundary for distribution (clj-zig ADR 36): the
-  boundary, pinned to a frozen Clojo, bakes from a local checkout into a
+(ns eido.phane-bake-test
+  "Baking the native Phane boundary for distribution (clj-zig ADR 36): the
+  boundary, pinned to a frozen Phane, bakes from a local checkout into a
   resource tree, and the baked library renders on its own. Tagged
-  ^:integration — needs a zig toolchain, a sibling clojo checkout, JDK 22+."
+  ^:integration — needs a zig toolchain, a sibling phane checkout, JDK 22+."
   (:require
     [clojure.java.io :as io]
     [clojure.test :refer [deftest is testing]]
@@ -15,7 +15,7 @@
          "eido-bake" (make-array java.nio.file.attribute.FileAttribute 0))))
 
 (def ^:private graph
-  (str "{:clojo/version 1 :graph/id :g :graph/nodes "
+  (str "{:phane/version 1 :graph/id :g :graph/nodes "
        "{:art {:op/id :canvas/render "
        "       :canvas/scene {:image/size [8 8] :image/background [:color/rgb 0 0 0] "
        "                      :image/nodes [{:node/type :shape/circle :circle/center [4 4] "
@@ -24,15 +24,15 @@
        ":graph/output :out}"))
 
 (deftest ^:integration bakes-the-boundary-and-the-baked-library-renders
-  (require 'eido.clojo)
+  (require 'eido.phane)
   (let [out               (scratch)
-        results           (bake/bake! {:ns 'eido.clojo :out out :targets :host})
-        info              (:clj-zig/info (meta (resolve 'eido.clojo/render-edn-raw)))
+        results           (bake/bake! {:ns 'eido.phane :out out :targets :host})
+        info              (:clj-zig/info (meta (resolve 'eido.phane/render-edn-raw)))
         {:keys [library]} (first results)]
     (testing "the boundary bakes into one loadable native library"
       (is (= 1 (count results)))
       (is (.exists (io/file library))))
-    (testing "the build pins Clojo for a reproducible, consumer-resolvable key"
+    (testing "the build pins Phane for a reproducible, consumer-resolvable key"
       (let [inputs (#'bake/function-inputs info)]
         (is (seq (:modules inputs)) "the pinned fingerprint enters the hash")
         (is (seq (:module-roots inputs)) "the local checkout resolves for compile")))

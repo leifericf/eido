@@ -2,9 +2,9 @@ name: Tests
 
 on:
   pull_request:
-    branches: [main, clojo-backend]
+    branches: [main, phane-backend]
   push:
-    branches: [main, clojo-backend]
+    branches: [main, phane-backend]
     paths: ['src/**', 'test/**']
 
 jobs:

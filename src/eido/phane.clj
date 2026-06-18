@@ -1,46 +1,46 @@
-(ns eido.clojo
-  "Bridge to the Clojo native renderer.
+(ns eido.phane
+  "Bridge to the Phane native renderer.
 
-  `render-edn` takes a graph in Clojo's EDN grammar and returns its encoded
+  `render-edn` takes a graph in Phane's EDN grammar and returns its encoded
   artifact bytes plus diagnostics, rendering in memory through a Zig boundary
-  that imports the clojo module from the JVM (clj-zig, ADR 34). The boundary
+  that imports the phane module from the JVM (clj-zig, ADR 34). The boundary
   returns one owned byte buffer framing the status, dimensions, media type,
   diagnostics text, and payload; this namespace unframes it into a map.
 
-  In development the clojo module resolves from the CLOJO_MODULE_ROOT override
-  or a sibling checkout (../clojo/src/root.zig); a baked release carries the
+  In development the phane module resolves from the PHANE_MODULE_ROOT override
+  or a sibling checkout (../phane/src/root.zig); a baked release carries the
   compiled boundary for every platform and needs no zig toolchain."
   (:require
     [clojure.java.io :as io]
     [clj-zig.core :refer [defnz zig-deps]]
-    [eido.clojo.translate :as translate])
+    [eido.phane.translate :as translate])
   (:import
     [java.nio ByteBuffer ByteOrder]
     [java.nio.file Files]
     [java.nio.file.attribute FileAttribute]
     [java.util Arrays]))
 
-;; The Clojo grammar is frozen, so the module is pinned by commit: the pin is
+;; The Phane grammar is frozen, so the module is pinned by commit: the pin is
 ;; the reproducible identity a consumer reuses to resolve the baked library
-;; with no zig and no Clojo source (clj-zig ADR 36). A local checkout supplies
+;; with no zig and no Phane source (clj-zig ADR 36). A local checkout supplies
 ;; the compile source for dev and bake; it is absent on a consumer. Bump the
-;; sha deliberately when targeting a newer frozen Clojo.
-(def ^:private clojo-sha "773e8af8e82f22303f512eafead99e63f2e46ba4")
+;; sha deliberately when targeting a newer frozen Phane.
+(def ^:private phane-sha "a2382ecf6024bc4ed6a89361f64651ce89796606")
 
-(defn- clojo-checkout
-  "Absolute path to a local clojo module root for compilation: from
-  CLOJO_MODULE_ROOT, or a sibling checkout when present. nil on a consumer
+(defn- phane-checkout
+  "Absolute path to a local phane module root for compilation: from
+  PHANE_MODULE_ROOT, or a sibling checkout when present. nil on a consumer
   that resolves the baked library instead of compiling."
   []
-  (or (System/getenv "CLOJO_MODULE_ROOT")
-      (let [sibling (io/file ".." "clojo" "src" "root.zig")]
+  (or (System/getenv "PHANE_MODULE_ROOT")
+      (let [sibling (io/file ".." "phane" "src" "root.zig")]
         (when (.exists sibling) (.getAbsolutePath sibling)))))
 
 (zig-deps {:zig/modules
-           {"clojo" (cond-> {:git/sha clojo-sha :root "src/root.zig"}
-                      (clojo-checkout) (assoc :path (clojo-checkout)))}})
+           {"phane" (cond-> {:git/sha phane-sha :root "src/root.zig"}
+                      (phane-checkout) (assoc :path (phane-checkout)))}})
 
-;; The boundary packs clojo.render's result into one owned slice:
+;; The boundary packs phane.render's result into one owned slice:
 ;; [status:u8][width:u32][height:u32][media-len:u32][diag-len:u32]
 ;; [media][diagnostics-text][payload], integers little-endian. A single
 ;; owned-bytes return keeps the FFM boundary to one copy and one free.
@@ -48,12 +48,12 @@
   [graphEdn [:slice :const :u8]
    baseDir  [:slice :const :u8]
    :ret [:bytes [:slice :u8]]]
-  "const clojo = @import(\"clojo\");
+  "const phane = @import(\"phane\");
    const alloc = std.heap.c_allocator;
    var threaded = std.Io.Threaded.init(alloc, .{});
    defer threaded.deinit();
    const cio = threaded.io();
-   var r = clojo.render(alloc, cio, graphEdn, baseDir);
+   var r = phane.render(alloc, cio, graphEdn, baseDir);
    defer r.deinit();
    const media = r.media_type;
    const diag = r.diagnostics_text;
@@ -80,7 +80,7 @@
   (Arrays/copyOfRange buf (int off) (int (+ off len))))
 
 (defn render-edn
-  "Render a graph in Clojo's EDN grammar to its encoded artifact. Returns
+  "Render a graph in Phane's EDN grammar to its encoded artifact. Returns
   {:status :width :height :media-type :diagnostics :bytes}: :status is one of
   :ok :invalid :no-output :out-of-memory; :diagnostics is the rendered text,
   empty when none; :bytes is the encoded artifact, empty unless :status is
@@ -106,12 +106,12 @@
       :bytes       (slice framed pay-off (- (alength ^bytes framed) pay-off))})))
 
 (defn scene->graph
-  "Wrap a Clojo canvas scene in a minimal render-to-output graph: a
+  "Wrap a Phane canvas scene in a minimal render-to-output graph: a
   `:canvas/render` node feeding an `:image/write` sink. The in-memory core
   captures the sink's bytes, writing no file; the path only fixes the output
   format (PNG by extension)."
   [scene]
-  {:clojo/version 1
+  {:phane/version 1
    :graph/id      :eido
    :graph/nodes   {:art {:op/id        :canvas/render
                          :canvas/scene scene}
@@ -121,16 +121,16 @@
    :graph/output  :out})
 
 (defn graph->edn
-  "Print a graph as EDN for the Clojo reader. Namespace-map syntax
-  (`#:image{...}`) is disabled: Clojo's reader takes fully-qualified keys."
+  "Print a graph as EDN for the Phane reader. Namespace-map syntax
+  (`#:image{...}`) is disabled: Phane's reader takes fully-qualified keys."
   [graph]
   (binding [*print-namespace-maps* false]
     (pr-str graph)))
 
 (defn paint->graph
-  "Wrap a Clojo paint program in a `:paint/render` to `:image/write` graph."
+  "Wrap a Phane paint program in a `:paint/render` to `:image/write` graph."
   [program]
-  {:clojo/version 1
+  {:phane/version 1
    :graph/id      :eido
    :graph/nodes   {:art {:op/id         :paint/render
                          :paint/program program}
@@ -140,14 +140,14 @@
    :graph/output  :out})
 
 (defn render-scene
-  "Render a Clojo canvas scene to its encoded artifact through the native
+  "Render a Phane canvas scene to its encoded artifact through the native
   backend. Returns the same map as `render-edn`."
   ([scene] (render-scene scene "."))
   ([scene base-dir]
    (render-edn (graph->edn (scene->graph scene)) base-dir)))
 
 (defn render-eido
-  "Translate an Eido scene to Clojo grammar and render it through the native
+  "Translate an Eido scene to Phane grammar and render it through the native
   backend. A paint surface renders as a paint program, any other scene as a
   canvas. Returns the same map as `render-edn`."
   ([scene] (render-eido scene "."))
@@ -164,14 +164,14 @@
   so this stays memory-bounded for large animations, and it carries paint
   surfaces (which the batched canvas path cannot). The proven default."
   [frames fps base-dir]
-  (let [dir (.toFile (Files/createTempDirectory "eido-clojo-anim"
+  (let [dir (.toFile (Files/createTempDirectory "eido-phane-anim"
                                                 (make-array FileAttribute 0)))]
     (try
       (let [paths (vec (map-indexed
                          (fn [i frame]
                            (let [res (render-eido frame base-dir)]
                              (when (not= :ok (:status res))
-                               (throw (ex-info "clojo frame render failed"
+                               (throw (ex-info "phane frame render failed"
                                                {:frame i :status (:status res)
                                                 :diagnostics (:diagnostics res)})))
                              (let [p (.getPath (io/file dir (format "frame-%05d.png" i)))]
@@ -179,7 +179,7 @@
                                  (.write o ^bytes (:bytes res)))
                                p)))
                          frames))
-            graph {:clojo/version 1
+            graph {:phane/version 1
                    :graph/id      :eido-anim
                    :graph/nodes   {:out {:op/id      :gif/encode
                                          :gif/fps    fps
@@ -192,7 +192,7 @@
         (.delete dir)))))
 
 (defn- canvas-scenes
-  "Translate every frame to a Clojo canvas scene, returning the vector of
+  "Translate every frame to a Phane canvas scene, returning the vector of
   scenes, or nil if any frame is not a canvas (e.g. a paint surface) — which
   the batched `anim/sequence` path cannot carry."
   [frames]
@@ -230,7 +230,7 @@
   ([frames {:keys [fps base-dir] :or {fps 12 base-dir "."}}]
    (let [scenes (canvas-scenes frames)]
      (if (and scenes (fits-batch? frames scenes))
-       (render-edn (graph->edn {:clojo/version 1
+       (render-edn (graph->edn {:phane/version 1
                                 :graph/id      :eido-anim
                                 :graph/nodes   {:out {:op/id       :anim/sequence
                                                       :anim/fps    fps

@@ -1,15 +1,15 @@
-(ns eido.clojo.translate
-  "Translate an Eido scene into Clojo's frozen authoring grammar.
+(ns eido.phane.translate
+  "Translate an Eido scene into Phane's frozen authoring grammar.
 
   Eido authoring (eido.scene, eido.gen.*, examples) produces Eido-grammar
-  data; the native Clojo backend renders Clojo grammar. This namespace is the
-  pure mapping between them, so `:renderer :clojo` renders an ordinary Eido
+  data; the native Phane backend renders Phane grammar. This namespace is the
+  pure mapping between them, so `:renderer :phane` renders an ordinary Eido
   scene. The rules mirror the gallery parity harness: colours resolve to 0..1
   `[:color/rgba]`, path verbs shorten (`[:move-to [x y]]` to `[:move x y]`),
   semantic fills and gradients become tagged vectors, generators lower to
-  `:item/generator`, symmetry and decorated paths take their Clojo node types,
+  `:item/generator`, symmetry and decorated paths take their Phane node types,
   group compositing/filter/clip move to node level, and Eido's radian rotations
-  become Clojo degrees. Paint surfaces become a `:paint/render` program.
+  become Phane degrees. Paint surfaces become a `:paint/render` program.
 
   `translate` returns {:kind :canvas :scene …} or {:kind :paint :program …}."
   (:require
@@ -17,7 +17,7 @@
     [eido.color :as ecolor]))
 
 (def ^:dynamic *font*
-  "Font asset path Clojo text nodes resolve against. Text scenes need this
+  "Font asset path Phane text nodes resolve against. Text scenes need this
   asset available at the render base directory."
   "examples/assets/Lato-Regular.ttf")
 
@@ -47,8 +47,8 @@
 ;; ---- transforms ------------------------------------------------------------
 
 (defn- affine-op
-  "Translate an Eido [:transform/verb …] op to a Clojo op vector, or nil to
-  drop it. Eido rotate is radians; Clojo rotate is degrees."
+  "Translate an Eido [:transform/verb …] op to a Phane op vector, or nil to
+  drop it. Eido rotate is radians; Phane rotate is degrees."
   [op]
   (when (and (vector? op) (keyword? (first op))
              (= "transform" (namespace (first op))))
@@ -80,7 +80,7 @@
          (into {} (for [[k v] opts] [(keyword "gen" (name k)) v]))))
 
 (defn- ->gen
-  "Map an Eido generator node to a Clojo :item/generator (or a group, for
+  "Map an Eido generator node to a Phane :item/generator (or a group, for
   scatter). bounds is the fallback scene bounds [x y w h]."
   [x bounds]
   (case (:node/type x)
@@ -127,7 +127,7 @@
    :overlay :overlay :add :add :normal :normal :source-over :normal})
 
 (defn- ->effect
-  "Translate an Eido :group/filter tagged-vector into a Clojo :node/effects
+  "Translate an Eido :group/filter tagged-vector into a Phane :node/effects
   entry. Eido filters are positional. Returns nil to drop unknowns."
   [flt]
   (when (and (vector? flt) (keyword? (first flt)))
@@ -147,7 +147,7 @@
 (defn- r3 [x] (/ (Math/round (* (double x) 1000.0)) 1000.0))
 
 (defn- arc->path
-  "Sample an elliptical arc into Clojo path commands. Clojo has no arc
+  "Sample an elliptical arc into Phane path commands. Phane has no arc
   primitive, so an Eido :shape/arc lowers to a :shape/path. Matches Java2D
   Arc2D: angles in degrees, the point at angle a is
   (cx + rx·cos a, cy − ry·sin a). :open leaves the arc unclosed (a fill
@@ -169,7 +169,7 @@
 ;; ---- core postwalk translation ---------------------------------------------
 
 (defn xlate
-  "The bottom-up rewrite of one Eido value into Clojo grammar. Used as a
+  "The bottom-up rewrite of one Eido value into Phane grammar. Used as a
   `clojure.walk/postwalk` step, so children are already translated."
   [x]
   (cond
@@ -209,7 +209,7 @@
       :pattern [:fill/pattern {:size (:pattern/size x) :nodes (:pattern/nodes x)}]
       x)
 
-    ;; Eido stroke {:color C :width W :dash D} -> Clojo {:stroke/paint …}
+    ;; Eido stroke {:color C :width W :dash D} -> Phane {:stroke/paint …}
     (and (map? x) (contains? x :width) (or (contains? x :color) (contains? x :gray)))
     (let [paint (cond
                   (contains? x :color) (norm-fill (:color x))
@@ -427,8 +427,8 @@
     [0 0 w h]))
 
 (defn translate
-  "Translate an Eido scene (or example result) into Clojo grammar. Returns
-  {:kind :canvas :scene clojo-scene} or {:kind :paint :program paint-program}."
+  "Translate an Eido scene (or example result) into Phane grammar. Returns
+  {:kind :canvas :scene phane-scene} or {:kind :paint :program paint-program}."
   [eido-scene]
   (let [raw    (still-of eido-scene)
         paint  (pure-paint-node raw)
