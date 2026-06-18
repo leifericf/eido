@@ -1,11 +1,12 @@
 name: Tests
 
 on:
+  workflow_dispatch:
   pull_request:
-    branches: [main, phane-backend]
+    branches: [main]
   push:
-    branches: [main, phane-backend]
-    paths: ['src/**', 'test/**']
+    branches: [main]
+    paths: ['src/**', 'test/**', 'deps.edn', '.github/workflows/**']
 
 jobs:
   test:
