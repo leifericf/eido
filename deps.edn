@@ -3,13 +3,13 @@
         org.clojure/core.logic {:mvn/version "1.1.0"}
         ;; The native rendering backend, pinned for consumers. The :dev
         ;; alias overrides this with a sibling checkout for the REPL loop.
-        io.github.leifericf/clj-zig {:git/sha "f1fdcbf28116b83b4840c4103fe2f38271b04529"}}
+        com.leifericf/clj-zig {:mvn/version "2026.06.24-alpha1"}}
  :aliases
  {:dev {:extra-paths ["dev" "test"]
         :extra-deps {nrepl/nrepl {:mvn/version "1.3.0"}
                      com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.5.1"}
                      ;; REPL loop against a live sibling clj-zig checkout.
-                     io.github.leifericf/clj-zig {:local/root "../clj-zig"}}
+                     com.leifericf/clj-zig {:local/root "../clj-zig"}}
         :jvm-opts ["-Djdk.attach.allowAttachSelf"
                    "--add-opens=java.base/java.lang=ALL-UNNAMED"
                    "--enable-native-access=ALL-UNNAMED"]}
