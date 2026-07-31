@@ -45,8 +45,8 @@
 ;; [media][diagnostics-text][payload], integers little-endian. A single
 ;; owned-bytes return keeps the FFM boundary to one copy and one free.
 (defnz ^:private render-edn-raw
-  [graphEdn [:slice :const :u8]
-   baseDir  [:slice :const :u8]
+  [graphEdn :string
+   baseDir  :string
    :ret [:bytes [:slice :u8]]]
   "const phane = @import(\"phane\");
    const alloc = std.heap.c_allocator;
@@ -87,8 +87,7 @@
   :ok. `base-dir` resolves asset paths and defaults to the current directory."
   ([graph-edn] (render-edn graph-edn "."))
   ([graph-edn base-dir]
-   (let [framed    (render-edn-raw (.getBytes ^String graph-edn "UTF-8")
-                                   (.getBytes ^String base-dir "UTF-8"))
+   (let [framed    (render-edn-raw graph-edn base-dir)
          bb        (.order (ByteBuffer/wrap framed) ByteOrder/LITTLE_ENDIAN)
          status    (bit-and (int (.get bb 0)) 0xFF)
          width     (.getInt bb 1)

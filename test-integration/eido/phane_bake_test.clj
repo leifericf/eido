@@ -38,6 +38,6 @@
         (is (seq (:module-roots inputs)) "the local checkout resolves for compile")))
     (testing "the baked library renders a graph to artifact bytes on its own"
       (let [render (ffm/bind (:spec info) library)
-            framed (render (.getBytes graph "UTF-8") (.getBytes "." "UTF-8"))]
+            framed (render graph ".")]
         (is (bytes? framed))
         (is (zero? (aget ^bytes framed 0)) "status byte 0 = :ok")))))
