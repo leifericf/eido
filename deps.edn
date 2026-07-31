@@ -27,6 +27,9 @@
          :jvm-opts ["--enable-native-access=ALL-UNNAMED"]
          :main-opts ["-m" "cognitect.test-runner"]
          :exec-fn cognitect.test-runner.api/test}
+  ;; Author-only render benchmarks (criterium). Not loaded by default;
+  ;; combine with :dev for the local clj-zig checkout: clojure -M:dev:bench.
+  :bench {:extra-deps {criterium/criterium {:mvn/version "0.4.6"}}}
   ;; Integration tests drive the native Phane backend. They live on their
   ;; own path so the default lane never loads them: they need a zig
   ;; toolchain and a sibling phane checkout. Run with `clojure -M:integration`.
