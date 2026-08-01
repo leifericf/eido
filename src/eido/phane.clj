@@ -7,11 +7,14 @@
   returns one owned byte buffer framing the status, dimensions, media type,
   diagnostics text, and payload; this namespace unframes it into a map.
 
-  In development the phane module resolves from the PHANE_MODULE_ROOT override
-  or a sibling checkout (../phane/src/root.zig); a baked release carries the
-  compiled boundary for every platform and needs no zig toolchain."
+  In development the phane module resolves from the PHANE_MODULE_ROOT override,
+  a sibling checkout (../phane/src/root.zig), or a zig-fetched copy of the
+  pinned commit; a baked release carries the compiled boundary for every
+  platform and needs no zig toolchain."
   (:require
     [clojure.java.io :as io]
+    [clojure.java.shell :as sh]
+    [clojure.string :as str]
     [clj-zig.core :refer [defnz zig-deps]]
     [eido.phane.translate :as translate])
   (:import
@@ -23,18 +26,69 @@
 ;; The Phane grammar is frozen, so the module is pinned by commit: the pin is
 ;; the reproducible identity a consumer reuses to resolve the baked library
 ;; with no zig and no Phane source (clj-zig ADR 36). A local checkout supplies
-;; the compile source for dev and bake; it is absent on a consumer. Bump the
-;; sha deliberately when targeting a newer frozen Phane.
-(def ^:private phane-sha "a2382ecf6024bc4ed6a89361f64651ce89796606")
+;; the compile source for dev and bake. Without one, zig fetch pulls the
+;; pinned commit from the public repo into a managed cache so a fresh clone
+;; compiles with no sibling checkout. Bump the sha deliberately when targeting
+;; a newer frozen Phane.
+(def ^:private phane-sha "9de0d9c581956ad4def3b8d867233bf7ae92a174")
+
+(def ^:private phane-git-url
+  "The public GitHub URL zig fetch pulls the pinned Phane commit from, in
+  the git+https form zig fetch requires."
+  "git+https://github.com/leifericf/phane.git")
+
+(def ^:private fetch-build-zig
+  "A stub build.zig so zig fetch — which needs a project context — can run
+  from the managed module directory."
+  "const std = @import(\"std\");\npub fn build(b: *std.Build) void {\n    _ = b;\n}\n")
+
+(defn- zig-cache-dir
+  "The global Zig cache directory from `zig env`, where fetched package
+  tarballs land under p/. nil when zig is unavailable — the shell-out
+  throws IOException when the binary is absent, so this is guarded to
+  keep a consumer namespace load from crashing without zig on PATH."
+  []
+  (try
+    (let [{:keys [exit out]} (sh/sh "zig" "env")]
+      (when (zero? exit)
+        (some-> (re-find #"global_cache_dir\s*=\s*\"([^\"]+)\"" out)
+                second
+                not-empty)))
+    (catch Exception _ nil)))
+
+(defn- fetched-phane-root
+  "Absolute path to src/root.zig from a zig-fetched copy of the pinned
+  phane sha, cached under .clj-zig/modules/phane/<sha>/ so a repeat load
+  reuses it without the network. nil when zig is unavailable or the fetch
+  fails — a consumer then resolves a baked artifact instead."
+  []
+  (let [dir  (io/file ".clj-zig" "modules" "phane" phane-sha)
+        root (io/file dir "src" "root.zig")]
+    (if (.exists root)
+      (.getAbsolutePath root)
+      (when-let [cache (zig-cache-dir)]
+        (.mkdirs dir)
+        (spit (io/file dir "build.zig") fetch-build-zig)
+        (let [url  (str phane-git-url "#" phane-sha)
+              {:keys [exit out]} (sh/sh "zig" "fetch" url :dir dir)]
+          (when (zero? exit)
+            (let [tarball (io/file cache "p" (str (str/trim out) ".tar.gz"))]
+              (when (and (.exists tarball)
+                         (zero? (:exit (sh/sh "tar" "xf" (.getAbsolutePath tarball)
+                                              "-C" (.getAbsolutePath dir)
+                                              "--strip-components=1"))))
+                (.getAbsolutePath root)))))))))
 
 (defn- phane-checkout
   "Absolute path to a local phane module root for compilation: from
-  PHANE_MODULE_ROOT, or a sibling checkout when present. nil on a consumer
-  that resolves the baked library instead of compiling."
+  PHANE_MODULE_ROOT, a sibling checkout (../phane/src/root.zig), or a
+  zig-fetched copy of the pinned sha. nil when none resolve — a consumer
+  with a baked artifact needs no source."
   []
   (or (System/getenv "PHANE_MODULE_ROOT")
       (let [sibling (io/file ".." "phane" "src" "root.zig")]
-        (when (.exists sibling) (.getAbsolutePath sibling)))))
+        (when (.exists sibling) (.getAbsolutePath sibling)))
+      (fetched-phane-root)))
 
 (zig-deps {:zig/modules
            {"phane" (cond-> {:git/sha phane-sha :root "src/root.zig"}
