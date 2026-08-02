@@ -426,6 +426,27 @@
   (let [[w h] (or (:image/size scene) (:paint/size scene) [512 512])]
     [0 0 w h]))
 
+(defn- fallback-paint-styles
+  "When a paint-surface group falls through to canvas rendering (its children
+  are structural or generative nodes, not direct brush-painted paths), paint-only
+  properties produce no visible canvas output: Phane's canvas renderer reads
+  :style/fill and :style/stroke, not :paint/brush. This pass synthesises a
+  :style/stroke from :paint/color and :paint/radius for any node that carries
+  :paint/brush but has neither canvas style, so the strokes are visible as
+  regular canvas strokes instead of vanishing."
+  [scene]
+  (walk/postwalk
+    (fn [node]
+      (if (and (map? node)
+               (:paint/brush node)
+               (not (:style/fill node))
+               (not (:style/stroke node)))
+        (let [color (or (:paint/color node) [:color/rgba 0.1 0.1 0.1 1.0])
+              width (or (:paint/radius node) 2.0)]
+          (assoc node :style/stroke {:stroke/paint color :stroke/width width}))
+        node))
+    scene))
+
 (defn translate
   "Translate an Eido scene (or example result) into Phane grammar. Returns
   {:kind :canvas :scene phane-scene} or {:kind :paint :program paint-program}."
@@ -439,5 +460,6 @@
                {:kind :paint
                 :program (brush-paths->program size bg (walk/postwalk xlate children))})
       :else  (let [bounds     (scene-bounds raw)
-                   translated (walk/postwalk xlate raw)]
-               {:kind :canvas :scene (lower-generators translated bounds)}))))
+                   translated (walk/postwalk xlate raw)
+                   scene      (lower-generators translated bounds)]
+               {:kind :canvas :scene (fallback-paint-styles scene)}))))
